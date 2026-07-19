@@ -52,7 +52,7 @@ cp .env.example .env.local
 
 ```text
 VITE_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY
+VITE_SUPABASE_PUBLISHABLE_KEY
 ```
 
 لا تضع `service_role` أو أي secret key في متغير يبدأ بـ`VITE_`، لأن متغيرات Vite تصل إلى المتصفح. المرحلة الحالية تعمل من دون تعبئة هذه القيم.
