@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build and test outputs
+dist/
+coverage/
+
+# Environment files — keep only the empty template
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local Supabase state
+supabase/.branches/
+supabase/.temp/
+
+# Manus-specific local/runtime files
+.project-config.json
+.manus/
+**/__manus__/
+
+# Export archives
+*.zip
