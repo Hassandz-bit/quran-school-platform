@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { mockStudents } from "@/mock-data/students";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const StudentsList: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -30,10 +32,21 @@ const StudentsList: React.FC = () => {
   const [filterClass, setFilterClass] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [, setLocation] = useLocation();
+  const { signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    setLocation("/login");
+  const handleLogout = async () => {
+    try {
+      const { error } = await signOut();
+
+      if (error) {
+        toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+        return;
+      }
+
+      setLocation("/login");
+    } catch {
+      toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+    }
   };
 
   const content = {

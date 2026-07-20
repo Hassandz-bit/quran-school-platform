@@ -15,16 +15,29 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [, setLocation] = useLocation();
+  const { signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    setLocation("/login");
+  const handleLogout = async () => {
+    try {
+      const { error } = await signOut();
+
+      if (error) {
+        toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+        return;
+      }
+
+      setLocation("/login");
+    } catch {
+      toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+    }
   };
 
   const content = {
