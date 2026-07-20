@@ -23,6 +23,7 @@ import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
@@ -115,8 +116,18 @@ function DashboardLayoutContent({
   const isMobile = useIsMobile();
 
   const handleLogout = async () => {
-    await signOut();
-    setLocation("/login");
+    try {
+      const { error } = await signOut();
+
+      if (error) {
+        toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+        return;
+      }
+
+      setLocation("/login");
+    } catch {
+      toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+    }
   };
 
   useEffect(() => {

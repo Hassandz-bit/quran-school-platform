@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -44,7 +42,6 @@ const Login: React.FC = () => {
       subtitle: "نحو تعليم قرآني أكثر تنظيمًا وأثرًا",
       email: "البريد الإلكتروني",
       password: "كلمة المرور",
-      rememberMe: "تذكرني",
       forgotPassword: "نسيت كلمة المرور؟",
       login: "تسجيل الدخول",
       loading: "جارٍ تسجيل الدخول...",
@@ -54,7 +51,6 @@ const Login: React.FC = () => {
       subtitle: "Towards more organized and impactful Quranic education",
       email: "Email Address",
       password: "Password",
-      rememberMe: "Remember me",
       forgotPassword: "Forgot password?",
       login: "Sign In",
       loading: "Signing in...",
@@ -188,21 +184,8 @@ const Login: React.FC = () => {
               />
             </div>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={checked => setRememberMe(checked as boolean)}
-                />
-                <label
-                  htmlFor="remember"
-                  className="text-sm text-gray-600 cursor-pointer"
-                >
-                  {t.rememberMe}
-                </label>
-              </div>
+            {/* Forgot Password */}
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => setLocation("/forgot-password")}

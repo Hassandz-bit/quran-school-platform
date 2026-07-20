@@ -23,6 +23,7 @@ export type AuthContextValue = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isPasswordRecovery: boolean;
   signInWithPassword: (
     email: string,
     password: string
@@ -33,6 +34,7 @@ export type AuthContextValue = {
     redirectTo: string
   ) => Promise<AuthOperationResult>;
   updateUser: (attributes: UserAttributes) => Promise<AuthOperationResult>;
+  clearPasswordRecovery: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
     const client = clientState.client;
@@ -67,13 +70,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let isMounted = true;
+    let loadingTimer: ReturnType<typeof setTimeout> | null = null;
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange((_event, nextSession) => {
+    } = client.auth.onAuthStateChange((event, nextSession) => {
       if (!isMounted) return;
+
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
-      setLoading(false);
+
+      if (event === "PASSWORD_RECOVERY") {
+        if (loadingTimer) clearTimeout(loadingTimer);
+        setIsPasswordRecovery(Boolean(nextSession));
+        setLoading(false);
+      } else if (event === "SIGNED_OUT") {
+        setIsPasswordRecovery(false);
+      }
+
+      if (event === "INITIAL_SESSION") {
+        loadingTimer = setTimeout(() => {
+          if (isMounted) setLoading(false);
+        }, 0);
+      }
     });
 
     void client.auth.getSession().then(({ data, error }) => {
@@ -82,16 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         setSession(null);
         setUser(null);
+        setIsPasswordRecovery(false);
       } else {
         setSession(data.session);
         setUser(data.session?.user ?? null);
       }
-
-      setLoading(false);
     });
 
     return () => {
       isMounted = false;
+      if (loadingTimer) clearTimeout(loadingTimer);
       subscription.unsubscribe();
     };
   }, [clientState.client]);
@@ -102,15 +120,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
       });
+
+      if (!error) setIsPasswordRecovery(false);
+
       return { error };
     },
     [clientState.client]
   );
 
-  const signOut = useCallback(async (): Promise<AuthOperationResult> => {
-    const { error } = await clientState.client!.auth.signOut();
-    return { error };
-  }, [clientState.client]);
+  const signOut = useCallback(
+    (): Promise<AuthOperationResult> =>
+      clientState.client!.auth.signOut({ scope: "local" }),
+    [clientState.client]
+  );
 
   const resetPasswordForEmail = useCallback(
     async (
@@ -133,6 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [clientState.client]
   );
+
+  const clearPasswordRecovery = useCallback(() => {
+    setIsPasswordRecovery(false);
+  }, []);
 
   if (clientState.configurationError) {
     return (
@@ -165,10 +191,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         session,
         loading,
+        isPasswordRecovery,
         signInWithPassword,
         signOut,
         resetPasswordForEmail,
         updateUser,
+        clearPasswordRecovery,
       }}
     >
       {children}

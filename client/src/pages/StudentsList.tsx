@@ -21,6 +21,7 @@ import {
 import { useLocation } from "wouter";
 import { mockStudents } from "@/mock-data/students";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const StudentsList: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -34,8 +35,18 @@ const StudentsList: React.FC = () => {
   const { signOut } = useAuth();
 
   const handleLogout = async () => {
-    await signOut();
-    setLocation("/login");
+    try {
+      const { error } = await signOut();
+
+      if (error) {
+        toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+        return;
+      }
+
+      setLocation("/login");
+    } catch {
+      toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+    }
   };
 
   const content = {

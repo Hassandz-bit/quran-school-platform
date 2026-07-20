@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -25,8 +26,18 @@ const Dashboard: React.FC = () => {
   const { signOut } = useAuth();
 
   const handleLogout = async () => {
-    await signOut();
-    setLocation("/login");
+    try {
+      const { error } = await signOut();
+
+      if (error) {
+        toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+        return;
+      }
+
+      setLocation("/login");
+    } catch {
+      toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+    }
   };
 
   const content = {

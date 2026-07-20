@@ -10,7 +10,13 @@ export default function ResetPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [, setLocation] = useLocation();
-  const { updateUser, loading } = useAuth();
+  const {
+    updateUser,
+    loading,
+    session,
+    isPasswordRecovery,
+    clearPasswordRecovery,
+  } = useAuth();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -38,6 +44,7 @@ export default function ResetPassword() {
         return;
       }
 
+      clearPasswordRecovery();
       setLocation("/dashboard");
     } catch {
       setErrorMessage("تعذر تغيير كلمة المرور حاليًا. حاول مرة أخرى لاحقًا.");
@@ -45,6 +52,46 @@ export default function ResetPassword() {
       setIsSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-[#0B4738] p-4"
+        dir="rtl"
+      >
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+          <p className="text-sm text-gray-600">
+            جارٍ التحقق من رابط الاستعادة...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session || !isPasswordRecovery) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-[#0B4738] p-4"
+        dir="rtl"
+      >
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#0B4738] shadow-lg">
+            <span className="text-2xl font-bold text-[#C8A26A]">ق</span>
+          </div>
+          <p role="alert" className="text-base font-medium text-red-700">
+            رابط الاستعادة غير صالح أو انتهت صلاحيته.
+          </p>
+          <Button
+            type="button"
+            onClick={() => setLocation("/forgot-password")}
+            className="mt-6 h-12 w-full rounded-xl bg-[#0B4738] text-base font-semibold text-white"
+          >
+            العودة إلى استعادة كلمة المرور
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -106,12 +153,10 @@ export default function ResetPassword() {
 
           <Button
             type="submit"
-            disabled={loading || isSubmitting}
+            disabled={isSubmitting}
             className="h-12 w-full rounded-xl bg-[#0B4738] text-base font-semibold text-white"
           >
-            {loading || isSubmitting
-              ? "جارٍ تحديث كلمة المرور..."
-              : "حفظ كلمة المرور"}
+            {isSubmitting ? "جارٍ تحديث كلمة المرور..." : "حفظ كلمة المرور"}
           </Button>
         </form>
       </div>
