@@ -15,15 +15,17 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [, setLocation] = useLocation();
+  const { signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
+  const handleLogout = async () => {
+    await signOut();
     setLocation("/login");
   };
 

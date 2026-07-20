@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 
 const Login: React.FC = () => {
@@ -10,19 +11,31 @@ const Login: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [, setLocation] = useLocation();
+  const { signInWithPassword } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // محاكاة تأخير تسجيل الدخول
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    localStorage.setItem(
-      "user",
-      JSON.stringify({ email, name: "مدير المدرسة" })
-    );
-    setIsLoading(false);
-    setLocation("/dashboard");
+    setErrorMessage("");
+
+    try {
+      const { error } = await signInWithPassword(email, password);
+
+      if (error) {
+        setErrorMessage(
+          "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور."
+        );
+        return;
+      }
+
+      setLocation("/dashboard");
+    } catch {
+      setErrorMessage("تعذر تسجيل الدخول حاليًا. حاول مرة أخرى لاحقًا.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const content = {
@@ -35,7 +48,6 @@ const Login: React.FC = () => {
       forgotPassword: "نسيت كلمة المرور؟",
       login: "تسجيل الدخول",
       loading: "جارٍ تسجيل الدخول...",
-      demoNote: "هذا نموذج تجريبي. استخدم أي بريد وكلمة مرور للدخول.",
     },
     en: {
       title: "Smart Quran School Platform",
@@ -46,7 +58,6 @@ const Login: React.FC = () => {
       forgotPassword: "Forgot password?",
       login: "Sign In",
       loading: "Signing in...",
-      demoNote: "This is a demo. Use any email and password to sign in.",
     },
   };
 
@@ -192,13 +203,23 @@ const Login: React.FC = () => {
                   {t.rememberMe}
                 </label>
               </div>
-              <a
-                href="#"
+              <button
+                type="button"
+                onClick={() => setLocation("/forgot-password")}
                 className="text-sm text-[#0B4738] hover:text-[#C8A26A] transition-colors font-medium"
               >
                 {t.forgotPassword}
-              </a>
+              </button>
             </div>
+
+            {errorMessage && (
+              <p
+                role="alert"
+                className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+              >
+                {errorMessage}
+              </p>
+            )}
 
             {/* Login Button */}
             <Button
@@ -236,14 +257,6 @@ const Login: React.FC = () => {
               )}
             </Button>
           </form>
-
-          {/* Demo Info */}
-          <div
-            className="mt-6 p-3 rounded-lg border border-[#C8A26A]/30"
-            style={{ backgroundColor: "#FDF5E6" }}
-          >
-            <p className="text-xs text-[#2C3E50] text-center">{t.demoNote}</p>
-          </div>
         </div>
       </div>
     </div>

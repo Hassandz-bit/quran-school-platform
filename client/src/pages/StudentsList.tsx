@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { mockStudents } from "@/mock-data/students";
+import { useAuth } from "@/contexts/AuthContext";
 
 const StudentsList: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -30,9 +31,10 @@ const StudentsList: React.FC = () => {
   const [filterClass, setFilterClass] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [, setLocation] = useLocation();
+  const { signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
+  const handleLogout = async () => {
+    await signOut();
     setLocation("/login");
   };
 
