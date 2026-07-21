@@ -4,13 +4,25 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, ArrowLeft, Check, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  addStudent,
+  fetchBranches,
+  fetchClasses,
+  getStudentSaveErrorMessage,
+  type BranchOption,
+  type ClassOption,
+  type GuardianRelation,
+  type StudentGender,
+} from "@/lib/students";
+import { toast } from "sonner";
 
 interface FormData {
   // Step 1: Basic
   firstName: string;
   lastName: string;
   birthDate: string;
-  gender: string;
+  gender: StudentGender | "";
   nationalId: string;
   // Step 2: Contact & Education
   phone: string;
@@ -20,14 +32,13 @@ interface FormData {
   educationLevel: string;
   // Step 3: Guardian
   guardianName: string;
-  guardianRelation: string;
+  guardianRelation: GuardianRelation | "";
   guardianPhone: string;
   guardianEmail: string;
   guardianJob: string;
   // Step 4: Class
-  branch: string;
-  className: string;
-  schedule: string;
+  branchId: string;
+  classId: string;
   startDate: string;
   // Step 5: Documents
   birthCertificate: boolean;
@@ -43,7 +54,14 @@ const AddStudentForm: React.FC = () => {
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [branchLoadError, setBranchLoadError] = useState(false);
+  const [classLoadError, setClassLoadError] = useState(false);
   const [, setLocation] = useLocation();
+  const { school } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -61,9 +79,8 @@ const AddStudentForm: React.FC = () => {
     guardianPhone: "",
     guardianEmail: "",
     guardianJob: "",
-    branch: "",
-    className: "",
-    schedule: "",
+    branchId: "",
+    classId: "",
     startDate: "",
     birthCertificate: false,
     photos: false,
@@ -94,7 +111,7 @@ const AddStudentForm: React.FC = () => {
       leaveMessage: "لديك بيانات غير محفوظة. هل تريد المغادرة؟",
       leaveConfirm: "نعم، غادر",
       leaveCancel: "ابقَ هنا",
-      successMessage: "تم حفظ بيانات الطالب بنجاح (تجريبي)",
+      optional: "اختياري",
       // Step 1
       firstName: "الاسم الأول",
       lastName: "اسم العائلة",
@@ -118,21 +135,24 @@ const AddStudentForm: React.FC = () => {
       father: "أب",
       mother: "أم",
       brother: "أخ",
+      sister: "أخت",
       uncle: "عم",
+      aunt: "عمة أو خالة",
+      grandfather: "جد",
+      grandmother: "جدة",
       other: "أخرى",
       // Step 4
       branch: "الفرع",
       className: "الحلقة",
-      schedule: "التوقيت",
+      schedule: "توقيت الحلقة",
       startDate: "تاريخ البدء",
-      mainBranch: "الفرع الرئيسي",
-      eastBranch: "فرع الشرق",
-      westBranch: "فرع الغرب",
-      fajrCircle: "حلقة الفجر",
-      asrCircle: "حلقة العصر",
-      maghribCircle: "حلقة المغرب",
-      morning: "صباحي",
-      evening: "مسائي",
+      noClass: "بدون حلقة",
+      noClasses: "لا توجد حلقات نشطة في هذا الفرع",
+      loadingBranches: "جارٍ تحميل الفروع...",
+      loadingClasses: "جارٍ تحميل الحلقات...",
+      branchLoadError: "تعذر تحميل الفروع النشطة.",
+      classLoadError: "تعذر تحميل حلقات الفرع.",
+      retry: "إعادة المحاولة",
       // Step 5
       birthCertificate: "شهادة الميلاد",
       photos: "صور شخصية",
@@ -170,7 +190,7 @@ const AddStudentForm: React.FC = () => {
       leaveMessage: "You have unsaved changes. Do you want to leave?",
       leaveConfirm: "Yes, leave",
       leaveCancel: "Stay here",
-      successMessage: "Student data saved successfully (demo)",
+      optional: "Optional",
       firstName: "First Name",
       lastName: "Last Name",
       birthDate: "Birth Date",
@@ -191,20 +211,23 @@ const AddStudentForm: React.FC = () => {
       father: "Father",
       mother: "Mother",
       brother: "Brother",
+      sister: "Sister",
       uncle: "Uncle",
+      aunt: "Aunt",
+      grandfather: "Grandfather",
+      grandmother: "Grandmother",
       other: "Other",
       branch: "Branch",
       className: "Class",
       schedule: "Schedule",
       startDate: "Start Date",
-      mainBranch: "Main Branch",
-      eastBranch: "East Branch",
-      westBranch: "West Branch",
-      fajrCircle: "Fajr Circle",
-      asrCircle: "Asr Circle",
-      maghribCircle: "Maghrib Circle",
-      morning: "Morning",
-      evening: "Evening",
+      noClass: "No class",
+      noClasses: "No active classes in this branch",
+      loadingBranches: "Loading branches...",
+      loadingClasses: "Loading classes...",
+      branchLoadError: "Active branches could not be loaded.",
+      classLoadError: "Branch classes could not be loaded.",
+      retry: "Try again",
       birthCertificate: "Birth Certificate",
       photos: "Personal Photos",
       medicalReport: "Medical Report",
@@ -223,6 +246,70 @@ const AddStudentForm: React.FC = () => {
   const t = content[language];
   const totalSteps = 6;
 
+  const loadBranches = async () => {
+    if (!school?.id) {
+      setIsLoadingBranches(false);
+      setBranchLoadError(true);
+      return;
+    }
+
+    setIsLoadingBranches(true);
+    setBranchLoadError(false);
+
+    try {
+      const branchRows = await fetchBranches(school.id);
+      setBranches(branchRows);
+
+      const mainBranch = branchRows.find(branch => branch.is_main);
+      if (mainBranch) {
+        setFormData(previous =>
+          previous.branchId
+            ? previous
+            : { ...previous, branchId: mainBranch.id, classId: "" }
+        );
+      }
+    } catch {
+      setBranchLoadError(true);
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadBranches();
+  }, [school?.id]);
+
+  useEffect(() => {
+    if (!school?.id || !formData.branchId) {
+      setClasses([]);
+      setClassLoadError(false);
+      setIsLoadingClasses(false);
+      return;
+    }
+
+    let active = true;
+    setIsLoadingClasses(true);
+    setClassLoadError(false);
+
+    void fetchClasses(school.id, formData.branchId)
+      .then(classRows => {
+        if (active) setClasses(classRows);
+      })
+      .catch(() => {
+        if (active) {
+          setClasses([]);
+          setClassLoadError(true);
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoadingClasses(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [formData.branchId, school?.id]);
+
   // Warn on page leave
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -236,7 +323,11 @@ const AddStudentForm: React.FC = () => {
   }, [isDirty]);
 
   const updateField = (field: keyof FormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev =>
+      field === "branchId"
+        ? { ...prev, branchId: value as string, classId: "" }
+        : { ...prev, [field]: value }
+    );
     setIsDirty(true);
     if (errors[field]) {
       setErrors(prev => {
@@ -250,18 +341,20 @@ const AddStudentForm: React.FC = () => {
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     if (step === 1) {
-      if (!formData.firstName) newErrors.firstName = t.required;
-      if (!formData.lastName) newErrors.lastName = t.required;
+      if (!formData.firstName.trim()) newErrors.firstName = t.required;
+      if (!formData.lastName.trim()) newErrors.lastName = t.required;
       if (!formData.birthDate) newErrors.birthDate = t.required;
       if (!formData.gender) newErrors.gender = t.required;
     } else if (step === 2) {
-      if (!formData.phone) newErrors.phone = t.required;
     } else if (step === 3) {
-      if (!formData.guardianName) newErrors.guardianName = t.required;
-      if (!formData.guardianPhone) newErrors.guardianPhone = t.required;
+      if (!formData.guardianName.trim()) newErrors.guardianName = t.required;
+      if (!formData.guardianRelation)
+        newErrors.guardianRelation = t.required;
+      if (!formData.guardianPhone.trim())
+        newErrors.guardianPhone = t.required;
     } else if (step === 4) {
-      if (!formData.branch) newErrors.branch = t.required;
-      if (!formData.className) newErrors.className = t.required;
+      if (!formData.branchId) newErrors.branchId = t.required;
+      if (!formData.startDate) newErrors.startDate = t.required;
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -278,12 +371,49 @@ const AddStudentForm: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    if (!school?.id) {
+      toast.error("تعذر حفظ بيانات الطالب حاليًا.");
+      return;
+    }
+
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setIsDirty(false);
-    alert(t.successMessage);
-    setLocation("/students");
+
+    try {
+      await addStudent(school.id, {
+        branchId: formData.branchId,
+        classId: formData.classId,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        birthDate: formData.birthDate,
+        gender: formData.gender,
+        nationalId: formData.nationalId,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        previousSchool: formData.previousSchool,
+        educationLevel: formData.educationLevel,
+        guardianName: formData.guardianName,
+        guardianRelation: formData.guardianRelation,
+        guardianPhone: formData.guardianPhone,
+        guardianEmail: formData.guardianEmail,
+        guardianJob: formData.guardianJob,
+        startDate: formData.startDate,
+        birthCertificateProvided: formData.birthCertificate,
+        photosProvided: formData.photos,
+        medicalReportProvided: formData.medicalReport,
+        previousCertificateProvided: formData.previousCertificate,
+      });
+
+      setIsDirty(false);
+      toast.success("تمت إضافة الطالب بنجاح.");
+      setLocation("/students");
+    } catch (error) {
+      toast.error(getStudentSaveErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -298,12 +428,17 @@ const AddStudentForm: React.FC = () => {
     label: string,
     field: keyof FormData,
     type: string = "text",
-    placeholder?: string
+    placeholder?: string,
+    required = true
   ) => (
     <div className="space-y-1.5">
       <label className="block text-sm font-medium text-[#2C3E50]">
         {label}
-        <span className="text-red-500 mr-1">*</span>
+        {required ? (
+          <span className="text-red-500 mr-1">*</span>
+        ) : (
+          <span className="text-gray-400 mr-2 text-xs">({t.optional})</span>
+        )}
       </label>
       <Input
         type={type}
@@ -321,19 +456,27 @@ const AddStudentForm: React.FC = () => {
   const renderSelect = (
     label: string,
     field: keyof FormData,
-    options: { value: string; label: string }[]
+    options: { value: string; label: string }[],
+    required = true,
+    disabled = false,
+    emptyLabel = label
   ) => (
     <div className="space-y-1.5">
       <label className="block text-sm font-medium text-[#2C3E50]">
         {label}
-        <span className="text-red-500 mr-1">*</span>
+        {required ? (
+          <span className="text-red-500 mr-1">*</span>
+        ) : (
+          <span className="text-gray-400 mr-2 text-xs">({t.optional})</span>
+        )}
       </label>
       <select
         value={formData[field] as string}
         onChange={e => updateField(field, e.target.value)}
-        className={`w-full h-11 rounded-lg border px-3 text-sm bg-white text-[#2C3E50] text-right ${errors[field] ? "border-red-400" : "border-gray-200"}`}
+        disabled={disabled}
+        className={`w-full h-11 rounded-lg border px-3 text-sm bg-white text-[#2C3E50] text-right disabled:bg-gray-100 disabled:text-gray-400 ${errors[field] ? "border-red-400" : "border-gray-200"}`}
       >
-        <option value="">{label}</option>
+        <option value="">{emptyLabel}</option>
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
@@ -344,6 +487,13 @@ const AddStudentForm: React.FC = () => {
         <p className="text-xs text-red-500 mt-1">{errors[field]}</p>
       )}
     </div>
+  );
+
+  const selectedBranch = branches.find(
+    branch => branch.id === formData.branchId
+  );
+  const selectedClass = classes.find(
+    classItem => classItem.id === formData.classId
   );
 
   const renderStep = () => {
@@ -361,18 +511,30 @@ const AddStudentForm: React.FC = () => {
               { value: "male", label: t.male },
               { value: "female", label: t.female },
             ])}
-            {renderField(t.nationalId, "nationalId")}
+            {renderField(t.nationalId, "nationalId", "text", undefined, false)}
           </div>
         );
       case 2:
         return (
           <div className="space-y-5">
             <h3 className="text-lg font-bold text-[#2C3E50]">{t.steps[1]}</h3>
-            {renderField(t.phone, "phone", "tel")}
-            {renderField(t.email, "email", "email")}
-            {renderField(t.address, "address")}
-            {renderField(t.previousSchool, "previousSchool")}
-            {renderField(t.educationLevel, "educationLevel")}
+            {renderField(t.phone, "phone", "tel", undefined, false)}
+            {renderField(t.email, "email", "email", undefined, false)}
+            {renderField(t.address, "address", "text", undefined, false)}
+            {renderField(
+              t.previousSchool,
+              "previousSchool",
+              "text",
+              undefined,
+              false
+            )}
+            {renderField(
+              t.educationLevel,
+              "educationLevel",
+              "text",
+              undefined,
+              false
+            )}
           </div>
         );
       case 3:
@@ -384,32 +546,68 @@ const AddStudentForm: React.FC = () => {
               { value: "father", label: t.father },
               { value: "mother", label: t.mother },
               { value: "brother", label: t.brother },
+              { value: "sister", label: t.sister },
               { value: "uncle", label: t.uncle },
+              { value: "aunt", label: t.aunt },
+              { value: "grandfather", label: t.grandfather },
+              { value: "grandmother", label: t.grandmother },
               { value: "other", label: t.other },
             ])}
             {renderField(t.guardianPhone, "guardianPhone", "tel")}
-            {renderField(t.guardianEmail, "guardianEmail", "email")}
-            {renderField(t.guardianJob, "guardianJob")}
+            {renderField(
+              t.guardianEmail,
+              "guardianEmail",
+              "email",
+              undefined,
+              false
+            )}
+            {renderField(t.guardianJob, "guardianJob", "text", undefined, false)}
           </div>
         );
       case 4:
         return (
           <div className="space-y-5">
             <h3 className="text-lg font-bold text-[#2C3E50]">{t.steps[3]}</h3>
-            {renderSelect(t.branch, "branch", [
-              { value: "main", label: t.mainBranch },
-              { value: "east", label: t.eastBranch },
-              { value: "west", label: t.westBranch },
-            ])}
-            {renderSelect(t.className, "className", [
-              { value: "fajr", label: t.fajrCircle },
-              { value: "asr", label: t.asrCircle },
-              { value: "maghrib", label: t.maghribCircle },
-            ])}
-            {renderSelect(t.schedule, "schedule", [
-              { value: "morning", label: t.morning },
-              { value: "evening", label: t.evening },
-            ])}
+            {renderSelect(
+              t.branch,
+              "branchId",
+              branches.map(branch => ({ value: branch.id, label: branch.name })),
+              true,
+              isLoadingBranches || branchLoadError,
+              isLoadingBranches ? t.loadingBranches : t.branch
+            )}
+            {branchLoadError && (
+              <div className="flex items-center justify-between gap-3 text-sm text-red-600">
+                <span>{t.branchLoadError}</span>
+                <Button variant="outline" size="sm" onClick={() => void loadBranches()}>
+                  {t.retry}
+                </Button>
+              </div>
+            )}
+            {renderSelect(
+              t.className,
+              "classId",
+              classes.map(classItem => ({
+                value: classItem.id,
+                label: classItem.name,
+              })),
+              false,
+              !formData.branchId || isLoadingClasses || classLoadError,
+              isLoadingClasses
+                ? t.loadingClasses
+                : classes.length === 0 && formData.branchId
+                  ? t.noClasses
+                  : t.noClass
+            )}
+            {classLoadError && (
+              <p className="text-sm text-red-600">{t.classLoadError}</p>
+            )}
+            {selectedClass?.schedule_label && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                <span className="font-medium">{t.schedule}:</span>{" "}
+                {selectedClass.schedule_label}
+              </div>
+            )}
             {renderField(t.startDate, "startDate", "date")}
           </div>
         );
@@ -542,13 +740,13 @@ const AddStudentForm: React.FC = () => {
                 <div>
                   <span className="text-gray-500">{t.branch}:</span>{" "}
                   <span className="font-medium text-[#2C3E50]">
-                    {formData.branch || "-"}
+                    {selectedBranch?.name || "-"}
                   </span>
                 </div>
                 <div>
                   <span className="text-gray-500">{t.className}:</span>{" "}
                   <span className="font-medium text-[#2C3E50]">
-                    {formData.className || "-"}
+                    {selectedClass?.name || t.noClass}
                   </span>
                 </div>
               </div>
