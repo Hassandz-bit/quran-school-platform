@@ -95,7 +95,7 @@ const Dashboard: React.FC = () => {
     { label: t.dashboard, icon: Home, path: "/dashboard" },
     { label: t.students, icon: Users, path: "/students" },
     { label: t.teachers, icon: GraduationCap, path: "#" },
-    { label: t.classes, icon: BookOpen, path: "#" },
+    { label: t.classes, icon: BookOpen, path: "/classes" },
     { label: t.finance, icon: DollarSign, path: "#" },
     { label: t.settings, icon: Settings, path: "#" },
   ];
@@ -330,6 +330,7 @@ const Dashboard: React.FC = () => {
                 <span className="text-xs">{t.addStudent}</span>
               </Button>
               <Button
+                onClick={() => setLocation("/classes/new")}
                 className="h-auto py-4 flex flex-col gap-2 font-medium rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.97] border-2 border-[#0B4738] text-[#0B4738] bg-transparent hover:bg-[#0B4738]/5"
                 variant="outline"
               >

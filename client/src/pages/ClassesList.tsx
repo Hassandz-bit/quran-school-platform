@@ -3,52 +3,42 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Users,
   BookOpen,
+  DollarSign,
+  GraduationCap,
+  Home,
   LogOut,
   Menu,
-  X,
   Plus,
-  Home,
-  GraduationCap,
-  Settings,
-  DollarSign,
-  Search,
   RefreshCw,
+  Search,
+  Settings,
+  Users,
+  X,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  fetchBranches,
-  fetchClasses,
-  fetchStudents,
-  translateStudentStatus,
-  type BranchOption,
-  type ClassOption,
-  type StudentRow,
-  type StudentStatus,
-} from "@/lib/students";
+  fetchSchoolBranches,
+  fetchSchoolClasses,
+  translateClassStatus,
+  type ClassBranch,
+  type ClassRow,
+  type ClassStatus,
+} from "@/lib/classes";
 import { toast } from "sonner";
 
-const statusOptions: StudentStatus[] = [
-  "active",
-  "suspended",
-  "transferred",
-  "graduated",
-  "withdrawn",
-];
+const statusOptions: ClassStatus[] = ["active", "inactive", "archived"];
 
-const StudentsList: React.FC = () => {
+const ClassesList: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
-  const [filterClass, setFilterClass] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [students, setStudents] = useState<StudentRow[]>([]);
-  const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [branches, setBranches] = useState<ClassBranch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [, setLocation] = useLocation();
@@ -64,25 +54,21 @@ const StudentsList: React.FC = () => {
       finance: "المالية",
       settings: "الإعدادات",
       logout: "تسجيل الخروج",
-      addStudent: "إضافة طالب",
-      search: "البحث بالاسم أو الهاتف أو البريد...",
+      addClass: "إضافة حلقة",
+      search: "البحث باسم الحلقة أو رمزها...",
       allBranches: "جميع الفروع",
-      allClasses: "جميع الحلقات",
       allStatuses: "جميع الحالات",
-      name: "الاسم الكامل",
-      email: "البريد الإلكتروني",
-      phone: "الهاتف",
+      name: "اسم الحلقة",
+      code: "رمز الحلقة",
       branch: "الفرع",
-      class: "الحلقة",
+      schedule: "التوقيت",
       status: "الحالة",
-      registrationDate: "تاريخ التسجيل",
-      noClass: "غير محددة",
+      noSchedule: "غير محدد",
       unavailable: "غير متاح",
-      noValue: "—",
-      loading: "جارٍ تحميل قائمة الطلاب...",
-      loadError: "تعذر تحميل قائمة الطلاب حاليًا.",
+      loading: "جارٍ تحميل الحلقات...",
+      loadError: "تعذر تحميل قائمة الحلقات حاليًا.",
       retry: "إعادة المحاولة",
-      empty: "لم تتم إضافة أي طالب بعد.",
+      empty: "لم تتم إضافة أي حلقة بعد.",
       noResults: "لا توجد نتائج مطابقة.",
     },
     en: {
@@ -94,32 +80,27 @@ const StudentsList: React.FC = () => {
       finance: "Finance",
       settings: "Settings",
       logout: "Sign Out",
-      addStudent: "Add Student",
-      search: "Search by name, phone, or email...",
+      addClass: "Add Class",
+      search: "Search by class name or code...",
       allBranches: "All Branches",
-      allClasses: "All Classes",
       allStatuses: "All Statuses",
-      name: "Full name",
-      email: "Email",
-      phone: "Phone",
+      name: "Class name",
+      code: "Class code",
       branch: "Branch",
-      class: "Class",
+      schedule: "Schedule",
       status: "Status",
-      registrationDate: "Registration date",
-      noClass: "Not assigned",
+      noSchedule: "Not set",
       unavailable: "Unavailable",
-      noValue: "—",
-      loading: "Loading students...",
-      loadError: "Students could not be loaded right now.",
+      loading: "Loading classes...",
+      loadError: "Classes could not be loaded right now.",
       retry: "Try again",
-      empty: "No students have been added yet.",
+      empty: "No classes have been added yet.",
       noResults: "No matching results.",
     },
   };
-
   const t = content[language];
 
-  const loadStudents = useCallback(async () => {
+  const loadClasses = useCallback(async () => {
     if (!school?.id) {
       setIsLoading(false);
       setHasLoadError(true);
@@ -130,15 +111,12 @@ const StudentsList: React.FC = () => {
     setHasLoadError(false);
 
     try {
-      const [studentRows, branchRows, classRows] = await Promise.all([
-        fetchStudents(school.id),
-        fetchBranches(school.id, { activeOnly: false }),
-        fetchClasses(school.id, undefined, { activeOnly: false }),
+      const [classRows, branchRows] = await Promise.all([
+        fetchSchoolClasses(school.id),
+        fetchSchoolBranches(school.id),
       ]);
-
-      setStudents(studentRows);
-      setBranches(branchRows);
       setClasses(classRows);
+      setBranches(branchRows);
     } catch {
       setHasLoadError(true);
     } finally {
@@ -147,18 +125,16 @@ const StudentsList: React.FC = () => {
   }, [school?.id]);
 
   useEffect(() => {
-    void loadStudents();
-  }, [loadStudents]);
+    void loadClasses();
+  }, [loadClasses]);
 
   const handleLogout = async () => {
     try {
       const { error } = await signOut();
-
       if (error) {
         toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
         return;
       }
-
       setLocation("/login");
     } catch {
       toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
@@ -178,52 +154,28 @@ const StudentsList: React.FC = () => {
     () => new Map(branches.map(branch => [branch.id, branch.name])),
     [branches]
   );
-  const classNames = useMemo(
-    () => new Map(classes.map(classItem => [classItem.id, classItem.name])),
-    [classes]
-  );
 
-  const filteredStudents = useMemo(() => {
+  const filteredClasses = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase();
 
-    return students.filter(student => {
-      const searchable = [
-        student.first_name,
-        student.last_name,
-        student.phone ?? "",
-        student.email ?? "",
-      ]
-        .join(" ")
-        .toLocaleLowerCase();
+    return classes.filter(classItem => {
+      const searchable = `${classItem.name} ${classItem.code}`.toLocaleLowerCase();
       const matchesSearch = query === "" || searchable.includes(query);
       const matchesBranch =
-        filterBranch === "all" || student.branch_id === filterBranch;
-      const matchesClass =
-        filterClass === "all" || student.class_id === filterClass;
+        filterBranch === "all" || classItem.branch_id === filterBranch;
       const matchesStatus =
-        filterStatus === "all" || student.status === filterStatus;
-
-      return matchesSearch && matchesBranch && matchesClass && matchesStatus;
+        filterStatus === "all" || classItem.status === filterStatus;
+      return matchesSearch && matchesBranch && matchesStatus;
     });
-  }, [filterBranch, filterClass, filterStatus, searchQuery, students]);
+  }, [classes, filterBranch, filterStatus, searchQuery]);
 
-  const getStatusBadge = (status: StudentStatus) => {
-    const styles: Record<StudentStatus, string> = {
+  const getStatusBadge = (status: ClassStatus) => {
+    const styles: Record<ClassStatus, string> = {
       active: "bg-[#0B4738]/10 text-[#0B4738] border-[#0B4738]/20",
-      suspended: "bg-red-50 text-red-700 border-red-200",
-      transferred: "bg-[#C8A26A]/10 text-[#9A7137] border-[#C8A26A]/20",
-      graduated: "bg-blue-50 text-blue-700 border-blue-200",
-      withdrawn: "bg-gray-100 text-gray-700 border-gray-200",
+      inactive: "bg-amber-50 text-amber-700 border-amber-200",
+      archived: "bg-gray-100 text-gray-700 border-gray-200",
     };
     return styles[status];
-  };
-
-  const formatDate = (value: string) => {
-    const date = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(date.getTime())) return t.noValue;
-    return new Intl.DateTimeFormat(language === "ar" ? "ar-DZ" : "en-GB").format(
-      date
-    );
   };
 
   const SidebarContent = () => (
@@ -252,7 +204,7 @@ const StudentsList: React.FC = () => {
                 setMobileSidebarOpen(false);
               }
             }}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${item.path === "/students" ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${item.path === "/classes" ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
           >
             <item.icon size={20} />
             {sidebarOpen && (
@@ -276,7 +228,7 @@ const StudentsList: React.FC = () => {
   );
 
   const renderLoadedContent = () => {
-    if (students.length === 0) {
+    if (classes.length === 0) {
       return (
         <Card className="p-10 text-center text-gray-500 border border-gray-100">
           {t.empty}
@@ -287,7 +239,7 @@ const StudentsList: React.FC = () => {
     return (
       <>
         <Card className="p-4 border border-gray-100">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="relative">
               <Search
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -313,18 +265,6 @@ const StudentsList: React.FC = () => {
               ))}
             </select>
             <select
-              value={filterClass}
-              onChange={event => setFilterClass(event.target.value)}
-              className="h-10 rounded-lg border border-gray-200 px-3 text-sm bg-white text-[#2C3E50]"
-            >
-              <option value="all">{t.allClasses}</option>
-              {classes.map(classItem => (
-                <option key={classItem.id} value={classItem.id}>
-                  {classItem.name}
-                </option>
-              ))}
-            </select>
-            <select
               value={filterStatus}
               onChange={event => setFilterStatus(event.target.value)}
               className="h-10 rounded-lg border border-gray-200 px-3 text-sm bg-white text-[#2C3E50]"
@@ -332,7 +272,7 @@ const StudentsList: React.FC = () => {
               <option value="all">{t.allStatuses}</option>
               {statusOptions.map(status => (
                 <option key={status} value={status}>
-                  {translateStudentStatus(status, language)}
+                  {translateClassStatus(status, language)}
                 </option>
               ))}
             </select>
@@ -344,57 +284,47 @@ const StudentsList: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {[t.name, t.phone, t.email, t.branch, t.class, t.status, t.registrationDate].map(
-                    heading => (
-                      <th
-                        key={heading}
-                        className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase"
-                      >
-                        {heading}
-                      </th>
-                    )
-                  )}
+                  {[t.name, t.code, t.branch, t.schedule, t.status].map(heading => (
+                    <th
+                      key={heading}
+                      className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase"
+                    >
+                      {heading}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.length > 0 ? (
-                  filteredStudents.map(student => (
+                {filteredClasses.length > 0 ? (
+                  filteredClasses.map(classItem => (
                     <tr
-                      key={student.id}
+                      key={classItem.id}
                       className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
                     >
                       <td className="px-4 py-3 font-medium text-[#2C3E50] text-sm">
-                        {student.first_name} {student.last_name}
+                        {classItem.name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 font-mono" dir="ltr">
+                        {classItem.code}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {student.phone ?? t.noValue}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 break-all">
-                        {student.email ?? t.noValue}
+                        {branchNames.get(classItem.branch_id) ?? t.unavailable}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {branchNames.get(student.branch_id) ?? t.unavailable}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {student.class_id
-                          ? (classNames.get(student.class_id) ?? t.unavailable)
-                          : t.noClass}
+                        {classItem.schedule_label ?? t.noSchedule}
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.status)}`}
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(classItem.status)}`}
                         >
-                          {translateStudentStatus(student.status, language)}
+                          {translateClassStatus(classItem.status, language)}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {formatDate(student.start_date)}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                    <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
                       {t.noResults}
                     </td>
                   </tr>
@@ -405,25 +335,25 @@ const StudentsList: React.FC = () => {
         </Card>
 
         <div className="md:hidden space-y-3">
-          {filteredStudents.length > 0 ? (
-            filteredStudents.map(student => (
-              <Card key={student.id} className="p-4 border border-gray-100">
+          {filteredClasses.length > 0 ? (
+            filteredClasses.map(classItem => (
+              <Card key={classItem.id} className="p-4 border border-gray-100">
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <p className="font-semibold text-[#2C3E50]">
-                    {student.first_name} {student.last_name}
-                  </p>
+                  <div>
+                    <p className="font-semibold text-[#2C3E50]">{classItem.name}</p>
+                    <p className="mt-1 text-xs text-gray-500 font-mono" dir="ltr">
+                      {classItem.code}
+                    </p>
+                  </div>
                   <span
-                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.status)}`}
+                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(classItem.status)}`}
                   >
-                    {translateStudentStatus(student.status, language)}
+                    {translateClassStatus(classItem.status, language)}
                   </span>
                 </div>
-                <dl className="grid grid-cols-1 gap-2 text-sm text-gray-600">
-                  <div><dt className="inline text-gray-400">{t.phone}: </dt><dd className="inline">{student.phone ?? t.noValue}</dd></div>
-                  <div><dt className="inline text-gray-400">{t.email}: </dt><dd className="inline break-all">{student.email ?? t.noValue}</dd></div>
-                  <div><dt className="inline text-gray-400">{t.branch}: </dt><dd className="inline">{branchNames.get(student.branch_id) ?? t.unavailable}</dd></div>
-                  <div><dt className="inline text-gray-400">{t.class}: </dt><dd className="inline">{student.class_id ? (classNames.get(student.class_id) ?? t.unavailable) : t.noClass}</dd></div>
-                  <div><dt className="inline text-gray-400">{t.registrationDate}: </dt><dd className="inline">{formatDate(student.start_date)}</dd></div>
+                <dl className="space-y-2 text-sm text-gray-600">
+                  <div><dt className="inline text-gray-400">{t.branch}: </dt><dd className="inline">{branchNames.get(classItem.branch_id) ?? t.unavailable}</dd></div>
+                  <div><dt className="inline text-gray-400">{t.schedule}: </dt><dd className="inline">{classItem.schedule_label ?? t.noSchedule}</dd></div>
                 </dl>
               </Card>
             ))
@@ -476,7 +406,7 @@ const StudentsList: React.FC = () => {
                 }
               }}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="القائمة"
+              aria-label={language === "ar" ? "القائمة" : "Menu"}
             >
               {mobileSidebarOpen ? (
                 <X size={22} className="text-gray-600" />
@@ -507,16 +437,16 @@ const StudentsList: React.FC = () => {
         <main className="flex-1 overflow-auto p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#2C3E50]">{t.students}</h1>
+              <h1 className="text-2xl font-bold text-[#2C3E50]">{t.classes}</h1>
               <p className="mt-1 text-sm text-gray-500">{school?.name ?? t.school}</p>
             </div>
             <Button
-              onClick={() => setLocation("/students/new")}
+              onClick={() => setLocation("/classes/new")}
               className="flex items-center gap-2 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.97]"
               style={{ backgroundColor: "#0B4738" }}
             >
               <Plus size={18} />
-              {t.addStudent}
+              {t.addClass}
             </Button>
           </div>
 
@@ -528,7 +458,7 @@ const StudentsList: React.FC = () => {
           ) : hasLoadError ? (
             <Card className="p-10 text-center border border-red-100">
               <p className="text-red-700 mb-4">{t.loadError}</p>
-              <Button variant="outline" onClick={() => void loadStudents()}>
+              <Button variant="outline" onClick={() => void loadClasses()}>
                 <RefreshCw size={16} />
                 {t.retry}
               </Button>
@@ -542,4 +472,4 @@ const StudentsList: React.FC = () => {
   );
 };
 
-export default StudentsList;
+export default ClassesList;
