@@ -89,6 +89,11 @@ create table public.students (
     check (char_length(btrim(first_name)) between 2 and 100),
   constraint students_last_name_length_check
     check (char_length(btrim(last_name)) between 2 and 100),
+  constraint students_national_id_nonblank_check
+    check (
+      national_id is null
+      or btrim(national_id) <> ''
+    ),
   constraint students_gender_check
     check (gender in ('male', 'female')),
   constraint students_guardian_relation_check
@@ -146,8 +151,8 @@ create index students_school_name_idx
   on public.students (school_id, last_name, first_name);
 
 create unique index students_school_national_id_unique_idx
-  on public.students (school_id, national_id)
-  where national_id is not null and btrim(national_id) <> '';
+  on public.students (school_id, btrim(national_id))
+  where national_id is not null;
 
 -- Reuse the foundation trigger function so timestamps cannot depend on clients.
 create trigger classes_set_updated_at
@@ -205,11 +210,49 @@ alter table public.students enable row level security;
 revoke all on public.classes, public.students
 from public, anon, authenticated;
 
-grant select, insert on public.classes to authenticated;
+grant select on public.classes to authenticated;
+
+grant insert (
+  school_id,
+  branch_id,
+  name,
+  code,
+  schedule_label,
+  status
+) on public.classes to authenticated;
+
 grant update (branch_id, name, code, schedule_label, status)
   on public.classes to authenticated;
 
-grant select, insert on public.students to authenticated;
+grant select on public.students to authenticated;
+
+grant insert (
+  school_id,
+  branch_id,
+  class_id,
+  first_name,
+  last_name,
+  birth_date,
+  gender,
+  national_id,
+  phone,
+  email,
+  address,
+  previous_school,
+  education_level,
+  guardian_name,
+  guardian_relation,
+  guardian_phone,
+  guardian_email,
+  guardian_job,
+  start_date,
+  status,
+  birth_certificate_provided,
+  photos_provided,
+  medical_report_provided,
+  previous_certificate_provided
+) on public.students to authenticated;
+
 grant update (
   branch_id,
   class_id,
