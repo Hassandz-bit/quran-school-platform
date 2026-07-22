@@ -12,6 +12,8 @@ import StudentsList from "./pages/StudentsList";
 import AddStudentForm from "./pages/AddStudentForm";
 import ClassesList from "./pages/ClassesList";
 import AddClassForm from "./pages/AddClassForm";
+import TeachersList from "./pages/TeachersList";
+import AddTeacherForm from "./pages/AddTeacherForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -44,6 +46,16 @@ function Router() {
       <Route path="/classes/new">
         <ProtectedRoute>
           <AddClassForm />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/teachers">
+        <ProtectedRoute>
+          <TeachersList />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/teachers/new">
+        <ProtectedRoute>
+          <AddTeacherForm />
         </ProtectedRoute>
       </Route>
       <Route path="/">

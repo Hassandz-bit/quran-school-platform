@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  Bell,
   BookOpen,
   Calendar,
   DollarSign,
@@ -58,8 +57,8 @@ const Dashboard: React.FC = () => {
       quickActions: "إجراءات سريعة",
       addStudent: "إضافة طالب",
       createClass: "إنشاء حلقة",
+      addTeacher: "إضافة معلم",
       recordPayment: "تسجيل دفعة",
-      announcement: "نشر إعلان",
       comingSoon: "قريبًا",
       activeClassesSection: "الحلقات النشطة",
       viewAllClasses: "عرض جميع الحلقات",
@@ -70,8 +69,6 @@ const Dashboard: React.FC = () => {
       modulesInDevelopment: "وحدات قيد التطوير",
       attendanceModule: "الحضور والغياب",
       financeModule: "المالية",
-      teachersModule: "المعلمون",
-      nextStage: "المرحلة التالية",
       loading: "جارٍ تحميل بيانات لوحة التحكم...",
       retry: "إعادة المحاولة",
     },
@@ -95,8 +92,8 @@ const Dashboard: React.FC = () => {
       quickActions: "Quick Actions",
       addStudent: "Add Student",
       createClass: "Create Class",
+      addTeacher: "Add Teacher",
       recordPayment: "Record Payment",
-      announcement: "Post Announcement",
       comingSoon: "Coming soon",
       activeClassesSection: "Active Classes",
       viewAllClasses: "View all classes",
@@ -107,8 +104,6 @@ const Dashboard: React.FC = () => {
       modulesInDevelopment: "Modules in Development",
       attendanceModule: "Attendance and Absence",
       financeModule: "Finance",
-      teachersModule: "Teachers",
-      nextStage: "Next stage",
       loading: "Loading dashboard data...",
       retry: "Try again",
     },
@@ -159,12 +154,7 @@ const Dashboard: React.FC = () => {
   const menuItems = [
     { label: t.dashboard, icon: Home, path: "/dashboard" },
     { label: t.students, icon: Users, path: "/students" },
-    {
-      label: t.teachers,
-      icon: GraduationCap,
-      path: null,
-      badge: t.comingSoon,
-    },
+    { label: t.teachers, icon: GraduationCap, path: "/teachers" },
     { label: t.classes, icon: BookOpen, path: "/classes" },
     {
       label: t.finance,
@@ -373,13 +363,12 @@ const Dashboard: React.FC = () => {
             </Button>
             <Button
               type="button"
-              disabled
-              className="h-auto cursor-not-allowed py-4 flex flex-col gap-1 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-400 opacity-100"
+              onClick={() => setLocation("/teachers/new")}
+              className="h-auto py-4 flex flex-col gap-2 font-medium rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.97] border-2 border-[#C8A26A] text-[#9A7137] bg-transparent hover:bg-[#C8A26A]/5"
               variant="outline"
             >
-              <DollarSign size={20} />
-              <span className="text-xs">{t.recordPayment}</span>
-              <span className="text-[10px]">{t.comingSoon}</span>
+              <GraduationCap size={20} />
+              <span className="text-xs">{t.addTeacher}</span>
             </Button>
             <Button
               type="button"
@@ -387,8 +376,8 @@ const Dashboard: React.FC = () => {
               className="h-auto cursor-not-allowed py-4 flex flex-col gap-1 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-400 opacity-100"
               variant="outline"
             >
-              <Bell size={20} />
-              <span className="text-xs">{t.announcement}</span>
+              <DollarSign size={20} />
+              <span className="text-xs">{t.recordPayment}</span>
               <span className="text-[10px]">{t.comingSoon}</span>
             </Button>
           </div>
@@ -462,7 +451,6 @@ const Dashboard: React.FC = () => {
               {[
                 { label: t.attendanceModule, status: t.comingSoon, icon: Calendar },
                 { label: t.financeModule, status: t.comingSoon, icon: DollarSign },
-                { label: t.teachersModule, status: t.nextStage, icon: GraduationCap },
               ].map(module => (
                 <div
                   key={module.label}

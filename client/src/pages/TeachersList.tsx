@@ -3,52 +3,48 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Users,
   BookOpen,
+  DollarSign,
+  GraduationCap,
+  Home,
   LogOut,
   Menu,
-  X,
   Plus,
-  Home,
-  GraduationCap,
-  Settings,
-  DollarSign,
-  Search,
   RefreshCw,
+  Search,
+  Settings,
+  Users,
+  X,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  fetchBranches,
-  fetchClasses,
-  fetchStudents,
-  translateStudentStatus,
-  type BranchOption,
-  type ClassOption,
-  type StudentRow,
-  type StudentStatus,
-} from "@/lib/students";
-import { toast } from "sonner";
+  fetchSchoolTeachers,
+  fetchTeacherBranches,
+  translateTeacherGender,
+  translateTeacherStatus,
+  type TeacherBranch,
+  type TeacherRow,
+  type TeacherStatus,
+} from "@/lib/teachers";
 
-const statusOptions: StudentStatus[] = [
+const statusOptions: TeacherStatus[] = [
   "active",
-  "suspended",
-  "transferred",
-  "graduated",
-  "withdrawn",
+  "inactive",
+  "on_leave",
+  "archived",
 ];
 
-const StudentsList: React.FC = () => {
+const TeachersList: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
-  const [filterClass, setFilterClass] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [students, setStudents] = useState<StudentRow[]>([]);
-  const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [teachers, setTeachers] = useState<TeacherRow[]>([]);
+  const [branches, setBranches] = useState<TeacherBranch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [, setLocation] = useLocation();
@@ -65,26 +61,24 @@ const StudentsList: React.FC = () => {
       settings: "الإعدادات",
       logout: "تسجيل الخروج",
       comingSoon: "قريبًا",
-      addStudent: "إضافة طالب",
-      search: "البحث بالاسم أو الهاتف أو البريد...",
+      addTeacher: "إضافة معلم",
+      search: "البحث بالاسم أو الهاتف أو البريد أو التخصص...",
       allBranches: "جميع الفروع",
-      allClasses: "جميع الحلقات",
       allStatuses: "جميع الحالات",
       name: "الاسم الكامل",
-      email: "البريد الإلكتروني",
-      phone: "الهاتف",
+      gender: "الجنس",
       branch: "الفرع",
-      class: "الحلقة",
+      phone: "الهاتف",
+      specialization: "التخصص",
+      hireDate: "تاريخ التوظيف",
       status: "الحالة",
-      registrationDate: "تاريخ التسجيل",
-      noClass: "غير محددة",
       unavailable: "غير متاح",
       noValue: "—",
-      loading: "جارٍ تحميل قائمة الطلاب...",
-      loadError: "تعذر تحميل قائمة الطلاب حاليًا.",
+      loading: "جارٍ تحميل قائمة المعلمين...",
+      loadError: "تعذر تحميل قائمة المعلمين حاليًا.",
       retry: "إعادة المحاولة",
-      empty: "لم تتم إضافة أي طالب بعد.",
-      noResults: "لا توجد نتائج مطابقة.",
+      empty: "لم تتم إضافة أي معلم بعد.",
+      noResults: "لا توجد نتائج بحث مطابقة.",
     },
     en: {
       dashboard: "Dashboard",
@@ -96,32 +90,29 @@ const StudentsList: React.FC = () => {
       settings: "Settings",
       logout: "Sign Out",
       comingSoon: "Coming soon",
-      addStudent: "Add Student",
-      search: "Search by name, phone, or email...",
+      addTeacher: "Add Teacher",
+      search: "Search by name, phone, email, or specialization...",
       allBranches: "All Branches",
-      allClasses: "All Classes",
       allStatuses: "All Statuses",
       name: "Full name",
-      email: "Email",
-      phone: "Phone",
+      gender: "Gender",
       branch: "Branch",
-      class: "Class",
+      phone: "Phone",
+      specialization: "Specialization",
+      hireDate: "Hire date",
       status: "Status",
-      registrationDate: "Registration date",
-      noClass: "Not assigned",
       unavailable: "Unavailable",
       noValue: "—",
-      loading: "Loading students...",
-      loadError: "Students could not be loaded right now.",
+      loading: "Loading teachers...",
+      loadError: "Teachers could not be loaded right now.",
       retry: "Try again",
-      empty: "No students have been added yet.",
-      noResults: "No matching results.",
+      empty: "No teachers have been added yet.",
+      noResults: "No matching search results.",
     },
   };
-
   const t = content[language];
 
-  const loadStudents = useCallback(async () => {
+  const loadTeachers = useCallback(async () => {
     if (!school?.id) {
       setIsLoading(false);
       setHasLoadError(true);
@@ -132,15 +123,12 @@ const StudentsList: React.FC = () => {
     setHasLoadError(false);
 
     try {
-      const [studentRows, branchRows, classRows] = await Promise.all([
-        fetchStudents(school.id),
-        fetchBranches(school.id, { activeOnly: false }),
-        fetchClasses(school.id, undefined, { activeOnly: false }),
+      const [teacherRows, branchRows] = await Promise.all([
+        fetchSchoolTeachers(school.id),
+        fetchTeacherBranches(school.id),
       ]);
-
-      setStudents(studentRows);
+      setTeachers(teacherRows);
       setBranches(branchRows);
-      setClasses(classRows);
     } catch {
       setHasLoadError(true);
     } finally {
@@ -149,18 +137,16 @@ const StudentsList: React.FC = () => {
   }, [school?.id]);
 
   useEffect(() => {
-    void loadStudents();
-  }, [loadStudents]);
+    void loadTeachers();
+  }, [loadTeachers]);
 
   const handleLogout = async () => {
     try {
       const { error } = await signOut();
-
       if (error) {
         toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
         return;
       }
-
       setLocation("/login");
     } catch {
       toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
@@ -180,42 +166,36 @@ const StudentsList: React.FC = () => {
     () => new Map(branches.map(branch => [branch.id, branch.name])),
     [branches]
   );
-  const classNames = useMemo(
-    () => new Map(classes.map(classItem => [classItem.id, classItem.name])),
-    [classes]
-  );
 
-  const filteredStudents = useMemo(() => {
+  const filteredTeachers = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase();
 
-    return students.filter(student => {
+    return teachers.filter(teacher => {
       const searchable = [
-        student.first_name,
-        student.last_name,
-        student.phone ?? "",
-        student.email ?? "",
+        teacher.first_name,
+        teacher.last_name,
+        teacher.phone ?? "",
+        teacher.email ?? "",
+        teacher.specialization ?? "",
       ]
         .join(" ")
         .toLocaleLowerCase();
       const matchesSearch = query === "" || searchable.includes(query);
       const matchesBranch =
-        filterBranch === "all" || student.branch_id === filterBranch;
-      const matchesClass =
-        filterClass === "all" || student.class_id === filterClass;
+        filterBranch === "all" || teacher.branch_id === filterBranch;
       const matchesStatus =
-        filterStatus === "all" || student.status === filterStatus;
+        filterStatus === "all" || teacher.status === filterStatus;
 
-      return matchesSearch && matchesBranch && matchesClass && matchesStatus;
+      return matchesSearch && matchesBranch && matchesStatus;
     });
-  }, [filterBranch, filterClass, filterStatus, searchQuery, students]);
+  }, [filterBranch, filterStatus, searchQuery, teachers]);
 
-  const getStatusBadge = (status: StudentStatus) => {
-    const styles: Record<StudentStatus, string> = {
+  const getStatusBadge = (status: TeacherStatus) => {
+    const styles: Record<TeacherStatus, string> = {
       active: "bg-[#0B4738]/10 text-[#0B4738] border-[#0B4738]/20",
-      suspended: "bg-red-50 text-red-700 border-red-200",
-      transferred: "bg-[#C8A26A]/10 text-[#9A7137] border-[#C8A26A]/20",
-      graduated: "bg-blue-50 text-blue-700 border-blue-200",
-      withdrawn: "bg-gray-100 text-gray-700 border-gray-200",
+      inactive: "bg-amber-50 text-amber-700 border-amber-200",
+      on_leave: "bg-blue-50 text-blue-700 border-blue-200",
+      archived: "bg-gray-100 text-gray-700 border-gray-200",
     };
     return styles[status];
   };
@@ -228,71 +208,85 @@ const StudentsList: React.FC = () => {
     );
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ showLabels }: { showLabels: boolean }) => (
     <>
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#C8A26A]">
+          <div className="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center bg-[#C8A26A]">
             <span className="text-lg font-bold text-[#0B4738]">ق</span>
           </div>
-          {sidebarOpen && (
-            <span className="text-white font-semibold text-sm">
+          {showLabels && (
+            <span className="text-white font-semibold text-sm line-clamp-2">
               {school?.name ?? t.school}
             </span>
           )}
         </div>
       </div>
       <nav className="flex-1 p-3 space-y-1">
-        {menuItems.map(item => (
-          <a
-            key={item.label}
-            href={item.path ?? "#"}
-            onClick={event => {
-              event.preventDefault();
-              if (item.path) {
+        {menuItems.map(item => {
+          const itemContent = (
+            <>
+              <item.icon size={20} className="shrink-0" />
+              {showLabels && (
+                <>
+                  <span className="text-sm font-medium">{item.label}</span>
+                  {item.badge && (
+                    <span className="ms-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/70">
+                      {item.badge}
+                    </span>
+                  )}
+                </>
+              )}
+            </>
+          );
+
+          if (!item.path) {
+            return (
+              <div
+                key={item.label}
+                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-4 py-3 text-white/45"
+                aria-disabled="true"
+              >
+                {itemContent}
+              </div>
+            );
+          }
+
+          return (
+            <a
+              key={item.label}
+              href={item.path}
+              onClick={event => {
+                event.preventDefault();
                 setLocation(item.path);
                 setMobileSidebarOpen(false);
-              }
-            }}
-            aria-disabled={!item.path}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-              item.path === "/students"
-                ? "bg-white/15 text-white"
-                : item.path
-                  ? "text-white/80 hover:bg-white/10 hover:text-white"
-                  : "cursor-not-allowed text-white/45"
-            }`}
-          >
-            <item.icon size={20} />
-            {sidebarOpen && (
-              <>
-                <span className="text-sm font-medium">{item.label}</span>
-                {item.badge && (
-                  <span className="ms-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/70">
-                    {item.badge}
-                  </span>
-                )}
-              </>
-            )}
-          </a>
-        ))}
+              }}
+              className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 ${
+                item.path === "/teachers"
+                  ? "bg-white/15 text-white"
+                  : "text-white/80 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {itemContent}
+            </a>
+          );
+        })}
       </nav>
       <div className="p-3 border-t border-white/10">
         <button
+          type="button"
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-red-500/20 hover:text-white transition-all duration-200"
         >
-          <LogOut size={20} />
-          {sidebarOpen && (
-            <span className="text-sm font-medium">{t.logout}</span>
-          )}
+          <LogOut size={20} className="shrink-0" />
+          {showLabels && <span className="text-sm font-medium">{t.logout}</span>}
         </button>
       </div>
     </>
   );
 
   const renderLoadedContent = () => {
-    if (students.length === 0) {
+    if (teachers.length === 0) {
       return (
         <Card className="p-10 text-center text-gray-500 border border-gray-100">
           {t.empty}
@@ -303,17 +297,17 @@ const StudentsList: React.FC = () => {
     return (
       <>
         <Card className="p-4 border border-gray-100">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="relative">
               <Search
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400"
                 size={18}
               />
               <Input
                 placeholder={t.search}
                 value={searchQuery}
                 onChange={event => setSearchQuery(event.target.value)}
-                className="pr-10 h-10"
+                className="ps-10 h-10"
               />
             </div>
             <select
@@ -329,18 +323,6 @@ const StudentsList: React.FC = () => {
               ))}
             </select>
             <select
-              value={filterClass}
-              onChange={event => setFilterClass(event.target.value)}
-              className="h-10 rounded-lg border border-gray-200 px-3 text-sm bg-white text-[#2C3E50]"
-            >
-              <option value="all">{t.allClasses}</option>
-              {classes.map(classItem => (
-                <option key={classItem.id} value={classItem.id}>
-                  {classItem.name}
-                </option>
-              ))}
-            </select>
-            <select
               value={filterStatus}
               onChange={event => setFilterStatus(event.target.value)}
               className="h-10 rounded-lg border border-gray-200 px-3 text-sm bg-white text-[#2C3E50]"
@@ -348,7 +330,7 @@ const StudentsList: React.FC = () => {
               <option value="all">{t.allStatuses}</option>
               {statusOptions.map(status => (
                 <option key={status} value={status}>
-                  {translateStudentStatus(status, language)}
+                  {translateTeacherStatus(status, language)}
                 </option>
               ))}
             </select>
@@ -360,51 +342,55 @@ const StudentsList: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {[t.name, t.phone, t.email, t.branch, t.class, t.status, t.registrationDate].map(
-                    heading => (
-                      <th
-                        key={heading}
-                        className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase"
-                      >
-                        {heading}
-                      </th>
-                    )
-                  )}
+                  {[
+                    t.name,
+                    t.gender,
+                    t.branch,
+                    t.phone,
+                    t.specialization,
+                    t.hireDate,
+                    t.status,
+                  ].map(heading => (
+                    <th
+                      key={heading}
+                      className="text-start px-4 py-3 text-xs font-semibold text-gray-500 uppercase"
+                    >
+                      {heading}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.length > 0 ? (
-                  filteredStudents.map(student => (
+                {filteredTeachers.length > 0 ? (
+                  filteredTeachers.map(teacher => (
                     <tr
-                      key={student.id}
+                      key={teacher.id}
                       className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
                     >
                       <td className="px-4 py-3 font-medium text-[#2C3E50] text-sm">
-                        {student.first_name} {student.last_name}
+                        {teacher.first_name} {teacher.last_name}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {student.phone ?? t.noValue}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 break-all">
-                        {student.email ?? t.noValue}
+                        {translateTeacherGender(teacher.gender, language)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {branchNames.get(student.branch_id) ?? t.unavailable}
+                        {branchNames.get(teacher.branch_id) ?? t.unavailable}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600" dir="ltr">
+                        {teacher.phone ?? t.noValue}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {student.class_id
-                          ? (classNames.get(student.class_id) ?? t.unavailable)
-                          : t.noClass}
+                        {teacher.specialization ?? t.noValue}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {formatDate(teacher.hire_date)}
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.status)}`}
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(teacher.status)}`}
                         >
-                          {translateStudentStatus(student.status, language)}
+                          {translateTeacherStatus(teacher.status, language)}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {formatDate(student.start_date)}
                       </td>
                     </tr>
                   ))
@@ -421,25 +407,47 @@ const StudentsList: React.FC = () => {
         </Card>
 
         <div className="md:hidden space-y-3">
-          {filteredStudents.length > 0 ? (
-            filteredStudents.map(student => (
-              <Card key={student.id} className="p-4 border border-gray-100">
+          {filteredTeachers.length > 0 ? (
+            filteredTeachers.map(teacher => (
+              <Card key={teacher.id} className="p-4 border border-gray-100">
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <p className="font-semibold text-[#2C3E50]">
-                    {student.first_name} {student.last_name}
-                  </p>
+                  <div>
+                    <p className="font-semibold text-[#2C3E50]">
+                      {teacher.first_name} {teacher.last_name}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {translateTeacherGender(teacher.gender, language)}
+                    </p>
+                  </div>
                   <span
-                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.status)}`}
+                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(teacher.status)}`}
                   >
-                    {translateStudentStatus(student.status, language)}
+                    {translateTeacherStatus(teacher.status, language)}
                   </span>
                 </div>
                 <dl className="grid grid-cols-1 gap-2 text-sm text-gray-600">
-                  <div><dt className="inline text-gray-400">{t.phone}: </dt><dd className="inline">{student.phone ?? t.noValue}</dd></div>
-                  <div><dt className="inline text-gray-400">{t.email}: </dt><dd className="inline break-all">{student.email ?? t.noValue}</dd></div>
-                  <div><dt className="inline text-gray-400">{t.branch}: </dt><dd className="inline">{branchNames.get(student.branch_id) ?? t.unavailable}</dd></div>
-                  <div><dt className="inline text-gray-400">{t.class}: </dt><dd className="inline">{student.class_id ? (classNames.get(student.class_id) ?? t.unavailable) : t.noClass}</dd></div>
-                  <div><dt className="inline text-gray-400">{t.registrationDate}: </dt><dd className="inline">{formatDate(student.start_date)}</dd></div>
+                  <div>
+                    <dt className="inline text-gray-400">{t.branch}: </dt>
+                    <dd className="inline">
+                      {branchNames.get(teacher.branch_id) ?? t.unavailable}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-gray-400">{t.phone}: </dt>
+                    <dd className="inline" dir="ltr">
+                      {teacher.phone ?? t.noValue}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-gray-400">{t.specialization}: </dt>
+                    <dd className="inline">
+                      {teacher.specialization ?? t.noValue}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-gray-400">{t.hireDate}: </dt>
+                    <dd className="inline">{formatDate(teacher.hire_date)}</dd>
+                  </div>
                 </dl>
               </Card>
             ))
@@ -462,7 +470,7 @@ const StudentsList: React.FC = () => {
         className={`hidden md:flex ${sidebarOpen ? "w-64" : "w-20"} flex-col transition-all duration-300 shadow-xl`}
         style={{ backgroundColor: "#0B4738" }}
       >
-        <SidebarContent />
+        <SidebarContent showLabels={sidebarOpen} />
       </aside>
 
       {mobileSidebarOpen && (
@@ -472,18 +480,19 @@ const StudentsList: React.FC = () => {
             onClick={() => setMobileSidebarOpen(false)}
           />
           <aside
-            className="absolute top-0 right-0 bottom-0 w-64 flex flex-col shadow-xl"
+            className="absolute top-0 right-0 bottom-0 w-72 flex flex-col shadow-xl"
             style={{ backgroundColor: "#0B4738" }}
           >
-            <SidebarContent />
+            <SidebarContent showLabels />
           </aside>
         </div>
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
+              type="button"
               onClick={() => {
                 if (window.innerWidth < 768) {
                   setMobileSidebarOpen(!mobileSidebarOpen);
@@ -492,7 +501,7 @@ const StudentsList: React.FC = () => {
                 }
               }}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="القائمة"
+              aria-label={language === "ar" ? "القائمة" : "Menu"}
             >
               {mobileSidebarOpen ? (
                 <X size={22} className="text-gray-600" />
@@ -500,18 +509,20 @@ const StudentsList: React.FC = () => {
                 <Menu size={22} className="text-gray-600" />
               )}
             </button>
-            <h2 className="text-lg font-semibold text-[#2C3E50] hidden sm:block">
+            <h2 className="text-lg font-semibold text-[#2C3E50] hidden sm:block truncate">
               {school?.name ?? t.school}
             </h2>
           </div>
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
             <button
+              type="button"
               onClick={() => setLanguage("ar")}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${language === "ar" ? "bg-[#0B4738] text-white shadow-sm" : "text-gray-600"}`}
             >
               العربية
             </button>
             <button
+              type="button"
               onClick={() => setLanguage("en")}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${language === "en" ? "bg-[#0B4738] text-white shadow-sm" : "text-gray-600"}`}
             >
@@ -523,16 +534,17 @@ const StudentsList: React.FC = () => {
         <main className="flex-1 overflow-auto p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#2C3E50]">{t.students}</h1>
+              <h1 className="text-2xl font-bold text-[#2C3E50]">{t.teachers}</h1>
               <p className="mt-1 text-sm text-gray-500">{school?.name ?? t.school}</p>
             </div>
             <Button
-              onClick={() => setLocation("/students/new")}
+              type="button"
+              onClick={() => setLocation("/teachers/new")}
               className="flex items-center gap-2 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.97]"
               style={{ backgroundColor: "#0B4738" }}
             >
               <Plus size={18} />
-              {t.addStudent}
+              {t.addTeacher}
             </Button>
           </div>
 
@@ -542,9 +554,9 @@ const StudentsList: React.FC = () => {
               {t.loading}
             </Card>
           ) : hasLoadError ? (
-            <Card className="p-10 text-center border border-red-100">
+            <Card className="p-10 text-center border border-red-100" role="alert">
               <p className="text-red-700 mb-4">{t.loadError}</p>
-              <Button variant="outline" onClick={() => void loadStudents()}>
+              <Button type="button" variant="outline" onClick={() => void loadTeachers()}>
                 <RefreshCw size={16} />
                 {t.retry}
               </Button>
@@ -558,4 +570,4 @@ const StudentsList: React.FC = () => {
   );
 };
 
-export default StudentsList;
+export default TeachersList;
