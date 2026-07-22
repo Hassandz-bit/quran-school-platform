@@ -54,6 +54,7 @@ const ClassesList: React.FC = () => {
       finance: "المالية",
       settings: "الإعدادات",
       logout: "تسجيل الخروج",
+      comingSoon: "قريبًا",
       addClass: "إضافة حلقة",
       search: "البحث باسم الحلقة أو رمزها...",
       allBranches: "جميع الفروع",
@@ -80,6 +81,7 @@ const ClassesList: React.FC = () => {
       finance: "Finance",
       settings: "Settings",
       logout: "Sign Out",
+      comingSoon: "Coming soon",
       addClass: "Add Class",
       search: "Search by class name or code...",
       allBranches: "All Branches",
@@ -142,12 +144,12 @@ const ClassesList: React.FC = () => {
   };
 
   const menuItems = [
-    { label: t.dashboard, icon: Home, path: "/dashboard" },
-    { label: t.students, icon: Users, path: "/students" },
-    { label: t.teachers, icon: GraduationCap, path: "#" },
-    { label: t.classes, icon: BookOpen, path: "/classes" },
-    { label: t.finance, icon: DollarSign, path: "#" },
-    { label: t.settings, icon: Settings, path: "#" },
+    { label: t.dashboard, icon: Home, path: "/dashboard", badge: null },
+    { label: t.students, icon: Users, path: "/students", badge: null },
+    { label: t.teachers, icon: GraduationCap, path: "/teachers", badge: null },
+    { label: t.classes, icon: BookOpen, path: "/classes", badge: null },
+    { label: t.finance, icon: DollarSign, path: null, badge: t.comingSoon },
+    { label: t.settings, icon: Settings, path: null, badge: null },
   ];
 
   const branchNames = useMemo(
@@ -196,19 +198,33 @@ const ClassesList: React.FC = () => {
         {menuItems.map(item => (
           <a
             key={item.label}
-            href={item.path}
+            href={item.path ?? "#"}
             onClick={event => {
               event.preventDefault();
-              if (item.path !== "#") {
+              if (item.path) {
                 setLocation(item.path);
                 setMobileSidebarOpen(false);
               }
             }}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${item.path === "/classes" ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
+            aria-disabled={!item.path}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+              item.path === "/classes"
+                ? "bg-white/15 text-white"
+                : item.path
+                  ? "text-white/80 hover:bg-white/10 hover:text-white"
+                  : "cursor-not-allowed text-white/45"
+            }`}
           >
             <item.icon size={20} />
             {sidebarOpen && (
-              <span className="text-sm font-medium">{item.label}</span>
+              <>
+                <span className="text-sm font-medium">{item.label}</span>
+                {item.badge && (
+                  <span className="ms-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/70">
+                    {item.badge}
+                  </span>
+                )}
+              </>
             )}
           </a>
         ))}
