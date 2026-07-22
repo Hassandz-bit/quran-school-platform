@@ -54,6 +54,120 @@ export type TeacherInsert = {
   notes: string | null;
 };
 
+const TEACHER_DRAFT_STORAGE_PREFIX = "quran-school:teacher-draft:";
+
+const teacherDraftStatuses = new Set<TeacherStatus>([
+  "active",
+  "inactive",
+  "on_leave",
+  "archived",
+]);
+
+const teacherDraftGenders = new Set<TeacherGender | "">([
+  "",
+  "male",
+  "female",
+]);
+
+const getSessionStorage = (): Storage | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+const sanitizeTeacherDraft = (value: unknown): TeacherFormValues | null => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const stringFields = [
+    "branchId",
+    "firstName",
+    "lastName",
+    "phone",
+    "email",
+    "specialization",
+    "qualification",
+    "hireDate",
+    "notes",
+  ] as const;
+
+  if (stringFields.some(field => typeof candidate[field] !== "string")) {
+    return null;
+  }
+
+  if (
+    typeof candidate.gender !== "string" ||
+    !teacherDraftGenders.has(candidate.gender as TeacherGender | "") ||
+    typeof candidate.status !== "string" ||
+    !teacherDraftStatuses.has(candidate.status as TeacherStatus)
+  ) {
+    return null;
+  }
+
+  return {
+    branchId: candidate.branchId as string,
+    firstName: candidate.firstName as string,
+    lastName: candidate.lastName as string,
+    gender: candidate.gender as TeacherGender | "",
+    phone: candidate.phone as string,
+    email: candidate.email as string,
+    specialization: candidate.specialization as string,
+    qualification: candidate.qualification as string,
+    hireDate: candidate.hireDate as string,
+    status: candidate.status as TeacherStatus,
+    notes: candidate.notes as string,
+  };
+};
+
+export function getTeacherDraftStorageKey(schoolId: string): string {
+  return `${TEACHER_DRAFT_STORAGE_PREFIX}${schoolId}`;
+}
+
+export function saveTeacherDraft(
+  schoolId: string,
+  values: TeacherFormValues
+): void {
+  const storage = getSessionStorage();
+  const draft = sanitizeTeacherDraft(values);
+  if (!storage || !draft) return;
+
+  try {
+    storage.setItem(getTeacherDraftStorageKey(schoolId), JSON.stringify(draft));
+  } catch {
+    // Storage can be unavailable or full; the form must remain usable.
+  }
+}
+
+export function loadTeacherDraft(schoolId: string): TeacherFormValues | null {
+  const storage = getSessionStorage();
+  if (!storage) return null;
+
+  try {
+    const storedDraft = storage.getItem(getTeacherDraftStorageKey(schoolId));
+    if (storedDraft === null) return null;
+    return sanitizeTeacherDraft(JSON.parse(storedDraft));
+  } catch {
+    return null;
+  }
+}
+
+export function clearTeacherDraft(schoolId: string): void {
+  const storage = getSessionStorage();
+  if (!storage) return;
+
+  try {
+    storage.removeItem(getTeacherDraftStorageKey(schoolId));
+  } catch {
+    // Storage can be unavailable; clearing should never block navigation.
+  }
+}
+
 type BranchLookupOptions = {
   activeOnly?: boolean;
 };

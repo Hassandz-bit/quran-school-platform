@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ArrowRight, Check, RefreshCw } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -8,8 +14,11 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   addTeacher,
+  clearTeacherDraft,
   fetchTeacherBranches,
   getTeacherSaveErrorMessage,
+  loadTeacherDraft,
+  saveTeacherDraft,
   translateTeacherGender,
   translateTeacherStatus,
   type TeacherBranch,
@@ -32,26 +41,33 @@ const getLocalDateInputValue = () => {
   return localDate.toISOString().slice(0, 10);
 };
 
+const createDefaultTeacherFormValues = (): TeacherFormValues => ({
+  branchId: "",
+  firstName: "",
+  lastName: "",
+  gender: "",
+  phone: "",
+  email: "",
+  specialization: "",
+  qualification: "",
+  hireDate: getLocalDateInputValue(),
+  status: "active",
+  notes: "",
+});
+
 const AddTeacherForm: React.FC = () => {
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [branches, setBranches] = useState<TeacherBranch[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const [branchLoadError, setBranchLoadError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDraftReady, setIsDraftReady] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState<TeacherFormValues>({
-    branchId: "",
-    firstName: "",
-    lastName: "",
-    gender: "",
-    phone: "",
-    email: "",
-    specialization: "",
-    qualification: "",
-    hireDate: getLocalDateInputValue(),
-    status: "active",
-    notes: "",
-  });
+  const [formData, setFormData] = useState<TeacherFormValues>(
+    createDefaultTeacherFormValues
+  );
+  const restoredDraftSchoolRef = useRef<string | null>(null);
+  const skipDraftSaveRef = useRef(false);
   const [, setLocation] = useLocation();
   const { school } = useAuth();
 
@@ -60,6 +76,9 @@ const AddTeacherForm: React.FC = () => {
       ar: {
         title: "إضافة معلم جديد",
         subtitle: "أدخل بيانات المعلم واربطه بأحد فروع المدرسة.",
+        draftDescription:
+          "تُحفظ المسودة تلقائيًا في هذا التبويب حتى تحفظها أو تلغيها.",
+        draftRestored: "تم استرجاع المسودة غير المحفوظة.",
         school: "المدرسة",
         branch: "الفرع",
         selectBranch: "اختر الفرع",
@@ -102,6 +121,9 @@ const AddTeacherForm: React.FC = () => {
       en: {
         title: "Add a New Teacher",
         subtitle: "Enter the teacher details and assign a school branch.",
+        draftDescription:
+          "Your draft is saved automatically in this tab until you save or cancel.",
+        draftRestored: "Your unsaved draft has been restored.",
         school: "School",
         branch: "Branch",
         selectBranch: "Select a branch",
@@ -146,6 +168,27 @@ const AddTeacherForm: React.FC = () => {
   );
   const t = content[language];
 
+  useEffect(() => {
+    if (!school?.id) {
+      setIsDraftReady(false);
+      return;
+    }
+
+    setIsDraftReady(false);
+    skipDraftSaveRef.current = false;
+    const draft = loadTeacherDraft(school.id);
+
+    if (draft) {
+      setFormData(draft);
+      if (restoredDraftSchoolRef.current !== school.id) {
+        toast.info(t.draftRestored);
+      }
+    }
+
+    restoredDraftSchoolRef.current = school.id;
+    setIsDraftReady(true);
+  }, [school?.id]);
+
   const loadBranches = useCallback(async () => {
     if (!school?.id) {
       setIsLoadingBranches(false);
@@ -162,11 +205,18 @@ const AddTeacherForm: React.FC = () => {
       });
       setBranches(branchRows);
       setFormData(current => {
-        if (current.branchId || branchRows.length === 0) return current;
+        if (current.branchId) {
+          const savedBranchIsActive = branchRows.some(
+            branch => branch.id === current.branchId
+          );
+          return savedBranchIsActive ? current : { ...current, branchId: "" };
+        }
+
+        if (branchRows.length === 0) return current;
         const mainBranch = branchRows.find(branch => branch.is_main);
         return {
           ...current,
-          branchId: (mainBranch ?? branchRows[0]).id,
+          branchId: mainBranch?.id ?? "",
         };
       });
     } catch {
@@ -179,6 +229,18 @@ const AddTeacherForm: React.FC = () => {
   useEffect(() => {
     void loadBranches();
   }, [loadBranches]);
+
+  useEffect(() => {
+    if (!school?.id || !isDraftReady) return;
+
+    const saveTimer = setTimeout(() => {
+      if (!skipDraftSaveRef.current) {
+        saveTeacherDraft(school.id, formData);
+      }
+    }, 300);
+
+    return () => clearTimeout(saveTimer);
+  }, [formData, isDraftReady, school?.id]);
 
   const updateField = <K extends keyof TeacherFormValues>(
     field: K,
@@ -230,6 +292,8 @@ const AddTeacherForm: React.FC = () => {
     setIsSubmitting(true);
     try {
       await addTeacher(school.id, formData);
+      skipDraftSaveRef.current = true;
+      clearTeacherDraft(school.id);
       toast.success(t.success);
       setLocation("/teachers");
     } catch (error) {
@@ -237,6 +301,12 @@ const AddTeacherForm: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCancel = () => {
+    skipDraftSaveRef.current = true;
+    if (school?.id) clearTeacherDraft(school.id);
+    setLocation("/teachers");
   };
 
   const optionalLabel = (
@@ -265,6 +335,9 @@ const AddTeacherForm: React.FC = () => {
             <div>
               <h1 className="text-2xl font-bold text-[#2C3E50]">{t.title}</h1>
               <p className="mt-1 text-sm text-gray-500">{t.subtitle}</p>
+              <p className="mt-1 text-xs text-[#0B4738]/70">
+                {t.draftDescription}
+              </p>
             </div>
           </div>
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg self-end sm:self-auto">
@@ -505,7 +578,7 @@ const AddTeacherForm: React.FC = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setLocation("/teachers")}
+                onClick={handleCancel}
                 disabled={isSubmitting}
               >
                 {t.cancel}
