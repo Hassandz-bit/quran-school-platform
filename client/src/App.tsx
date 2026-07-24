@@ -18,6 +18,7 @@ import AddTeacherForm from "./pages/AddTeacherForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import FinanceDashboard from "./pages/FinanceDashboard";
+import FeePlans from "./pages/FeePlans";
 
 function Router() {
   return (
@@ -63,6 +64,11 @@ function Router() {
       <Route path="/finance">
         <FinanceRoute>
           <FinanceDashboard />
+        </FinanceRoute>
+      </Route>
+      <Route path="/finance/fee-plans">
+        <FinanceRoute>
+          <FeePlans />
         </FinanceRoute>
       </Route>
       <Route path="/">

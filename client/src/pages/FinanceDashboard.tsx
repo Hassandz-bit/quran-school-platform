@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Settings,
   ShieldAlert,
+  Tags,
   Users,
   WalletCards,
   X,
@@ -313,6 +314,30 @@ export default function FinanceDashboard() {
             </p>
           </Card>
         )}
+
+        <Card className="mt-6 border border-gray-100 bg-white p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-[#C8A26A]/15 p-3 text-[#9A7137]">
+                <Tags size={22} aria-hidden="true" />
+              </div>
+              <div>
+                <h2 className="font-bold text-[#2C3E50]">خطط الرسوم</h2>
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  عرض وإدارة الخطط العامة للمدرسة والخطط الخاصة بالفروع.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocation("/finance/fee-plans")}
+              className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
+            >
+              فتح خطط الرسوم
+            </Button>
+          </div>
+        </Card>
 
         {financeData.hasData && (
           <Card className="mt-6 border border-gray-100 bg-white p-6">
