@@ -366,6 +366,33 @@ export default function FinanceDashboard() {
           </div>
         </Card>
 
+        <Card className="mt-4 border border-gray-100 bg-white p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
+                <Banknote size={22} aria-hidden="true" />
+              </div>
+              <div>
+                <h2 className="font-bold text-[#2C3E50]">
+                  الدفعات والتحصيل
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  تسجيل الدفعات الجزئية والكاملة وعكس القيود مع حفظ السجل
+                  المحاسبي.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocation("/finance/payments")}
+              className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
+            >
+              فتح الدفعات
+            </Button>
+          </div>
+        </Card>
+
         {financeData.hasData && (
           <Card className="mt-6 border border-gray-100 bg-white p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
