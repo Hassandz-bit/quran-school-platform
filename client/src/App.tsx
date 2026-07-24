@@ -19,6 +19,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import FinanceDashboard from "./pages/FinanceDashboard";
 import FeePlans from "./pages/FeePlans";
+import StudentCharges from "./pages/StudentCharges";
 
 function Router() {
   return (
@@ -69,6 +70,11 @@ function Router() {
       <Route path="/finance/fee-plans">
         <FinanceRoute>
           <FeePlans />
+        </FinanceRoute>
+      </Route>
+      <Route path="/finance/charges">
+        <FinanceRoute>
+          <StudentCharges />
         </FinanceRoute>
       </Route>
       <Route path="/">

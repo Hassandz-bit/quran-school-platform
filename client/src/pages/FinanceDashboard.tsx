@@ -339,6 +339,33 @@ export default function FinanceDashboard() {
           </div>
         </Card>
 
+        <Card className="mt-4 border border-gray-100 bg-white p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-[#0B4738]/10 p-3 text-[#0B4738]">
+                <CircleDollarSign size={22} aria-hidden="true" />
+              </div>
+              <div>
+                <h2 className="font-bold text-[#2C3E50]">
+                  استحقاقات الطلاب
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  عرض الرسوم والخصومات وإنشاء الاستحقاقات ضمن الفروع المصرح
+                  بها.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocation("/finance/charges")}
+              className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
+            >
+              فتح الاستحقاقات
+            </Button>
+          </div>
+        </Card>
+
         {financeData.hasData && (
           <Card className="mt-6 border border-gray-100 bg-white p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
