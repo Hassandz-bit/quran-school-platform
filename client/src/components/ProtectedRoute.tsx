@@ -14,6 +14,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     authorizationLoading,
     authorizationError,
     isSchoolAdmin,
+    school,
     signOut,
   } = useAuth();
   const [, setLocation] = useLocation();
@@ -82,15 +83,27 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
           {signOutError && (
             <p className="mt-3 text-sm text-red-700">{signOutError}</p>
           )}
-          <Button
-            type="button"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            className="mt-6 gap-2 bg-[#0B4738] text-white hover:bg-[#08382d]"
-          >
-            <LogOut aria-hidden="true" size={18} />
-            {isSigningOut ? "جارٍ تسجيل الخروج..." : "تسجيل الخروج"}
-          </Button>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            {school && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLocation("/finance")}
+                className="gap-2 border-[#0B4738] text-[#0B4738] hover:bg-[#0B4738]/5"
+              >
+                الانتقال إلى المالية
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+              className="gap-2 bg-[#0B4738] text-white hover:bg-[#08382d]"
+            >
+              <LogOut aria-hidden="true" size={18} />
+              {isSigningOut ? "جارٍ تسجيل الخروج..." : "تسجيل الخروج"}
+            </Button>
+          </div>
         </section>
       </main>
     );
