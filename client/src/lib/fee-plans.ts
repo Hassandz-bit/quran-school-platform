@@ -209,36 +209,29 @@ export async function fetchFeePlanPageData(
   if (branchError) throw branchError;
   const branches = (branchData ?? []) as FeePlanBranch[];
 
-  const [schoolView, schoolManage, branchPermissions] = await Promise.all([
-    hasSchoolPermission(client, schoolId, "finance.view"),
+  const [schoolManage, branchPermissions] = await Promise.all([
     hasSchoolPermission(client, schoolId, "finance.manage"),
     Promise.all(
-      branches.map(async branch => {
-        const [canView, canManage] = await Promise.all([
-          hasBranchPermission(client, schoolId, branch.id, "finance.view"),
-          hasBranchPermission(client, schoolId, branch.id, "finance.manage"),
-        ]);
-        return {
-          branchId: branch.id,
-          canView: canView || canManage,
-          canManage,
-        };
-      })
+      branches.map(async branch => ({
+        branchId: branch.id,
+        canManage: await hasBranchPermission(
+          client,
+          schoolId,
+          branch.id,
+          "finance.manage"
+        ),
+      }))
     ),
   ]);
 
+  const manageableBranchIds = branchPermissions
+    .filter(permission => permission.canManage)
+    .map(permission => permission.branchId);
   const access: FeePlanAccess = {
-    canView:
-      schoolView ||
-      schoolManage ||
-      branchPermissions.some(permission => permission.canView),
-    canManage:
-      schoolManage ||
-      branchPermissions.some(permission => permission.canManage),
+    canView: schoolManage || manageableBranchIds.length > 0,
+    canManage: schoolManage || manageableBranchIds.length > 0,
     canManageSchoolWide: schoolManage,
-    manageableBranchIds: branchPermissions
-      .filter(permission => permission.canManage)
-      .map(permission => permission.branchId),
+    manageableBranchIds,
   };
 
   if (!access.canView) {
@@ -256,9 +249,15 @@ export async function fetchFeePlanPageData(
 
   if (planError) throw planError;
 
+  const visibleBranchSet = new Set(
+    schoolManage ? branches.map(branch => branch.id) : manageableBranchIds
+  );
+
   return {
-    plans: (planData ?? []) as FeePlanRow[],
-    branches,
+    plans: ((planData ?? []) as FeePlanRow[]).filter(
+      plan => plan.branch_id === null || visibleBranchSet.has(plan.branch_id)
+    ),
+    branches: branches.filter(branch => visibleBranchSet.has(branch.id)),
     access,
   };
 }
