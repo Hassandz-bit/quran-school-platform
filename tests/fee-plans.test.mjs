@@ -112,3 +112,16 @@ test("provides search, filters, loading, error, empty, and form states", () => {
   assert.match(pageSource, /<form onSubmit=\{handleSubmit\}/);
   assert.match(appSource, /path="\/finance\/fee-plans"/);
 });
+
+test("requires finance.manage and hides unauthorized branch options", () => {
+  assert.match(
+    dataSource,
+    /hasSchoolPermission\(client, schoolId, "finance\.manage"\)/
+  );
+  assert.match(dataSource, /canView: schoolManage \|\| manageableBranchIds\.length > 0/);
+  assert.match(dataSource, /visibleBranchSet/);
+  assert.match(
+    dataSource,
+    /branches: branches\.filter\(branch => visibleBranchSet\.has\(branch\.id\)\)/
+  );
+});
