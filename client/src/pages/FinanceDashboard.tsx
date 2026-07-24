@@ -369,6 +369,31 @@ export default function FinanceDashboard() {
         <Card className="mt-4 border border-gray-100 bg-white p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-rose-50 p-3 text-rose-700">
+                <ReceiptText size={22} aria-hidden="true" />
+              </div>
+              <div>
+                <h2 className="font-bold text-[#2C3E50]">المصروفات</h2>
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  تسجيل المصروفات المدرسية والفرعية وتعديلها أو إلغاؤها دون
+                  حذف السجل المحاسبي.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocation("/finance/expenses")}
+              className="border-rose-200 text-rose-700 hover:bg-rose-50"
+            >
+              فتح المصروفات
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="mt-4 border border-gray-100 bg-white p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
               <div className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
                 <Banknote size={22} aria-hidden="true" />
               </div>
