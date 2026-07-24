@@ -159,8 +159,7 @@ const Dashboard: React.FC = () => {
     {
       label: t.finance,
       icon: DollarSign,
-      path: null,
-      badge: t.comingSoon,
+      path: "/finance",
     },
     { label: t.settings, icon: Settings, path: null },
   ];
@@ -228,14 +227,7 @@ const Dashboard: React.FC = () => {
             <>
               <item.icon size={20} className="shrink-0" />
               {showLabels && (
-                <>
-                  <span className="text-sm font-medium">{item.label}</span>
-                  {item.badge && (
-                    <span className="ms-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/70">
-                      {item.badge}
-                    </span>
-                  )}
-                </>
+                <span className="text-sm font-medium">{item.label}</span>
               )}
             </>
           );
@@ -450,7 +442,6 @@ const Dashboard: React.FC = () => {
             <div className="space-y-3">
               {[
                 { label: t.attendanceModule, status: t.comingSoon, icon: Calendar },
-                { label: t.financeModule, status: t.comingSoon, icon: DollarSign },
               ].map(module => (
                 <div
                   key={module.label}
