@@ -25,10 +25,10 @@ test("uses the localized fallback for an empty schedule", () => {
   assert.equal(getDashboardScheduleLabel("", "en"), "Not set");
 });
 
-test("marks attendance and finance as unavailable", () => {
+test("keeps attendance unavailable and links the finance dashboard", () => {
   assert.match(dashboardSource, /unavailable: "غير متاح بعد"/);
   assert.match(dashboardSource, /attendanceHint: "يُفعّل بعد إنشاء وحدة الحضور"/);
-  assert.match(dashboardSource, /financeHint: "يُفعّل بعد إنشاء الوحدة المالية"/);
+  assert.match(dashboardSource, /path: "\/finance"/);
 });
 
 test("does not contain the old mock dashboard values", () => {
