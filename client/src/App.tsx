@@ -21,8 +21,8 @@ import FinanceDashboard from "./pages/FinanceDashboard";
 import FeePlans from "./pages/FeePlans";
 import StudentCharges from "./pages/StudentCharges";
 import Payments from "./pages/Payments";
-import FinancialReports from "./pages/FinancialReports";
 import Expenses from "./pages/Expenses";
+import FinancialReports from "./pages/FinancialReports";
 
 function Router() {
   return (

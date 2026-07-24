@@ -254,8 +254,8 @@ export default function FinanceDashboard() {
             لا تملك صلاحية عرض المالية
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-7 text-gray-600">
-            يلزم منح الحساب صلاحية finance.view أو finance.manage على المدرسة
-            أو أحد فروعها.
+            يلزم منح الحساب finance.view أو finance.manage للتقارير المالية،
+            أو finance.expenses للمصروفات.
           </p>
         </Card>
       );
@@ -326,58 +326,112 @@ export default function FinanceDashboard() {
         )}
 
         {financeData.canView && (
-        <Card className="mt-6 border border-gray-100 bg-white p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-[#C8A26A]/15 p-3 text-[#9A7137]">
-                <Tags size={22} aria-hidden="true" />
+          <>
+            <Card className="mt-6 border border-gray-100 bg-white p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-[#C8A26A]/15 p-3 text-[#9A7137]">
+                    <Tags size={22} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-[#2C3E50]">خطط الرسوم</h2>
+                    <p className="mt-1 text-sm leading-6 text-gray-500">
+                      عرض وإدارة الخطط العامة للمدرسة والخطط الخاصة بالفروع.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setLocation("/finance/fee-plans")}
+                  className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
+                >
+                  فتح خطط الرسوم
+                </Button>
               </div>
-              <div>
-                <h2 className="font-bold text-[#2C3E50]">خطط الرسوم</h2>
-                <p className="mt-1 text-sm leading-6 text-gray-500">
-                  عرض وإدارة الخطط العامة للمدرسة والخطط الخاصة بالفروع.
-                </p>
+            </Card>
+
+            <Card className="mt-4 border border-gray-100 bg-white p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-[#0B4738]/10 p-3 text-[#0B4738]">
+                    <CircleDollarSign size={22} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-[#2C3E50]">
+                      استحقاقات الطلاب
+                    </h2>
+                    <p className="mt-1 text-sm leading-6 text-gray-500">
+                      عرض الرسوم والخصومات وإنشاء الاستحقاقات ضمن الفروع
+                      المصرح بها.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setLocation("/finance/charges")}
+                  className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
+                >
+                  فتح الاستحقاقات
+                </Button>
               </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setLocation("/finance/fee-plans")}
-              className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
-            >
-              فتح خطط الرسوم
-            </Button>
-          </div>
-        </Card>
+            </Card>
+
+            <Card className="mt-4 border border-gray-100 bg-white p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
+                    <Banknote size={22} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-[#2C3E50]">
+                      الدفعات والتحصيل
+                    </h2>
+                    <p className="mt-1 text-sm leading-6 text-gray-500">
+                      تسجيل الدفعات الجزئية والكاملة وعكس القيود مع حفظ السجل
+                      المحاسبي.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setLocation("/finance/payments")}
+                  className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
+                >
+                  فتح الدفعات
+                </Button>
+              </div>
+            </Card>
+          </>
         )}
 
-        {financeData.canView && (
-        <Card className="mt-4 border border-gray-100 bg-white p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-[#0B4738]/10 p-3 text-[#0B4738]">
-                <CircleDollarSign size={22} aria-hidden="true" />
+        {financeData.canViewExpenses && (
+          <Card className="mt-4 border border-gray-100 bg-white p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-rose-50 p-3 text-rose-700">
+                  <ReceiptText size={22} aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-[#2C3E50]">المصروفات</h2>
+                  <p className="mt-1 text-sm leading-6 text-gray-500">
+                    تسجيل المصروفات المدرسية والفرعية وتعديلها أو إلغاؤها دون
+                    حذف السجل المحاسبي.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-bold text-[#2C3E50]">
-                  استحقاقات الطلاب
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-gray-500">
-                  عرض الرسوم والخصومات وإنشاء الاستحقاقات ضمن الفروع المصرح
-                  بها.
-                </p>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLocation("/finance/expenses")}
+                className="border-rose-200 text-rose-700 hover:bg-rose-50"
+              >
+                فتح المصروفات
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setLocation("/finance/charges")}
-              className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
-            >
-              فتح الاستحقاقات
-            </Button>
-          </div>
-        </Card>
+          </Card>
         )}
 
         <Card className="mt-4 border border-gray-100 bg-white p-6">
@@ -406,62 +460,6 @@ export default function FinanceDashboard() {
             </Button>
           </div>
         </Card>
-
-        {financeData.canView && (
-        <Card className="mt-4 border border-gray-100 bg-white p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
-                <Banknote size={22} aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="font-bold text-[#2C3E50]">
-                  الدفعات والتحصيل
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-gray-500">
-                  تسجيل الدفعات الجزئية والكاملة وعكس القيود مع حفظ السجل
-                  المحاسبي.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setLocation("/finance/payments")}
-              className="border-[#0B4738]/20 text-[#0B4738] hover:bg-[#0B4738]/5"
-            >
-              فتح الدفعات
-            </Button>
-          </div>
-        </Card>
-        )}
-
-        {financeData.canViewExpenses && (
-          <Card className="mt-4 border border-gray-100 bg-white p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-rose-50 p-3 text-rose-700">
-                  <ReceiptText size={22} aria-hidden="true" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-[#2C3E50]">المصروفات</h2>
-                  <p className="mt-1 text-sm leading-6 text-gray-500">
-                    تسجيل المصروفات المدرسية والفرعية وتعديل القيود المسجلة
-                    أو إلغاؤها دون حذف.
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setLocation("/finance/expenses")}
-                className="border-rose-200 text-rose-700 hover:bg-rose-50"
-              >
-                فتح المصروفات
-              </Button>
-            </div>
-          </Card>
-        )}
 
         {financeData.hasData && (
           <Card className="mt-6 border border-gray-100 bg-white p-6">

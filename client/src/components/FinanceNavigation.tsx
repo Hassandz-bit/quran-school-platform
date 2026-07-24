@@ -32,6 +32,7 @@ export default function FinanceNavigation({
       setLoading(false);
       return;
     }
+
     setLoading(true);
     void fetchFinanceModuleAccess(school.id)
       .then(result => {
@@ -43,6 +44,7 @@ export default function FinanceNavigation({
       .finally(() => {
         if (active) setLoading(false);
       });
+
     return () => {
       active = false;
     };
@@ -51,6 +53,7 @@ export default function FinanceNavigation({
   const links = useMemo(() => {
     const hasAnyAccess =
       access.canViewFinance || access.canManageExpenses;
+
     return [
       { label: "الملخص", path: "/finance", visible: hasAnyAccess },
       {

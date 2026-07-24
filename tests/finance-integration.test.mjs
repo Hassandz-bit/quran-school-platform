@@ -9,6 +9,7 @@ const [
   app,
   navigation,
   navigationData,
+  dashboard,
   dashboardData,
   feePlans,
   charges,
@@ -24,6 +25,7 @@ const [
   read("client/src/App.tsx"),
   read("client/src/components/FinanceNavigation.tsx"),
   read("client/src/lib/finance-navigation.ts"),
+  read("client/src/pages/FinanceDashboard.tsx"),
   read("client/src/lib/finance.ts"),
   read("client/src/pages/FeePlans.tsx"),
   read("client/src/pages/StudentCharges.tsx"),
@@ -61,21 +63,23 @@ test("registers every finance route", () => {
     "/finance/expenses",
     "/finance/reports",
   ]) {
-    assert.match(app, new RegExp(`path="${route.replaceAll("/", "\\/")}"`));
+    assert.match(app, new RegExp(`path="${route}"`));
   }
 });
 
 test("uses one permission-aware financial navigation on every page", () => {
   const pages = [
+    [dashboard, "/finance"],
     [feePlans, "/finance/fee-plans"],
     [charges, "/finance/charges"],
     [payments, "/finance/payments"],
     [expenses, "/finance/expenses"],
     [reports, "/finance/reports"],
   ];
+
   pages.forEach(([source, path]) => {
     assert.match(source, /FinanceNavigation/);
-    assert.match(source, new RegExp(`currentPath="${path.replaceAll("/", "\\/")}"`));
+    assert.match(source, new RegExp(`currentPath="${path}"`));
   });
   assert.match(navigation, /aria-current/);
   assert.match(navigation, /overflow-x-auto/);
@@ -93,9 +97,15 @@ test("hides links according to the exact permission split", () => {
   assert.match(navigationData, /"finance\.expenses"/);
 });
 
-test("keeps finance view read-only and finance manage away from expenses", () => {
-  assert.match(paymentData, /permissionCode: "finance\.view" \| "finance\.manage"/);
-  assert.match(chargeData, /permissionCode: "finance\.view" \| "finance\.manage"/);
+test("keeps finance view and manage away from expense access", () => {
+  assert.match(
+    paymentData,
+    /permissionCode: "finance\.view" \| "finance\.manage"/
+  );
+  assert.match(
+    chargeData,
+    /permissionCode: "finance\.view" \| "finance\.manage"/
+  );
   assert.equal(expenseData.includes('"finance.view"'), false);
   assert.equal(expenseData.includes('"finance.manage"'), false);
   assert.match(expenseData, /"finance\.expenses"/);
@@ -134,7 +144,14 @@ test("uses the secure finance student directory where names are required", () =>
 });
 
 test("all finance pages retain RTL and responsive breakpoints", () => {
-  for (const source of [feePlans, charges, payments, expenses, reports]) {
+  for (const source of [
+    dashboard,
+    feePlans,
+    charges,
+    payments,
+    expenses,
+    reports,
+  ]) {
     assert.match(source, /dir="rtl"/);
     assert.match(source, /(sm:|md:|lg:|xl:)/);
   }
