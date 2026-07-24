@@ -148,7 +148,7 @@ const ClassesList: React.FC = () => {
     { label: t.students, icon: Users, path: "/students", badge: null },
     { label: t.teachers, icon: GraduationCap, path: "/teachers", badge: null },
     { label: t.classes, icon: BookOpen, path: "/classes", badge: null },
-    { label: t.finance, icon: DollarSign, path: null, badge: t.comingSoon },
+    { label: t.finance, icon: DollarSign, path: "/finance", badge: null },
     { label: t.settings, icon: Settings, path: null, badge: null },
   ];
 
