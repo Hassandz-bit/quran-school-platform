@@ -26,6 +26,7 @@ type FinanceBranch = {
 export type FinanceAccess = {
   canView: boolean;
   canManage: boolean;
+  canViewExpenses: boolean;
 };
 
 export type FinanceDashboardData = FinanceAccess & {
@@ -91,7 +92,7 @@ export function buildFinanceDashboardData(
 async function hasSchoolPermission(
   client: SupabaseClient,
   schoolId: string,
-  permissionCode: "finance.view" | "finance.manage"
+  permissionCode: "finance.view" | "finance.manage" | "finance.expenses"
 ): Promise<boolean> {
   const { data, error } = await client.rpc("has_school_permission", {
     target_school_id: schoolId,
@@ -106,7 +107,7 @@ async function hasBranchPermission(
   client: SupabaseClient,
   schoolId: string,
   branchId: string,
-  permissionCode: "finance.view" | "finance.manage"
+  permissionCode: "finance.view" | "finance.manage" | "finance.expenses"
 ): Promise<boolean> {
   const { data, error } = await client.rpc("has_branch_permission", {
     target_school_id: schoolId,
@@ -122,17 +123,11 @@ export async function fetchFinanceAccess(
   schoolId: string,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<FinanceAccess> {
-  const [schoolView, schoolManage] = await Promise.all([
+  const [schoolView, schoolManage, schoolExpenses] = await Promise.all([
     hasSchoolPermission(client, schoolId, "finance.view"),
     hasSchoolPermission(client, schoolId, "finance.manage"),
+    hasSchoolPermission(client, schoolId, "finance.expenses"),
   ]);
-
-  if (schoolView || schoolManage) {
-    return {
-      canView: schoolView || schoolManage,
-      canManage: schoolManage,
-    };
-  }
 
   const { data: branchData, error: branchError } = await client
     .from("branches")
@@ -143,18 +138,30 @@ export async function fetchFinanceAccess(
   const branches = (branchData ?? []) as FinanceBranch[];
   const branchAccess = await Promise.all(
     branches.map(async branch => {
-      const [canView, canManage] = await Promise.all([
+      const [canView, canManage, canViewExpenses] = await Promise.all([
         hasBranchPermission(client, schoolId, branch.id, "finance.view"),
         hasBranchPermission(client, schoolId, branch.id, "finance.manage"),
+        hasBranchPermission(client, schoolId, branch.id, "finance.expenses"),
       ]);
 
-      return { canView: canView || canManage, canManage };
+      return {
+        canView: canView || canManage,
+        canManage,
+        canViewExpenses,
+      };
     })
   );
 
   return {
-    canView: branchAccess.some(access => access.canView),
-    canManage: branchAccess.some(access => access.canManage),
+    canView:
+      schoolView ||
+      schoolManage ||
+      branchAccess.some(access => access.canView),
+    canManage:
+      schoolManage || branchAccess.some(access => access.canManage),
+    canViewExpenses:
+      schoolExpenses ||
+      branchAccess.some(access => access.canViewExpenses),
   };
 }
 
@@ -164,33 +171,47 @@ export async function fetchFinanceDashboard(
 ): Promise<FinanceDashboardData> {
   const access = await fetchFinanceAccess(schoolId, client);
 
-  if (!access.canView) {
+  if (!access.canView && !access.canViewExpenses) {
     throw new FinancePermissionError();
   }
 
-  const [chargesResult, paymentsResult, expensesResult] = await Promise.all([
-    client
-      .from("student_charges")
-      .select("id, net_amount, status")
-      .eq("school_id", schoolId),
-    client
-      .from("payments")
-      .select("id, amount, status")
-      .eq("school_id", schoolId),
-    client
+  let charges: StudentChargeRow[] = [];
+  let payments: PaymentRow[] = [];
+  let expenses: ExpenseRow[] = [];
+
+  if (access.canView) {
+    const [chargesResult, paymentsResult] = await Promise.all([
+      client
+        .from("student_charges")
+        .select("id, net_amount, status")
+        .eq("school_id", schoolId),
+      client
+        .from("payments")
+        .select("id, amount, status")
+        .eq("school_id", schoolId),
+    ]);
+    if (chargesResult.error || paymentsResult.error) {
+      throw new Error("finance_dashboard_load_failed");
+    }
+    charges = (chargesResult.data ?? []) as StudentChargeRow[];
+    payments = (paymentsResult.data ?? []) as PaymentRow[];
+  }
+
+  if (access.canViewExpenses) {
+    const expensesResult = await client
       .from("expenses")
       .select("id, amount, status")
-      .eq("school_id", schoolId),
-  ]);
-
-  if (chargesResult.error || paymentsResult.error || expensesResult.error) {
-    throw new Error("finance_dashboard_load_failed");
+      .eq("school_id", schoolId);
+    if (expensesResult.error) {
+      throw new Error("finance_dashboard_expenses_load_failed");
+    }
+    expenses = (expensesResult.data ?? []) as ExpenseRow[];
   }
 
   return buildFinanceDashboardData(
-    (chargesResult.data ?? []) as StudentChargeRow[],
-    (paymentsResult.data ?? []) as PaymentRow[],
-    (expensesResult.data ?? []) as ExpenseRow[],
+    charges,
+    payments,
+    expenses,
     access
   );
 }

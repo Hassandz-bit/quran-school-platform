@@ -22,6 +22,7 @@ import FeePlans from "./pages/FeePlans";
 import StudentCharges from "./pages/StudentCharges";
 import Payments from "./pages/Payments";
 import Expenses from "./pages/Expenses";
+import FinancialReports from "./pages/FinancialReports";
 
 function Router() {
   return (
@@ -87,6 +88,11 @@ function Router() {
       <Route path="/finance/expenses">
         <FinanceRoute>
           <Expenses />
+        </FinanceRoute>
+      </Route>
+      <Route path="/finance/reports">
+        <FinanceRoute>
+          <FinancialReports />
         </FinanceRoute>
       </Route>
       <Route path="/">

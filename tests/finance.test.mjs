@@ -31,7 +31,7 @@ test("calculates the finance summary from active accounting rows", () => {
       { id: "expense-1", amount: "300", status: "recorded" },
       { id: "expense-2", amount: 100, status: "cancelled" },
     ],
-    { canView: true, canManage: false }
+    { canView: true, canManage: false, canViewExpenses: true }
   );
 
   assert.equal(result.dueFees, 2200.5);
@@ -47,7 +47,7 @@ test("returns a complete zero summary for an empty finance module", () => {
     [],
     [],
     [],
-    { canView: true, canManage: true }
+    { canView: true, canManage: true, canViewExpenses: true }
   );
 
   assert.deepEqual(
@@ -73,7 +73,7 @@ test("never reports a negative remaining balance", () => {
     [{ id: "charge-1", net_amount: 100, status: "paid" }],
     [{ id: "payment-1", amount: 150, status: "completed" }],
     [],
-    { canView: true, canManage: true }
+    { canView: true, canManage: true, canViewExpenses: true }
   );
 
   assert.equal(result.remaining, 0);
@@ -88,6 +88,9 @@ test("formats monetary values in Algerian dinars", () => {
 test("checks finance permissions and never reads students directly", () => {
   assert.match(financeSource, /has_school_permission/);
   assert.match(financeSource, /has_branch_permission/);
+  assert.match(financeSource, /"finance\.expenses"/);
+  assert.match(financeSource, /if \(access\.canView\)/);
+  assert.match(financeSource, /if \(access\.canViewExpenses\)/);
   assert.equal(financeSource.includes('.from("students")'), false);
 });
 
@@ -95,4 +98,11 @@ test("the first finance page contains no data-entry forms", () => {
   assert.equal(financePageSource.includes("<form"), false);
   assert.equal(financePageSource.includes(".insert("), false);
   assert.equal(financePageSource.includes(".update("), false);
+});
+
+test("shows finance dashboard links only for their independent permissions", () => {
+  assert.match(financePageSource, /financeData\.canView &&/);
+  assert.match(financePageSource, /financeData\.canViewExpenses &&/);
+  assert.match(financePageSource, /setLocation\("\/finance\/expenses"\)/);
+  assert.match(financePageSource, /setLocation\("\/finance\/reports"\)/);
 });
