@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import FinanceNavigation from "@/components/FinanceNavigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDzd } from "@/lib/finance";
 import {
@@ -181,15 +182,6 @@ export default function FinancialReports() {
     branchId === null
       ? "مستوى المدرسة"
       : (branchNames.get(branchId) ?? "فرع غير متاح");
-
-  const financeLinks = [
-    { label: "الملخص", path: "/finance" },
-    { label: "خطط الرسوم", path: "/finance/fee-plans" },
-    { label: "الاستحقاقات", path: "/finance/charges" },
-    { label: "الدفعات", path: "/finance/payments" },
-    { label: "المصروفات", path: "/finance/expenses" },
-    { label: "التقارير", path: "/finance/reports" },
-  ];
 
   const tabs: Array<{ key: ReportTab; label: string; allowed: boolean }> =
     pageData
@@ -830,29 +822,11 @@ export default function FinancialReports() {
             </div>
           )}
         </div>
-        <nav
-          aria-label="التنقل المالي"
-          className="mx-auto mt-4 flex max-w-[1600px] gap-2 overflow-x-auto pb-1 print:hidden"
-        >
-          {financeLinks.map(link => (
-            <a
-              key={link.path}
-              href={link.path}
-              onClick={event => {
-                event.preventDefault();
-                setLocation(link.path);
-              }}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                link.path === "/finance/reports"
-                  ? "bg-[#0B4738] text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
       </header>
+      <FinanceNavigation
+        currentPath="/finance/reports"
+        className="mx-auto max-w-[1600px]"
+      />
       <main className="mx-auto max-w-[1600px] p-4 md:p-6">
         <div className="mb-5 hidden items-center gap-2 print:flex">
           <FileText size={20} />

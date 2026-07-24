@@ -22,6 +22,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import FinanceNavigation from "@/components/FinanceNavigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchFinanceDashboard,
@@ -547,6 +548,7 @@ export default function FinanceDashboard() {
           )}
         </header>
 
+        <FinanceNavigation currentPath="/finance" />
         <main className="flex-1 p-4 md:p-6">{renderContent()}</main>
       </div>
     </div>

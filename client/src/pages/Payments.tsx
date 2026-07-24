@@ -20,6 +20,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import FinanceNavigation from "@/components/FinanceNavigation";
 import {
   Dialog,
   DialogContent,
@@ -845,6 +846,7 @@ export default function Payments() {
           )}
         </header>
 
+        <FinanceNavigation currentPath="/finance/payments" />
         <main className="flex-1 p-4 md:p-6">{renderContent()}</main>
       </div>
 

@@ -21,6 +21,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import FinanceNavigation from "@/components/FinanceNavigation";
 import {
   Dialog,
   DialogContent,
@@ -304,14 +305,6 @@ export default function Expenses() {
     ],
     [isSchoolAdmin]
   );
-
-  const financeLinks = [
-    { label: "الملخص", path: "/finance" },
-    { label: "خطط الرسوم", path: "/finance/fee-plans" },
-    { label: "الاستحقاقات", path: "/finance/charges" },
-    { label: "الدفعات", path: "/finance/payments" },
-    { label: "المصروفات", path: "/finance/expenses" },
-  ];
 
   const SidebarContent = ({ showLabels }: { showLabels: boolean }) => (
     <>
@@ -798,30 +791,9 @@ export default function Expenses() {
               </Button>
             )}
           </div>
-          <nav
-            aria-label="التنقل المالي"
-            className="mt-4 flex gap-2 overflow-x-auto pb-1"
-          >
-            {financeLinks.map(link => (
-              <a
-                key={link.path}
-                href={link.path}
-                onClick={event => {
-                  event.preventDefault();
-                  setLocation(link.path);
-                }}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  link.path === "/finance/expenses"
-                    ? "bg-[#0B4738] text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
         </header>
 
+        <FinanceNavigation currentPath="/finance/expenses" />
         <main className="flex-1 p-4 md:p-6">{renderContent()}</main>
       </div>
 
