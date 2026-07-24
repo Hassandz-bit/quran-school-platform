@@ -162,8 +162,7 @@ export async function loadCurrentAuthorization(
           "membership_id",
           memberships.map(membership => membership.id)
         )
-        .in("school_id", schoolIds)
-        .is("branch_id", null);
+        .in("school_id", schoolIds);
 
     if (membershipRoleError) throw membershipRoleError;
 
@@ -205,7 +204,7 @@ export async function loadCurrentAuthorization(
       assignmentsByMembershipId.set(assignment.membership_id, assignments);
     }
 
-    const matchingMemberships = memberships
+    const activeMembershipsWithRoles = memberships
       .filter(membership => {
         const school = activeSchoolsById.get(membership.school_id);
         if (!school || school.id !== membership.school_id) return false;
@@ -217,16 +216,45 @@ export async function loadCurrentAuthorization(
             return (
               assignment.membership_id === membership.id &&
               assignment.school_id === membership.school_id &&
-              assignment.branch_id === null &&
-              role?.code === "school_admin" &&
               role?.school_id === membership.school_id
             );
           }
         );
-      })
-      .sort(compareMembershipAge);
+      });
 
-    const membership = matchingMemberships[0];
+    const schoolAdminMemberships = activeMembershipsWithRoles.filter(
+      membership =>
+        (assignmentsByMembershipId.get(membership.id) ?? []).some(
+          assignment => {
+            const role = activeRolesById.get(assignment.role_id);
+
+            return (
+              assignment.school_id === membership.school_id &&
+              assignment.branch_id === null &&
+              role?.school_id === membership.school_id &&
+              role.code === "school_admin"
+            );
+          }
+        )
+    );
+
+    const nonAdminMemberships = activeMembershipsWithRoles.filter(membership =>
+      (assignmentsByMembershipId.get(membership.id) ?? []).some(assignment => {
+        const role = activeRolesById.get(assignment.role_id);
+
+        return (
+          assignment.school_id === membership.school_id &&
+          role?.school_id === membership.school_id &&
+          role.code !== "school_admin"
+        );
+      })
+    );
+
+    const membership = (
+      schoolAdminMemberships.length > 0
+        ? schoolAdminMemberships
+        : nonAdminMemberships
+    ).sort(compareMembershipAge)[0];
 
     if (!membership) {
       return deniedAuthorization(AUTHORIZATION_MESSAGES.missingSchoolAdmin, {
@@ -239,8 +267,7 @@ export async function loadCurrentAuthorization(
       (assignmentsByMembershipId.get(membership.id) ?? [])
         .filter(
           assignment =>
-            assignment.school_id === membership.school_id &&
-            assignment.branch_id === null
+            assignment.school_id === membership.school_id
         )
         .map(assignment => assignment.role_id)
     );
@@ -249,6 +276,18 @@ export async function loadCurrentAuthorization(
         role.school_id === membership.school_id && selectedRoleIds.has(role.id)
     );
     const activeRoleCodes = [...new Set(roles.map(role => role.code))];
+    const isSchoolAdmin = (
+      assignmentsByMembershipId.get(membership.id) ?? []
+    ).some(assignment => {
+      const role = activeRolesById.get(assignment.role_id);
+
+      return (
+        assignment.school_id === membership.school_id &&
+        assignment.branch_id === null &&
+        role?.school_id === membership.school_id &&
+        role.code === "school_admin"
+      );
+    });
 
     return {
       profile,
@@ -257,7 +296,7 @@ export async function loadCurrentAuthorization(
       roles,
       activeRoleCodes,
       authorizationError: null,
-      isSchoolAdmin: true,
+      isSchoolAdmin,
     };
   } catch {
     return deniedAuthorization(AUTHORIZATION_MESSAGES.connectionError);

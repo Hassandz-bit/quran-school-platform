@@ -226,3 +226,28 @@ test("rejects a branch-scoped school_admin role", async () => {
     AUTHORIZATION_MESSAGES.missingSchoolAdmin
   );
 });
+
+test("loads a branch-scoped finance officer without granting school admin", async () => {
+  const { result } = await authorize({
+    school_memberships: [
+      membership("membership-finance", "school-active", "2024-01-01"),
+    ],
+    schools: [school("school-active")],
+    membership_roles: [
+      assignment(
+        "assignment-finance",
+        "membership-finance",
+        "school-active",
+        "role-finance",
+        "branch-1"
+      ),
+    ],
+    roles: [role("role-finance", "school-active", "finance_officer")],
+  });
+
+  assert.equal(result.authorizationError, null);
+  assert.equal(result.membership?.id, "membership-finance");
+  assert.equal(result.school?.id, "school-active");
+  assert.deepEqual(result.activeRoleCodes, ["finance_officer"]);
+  assert.equal(result.isSchoolAdmin, false);
+});

@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
+import FinanceRoute from "./components/FinanceRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Login from "./pages/Login";
@@ -16,6 +17,7 @@ import TeachersList from "./pages/TeachersList";
 import AddTeacherForm from "./pages/AddTeacherForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import FinanceDashboard from "./pages/FinanceDashboard";
 
 function Router() {
   return (
@@ -57,6 +59,11 @@ function Router() {
         <ProtectedRoute>
           <AddTeacherForm />
         </ProtectedRoute>
+      </Route>
+      <Route path="/finance">
+        <FinanceRoute>
+          <FinanceDashboard />
+        </FinanceRoute>
       </Route>
       <Route path="/">
         <Redirect to="/login" />

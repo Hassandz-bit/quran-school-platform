@@ -88,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [school, setSchool] = useState<School | null>(null);
   const [roles, setRoles] = useState<SchoolRole[]>([]);
   const [activeRoleCodes, setActiveRoleCodes] = useState<string[]>([]);
+  const [isSchoolAdmin, setIsSchoolAdmin] = useState(false);
   const [authorizationLoading, setAuthorizationLoading] = useState(false);
   const [authorizationError, setAuthorizationError] = useState<string | null>(
     null
@@ -102,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSchool(null);
       setRoles([]);
       setActiveRoleCodes([]);
+      setIsSchoolAdmin(false);
       setAuthorizationError(nextError);
       setAuthorizationLoading(false);
     },
@@ -125,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSchool(null);
       setRoles([]);
       setActiveRoleCodes([]);
+      setIsSchoolAdmin(false);
       setAuthorizationError(null);
 
       const authorization = await fetchCurrentAuthorization(client, userId);
@@ -136,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSchool(authorization.school);
       setRoles(authorization.roles);
       setActiveRoleCodes(authorization.activeRoleCodes);
+      setIsSchoolAdmin(authorization.isSchoolAdmin);
       setAuthorizationError(authorization.authorizationError);
       setAuthorizationLoading(false);
     },
@@ -300,7 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         activeRoleCodes,
         authorizationLoading,
         authorizationError,
-        isSchoolAdmin: activeRoleCodes.includes("school_admin"),
+        isSchoolAdmin,
         isPasswordRecovery,
         signInWithPassword,
         signOut,
