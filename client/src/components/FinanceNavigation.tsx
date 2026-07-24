@@ -59,7 +59,7 @@ export default function FinanceNavigation({
       {
         label: "خطط الرسوم",
         path: "/finance/fee-plans",
-        visible: access.canViewFinance,
+        visible: access.canManageFinance,
       },
       {
         label: "الاستحقاقات",
