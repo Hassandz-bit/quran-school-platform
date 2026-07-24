@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   ReceiptText,
+  ScrollText,
   RefreshCw,
   Settings,
   ShieldAlert,
@@ -21,6 +22,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import FinanceNavigation from "@/components/FinanceNavigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchFinanceDashboard,
@@ -108,34 +110,42 @@ export default function FinanceDashboard() {
 
   const summaryCards = financeData
     ? [
-        {
-          label: "الرسوم المستحقة",
-          value: formatDzd(financeData.dueFees),
-          helper: `${financeData.chargeCount} استحقاق`,
-          icon: CircleDollarSign,
-          iconClass: "bg-[#0B4738]/10 text-[#0B4738]",
-        },
-        {
-          label: "المبالغ المحصلة",
-          value: formatDzd(financeData.collected),
-          helper: `${financeData.paymentCount} دفعة`,
-          icon: Banknote,
-          iconClass: "bg-emerald-50 text-emerald-700",
-        },
-        {
-          label: "المتبقي",
-          value: formatDzd(financeData.remaining),
-          helper: "بعد خصم الدفعات المكتملة",
-          icon: WalletCards,
-          iconClass: "bg-amber-50 text-amber-700",
-        },
-        {
-          label: "المصروفات",
-          value: formatDzd(financeData.expenses),
-          helper: `${financeData.expenseCount} مصروف`,
-          icon: ReceiptText,
-          iconClass: "bg-rose-50 text-rose-700",
-        },
+        ...(financeData.canView
+          ? [
+              {
+                label: "الرسوم المستحقة",
+                value: formatDzd(financeData.dueFees),
+                helper: `${financeData.chargeCount} استحقاق`,
+                icon: CircleDollarSign,
+                iconClass: "bg-[#0B4738]/10 text-[#0B4738]",
+              },
+              {
+                label: "المبالغ المحصلة",
+                value: formatDzd(financeData.collected),
+                helper: `${financeData.paymentCount} دفعة`,
+                icon: Banknote,
+                iconClass: "bg-emerald-50 text-emerald-700",
+              },
+              {
+                label: "المتبقي",
+                value: formatDzd(financeData.remaining),
+                helper: "بعد خصم الدفعات المكتملة",
+                icon: WalletCards,
+                iconClass: "bg-amber-50 text-amber-700",
+              },
+            ]
+          : []),
+        ...(financeData.canViewExpenses
+          ? [
+              {
+                label: "المصروفات",
+                value: formatDzd(financeData.expenses),
+                helper: `${financeData.expenseCount} مصروف`,
+                icon: ReceiptText,
+                iconClass: "bg-rose-50 text-rose-700",
+              },
+            ]
+          : []),
       ]
     : [];
 
@@ -315,6 +325,7 @@ export default function FinanceDashboard() {
           </Card>
         )}
 
+        {financeData.canView && (
         <Card className="mt-6 border border-gray-100 bg-white p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
@@ -338,7 +349,9 @@ export default function FinanceDashboard() {
             </Button>
           </div>
         </Card>
+        )}
 
+        {financeData.canView && (
         <Card className="mt-4 border border-gray-100 bg-white p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
@@ -365,7 +378,36 @@ export default function FinanceDashboard() {
             </Button>
           </div>
         </Card>
+        )}
 
+        <Card className="mt-4 border border-gray-100 bg-white p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-sky-50 p-3 text-sky-700">
+                <ScrollText size={22} aria-hidden="true" />
+              </div>
+              <div>
+                <h2 className="font-bold text-[#2C3E50]">
+                  التقارير المالية
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  الاستحقاقات والتحصيلات والمتأخرات والمصروفات وصافي التدفق
+                  حسب الصلاحيات الفعلية.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocation("/finance/reports")}
+              className="border-sky-200 text-sky-700 hover:bg-sky-50"
+            >
+              فتح التقارير
+            </Button>
+          </div>
+        </Card>
+
+        {financeData.canView && (
         <Card className="mt-4 border border-gray-100 bg-white p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
@@ -392,6 +434,34 @@ export default function FinanceDashboard() {
             </Button>
           </div>
         </Card>
+        )}
+
+        {financeData.canViewExpenses && (
+          <Card className="mt-4 border border-gray-100 bg-white p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-rose-50 p-3 text-rose-700">
+                  <ReceiptText size={22} aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-[#2C3E50]">المصروفات</h2>
+                  <p className="mt-1 text-sm leading-6 text-gray-500">
+                    تسجيل المصروفات المدرسية والفرعية وتعديل القيود المسجلة
+                    أو إلغاؤها دون حذف.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLocation("/finance/expenses")}
+                className="border-rose-200 text-rose-700 hover:bg-rose-50"
+              >
+                فتح المصروفات
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {financeData.hasData && (
           <Card className="mt-6 border border-gray-100 bg-white p-6">
@@ -405,7 +475,11 @@ export default function FinanceDashboard() {
                 </p>
               </div>
               <span className="w-fit rounded-full bg-[#0B4738]/10 px-3 py-1.5 text-xs font-semibold text-[#0B4738]">
-                {financeData.canManage ? "صلاحية الإدارة متاحة" : "عرض فقط"}
+                {financeData.canManage
+                  ? "صلاحية الإدارة المالية متاحة"
+                  : financeData.canView
+                    ? "عرض المالية"
+                    : "إدارة المصروفات فقط"}
               </span>
             </div>
           </Card>
@@ -476,6 +550,7 @@ export default function FinanceDashboard() {
           )}
         </header>
 
+        <FinanceNavigation currentPath="/finance" />
         <main className="flex-1 p-4 md:p-6">{renderContent()}</main>
       </div>
     </div>
