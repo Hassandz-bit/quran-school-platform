@@ -86,6 +86,10 @@ test("uses one permission-aware financial navigation on every page", () => {
 });
 
 test("hides links according to the exact permission split", () => {
+  assert.match(
+    navigation,
+    /label: "خطط الرسوم"[\s\S]*?visible: access\.canManageFinance/
+  );
   assert.match(navigation, /visible: access\.canViewFinance/);
   assert.match(navigation, /visible: access\.canManageExpenses/);
   assert.match(
@@ -161,4 +165,22 @@ test("expense reports remain inaccessible without finance.expenses", () => {
   assert.match(reportData, /if \(access\.canViewExpenses\)/);
   assert.match(reports, /!pageData\.access\.canViewExpenses/);
   assert.match(reports, /finance\.expenses/);
+});
+
+test("lazy-loads every finance page behind an Arabic suspense fallback", () => {
+  for (const page of [
+    "FinanceDashboard",
+    "FeePlans",
+    "StudentCharges",
+    "Payments",
+    "Expenses",
+    "FinancialReports",
+  ]) {
+    assert.match(
+      app,
+      new RegExp(`lazy\\(\\(\\) => import\\("\\./pages/${page}"\\)\\)`)
+    );
+  }
+  assert.match(app, /<Suspense fallback=\{<FinancePageFallback \/>\}>/);
+  assert.match(app, /جارٍ تحميل الوحدة المالية/);
 });

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -17,16 +18,33 @@ import TeachersList from "./pages/TeachersList";
 import AddTeacherForm from "./pages/AddTeacherForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import FinanceDashboard from "./pages/FinanceDashboard";
-import FeePlans from "./pages/FeePlans";
-import StudentCharges from "./pages/StudentCharges";
-import Payments from "./pages/Payments";
-import Expenses from "./pages/Expenses";
-import FinancialReports from "./pages/FinancialReports";
+const FinanceDashboard = lazy(() => import("./pages/FinanceDashboard"));
+const FeePlans = lazy(() => import("./pages/FeePlans"));
+const StudentCharges = lazy(() => import("./pages/StudentCharges"));
+const Payments = lazy(() => import("./pages/Payments"));
+const Expenses = lazy(() => import("./pages/Expenses"));
+const FinancialReports = lazy(() => import("./pages/FinancialReports"));
+
+function FinancePageFallback() {
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4 text-[#2C3E50]"
+      dir="rtl"
+    >
+      <div className="flex items-center gap-3" role="status">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
+        <span className="text-sm font-medium">
+          جارٍ تحميل الوحدة المالية...
+        </span>
+      </div>
+    </main>
+  );
+}
 
 function Router() {
   return (
-    <Switch>
+    <Suspense fallback={<FinancePageFallback />}>
+      <Switch>
       <Route path="/login" component={Login} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
@@ -99,7 +117,8 @@ function Router() {
         <Redirect to="/login" />
       </Route>
       <Route component={NotFound} />
-    </Switch>
+      </Switch>
+    </Suspense>
   );
 }
 
