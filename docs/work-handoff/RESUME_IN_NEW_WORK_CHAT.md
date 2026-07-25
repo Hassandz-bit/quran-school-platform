@@ -18,21 +18,25 @@ https://github.com/Hassandz-bit/quran-school-platform/pull/21 على الفرع
 `tests/attendance-database.test.mjs`. تحتوي على جلسات حضور وسجلات حالات الطالب
 وسجل تدقيق append-only وصلاحيتي `attendance.view` و`attendance.manage` وRLS
 للمدرسة والفرع والحلقة. المعلم لا يصل إلا إلى حلقة ذات تعيين نشط عندما يكون
-`teachers.profile_id = auth.uid()`.
+`teachers.profile_id = auth.uid()`. القرار الأمني المعتمد هو أن
+`academic_supervisor` يملك `attendance.view` فقط ولا يملك
+`attendance.manage`.
 
 المطبّق وفق الحالة المؤكدة للمشروع هو migrations 001–012. Migration 013 غير
 مطبقة. لم يُشغّل SQL في عمل الحضور، ولم يُدمج PR الحضور، ولم تبدأ واجهة
 `/attendance` ولا مراحل الحفظ والتقارير.
 
-المهمة التالية: راجع Draft PR #21 وMigration 013 وسياسات RLS. لا تكرر إنشاء
-Migration أو فرع أو PR. بعد مراجعة بشرية ودمج PR وتطبيق Migration يدويًا،
-تحقق حيًا من ذلك قبل إنشاء Draft PR مستقل لواجهة `/attendance`.
+المهمة التالية: أكمل فحوص Draft PR #21 بعد تعديل صلاحية المشرف، وتحقق من
+Vercel وHead SHA، ثم حوّله إلى Ready وادمجه Squash باستخدام Head المتوقع.
+بعد الدمج فقط تحقق أن Migration 013 غير مسجلة، وطبّقها رسميًا مرة واحدة على
+المشروع `dexquxtymmoyfzehjicf`، ثم تحقق من الجداول والقيود والمنح وRLS. بعد
+نجاح ذلك أنشئ Draft PR مستقل لواجهة `/attendance` ولا تدمجه.
 
 القيود الأمنية: لا `service_role`، لا وصول `anon`، لا حذف مباشر، لا
 `select("*")`، لا تعديل migrations السابقة، لا بيانات إنتاج حساسة، ولا تجاوز
-RLS. راجع خصوصًا شرط ربط `teachers.profile_id` ومنح `academic_supervisor`
-للإدارة قبل التطبيق.
+RLS. حافظ على شرط ربط `teachers.profile_id`، وعلى كون
+`academic_supervisor` للعرض فقط.
 
 افحص أحدث `main` وجميع Pull Requests ذات الصلة قبل أي تعديل. لا تكرر الأعمال
-المنجزة. لا تدمج أي PR ولا تشغّل SQL على Supabase إلا إذا سمحت المهمة الجديدة
-بذلك صراحة. ابدأ مباشرة دون طلب تأكيد إضافي.
+المنجزة. تحقّق حيًا من GitHub وSupabase قبل المتابعة، ولا تعد تشغيل Migration
+مطبقة. لا تدمج Draft PR واجهة الحضور. ابدأ مباشرة دون طلب تأكيد إضافي.

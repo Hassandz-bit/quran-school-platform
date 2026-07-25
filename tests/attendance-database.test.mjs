@@ -46,12 +46,7 @@ test("attendance permission catalogue is not duplicated and built-in roles are s
   assert.match(migration, /'attendance\.manage'/);
   assert.match(migration, /on conflict \(code\) do update/i);
 
-  for (const role of [
-    "school_admin",
-    "branch_manager",
-    "academic_supervisor",
-    "teacher",
-  ]) {
+  for (const role of ["school_admin", "branch_manager", "teacher"]) {
     assert.match(
       migration,
       new RegExp(`\\('${role}', 'attendance\\.view'\\)`),
@@ -60,6 +55,40 @@ test("attendance permission catalogue is not duplicated and built-in roles are s
       migration,
       new RegExp(`\\('${role}', 'attendance\\.manage'\\)`),
     );
+  }
+
+  assert.match(
+    migration,
+    /\('academic_supervisor', 'attendance\.view'\)/,
+  );
+  assert.doesNotMatch(
+    migration,
+    /\('academic_supervisor', 'attendance\.manage'\)/,
+  );
+});
+
+test("view-only attendance access cannot insert or update", () => {
+  const sessionInsertPolicy = migration.match(
+    /create policy attendance_sessions_insert_authorized[\s\S]*?;\n/i,
+  )?.[0];
+  const recordInsertPolicy = migration.match(
+    /create policy attendance_records_insert_authorized[\s\S]*?;\n/i,
+  )?.[0];
+  const recordUpdatePolicy = migration.match(
+    /create policy attendance_records_update_authorized[\s\S]*?;\n/i,
+  )?.[0];
+
+  assert.ok(sessionInsertPolicy);
+  assert.ok(recordInsertPolicy);
+  assert.ok(recordUpdatePolicy);
+
+  for (const policy of [
+    sessionInsertPolicy,
+    recordInsertPolicy,
+    recordUpdatePolicy,
+  ]) {
+    assert.match(policy, /'attendance\.manage'/);
+    assert.doesNotMatch(policy, /'attendance\.view'/);
   }
 });
 
@@ -82,6 +111,25 @@ test("teacher access requires an active profile-linked class assignment", () => 
   assert.match(
     migration,
     /membership_role\.branch_id is null\s+or membership_role\.branch_id = target_branch_id/i,
+  );
+});
+
+test("school, branch, and class isolation is enforced in authorization and foreign keys", () => {
+  assert.match(
+    migration,
+    /target_class\.school_id = target_school_id[\s\S]*target_class\.branch_id = target_branch_id[\s\S]*target_class\.id = target_class_id/i,
+  );
+  assert.match(
+    migration,
+    /membership\.school_id = target_school_id[\s\S]*membership_role\.branch_id is null\s+or membership_role\.branch_id = target_branch_id/i,
+  );
+  assert.match(
+    migration,
+    /foreign key \(school_id, branch_id, class_id\)\s+references public\.classes\(school_id, branch_id, id\)/i,
+  );
+  assert.match(
+    migration,
+    /foreign key \(school_id, branch_id, class_id, session_id\)\s+references public\.attendance_sessions\(school_id, branch_id, class_id, id\)/i,
   );
 });
 
@@ -168,6 +216,38 @@ test("RLS is enabled and browser privileges are least-privilege", () => {
     migration,
     /attendance_sessions_update_authorized/i,
   );
+});
+
+test("anon has no attendance table or function access", () => {
+  assert.match(
+    migration,
+    /revoke all on public\.attendance_sessions,[\s\S]*from public, anon, authenticated/i,
+  );
+  assert.match(
+    migration,
+    /revoke execute on function public\.can_access_attendance_class[\s\S]*from anon/i,
+  );
+  assert.doesNotMatch(
+    migration,
+    /grant\s+(?:select|insert|update|delete|execute)[\s\S]*?\s+to\s+anon\s*;/i,
+  );
+  assert.doesNotMatch(migration, /for\s+(?:all|select|insert|update|delete)\s+to\s+anon/i);
+});
+
+test("security-definer attendance functions pin an empty search path", () => {
+  for (const functionName of [
+    "can_access_attendance_class",
+    "prepare_attendance_record",
+    "audit_attendance_record",
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(
+        `create or replace function public\\.${functionName}[\\s\\S]*?security definer\\s+set search_path = ''`,
+        "i",
+      ),
+    );
+  }
 });
 
 test("migration avoids forbidden access patterns", () => {

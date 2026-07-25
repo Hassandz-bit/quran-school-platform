@@ -47,10 +47,13 @@ Draft PR مستقل، دون دمج أو تشغيل SQL.
 - `pnpm install --frozen-lockfile`: ناجح مع pnpm 10.4.1 ومخزن مؤقت في
   `/tmp` بسبب منع الكتابة إلى `/root/.local`.
 - سياسة Work تجاهلت postinstall لـ`esbuild`، لكن `vite build` نجح.
-- `pnpm test`: 119/119 ناجحة، ومنها 8 اختبارات جديدة للحضور.
+- `pnpm test`: 115/115 ناجحة، ومنها 12 اختبارًا للحضور.
 - `pnpm check`: ناجح.
 - `pnpm build`: ناجح.
 - `git diff --check`: ناجح.
+- التثبيت النهائي استخدم pnpm 10.4.1 وlockfile مجمّدًا، مع
+  `--ignore-workspace` لأن ملف `pnpm-workspace.yaml` الحالي لا يحتوي
+  `packages`، ودون تعديل الملف.
 
 ## حالة PR
 
@@ -59,6 +62,8 @@ Draft PR مستقل، دون دمج أو تشغيل SQL.
 - الفرع: `agent/attendance-database-013`.
 - Base SHA: `b78990c47b4255647aa2662e3d6d91439c9bc615`.
 - Head SHA عند الفتح: `039dc453020fc4875993db52649db907b80c5b11`.
+- Head SHA المؤكد قبل تعديل قرار المشرف:
+  `e51f2d67f5e4963f37290cfe968878791c623489`.
 - Head الحي بعد تحديث هذا الملف يُقرأ من PR #21، لأن تضمين SHA الـcommit
   الجاري داخل الملف يغيّر SHA نفسه.
 - Draft: نعم.
@@ -71,13 +76,17 @@ Draft PR مستقل، دون دمج أو تشغيل SQL.
 - لم تُنشأ واجهة.
 - لم تبدأ Migration الحفظ.
 
-## المخاطر أو قرارات المراجعة
+## نتائج المراجعة الأمنية
 
 - ربط `teachers.profile_id` شرط لازم لوصول المعلم.
-- `academic_supervisor` يحصل مبدئيًا على العرض والإدارة.
-- يجب مراجعة الدالة `security definer` وسياسات RLS قبل تطبيق Migration.
+- `academic_supervisor` يحصل على `attendance.view` فقط، ولا يحصل على
+  `attendance.manage`.
+- سياسات INSERT وUPDATE تتطلب `attendance.manage` ولا تقبل العرض وحده.
+- عزل المدرسة والفرع والحلقة قائم عبر دالة التفويض والـFKs المركبة.
+- دوال `security definer` تضبط `search_path = ''`، وتنفيذ `anon` مسحوب.
+- لا توجد سياسة أو منحة DELETE.
 
 ## الخطوة التالية الدقيقة
 
-مراجعة Draft PR #21، ثم دمجه وتطبيق Migration 013 يدويًا خارج هذه المهمة.
-لا تبدأ واجهة الحضور قبل تأكيد الدمج والتطبيق.
+إكمال الفحوص الخمسة والتحقق من Vercel، ثم تحويل PR #21 إلى Ready ودمجه
+Squash باستخدام Head SHA المتوقع، وبعده تطبيق Migration 013 رسميًا مرة واحدة.

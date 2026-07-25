@@ -444,7 +444,6 @@ with grants (role_code, permission_code) as (
     ('branch_manager', 'attendance.view'),
     ('branch_manager', 'attendance.manage'),
     ('academic_supervisor', 'attendance.view'),
-    ('academic_supervisor', 'attendance.manage'),
     ('teacher', 'attendance.view'),
     ('teacher', 'attendance.manage')
 )
