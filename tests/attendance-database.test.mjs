@@ -160,6 +160,14 @@ test("RLS is enabled and browser privileges are least-privilege", () => {
     migration,
     /grant delete on public\.attendance_(?:sessions|records|record_history)/i,
   );
+  assert.doesNotMatch(
+    migration,
+    /grant update[^;]*on public\.attendance_sessions/i,
+  );
+  assert.doesNotMatch(
+    migration,
+    /attendance_sessions_update_authorized/i,
+  );
 });
 
 test("migration avoids forbidden access patterns", () => {
