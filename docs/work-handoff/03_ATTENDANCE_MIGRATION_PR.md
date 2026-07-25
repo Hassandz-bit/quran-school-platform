@@ -33,7 +33,7 @@ Draft PR مستقل، دون دمج أو تشغيل SQL.
   - `can_access_attendance_class`
   - `prepare_attendance_record`
   - `audit_attendance_record`
-- سياسات SELECT/INSERT/UPDATE للجلسات والسجلات.
+- سياسات SELECT/INSERT للجلسات، وسياسات SELECT/INSERT/UPDATE للسجلات.
 - سياسة SELECT فقط لسجل التدقيق.
 - لا سياسات أو منح DELETE.
 
