@@ -6,6 +6,7 @@ import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import FinanceRoute from "./components/FinanceRoute";
+import AttendanceRoute from "./components/AttendanceRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Login from "./pages/Login";
@@ -24,6 +25,7 @@ const StudentCharges = lazy(() => import("./pages/StudentCharges"));
 const Payments = lazy(() => import("./pages/Payments"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const FinancialReports = lazy(() => import("./pages/FinancialReports"));
+const Attendance = lazy(() => import("./pages/Attendance"));
 
 function FinancePageFallback() {
   return (
@@ -35,6 +37,22 @@ function FinancePageFallback() {
         <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
         <span className="text-sm font-medium">
           جارٍ تحميل الوحدة المالية...
+        </span>
+      </div>
+    </main>
+  );
+}
+
+function AttendancePageFallback() {
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4 text-[#2C3E50]"
+      dir="rtl"
+    >
+      <div className="flex items-center gap-3" role="status">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
+        <span className="text-sm font-medium">
+          جارٍ تحميل وحدة الحضور...
         </span>
       </div>
     </main>
@@ -112,6 +130,13 @@ function Router() {
         <FinanceRoute>
           <FinancialReports />
         </FinanceRoute>
+      </Route>
+      <Route path="/attendance">
+        <AttendanceRoute>
+          <Suspense fallback={<AttendancePageFallback />}>
+            <Attendance />
+          </Suspense>
+        </AttendanceRoute>
       </Route>
       <Route path="/">
         <Redirect to="/login" />

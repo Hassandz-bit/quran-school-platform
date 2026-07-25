@@ -44,6 +44,7 @@ const Dashboard: React.FC = () => {
       teachers: "المعلمون",
       classes: "الحلقات",
       finance: "المالية",
+      attendance: "الحضور",
       settings: "الإعدادات",
       logout: "تسجيل الخروج",
       welcome: "مرحبًا بك في لوحة التحكم",
@@ -79,6 +80,7 @@ const Dashboard: React.FC = () => {
       teachers: "Teachers",
       classes: "Classes",
       finance: "Finance",
+      attendance: "Attendance",
       settings: "Settings",
       logout: "Sign Out",
       welcome: "Welcome to Dashboard",
@@ -156,6 +158,7 @@ const Dashboard: React.FC = () => {
     { label: t.students, icon: Users, path: "/students" },
     { label: t.teachers, icon: GraduationCap, path: "/teachers" },
     { label: t.classes, icon: BookOpen, path: "/classes" },
+    { label: t.attendance, icon: Calendar, path: "/attendance" },
     {
       label: t.finance,
       icon: DollarSign,
