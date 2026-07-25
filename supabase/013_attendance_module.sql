@@ -469,8 +469,6 @@ from public, anon, authenticated;
 grant select on public.attendance_sessions to authenticated;
 grant insert (school_id, branch_id, class_id, session_date)
   on public.attendance_sessions to authenticated;
-grant update (session_date)
-  on public.attendance_sessions to authenticated;
 
 grant select on public.attendance_records to authenticated;
 grant insert (session_id, student_id, status, arrival_time, note)
@@ -504,26 +502,6 @@ for insert to authenticated
 with check (
   created_by = (select auth.uid())
   and public.can_access_attendance_class(
-    school_id,
-    branch_id,
-    class_id,
-    'attendance.manage'
-  )
-);
-
-create policy attendance_sessions_update_authorized
-on public.attendance_sessions
-for update to authenticated
-using (
-  public.can_access_attendance_class(
-    school_id,
-    branch_id,
-    class_id,
-    'attendance.manage'
-  )
-)
-with check (
-  public.can_access_attendance_class(
     school_id,
     branch_id,
     class_id,
@@ -602,7 +580,8 @@ using (
   )
 );
 
--- No browser DELETE grants or DELETE policies exist. Audit history is
--- append-only and has no browser INSERT or UPDATE privileges.
+-- Sessions are immutable after creation. No browser DELETE grants or DELETE
+-- policies exist. Audit history is append-only and has no browser INSERT or
+-- UPDATE privileges.
 
 commit;
