@@ -3,12 +3,13 @@
 ## الحالة الحية
 
 - المستودع: `Hassandz-bit/quran-school-platform`.
-- Draft PR: #22 — https://github.com/Hassandz-bit/quran-school-platform/pull/22.
-- الفرع: `agent/attendance-interface`.
+- PR: #22 — https://github.com/Hassandz-bit/quran-school-platform/pull/22.
+- الفرع المنفذ: `agent/attendance-interface`.
 - Base SHA: `efe6cd55b12cc2c7c172a27d0acee5e6669866cb`.
-- Head SHA للتنفيذ المختبر عند فتح PR: `697ef72ca52c3169c62b6c5969ba5ed88b813329`.
-- الحالة: مفتوح، Draft، قابل للدمج، وغير مدمج.
-- Vercel Preview: Ready — https://quran-school-platform-git-cc96b6-wadaker1437-gmailcoms-projects.vercel.app.
+- Head SHA النهائي: `6f590ec7e51c2183215ee9e146af3369485b1c25`.
+- الحالة: مدمج بطريقة Squash.
+- Squash Merge SHA: `157aea41f4fbc4de652a311e8637e84a149e64d8`.
+- Vercel على Merge SHA: Success.
 - Migration 013 مطبقة باسم `20260725005235 — 013_attendance_module`.
 - لا توجد Migration جديدة في PR #22.
 
@@ -27,7 +28,9 @@
 - نطاق الحلقة يتحقق عبر `can_access_attendance_class`.
 - لا تُجلب أسماء الفروع والحلقات إلا بعد فحص النطاق.
 - لا تُجلب بيانات الطالب إلا بعد فحص الحلقة، وبالأعمدة `id, first_name, last_name`.
+- الأدوار الحالية المخولة بالحضور تملك `students.view` ضمن نطاقها، وRLS الطلاب يبقى المرجع النهائي.
 - RLS وTriggers Migration 013 تتحقق مرة أخرى من المدرسة والفرع والحلقة والطالب وهوية المستخدم.
+- دالة `can_access_attendance_class` من نوع `SECURITY DEFINER` مقصودة؛ تعيد Boolean فقط، تتحقق من العضوية والنطاق، تضبط `search_path = ''`، ولا تُمنح لـ`anon`.
 
 ## الوظائف المنفذة
 
@@ -44,7 +47,7 @@
 - حالات التحميل والخطأ والفراغ والمنع ونجاح الحفظ.
 - لا حذف مباشر.
 
-## الملفات المتغيرة
+## الملفات التي دخلت عبر PR #22
 
 - `client/src/App.tsx`.
 - `client/src/components/AttendanceRoute.tsx`.
@@ -52,14 +55,7 @@
 - `client/src/pages/Attendance.tsx`.
 - `client/src/pages/Dashboard.tsx`.
 - `tests/attendance-interface.test.mjs`.
-- `docs/work-handoff/01_ATTENDANCE_DISCOVERY.md`.
-- `docs/work-handoff/02_ATTENDANCE_DATABASE_DESIGN.md`.
-- `docs/work-handoff/03_ATTENDANCE_MIGRATION_PR.md`.
-- `docs/work-handoff/04_ATTENDANCE_INTERFACE.md`.
-- `docs/work-handoff/CHANGELOG_WORK.md`.
-- `docs/work-handoff/CURRENT_PROJECT_STATE.md`.
-- `docs/work-handoff/NEXT_TASK.md`.
-- `docs/work-handoff/RESUME_IN_NEW_WORK_CHAT.md`.
+- ملفات الاستئناف داخل `docs/work-handoff/`.
 
 ## نتائج الاختبارات
 
@@ -70,10 +66,10 @@
 - `pnpm build`: ناجح.
 - `git diff --check`: ناجح.
 - chunk مستقل للواجهة: `22.12 kB`، gzip `7.20 kB`.
-- Vercel Preview: Success/Ready.
+- Vercel Preview وVercel بعد الدمج: Success.
 - التثبيت المجمّد نجح باستخدام pnpm 10.4.1 مع `--ignore-workspace --frozen-lockfile --offline`؛ الصيغة الحرفية تتوقف لأن `pnpm-workspace.yaml` الحالي لا يحتوي `packages`.
 
-## التحقق الحي من Supabase
+## التحقق من Supabase
 
 - Migration 013 مسجلة مرة واحدة ولم تُعد.
 - جداول الحضور الثلاثة موجودة وRLS مفعّل.
@@ -92,8 +88,8 @@
 - لا Migration جديدة.
 - لا بيانات طلاب حقيقية.
 
-## المتبقي
+## الخطوة التالية
 
-- مراجعة Draft PR #22 فقط على الرأس الحي.
-- إبقاء PR Draft وعدم دمجه.
-- لا تكرر التنفيذ أو تطبيق Migration 013.
+- اختبار قبول إنتاجي غير هدمي لمسار `/attendance`.
+- بعد نجاحه: تصميم قاعدة بيانات متابعة الحفظ والمراجعة في Migration التالية المتاحة داخل Draft PR مستقل.
+- لا تبدأ واجهة الحفظ قبل مراجعة ودمج وتطبيق Migration قاعدة الحفظ.
