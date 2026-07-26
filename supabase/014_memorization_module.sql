@@ -4,6 +4,27 @@
 
 begin;
 
+create or replace function public.quran_surah_ayah_count(
+  input_surah_number smallint
+)
+returns smallint
+language sql
+immutable
+strict
+parallel safe
+set search_path = ''
+as $$
+  select case
+    when input_surah_number between 1 and 114
+      then (array[7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111, 110, 98, 135, 112, 78, 118, 64, 77, 227, 93, 88, 69, 60, 34, 30, 73, 54, 45, 83, 182, 88, 75, 85, 54, 53, 89, 59, 37, 35, 38, 29, 18, 45, 60, 49, 62, 55, 78, 96, 29, 22, 24, 13, 14, 11, 11, 18, 12, 12, 30, 52, 52, 44, 28, 28, 20, 56, 40, 31, 50, 40, 46, 42, 29, 19, 36, 25, 22, 17, 19, 26, 30, 20, 15, 21, 11, 8, 8, 19, 5, 8, 8, 11, 11, 8, 3, 9, 5, 4, 7, 3, 6, 3, 5, 4, 5, 6]::smallint[])[input_surah_number]
+    else null
+  end;
+$$;
+
+revoke all on function public.quran_surah_ayah_count(smallint) from public;
+revoke execute on function public.quran_surah_ayah_count(smallint) from anon;
+grant execute on function public.quran_surah_ayah_count(smallint) to authenticated;
+
 create or replace function public.can_access_memorization_class(
   target_school_id uuid,
   target_branch_id uuid,
@@ -148,8 +169,8 @@ create table public.memorization_records (
     check (surah_number between 1 and 114),
   constraint memorization_records_ayah_range_check
     check (
-      ayah_start between 1 and 286
-      and ayah_end between 1 and 286
+      ayah_start between 1 and public.quran_surah_ayah_count(surah_number)
+      and ayah_end between 1 and public.quran_surah_ayah_count(surah_number)
       and ayah_start <= ayah_end
     ),
   constraint memorization_records_rating_check
@@ -175,7 +196,7 @@ comment on table public.memorization_records is
 comment on column public.memorization_records.session_type is
   'One of new_memorization, near_revision, distant_revision, or assessment.';
 comment on column public.memorization_records.surah_number is
-  'Quran surah number from 1 through 114; the UI maps the number to the Arabic name.';
+  'Quran surah number from 1 through 114.';
 comment on column public.memorization_records.rating is
   'Teacher rating from 1 through 5.';
 
@@ -346,6 +367,48 @@ begin
       raise exception using
         errcode = '23514',
         message = 'MEMORIZATION_IDENTITY_FIELDS_IMMUTABLE';
+    end if;
+
+    select exists (
+      select 1
+      from public.school_memberships as membership
+      join public.membership_roles as membership_role
+        on membership_role.school_id = membership.school_id
+       and membership_role.membership_id = membership.id
+      join public.roles as role
+        on role.school_id = membership_role.school_id
+       and role.id = membership_role.role_id
+       and role.status = 'active'
+      join public.role_permissions as role_permission
+        on role_permission.school_id = role.school_id
+       and role_permission.role_id = role.id
+      join public.permissions as permission
+        on permission.id = role_permission.permission_id
+      where membership.school_id = old.school_id
+        and membership.profile_id = (select auth.uid())
+        and membership.status = 'active'
+        and role.code <> 'teacher'
+        and permission.code = 'memorization.manage'
+        and (
+          membership_role.branch_id is null
+          or membership_role.branch_id = old.branch_id
+        )
+    ) into caller_has_non_teacher_manage;
+
+    if not caller_has_non_teacher_manage then
+      select teacher.profile_id
+        into resolved_teacher_profile_id
+      from public.teachers as teacher
+      where teacher.id = old.teacher_id
+        and teacher.school_id = old.school_id
+        and teacher.branch_id = old.branch_id
+        and teacher.status = 'active';
+
+      if resolved_teacher_profile_id is distinct from (select auth.uid()) then
+        raise exception using
+          errcode = '42501',
+          message = 'MEMORIZATION_TEACHER_UPDATE_FORBIDDEN';
+      end if;
     end if;
 
     new.last_modified_by := (select auth.uid());
