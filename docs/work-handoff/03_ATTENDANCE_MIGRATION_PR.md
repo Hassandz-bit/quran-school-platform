@@ -55,26 +55,30 @@ Draft PR مستقل، دون دمج أو تشغيل SQL.
   `--ignore-workspace` لأن ملف `pnpm-workspace.yaml` الحالي لا يحتوي
   `packages`، ودون تعديل الملف.
 
-## حالة PR
+## حالة PR النهائية
 
 - الرقم: #21.
 - الرابط: https://github.com/Hassandz-bit/quran-school-platform/pull/21
 - الفرع: `agent/attendance-database-013`.
 - Base SHA: `b78990c47b4255647aa2662e3d6d91439c9bc615`.
 - Head SHA عند الفتح: `039dc453020fc4875993db52649db907b80c5b11`.
-- Head SHA المؤكد قبل تعديل قرار المشرف:
-  `e51f2d67f5e4963f37290cfe968878791c623489`.
-- Head الحي بعد تحديث هذا الملف يُقرأ من PR #21، لأن تضمين SHA الـcommit
-  الجاري داخل الملف يغيّر SHA نفسه.
-- Draft: نعم.
-- الدمج: لم يتم.
-- SQL: لم يُشغّل.
+- Head SHA النهائي قبل الدمج:
+  `4807596e802cc3948a96779f231325e7840339bc`.
+- الحالة قبل الدمج: Ready وقابل للدمج.
+- Vercel Preview: Success.
+- الدمج: Squash مكتمل.
+- Merge SHA: `efe6cd55b12cc2c7c172a27d0acee5e6669866cb`.
 
-## ما لم يُنفذ
+## حالة تطبيق Migration 013
 
-- لم تُطبق Migration على Supabase.
-- لم تُنشأ واجهة.
-- لم تبدأ Migration الحفظ.
+- تحقق قبل التطبيق أنها غير مسجلة.
+- طُبقت مرة واحدة فقط بآلية migration الرسمية.
+- المشروع: `dexquxtymmoyfzehjicf`.
+- سجل migrations: `20260725005235 — 013_attendance_module`.
+- الجداول الثلاثة موجودة وRLS مفعّل عليها.
+- السياسات مطابقة للتصميم، ولا توجد سياسة أو منحة DELETE.
+- `anon` بلا وصول، والمشرف الأكاديمي يملك العرض دون الإدارة.
+- لم تُعد Migration سابقة ولم يُستخدم SQL يدوي عشوائي.
 
 ## نتائج المراجعة الأمنية
 
@@ -88,5 +92,4 @@ Draft PR مستقل، دون دمج أو تشغيل SQL.
 
 ## الخطوة التالية الدقيقة
 
-إكمال الفحوص الخمسة والتحقق من Vercel، ثم تحويل PR #21 إلى Ready ودمجه
-Squash باستخدام Head SHA المتوقع، وبعده تطبيق Migration 013 رسميًا مرة واحدة.
+إنشاء Draft PR مستقل لواجهة `/attendance` من Merge SHA أعلاه، وعدم دمجه.
