@@ -17,7 +17,44 @@ test("memorization migration creates records and append-only history", () => {
   assert.match(migration, /insert into public\.memorization_record_history/i);
 });
 
-test("memorization session types and Quran ranges are constrained", () => {
+test("surah verse counts use all 114 chapters and exact boundaries", () => {
+  const countFunction = migration.match(
+    /create or replace function public\.quran_surah_ayah_count[\s\S]*?\$\$;/i,
+  )?.[0];
+
+  assert.ok(countFunction);
+  assert.match(countFunction, /language sql\s+immutable\s+strict\s+parallel safe/i);
+
+  const arrayMatch = countFunction.match(
+    /array\[([\d,\s]+)\]::smallint\[\]/i,
+  );
+  assert.ok(arrayMatch);
+
+  const counts = arrayMatch[1]
+    .split(",")
+    .map((value) => Number(value.trim()));
+
+  assert.equal(counts.length, 114);
+  assert.equal(counts[0], 7, "Al-Fatihah must contain 7 ayat");
+  assert.equal(counts[1], 286, "Al-Baqarah must contain 286 ayat");
+  assert.equal(counts[107], 3, "Al-Kawthar must contain 3 ayat");
+  assert.equal(counts[113], 6, "An-Nas must contain 6 ayat");
+
+  assert.match(
+    migration,
+    /ayah_start between 1 and public\.quran_surah_ayah_count\(surah_number\)/i,
+  );
+  assert.match(
+    migration,
+    /ayah_end between 1 and public\.quran_surah_ayah_count\(surah_number\)/i,
+  );
+  assert.doesNotMatch(
+    migration,
+    /ayah_(?:start|end) between 1 and 286/i,
+  );
+});
+
+test("memorization session types and score fields are constrained", () => {
   for (const type of [
     "new_memorization",
     "near_revision",
@@ -26,9 +63,8 @@ test("memorization session types and Quran ranges are constrained", () => {
   ]) {
     assert.match(migration, new RegExp(`'${type}'`));
   }
+
   assert.match(migration, /surah_number between 1 and 114/i);
-  assert.match(migration, /ayah_start between 1 and 286/i);
-  assert.match(migration, /ayah_end between 1 and 286/i);
   assert.match(migration, /ayah_start <= ayah_end/i);
   assert.match(migration, /rating between 1 and 5/i);
   assert.match(migration, /errors_count between 0 and 100/i);
@@ -45,6 +81,7 @@ test("memorization permissions use least privilege for built-in roles", () => {
       new RegExp(`\\('${role}', 'memorization\\.manage'\\)`),
     );
   }
+
   assert.match(
     migration,
     /\('academic_supervisor', 'memorization\.view'\)/,
@@ -89,6 +126,14 @@ test("teacher-only writers cannot attribute records to another teacher", () => {
   assert.match(migration, /MEMORIZATION_TEACHER_IDENTITY_MISMATCH/);
 });
 
+test("teacher-only writers cannot update another teacher's record", () => {
+  assert.match(
+    migration,
+    /select teacher\.profile_id[\s\S]*where teacher\.id = old\.teacher_id/i,
+  );
+  assert.match(migration, /MEMORIZATION_TEACHER_UPDATE_FORBIDDEN/);
+});
+
 test("identity fields are derived and immutable while content updates remain audited", () => {
   assert.match(migration, /new\.school_id := resolved_school_id/i);
   assert.match(migration, /new\.branch_id := resolved_branch_id/i);
@@ -100,6 +145,7 @@ test("identity fields are derived and immutable while content updates remain aud
     migration,
     /new\.last_modified_by := \(select auth\.uid\(\)\)/i,
   );
+
   for (const field of [
     "school_id",
     "branch_id",
@@ -128,12 +174,14 @@ test("RLS separates view and manage and provides no delete path", () => {
       ),
     );
   }
+
   const insertPolicy = migration.match(
     /create policy memorization_records_insert_authorized[\s\S]*?;\n/i,
   )?.[0];
   const updatePolicy = migration.match(
     /create policy memorization_records_update_authorized[\s\S]*?;\n/i,
   )?.[0];
+
   assert.ok(insertPolicy);
   assert.ok(updatePolicy);
   assert.match(insertPolicy, /'memorization\.manage'/);
@@ -174,6 +222,7 @@ test("security-definer functions pin search_path and trigger functions are not b
       ),
     );
   }
+
   assert.match(
     migration,
     /revoke execute on function public\.prepare_memorization_record\(\) from anon, authenticated/i,
@@ -193,6 +242,10 @@ test("anon has no memorization table or function access", () => {
     migration,
     /revoke execute on function public\.can_access_memorization_class[\s\S]*from anon/i,
   );
+  assert.match(
+    migration,
+    /revoke execute on function public\.quran_surah_ayah_count\(smallint\) from anon/i,
+  );
   assert.doesNotMatch(
     migration,
     /grant\s+(?:select|insert|update|delete|execute)[\s\S]*?\s+to\s+anon\s*;/i,
@@ -202,6 +255,7 @@ test("anon has no memorization table or function access", () => {
 test("migration avoids forbidden patterns and adds covering foreign-key indexes", () => {
   assert.doesNotMatch(migration, /service_role/i);
   assert.doesNotMatch(migration, /select\s+(?:\w+\.)?\*/i);
+
   for (const index of [
     "memorization_records_class_scope_idx",
     "memorization_records_student_date_idx",
