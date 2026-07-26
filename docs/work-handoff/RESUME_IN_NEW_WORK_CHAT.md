@@ -2,47 +2,57 @@
 
 المستودع: `Hassandz-bit/quran-school-platform`.
 
-- أحدث `main`: `efe6cd55b12cc2c7c172a27d0acee5e6669866cb`.
-- آخر PR مدمج: PR #21 — https://github.com/Hassandz-bit/quran-school-platform/pull/21.
-- Head PR #21 النهائي: `4807596e802cc3948a96779f231325e7840339bc`.
-- Squash Merge SHA: `efe6cd55b12cc2c7c172a27d0acee5e6669866cb`.
+- آخر SHA وظيفي مؤكد على `main`: `157aea41f4fbc4de652a311e8637e84a149e64d8`.
+- آخر PR مدمج: PR #22 — https://github.com/Hassandz-bit/quran-school-platform/pull/22.
+- Head PR #22 النهائي: `6f590ec7e51c2183215ee9e146af3369485b1c25`.
+- Squash Merge SHA: `157aea41f4fbc4de652a311e8637e84a149e64d8`.
+- لا يوجد PR وظيفي مفتوح حاليًا.
+- تحقق حيًا من رأس `main` لأن commits توثيقية لاحقة قد تغيّر SHA دون تغيير الوظائف.
 
-Migration `supabase/013_attendance_module.sql` مطبقة رسميًا مرة واحدة على مشروع Supabase `dexquxtymmoyfzehjicf`، ومسجلة باسم `20260725005235 — 013_attendance_module`. migrations 001–013 مطبقة، ولا توجد Migration حضور غير مطبقة. لا تعِد تطبيق Migration 013 ولا أي Migration سابقة.
+Migration `supabase/013_attendance_module.sql` مطبقة رسميًا مرة واحدة على مشروع Supabase `dexquxtymmoyfzehjicf`، ومسجلة باسم `20260725005235 — 013_attendance_module`. migrations 001–013 مطبقة. لا تعِد تطبيق Migration 013 ولا أي Migration سابقة.
 
-العمل المفتوح هو Draft PR #22:
-https://github.com/Hassandz-bit/quran-school-platform/pull/22
+الوحدات المنجزة والمُدمجة:
 
-- العنوان: `feat: add permission-aware attendance interface`.
-- الفرع: `agent/attendance-interface`.
-- Base SHA: `efe6cd55b12cc2c7c172a27d0acee5e6669866cb`.
-- Head SHA للتنفيذ المختبر عند فتح PR: `697ef72ca52c3169c62b6c5969ba5ed88b813329`.
-- اقرأ Head النهائي حيًا من PR #22 لأن تحديث التوثيق اللاحق يغيّره.
-- الحالة: مفتوح، Draft، قابل للدمج، وغير مدمج.
-- Vercel Preview: Ready — https://quran-school-platform-git-cc96b6-wadaker1437-gmailcoms-projects.vercel.app.
+- المصادقة والمدارس والفروع والعضويات والأدوار والصلاحيات.
+- الطلاب والحلقات والمعلمون وتعيينات الحلقات.
+- الوحدة المالية كاملة.
+- قاعدة بيانات الحضور وسجل التدقيق وRLS.
+- واجهة `/attendance` العربية RTL والهاتف أولًا.
+- اختيار التاريخ والفرع والحلقة ضمن النطاق.
+- طلاب الحلقة النشطون فقط.
+- حاضر، غائب، متأخر، وغياب مبرر.
+- وقت التأخر، الملاحظات، تعيين الجميع حاضرًا، التعديل والحفظ الجماعي.
+- تحميل الجلسة السابقة، منع التكرار، الملخصات، وحالات التحميل والخطأ والفراغ والمنع والنجاح.
 
-الملفات المتغيرة في PR #22:
+قرار الصلاحيات الملزم:
 
-- `client/src/App.tsx`
-- `client/src/components/AttendanceRoute.tsx`
-- `client/src/lib/attendance.ts`
-- `client/src/pages/Attendance.tsx`
-- `client/src/pages/Dashboard.tsx`
-- `tests/attendance-interface.test.mjs`
-- `docs/work-handoff/01_ATTENDANCE_DISCOVERY.md`
-- `docs/work-handoff/02_ATTENDANCE_DATABASE_DESIGN.md`
-- `docs/work-handoff/03_ATTENDANCE_MIGRATION_PR.md`
-- `docs/work-handoff/04_ATTENDANCE_INTERFACE.md`
-- `docs/work-handoff/CHANGELOG_WORK.md`
-- `docs/work-handoff/CURRENT_PROJECT_STATE.md`
-- `docs/work-handoff/NEXT_TASK.md`
-- `docs/work-handoff/RESUME_IN_NEW_WORK_CHAT.md`
+- `academic_supervisor` يملك `attendance.view` فقط ولا يملك `attendance.manage`.
+- مستخدم العرض لا يرى أدوات الكتابة ولا يرسل عمليات كتابة.
+- `school_admin` و`branch_manager` و`teacher` يديرون ضمن نطاقهم، والمعلم مقيد بتعييناته النشطة.
+- RLS وTriggers هما المرجع النهائي.
 
-الواجهة المنجزة على `/attendance`: اختيار التاريخ والفرع والحلقة ضمن النطاق، طلاب الحلقة فقط، الحالات الأربع، وقت التأخر، الملاحظة، تعيين الجميع حاضرًا، التعديل، الحفظ الجماعي، تحميل السجل السابق، منع التكرار، الملخصات، وحالات التحميل والخطأ والفراغ والمنع والنجاح. الواجهة عربية RTL وهاتف أولًا.
+نتائج القبول الأخيرة:
 
-قرار الصلاحيات الملزم: `academic_supervisor` يملك `attendance.view` فقط ولا يملك `attendance.manage`. مستخدم العرض لا يرى أدوات الكتابة ولا يرسل عمليات كتابة؛ مستخدم الإدارة يكتب ضمن نطاقه، وRLS هو المرجع النهائي.
+- 135/135 اختبارًا ناجحًا.
+- 20/20 لاختبارات واجهة الحضور.
+- 12/12 لاختبارات قاعدة الحضور.
+- TypeScript والبناء و`git diff --check` ناجحة.
+- Vercel على Merge SHA لـPR #22: Success.
+- chunk الحضور: 22.12 kB، gzip 7.20 kB.
 
-نتائج القبول: 135/135 اختبارًا ناجحًا؛ 20/20 للواجهة و12/12 لقاعدة الحضور؛ `pnpm check` والبناء و`git diff --check` ناجحة؛ chunk الواجهة 22.12 kB وgzip 7.20 kB. التثبيت المجمّد نجح باستخدام pnpm 10.4.1 مع `--ignore-workspace --frozen-lockfile --offline` لأن `pnpm-workspace.yaml` الحالي بلا `packages`.
+القيود الأمنية:
 
-تحقق Supabase الحي: الجداول الثلاثة موجودة وRLS مفعّل؛ سياسات SELECT/INSERT/UPDATE موجودة حسب الحاجة؛ منح الكتابة لـ`authenticated` مقيدة بالأعمدة اللازمة؛ `anon` بلا وصول؛ لا DELETE؛ دوال الأمان تضبط `search_path = ''`؛ عزل المدرسة والفرع والحلقة قائم؛ المشرف الأكاديمي للعرض فقط.
+- لا `select("*")` ولا `service_role` ولا مفاتيح ثابتة ولا حذف مباشر.
+- لا وصول لـ`anon`.
+- دالة `can_access_attendance_class` من نوع `SECURITY DEFINER` مقصودة، تعيد Boolean فقط، تتحقق من العضوية والنطاق، وتضبط `search_path = ''`.
+- لا تشغّل SQL ولا تطبق Migration جديدة قبل مراجعة صريحة.
 
-المهمة التالية فقط: راجع Draft PR #22 على الرأس الحي، وتحقق من Vercel، واتركه Draft وغير مدمج. لا تنشئ Migration جديدة ولا تطبق SQL ولا تكرر ما سبق. تحقق حيًا من GitHub وSupabase قبل أي خطوة.
+المهمة التالية فقط:
+
+1. افحص أحدث `main` وPRs وSupabase حيًا.
+2. نفّذ اختبار قبول إنتاجي غير هدمي لمسار `/attendance` دون إنشاء بيانات دائمة.
+3. بعد نجاح القبول، صمّم قاعدة بيانات متابعة الحفظ والمراجعة في Migration التالية المتاحة داخل Draft PR مستقل فقط.
+4. لا تبدأ واجهة الحفظ قبل مراجعة ودمج وتطبيق Migration قاعدة الحفظ.
+5. لا تكرر PR #21 أو PR #22 أو Migration 013.
+
+ابدأ مباشرة دون طلب تأكيد إضافي، وتوقف فقط عند مانع أمني أو حاجة إلى Migration غير مراجعة.
