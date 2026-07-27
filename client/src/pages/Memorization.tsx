@@ -31,6 +31,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  fetchMemorizationManagerScope,
+  type MemorizationManagerScope,
+} from "@/lib/memorization-manager-scope";
+import {
   MEMORIZATION_SESSION_TYPES,
   QURAN_SURAHS,
   createMemorizationDraft,
@@ -66,6 +70,11 @@ const auditFieldLabels: Record<string, string> = {
   errors_count: "عدد الأخطاء",
   notes: "الملاحظات",
   next_assignment: "الواجب القادم",
+};
+
+const emptyManagerScope: MemorizationManagerScope = {
+  schoolWide: false,
+  branchIds: [],
 };
 
 function StateCard({
@@ -134,7 +143,8 @@ export default function Memorization() {
   const {
     school,
     session,
-    activeRoleCodes,
+    membership,
+    roles,
     isSchoolAdmin,
     signOut,
   } = useAuth();
@@ -142,6 +152,8 @@ export default function Memorization() {
   const [scope, setScope] = useState<MemorizationScope | null>(null);
   const [scopeLoading, setScopeLoading] = useState(true);
   const [scopeError, setScopeError] = useState<string | null>(null);
+  const [managerScope, setManagerScope] =
+    useState<MemorizationManagerScope>(emptyManagerScope);
   const [branchId, setBranchId] = useState("");
   const [classId, setClassId] = useState("");
   const [recordDate, setRecordDate] = useState(getTodayInputValue);
@@ -166,16 +178,33 @@ export default function Memorization() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
 
+  const branchManagerRoleIds = useMemo(
+    () =>
+      roles
+        .filter(role => role.code === "branch_manager")
+        .map(role => role.id),
+    [roles]
+  );
+
   const loadScope = useCallback(async () => {
-    if (!school?.id) return;
+    if (!school?.id || !membership?.id) return;
 
     setScopeLoading(true);
     setScopeError(null);
     setScope(null);
+    setManagerScope(emptyManagerScope);
 
     try {
-      const nextScope = await fetchMemorizationScope(school.id);
+      const [nextScope, nextManagerScope] = await Promise.all([
+        fetchMemorizationScope(school.id),
+        fetchMemorizationManagerScope(
+          school.id,
+          membership.id,
+          branchManagerRoleIds
+        ),
+      ]);
       setScope(nextScope);
+      setManagerScope(nextManagerScope);
       const firstClass = nextScope.classes[0];
       const firstBranchId =
         firstClass?.branchId ?? nextScope.branches[0]?.id ?? "";
@@ -189,7 +218,7 @@ export default function Memorization() {
     } finally {
       setScopeLoading(false);
     }
-  }, [school?.id]);
+  }, [branchManagerRoleIds, membership?.id, school?.id]);
 
   useEffect(() => {
     void loadScope();
@@ -226,8 +255,9 @@ export default function Memorization() {
   );
   const canManageSelectedClass = selectedClass?.canManage === true;
   const canChooseAssignedTeacher =
-    activeRoleCodes.includes("school_admin") ||
-    activeRoleCodes.includes("branch_manager");
+    isSchoolAdmin ||
+    managerScope.schoolWide ||
+    managerScope.branchIds.includes(branchId);
   const teacherRestrictedToOwnRecords =
     currentTeacherId !== null && !canChooseAssignedTeacher;
   const teacherSelectionDisabled =
