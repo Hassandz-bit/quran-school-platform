@@ -2,13 +2,14 @@
 
 ## الحالة
 
-- PR #26 مفتوح كمسودة:
+- PR #26:
   https://github.com/Hassandz-bit/quran-school-platform/pull/26
+- الحالة: مغلق ومُدمج بطريقة Squash Merge.
 - الفرع: `agent/memorization-interface`.
 - Base SHA: `206505f0fe5c1658afd9c3aa63d4d0cfcef1e4ea`.
-- Head التنفيذي عند فتح PR: `03cfe247e1b6d9d61db2d5c15f265a3dd3aa8c02`.
-- اقرأ Head الحي لأن commits التوثيق تغيّره.
-- Vercel: Success على الرأس التنفيذي.
+- Head النهائي: `5124129f4924a1cde4608d6ccc85902f8877cd2c`.
+- Merge SHA: `8b35634a5a61370a1268c7a9173d414f5cdd616f`.
+- Vercel على Merge SHA: Success.
 - لا SQL ولا Migration جديدة ولا تغيير Supabase.
 
 ## الملفات الوظيفية
@@ -16,6 +17,7 @@
 - `client/src/App.tsx`
 - `client/src/components/MemorizationRoute.tsx`
 - `client/src/lib/memorization.ts`
+- `client/src/lib/memorization-manager-scope.ts`
 - `client/src/pages/Memorization.tsx`
 - `client/src/pages/Dashboard.tsx`
 - `tests/memorization-interface.test.mjs`
@@ -42,30 +44,40 @@
 - `memorization.view`: عرض فقط دون أدوات أو طلبات كتابة.
 - `memorization.manage`: إنشاء وتعديل ضمن الحلقة المصرح بها.
 - المعلم مقيد بحلقاته والمعلم المرتبط بحسابه.
-- زر تعديل سجل معلم آخر لا يظهر للمعلم.
-- التحقق Server-side يبقى في RLS وtrigger الخاصة بـMigration 014.
+- مدير المدرسة يستطيع اختيار معلم نشط معيّن للحلقة.
+- مدير الفرع يستطيع ذلك داخل الفروع المعيّن مديرًا عليها فقط.
+- معلم السجل ثابت عند التعديل.
+- التحقق Server-side موجود في RLS وtriggers الخاصة بـMigration 014.
 
 ## الأمان
 
 - لا `select("*")`.
-- لا `service_role`.
+- لا `service_role` ولا `SUPABASE_SERVICE`.
 - لا `.delete()`.
 - تحقق صلاحية الحلقة قبل كل قراءة أو كتابة.
 - تحقق الطالب النشط والمعلم المعيّن قبل الحفظ.
-- INSERT لا يرسل `school_id` أو `recorded_by` أو `last_modified_by`؛ تضبطها قاعدة البيانات.
+- INSERT لا يرسل `school_id` أو `branch_id` أو `recorded_by` أو `last_modified_by`.
 - UPDATE يقتصر على الأعمدة القابلة للتعديل.
 
-## الاختبارات
+## الإصلاحات النهائية
 
-- أضيف اختبار واجهة مستقل يغطي المسار والصلاحيات والنطاق والمعلمين والسور وحدود الآيات والحفظ والتعديل والسجل والتدقيق والأنماط الممنوعة.
-- ما يزال مطلوبًا على Head النهائي:
-  - جميع اختبارات المشروع.
-  - اختبار الواجهة منفردًا.
-  - TypeScript.
-  - بناء الإنتاج.
-  - `git diff --check`.
-  - Vercel على SHA نفسه.
+- تصحيح الحساب مزدوج الدور حتى لا يُعامل المدير كمعلم فقط.
+- تقييد أدوات مدير الفرع بتعيينه الإداري الفعلي.
+- منع تغيير معلم السجل أثناء التعديل.
+- إصلاح إعادة تحميل بيانات الحلقة.
+- إضافة اختبارات انحدار للحالات السابقة.
 
-## قرار الدمج
+## الاختبارات والبناء
 
-يبقى PR #26 Draft حتى ينجح الفحص الكامل في Work ويُراجع أي مانع أمني أو وظيفي.
+- جميع اختبارات المشروع: `181/181` ناجحة.
+- اختبار الواجهة: `24/24` ناجحًا.
+- اختبار قاعدة الحفظ: `14/14` ناجحًا.
+- TypeScript: ناجح.
+- بناء الإنتاج: ناجح.
+- `git diff --check`: ناجح.
+- أمر `build` في `package.json` يشغّل الفحوصات السابقة قبل اكتمال النشر.
+- Vercel على Merge SHA: Success.
+
+## القرار النهائي
+
+واجهة متابعة الحفظ والمراجعة مدمجة على `main`. الخطوة التالية هي اختبار جاهزية وتشغيل بالأدوار الحقيقية أو ببيانات اختبار معزولة، دون إنشاء Migration أو تغيير بيانات الإنتاج تلقائيًا.
