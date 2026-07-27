@@ -28,6 +28,9 @@ const Expenses = lazy(() => import("./pages/Expenses"));
 const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
+const RosterAssignmentLauncher = lazy(
+  () => import("./components/RosterAssignmentLauncher")
+);
 
 function FinancePageFallback() {
   return (
@@ -92,6 +95,9 @@ function Router() {
         <Route path="/students">
           <ProtectedRoute>
             <StudentsList />
+            <Suspense fallback={null}>
+              <RosterAssignmentLauncher mode="student-class" />
+            </Suspense>
           </ProtectedRoute>
         </Route>
         <Route path="/students/new">
@@ -102,6 +108,9 @@ function Router() {
         <Route path="/classes">
           <ProtectedRoute>
             <ClassesList />
+            <Suspense fallback={null}>
+              <RosterAssignmentLauncher mode="class-teacher" />
+            </Suspense>
           </ProtectedRoute>
         </Route>
         <Route path="/classes/new">
