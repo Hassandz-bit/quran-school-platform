@@ -131,7 +131,13 @@ function getChangedLabels(entry: MemorizationAuditEntry): string[] {
 }
 
 export default function Memorization() {
-  const { school, session, isSchoolAdmin, signOut } = useAuth();
+  const {
+    school,
+    session,
+    activeRoleCodes,
+    isSchoolAdmin,
+    signOut,
+  } = useAuth();
   const [, setLocation] = useLocation();
   const [scope, setScope] = useState<MemorizationScope | null>(null);
   const [scopeLoading, setScopeLoading] = useState(true);
@@ -142,6 +148,7 @@ export default function Memorization() {
   const [workspace, setWorkspace] = useState<MemorizationWorkspace | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [workspaceReload, setWorkspaceReload] = useState(0);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [records, setRecords] = useState<MemorizationRecord[]>([]);
@@ -218,7 +225,13 @@ export default function Memorization() {
     [draft.surahNumber]
   );
   const canManageSelectedClass = selectedClass?.canManage === true;
-  const teacherLocked = currentTeacherId !== null;
+  const canChooseAssignedTeacher =
+    activeRoleCodes.includes("school_admin") ||
+    activeRoleCodes.includes("branch_manager");
+  const teacherRestrictedToOwnRecords =
+    currentTeacherId !== null && !canChooseAssignedTeacher;
+  const teacherSelectionDisabled =
+    teacherRestrictedToOwnRecords || Boolean(draft.recordId);
 
   useEffect(() => {
     if (!school?.id || !branchId || !classId) {
@@ -263,7 +276,14 @@ export default function Memorization() {
     return () => {
       active = false;
     };
-  }, [branchId, classId, recordDate, school?.id, session?.user.id]);
+  }, [
+    branchId,
+    classId,
+    recordDate,
+    school?.id,
+    session?.user.id,
+    workspaceReload,
+  ]);
 
   useEffect(() => {
     if (!school?.id || !branchId || !classId || !selectedStudentId) {
@@ -339,7 +359,7 @@ export default function Memorization() {
   const handleEditRecord = (record: MemorizationRecord) => {
     if (
       !canManageSelectedClass ||
-      (currentTeacherId && record.teacherId !== currentTeacherId)
+      (teacherRestrictedToOwnRecords && record.teacherId !== currentTeacherId)
     ) {
       return;
     }
@@ -635,7 +655,7 @@ export default function Memorization() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setClassId(current => current)}
+                onClick={() => setWorkspaceReload(current => current + 1)}
               >
                 <RefreshCw size={16} />
                 إعادة المحاولة
@@ -697,8 +717,12 @@ export default function Memorization() {
                       المعلم
                     </span>
                     <select
-                      value={currentTeacherId ?? draft.teacherId}
-                      disabled={teacherLocked}
+                      value={
+                        teacherRestrictedToOwnRecords
+                          ? (currentTeacherId ?? "")
+                          : draft.teacherId
+                      }
+                      disabled={teacherSelectionDisabled}
                       onChange={event => updateDraft({ teacherId: event.target.value })}
                       className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#0B4738] focus:ring-2 focus:ring-[#0B4738]/15 disabled:bg-gray-100"
                     >
@@ -708,9 +732,14 @@ export default function Memorization() {
                         </option>
                       ))}
                     </select>
-                    {teacherLocked && (
+                    {teacherRestrictedToOwnRecords && (
                       <span className="text-xs text-gray-500">
                         تم ربط السجل بحساب المعلم الحالي تلقائيًا.
+                      </span>
+                    )}
+                    {draft.recordId && !teacherRestrictedToOwnRecords && (
+                      <span className="text-xs text-gray-500">
+                        معلم السجل ثابت بعد الإنشاء ولا يمكن تغييره أثناء التعديل.
                       </span>
                     )}
                   </label>
@@ -945,7 +974,8 @@ export default function Memorization() {
                   const surah = getSurahByNumber(record.surahNumber);
                   const canEdit =
                     canManageSelectedClass &&
-                    (!currentTeacherId || record.teacherId === currentTeacherId);
+                    (!teacherRestrictedToOwnRecords ||
+                      record.teacherId === currentTeacherId);
                   const auditOpen = auditRecordId === record.id;
 
                   return (
