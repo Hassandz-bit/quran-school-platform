@@ -5,16 +5,20 @@ import test from "node:test";
 const read = path =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [app, route, page, data, dashboard, migration] = await Promise.all([
-  read("client/src/App.tsx"),
-  read("client/src/components/MemorizationRoute.tsx"),
-  read("client/src/pages/Memorization.tsx"),
-  read("client/src/lib/memorization.ts"),
-  read("client/src/pages/Dashboard.tsx"),
-  read("supabase/014_memorization_module.sql"),
-]);
+const [app, route, page, data, managerScope, dashboard, migration] =
+  await Promise.all([
+    read("client/src/App.tsx"),
+    read("client/src/components/MemorizationRoute.tsx"),
+    read("client/src/pages/Memorization.tsx"),
+    read("client/src/lib/memorization.ts"),
+    read("client/src/lib/memorization-manager-scope.ts"),
+    read("client/src/pages/Dashboard.tsx"),
+    read("supabase/014_memorization_module.sql"),
+  ]);
 
-const interfaceSources = [app, route, page, data, dashboard].join("\n");
+const interfaceSources = [app, route, page, data, managerScope, dashboard].join(
+  "\n"
+);
 
 test("registers a lazy Arabic memorization route", () => {
   assert.match(app, /lazy\(\(\) => import\("\.\/pages\/Memorization"\)\)/);
@@ -93,10 +97,16 @@ test("loads only active teachers assigned to the class", () => {
   assert.match(page, /تم ربط السجل بحساب المعلم الحالي تلقائيًا/);
 });
 
-test("keeps teacher-only accounts scoped while managers can choose assigned teachers", () => {
-  assert.match(page, /activeRoleCodes/);
-  assert.match(page, /activeRoleCodes\.includes\("school_admin"\)/);
-  assert.match(page, /activeRoleCodes\.includes\("branch_manager"\)/);
+test("keeps teacher-only accounts scoped while managers use their exact branch assignment", () => {
+  assert.match(
+    managerScope,
+    /\.from\("membership_roles"\)[\s\S]*?\.select\("role_id, branch_id"\)[\s\S]*?\.eq\("school_id", schoolId\)[\s\S]*?\.eq\("membership_id", membershipId\)[\s\S]*?\.in\("role_id", branchManagerRoleIds\)/
+  );
+  assert.match(page, /role\.code === "branch_manager"/);
+  assert.match(
+    page,
+    /isSchoolAdmin \|\|\s+managerScope\.schoolWide \|\|\s+managerScope\.branchIds\.includes\(branchId\)/
+  );
   assert.match(
     page,
     /const teacherRestrictedToOwnRecords =\s+currentTeacherId !== null && !canChooseAssignedTeacher/
