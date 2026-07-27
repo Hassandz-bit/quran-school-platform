@@ -93,6 +93,42 @@ test("loads only active teachers assigned to the class", () => {
   assert.match(page, /تم ربط السجل بحساب المعلم الحالي تلقائيًا/);
 });
 
+test("keeps teacher-only accounts scoped while managers can choose assigned teachers", () => {
+  assert.match(page, /activeRoleCodes/);
+  assert.match(page, /activeRoleCodes\.includes\("school_admin"\)/);
+  assert.match(page, /activeRoleCodes\.includes\("branch_manager"\)/);
+  assert.match(
+    page,
+    /const teacherRestrictedToOwnRecords =\s+currentTeacherId !== null && !canChooseAssignedTeacher/
+  );
+  assert.match(
+    page,
+    /teacherRestrictedToOwnRecords && record\.teacherId !== currentTeacherId/
+  );
+  assert.match(
+    page,
+    /!teacherRestrictedToOwnRecords \|\|\s+record\.teacherId === currentTeacherId/
+  );
+});
+
+test("keeps the record teacher immutable during updates", () => {
+  assert.match(
+    page,
+    /const teacherSelectionDisabled =\s+teacherRestrictedToOwnRecords \|\| Boolean\(draft\.recordId\)/
+  );
+  assert.match(page, /disabled=\{teacherSelectionDisabled\}/);
+  assert.match(page, /معلم السجل ثابت بعد الإنشاء ولا يمكن تغييره أثناء التعديل/);
+});
+
+test("retries workspace loading with an explicit reload token", () => {
+  assert.match(
+    page,
+    /const \[workspaceReload, setWorkspaceReload\] = useState\(0\)/
+  );
+  assert.match(page, /setWorkspaceReload\(current => current \+ 1\)/);
+  assert.match(page, /workspaceReload,/);
+});
+
 test("supports the four memorization session types", () => {
   for (const [value, label] of [
     ["new_memorization", "حفظ جديد"],
