@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   BookOpen,
+  BookOpenCheck,
   Calendar,
   DollarSign,
   GraduationCap,
@@ -45,6 +46,7 @@ const Dashboard: React.FC = () => {
       classes: "الحلقات",
       finance: "المالية",
       attendance: "الحضور",
+      memorization: "متابعة الحفظ",
       settings: "الإعدادات",
       logout: "تسجيل الخروج",
       welcome: "مرحبًا بك في لوحة التحكم",
@@ -59,7 +61,7 @@ const Dashboard: React.FC = () => {
       addStudent: "إضافة طالب",
       createClass: "إنشاء حلقة",
       addTeacher: "إضافة معلم",
-      recordPayment: "تسجيل دفعة",
+      recordMemorization: "تسجيل متابعة",
       comingSoon: "قريبًا",
       activeClassesSection: "الحلقات النشطة",
       viewAllClasses: "عرض جميع الحلقات",
@@ -67,9 +69,10 @@ const Dashboard: React.FC = () => {
       branch: "الفرع",
       schedule: "التوقيت",
       unavailableBranch: "غير متاح",
-      modulesInDevelopment: "وحدات قيد التطوير",
+      availableModules: "الوحدات المتاحة",
       attendanceModule: "الحضور والغياب",
-      financeModule: "المالية",
+      memorizationModule: "الحفظ والمراجعة",
+      availableNow: "متاح",
       loading: "جارٍ تحميل بيانات لوحة التحكم...",
       retry: "إعادة المحاولة",
     },
@@ -81,6 +84,7 @@ const Dashboard: React.FC = () => {
       classes: "Classes",
       finance: "Finance",
       attendance: "Attendance",
+      memorization: "Memorization",
       settings: "Settings",
       logout: "Sign Out",
       welcome: "Welcome to Dashboard",
@@ -95,7 +99,7 @@ const Dashboard: React.FC = () => {
       addStudent: "Add Student",
       createClass: "Create Class",
       addTeacher: "Add Teacher",
-      recordPayment: "Record Payment",
+      recordMemorization: "Record follow-up",
       comingSoon: "Coming soon",
       activeClassesSection: "Active Classes",
       viewAllClasses: "View all classes",
@@ -103,9 +107,10 @@ const Dashboard: React.FC = () => {
       branch: "Branch",
       schedule: "Schedule",
       unavailableBranch: "Unavailable",
-      modulesInDevelopment: "Modules in Development",
+      availableModules: "Available modules",
       attendanceModule: "Attendance and Absence",
-      financeModule: "Finance",
+      memorizationModule: "Memorization and Revision",
+      availableNow: "Available",
       loading: "Loading dashboard data...",
       retry: "Try again",
     },
@@ -124,7 +129,6 @@ const Dashboard: React.FC = () => {
     }
 
     setIsLoading(true);
-
     try {
       setDashboardData(await fetchDashboardData(school.id));
     } catch {
@@ -141,12 +145,10 @@ const Dashboard: React.FC = () => {
   const handleLogout = async () => {
     try {
       const { error } = await signOut();
-
       if (error) {
         toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
         return;
       }
-
       setLocation("/login");
     } catch {
       toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
@@ -160,10 +162,11 @@ const Dashboard: React.FC = () => {
     { label: t.classes, icon: BookOpen, path: "/classes" },
     { label: t.attendance, icon: Calendar, path: "/attendance" },
     {
-      label: t.finance,
-      icon: DollarSign,
-      path: "/finance",
+      label: t.memorization,
+      icon: BookOpenCheck,
+      path: "/memorization",
     },
+    { label: t.finance, icon: DollarSign, path: "/finance" },
     { label: t.settings, icon: Settings, path: null },
   ];
 
@@ -211,20 +214,20 @@ const Dashboard: React.FC = () => {
 
   const SidebarContent = ({ showLabels }: { showLabels: boolean }) => (
     <>
-      <div className="p-5 border-b border-white/10">
+      <div className="border-b border-white/10 p-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center bg-[#C8A26A]">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#C8A26A]">
             <span className="text-lg font-bold text-[#0B4738]">ق</span>
           </div>
           {showLabels && (
-            <span className="text-white font-semibold text-sm line-clamp-2">
+            <span className="line-clamp-2 text-sm font-semibold text-white">
               {school?.name ?? t.school}
             </span>
           )}
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 space-y-1 p-3">
         {menuItems.map(item => {
           const itemContent = (
             <>
@@ -268,11 +271,11 @@ const Dashboard: React.FC = () => {
         })}
       </nav>
 
-      <div className="p-3 border-t border-white/10">
+      <div className="border-t border-white/10 p-3">
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-red-500/20 hover:text-white transition-all duration-200"
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-white/70 transition-all duration-200 hover:bg-red-500/20 hover:text-white"
         >
           <LogOut size={20} className="shrink-0" />
           {showLabels && <span className="text-sm font-medium">{t.logout}</span>}
@@ -284,7 +287,7 @@ const Dashboard: React.FC = () => {
   const renderDashboardContent = () => {
     if (isLoading) {
       return (
-        <Card className="p-10 text-center text-gray-500 border border-gray-100">
+        <Card className="border border-gray-100 p-10 text-center text-gray-500">
           <RefreshCw className="mx-auto mb-3 animate-spin" size={24} />
           <p role="status">{t.loading}</p>
         </Card>
@@ -293,8 +296,8 @@ const Dashboard: React.FC = () => {
 
     if (loadError || !dashboardData) {
       return (
-        <Card className="p-10 text-center border border-red-100" role="alert">
-          <p className="text-red-700 mb-4">
+        <Card className="border border-red-100 p-10 text-center" role="alert">
+          <p className="mb-4 text-red-700">
             {getDashboardErrorMessage(loadError ?? "load", language)}
           </p>
           <Button type="button" variant="outline" onClick={() => void loadDashboard()}>
@@ -307,16 +310,16 @@ const Dashboard: React.FC = () => {
 
     return (
       <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {statCards.map(stat => (
             <Card
               key={stat.label}
-              className="p-5 hover:shadow-md transition-shadow border border-gray-100"
+              className="border border-gray-100 p-5 transition-shadow hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-gray-500 text-sm mb-1">{stat.label}</p>
-                  <p className="text-xl font-bold text-[#2C3E50] break-words">
+                  <p className="mb-1 text-sm text-gray-500">{stat.label}</p>
+                  <p className="break-words text-xl font-bold text-[#2C3E50]">
                     {stat.value}
                   </p>
                   {stat.description && (
@@ -325,7 +328,7 @@ const Dashboard: React.FC = () => {
                     </p>
                   )}
                 </div>
-                <div className={`${stat.bgColor} shrink-0 p-3 rounded-xl`}>
+                <div className={`${stat.bgColor} shrink-0 rounded-xl p-3`}>
                   <stat.icon className={stat.iconColor} size={22} />
                 </div>
               </div>
@@ -334,14 +337,14 @@ const Dashboard: React.FC = () => {
         </div>
 
         <section>
-          <h2 className="text-lg font-bold text-[#2C3E50] mb-4">
+          <h2 className="mb-4 text-lg font-bold text-[#2C3E50]">
             {t.quickActions}
           </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Button
               type="button"
               onClick={() => setLocation("/students/new")}
-              className="h-auto py-4 flex flex-col gap-2 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.97]"
+              className="flex h-auto flex-col gap-2 rounded-xl py-4 font-medium text-white transition-all duration-200 hover:shadow-md active:scale-[0.97]"
               style={{ backgroundColor: "#0B4738" }}
             >
               <Plus size={20} />
@@ -350,7 +353,7 @@ const Dashboard: React.FC = () => {
             <Button
               type="button"
               onClick={() => setLocation("/classes/new")}
-              className="h-auto py-4 flex flex-col gap-2 font-medium rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.97] border-2 border-[#0B4738] text-[#0B4738] bg-transparent hover:bg-[#0B4738]/5"
+              className="flex h-auto flex-col gap-2 rounded-xl border-2 border-[#0B4738] bg-transparent py-4 font-medium text-[#0B4738] transition-all duration-200 hover:bg-[#0B4738]/5 hover:shadow-md active:scale-[0.97]"
               variant="outline"
             >
               <Plus size={20} />
@@ -359,7 +362,7 @@ const Dashboard: React.FC = () => {
             <Button
               type="button"
               onClick={() => setLocation("/teachers/new")}
-              className="h-auto py-4 flex flex-col gap-2 font-medium rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.97] border-2 border-[#C8A26A] text-[#9A7137] bg-transparent hover:bg-[#C8A26A]/5"
+              className="flex h-auto flex-col gap-2 rounded-xl border-2 border-[#C8A26A] bg-transparent py-4 font-medium text-[#9A7137] transition-all duration-200 hover:bg-[#C8A26A]/5 hover:shadow-md active:scale-[0.97]"
               variant="outline"
             >
               <GraduationCap size={20} />
@@ -367,19 +370,18 @@ const Dashboard: React.FC = () => {
             </Button>
             <Button
               type="button"
-              disabled
-              className="h-auto cursor-not-allowed py-4 flex flex-col gap-1 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-400 opacity-100"
+              onClick={() => setLocation("/memorization")}
+              className="flex h-auto flex-col gap-2 rounded-xl border-2 border-[#0B4738] bg-[#0B4738]/5 py-4 font-medium text-[#0B4738] transition-all duration-200 hover:bg-[#0B4738]/10 hover:shadow-md active:scale-[0.97]"
               variant="outline"
             >
-              <DollarSign size={20} />
-              <span className="text-xs">{t.recordPayment}</span>
-              <span className="text-[10px]">{t.comingSoon}</span>
+              <BookOpenCheck size={20} />
+              <span className="text-xs">{t.recordMemorization}</span>
             </Button>
           </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-5 border border-gray-100">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card className="border border-gray-100 p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-bold text-[#2C3E50]">
                 {t.activeClassesSection}
@@ -438,30 +440,43 @@ const Dashboard: React.FC = () => {
             )}
           </Card>
 
-          <Card className="p-5 border border-gray-100">
-            <h2 className="text-base font-bold text-[#2C3E50] mb-4">
-              {t.modulesInDevelopment}
+          <Card className="border border-gray-100 p-5">
+            <h2 className="mb-4 text-base font-bold text-[#2C3E50]">
+              {t.availableModules}
             </h2>
             <div className="space-y-3">
               {[
-                { label: t.attendanceModule, status: t.comingSoon, icon: Calendar },
+                {
+                  label: t.attendanceModule,
+                  status: t.availableNow,
+                  icon: Calendar,
+                  path: "/attendance",
+                },
+                {
+                  label: t.memorizationModule,
+                  status: t.availableNow,
+                  icon: BookOpenCheck,
+                  path: "/memorization",
+                },
               ].map(module => (
-                <div
+                <button
                   key={module.label}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4"
+                  type="button"
+                  onClick={() => setLocation(module.path)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 text-start transition hover:border-[#0B4738]/20 hover:bg-[#0B4738]/5"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-white p-2 text-[#0B4738]">
+                  <span className="flex items-center gap-3">
+                    <span className="rounded-lg bg-white p-2 text-[#0B4738]">
                       <module.icon size={18} />
-                    </div>
+                    </span>
                     <span className="text-sm font-medium text-[#2C3E50]">
                       {module.label}
                     </span>
-                  </div>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-xs text-gray-500">
+                  </span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs text-emerald-700">
                     {module.status}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </Card>
@@ -472,13 +487,11 @@ const Dashboard: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen bg-[#F8F9FA] flex"
+      className="flex min-h-screen bg-[#F8F9FA]"
       dir={language === "ar" ? "rtl" : "ltr"}
     >
       <aside
-        className={`hidden md:flex ${
-          sidebarOpen ? "w-64" : "w-20"
-        } flex-col transition-all duration-300 shadow-xl`}
+        className={`hidden ${sidebarOpen ? "w-64" : "w-20"} flex-col shadow-xl transition-all duration-300 md:flex`}
         style={{ backgroundColor: "#0B4738" }}
       >
         <SidebarContent showLabels={sidebarOpen} />
@@ -491,7 +504,7 @@ const Dashboard: React.FC = () => {
             onClick={() => setMobileSidebarOpen(false)}
           />
           <aside
-            className="absolute top-0 right-0 bottom-0 w-72 flex flex-col shadow-xl"
+            className="absolute bottom-0 right-0 top-0 flex w-72 flex-col shadow-xl"
             style={{ backgroundColor: "#0B4738" }}
           >
             <SidebarContent showLabels />
@@ -499,9 +512,9 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-4 shadow-sm md:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => {
@@ -511,7 +524,7 @@ const Dashboard: React.FC = () => {
                   setSidebarOpen(!sidebarOpen);
                 }
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="rounded-lg p-2 transition-colors hover:bg-gray-100"
               aria-label={language === "ar" ? "القائمة" : "Menu"}
             >
               {mobileSidebarOpen ? (
@@ -520,16 +533,16 @@ const Dashboard: React.FC = () => {
                 <Menu size={22} className="text-gray-600" />
               )}
             </button>
-            <h2 className="text-lg font-semibold text-[#2C3E50] hidden sm:block truncate">
+            <h2 className="hidden truncate text-lg font-semibold text-[#2C3E50] sm:block">
               {school?.name ?? t.school}
             </h2>
           </div>
 
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
             <button
               type="button"
               onClick={() => setLanguage("ar")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
                 language === "ar"
                   ? "bg-[#0B4738] text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -540,7 +553,7 @@ const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => setLanguage("en")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
                 language === "en"
                   ? "bg-[#0B4738] text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -551,15 +564,15 @@ const Dashboard: React.FC = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 md:p-6 space-y-6">
+        <main className="flex-1 space-y-6 overflow-auto p-4 md:p-6">
           <section
             className="rounded-xl p-6 text-white shadow-lg"
             style={{ backgroundColor: "#0B4738" }}
           >
-            <h1 className="text-2xl md:text-3xl font-bold mb-2 text-white">
+            <h1 className="mb-2 text-2xl font-bold text-white md:text-3xl">
               {t.welcome}
             </h1>
-            <p className="text-white/80 text-sm">
+            <p className="text-sm text-white/80">
               {school?.name ?? t.school}
               {" · "}
               {language === "ar"

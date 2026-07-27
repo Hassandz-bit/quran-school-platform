@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node --test tests/*.test.mjs && node --test tests/memorization-interface.test.mjs && node --test tests/memorization-database.test.mjs && tsc --noEmit && vite build && git diff --check",
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs"

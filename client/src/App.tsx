@@ -7,6 +7,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
+import MemorizationRoute from "./components/MemorizationRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Login from "./pages/Login";
@@ -26,6 +27,7 @@ const Payments = lazy(() => import("./pages/Payments"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Attendance = lazy(() => import("./pages/Attendance"));
+const Memorization = lazy(() => import("./pages/Memorization"));
 
 function FinancePageFallback() {
   return (
@@ -59,89 +61,112 @@ function AttendancePageFallback() {
   );
 }
 
+function MemorizationPageFallback() {
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4 text-[#2C3E50]"
+      dir="rtl"
+    >
+      <div className="flex items-center gap-3" role="status">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
+        <span className="text-sm font-medium">
+          جارٍ تحميل وحدة متابعة الحفظ...
+        </span>
+      </div>
+    </main>
+  );
+}
+
 function Router() {
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
-      <Route path="/login" component={Login} />
-      <Route path="/forgot-password" component={ForgotPassword} />
-      <Route path="/reset-password" component={ResetPassword} />
-      <Route path="/dashboard">
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/students">
-        <ProtectedRoute>
-          <StudentsList />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/students/new">
-        <ProtectedRoute>
-          <AddStudentForm />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/classes">
-        <ProtectedRoute>
-          <ClassesList />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/classes/new">
-        <ProtectedRoute>
-          <AddClassForm />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/teachers">
-        <ProtectedRoute>
-          <TeachersList />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/teachers/new">
-        <ProtectedRoute>
-          <AddTeacherForm />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/finance">
-        <FinanceRoute>
-          <FinanceDashboard />
-        </FinanceRoute>
-      </Route>
-      <Route path="/finance/fee-plans">
-        <FinanceRoute>
-          <FeePlans />
-        </FinanceRoute>
-      </Route>
-      <Route path="/finance/charges">
-        <FinanceRoute>
-          <StudentCharges />
-        </FinanceRoute>
-      </Route>
-      <Route path="/finance/payments">
-        <FinanceRoute>
-          <Payments />
-        </FinanceRoute>
-      </Route>
-      <Route path="/finance/expenses">
-        <FinanceRoute>
-          <Expenses />
-        </FinanceRoute>
-      </Route>
-      <Route path="/finance/reports">
-        <FinanceRoute>
-          <FinancialReports />
-        </FinanceRoute>
-      </Route>
-      <Route path="/attendance">
-        <AttendanceRoute>
-          <Suspense fallback={<AttendancePageFallback />}>
-            <Attendance />
-          </Suspense>
-        </AttendanceRoute>
-      </Route>
-      <Route path="/">
-        <Redirect to="/login" />
-      </Route>
-      <Route component={NotFound} />
+        <Route path="/login" component={Login} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/dashboard">
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/students">
+          <ProtectedRoute>
+            <StudentsList />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/students/new">
+          <ProtectedRoute>
+            <AddStudentForm />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/classes">
+          <ProtectedRoute>
+            <ClassesList />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/classes/new">
+          <ProtectedRoute>
+            <AddClassForm />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/teachers">
+          <ProtectedRoute>
+            <TeachersList />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/teachers/new">
+          <ProtectedRoute>
+            <AddTeacherForm />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/finance">
+          <FinanceRoute>
+            <FinanceDashboard />
+          </FinanceRoute>
+        </Route>
+        <Route path="/finance/fee-plans">
+          <FinanceRoute>
+            <FeePlans />
+          </FinanceRoute>
+        </Route>
+        <Route path="/finance/charges">
+          <FinanceRoute>
+            <StudentCharges />
+          </FinanceRoute>
+        </Route>
+        <Route path="/finance/payments">
+          <FinanceRoute>
+            <Payments />
+          </FinanceRoute>
+        </Route>
+        <Route path="/finance/expenses">
+          <FinanceRoute>
+            <Expenses />
+          </FinanceRoute>
+        </Route>
+        <Route path="/finance/reports">
+          <FinanceRoute>
+            <FinancialReports />
+          </FinanceRoute>
+        </Route>
+        <Route path="/attendance">
+          <AttendanceRoute>
+            <Suspense fallback={<AttendancePageFallback />}>
+              <Attendance />
+            </Suspense>
+          </AttendanceRoute>
+        </Route>
+        <Route path="/memorization">
+          <MemorizationRoute>
+            <Suspense fallback={<MemorizationPageFallback />}>
+              <Memorization />
+            </Suspense>
+          </MemorizationRoute>
+        </Route>
+        <Route path="/">
+          <Redirect to="/login" />
+        </Route>
+        <Route component={NotFound} />
       </Switch>
     </Suspense>
   );
