@@ -1,0 +1,44 @@
+name: Fingerprint Issue 31 builds
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  fingerprint:
+    if: github.head_ref == 'agent/fix-memorization-runtime-update'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: before-pr30
+            sha: acd61bdf79ebc196e35d736f1a786a1c7aae5e39
+          - label: after-pr30
+            sha: e4416758218ee62d4eff2c567900cdb7b7f419fc
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          corepack enable
+          corepack prepare pnpm@10.4.1 --activate
+          pnpm install --ignore-workspace --frozen-lockfile
+      - name: Build and print fingerprints
+        run: |
+          ./node_modules/.bin/vite build
+          echo "LABEL=${{ matrix.label }}"
+          echo "SHA=${{ matrix.sha }}"
+          find dist -type f -name '*.js' -printf '%f\n' | sort
+          echo '--- target chunks ---'
+          find dist -type f \( -name 'index-*.js' -o -name 'Memorization-*.js' \) -printf '%f %s bytes\n' | sort
+          echo '--- repair strings ---'
+          grep -RIl --include='Memorization-*.js' 'وضع التعديل' dist || true
+          grep -RIl --include='Memorization-*.js' 'الحفظ القادم سيعدّل السجل الحالي' dist || true
+          grep -RIl --include='Memorization-*.js' 'تم حفظ السجل، وأصبح النموذج في وضع التعديل' dist || true
