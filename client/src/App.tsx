@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
+import MembersRoute from "./components/MembersRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Login from "./pages/Login";
@@ -28,6 +29,7 @@ const Expenses = lazy(() => import("./pages/Expenses"));
 const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
+const Members = lazy(() => import("./pages/Members"));
 const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
 );
@@ -74,6 +76,22 @@ function MemorizationPageFallback() {
         <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
         <span className="text-sm font-medium">
           جارٍ تحميل وحدة متابعة الحفظ...
+        </span>
+      </div>
+    </main>
+  );
+}
+
+function MembersPageFallback() {
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4 text-[#2C3E50]"
+      dir="rtl"
+    >
+      <div className="flex items-center gap-3" role="status">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
+        <span className="text-sm font-medium">
+          جارٍ تحميل دليل أعضاء المدرسة...
         </span>
       </div>
     </main>
@@ -171,6 +189,13 @@ function Router() {
               <Memorization />
             </Suspense>
           </MemorizationRoute>
+        </Route>
+        <Route path="/members">
+          <MembersRoute>
+            <Suspense fallback={<MembersPageFallback />}>
+              <Members />
+            </Suspense>
+          </MembersRoute>
         </Route>
         <Route path="/">
           <Redirect to="/login" />

@@ -1,121 +1,70 @@
-# منصة المدرسة القرآنية الذكية — المرحلة الأولى
+# منصة المدرسة القرآنية الذكية
 
-نسخة محمولة لواجهة المرحلة الأولى مع مصادقة Supabase عبر البريد الإلكتروني وكلمة المرور وملفات تأسيس قاعدة البيانات.
+منصة عربية RTL لإدارة مدرسة قرآنية، مبنية كتطبيق ويب React متصل بـSupabase مع عزل المدارس عبر RLS.
 
-## الحالة الحالية
+## التقنيات الحالية
 
-- React 19 + Vite 7 + TypeScript 5.9.
+- React 19 وVite 7 وTypeScript 5.9.
 - Tailwind CSS 4 ومكونات Radix UI.
-- واجهة عربية باتجاه RTL.
-- مصادقة Supabase مع حفظ الجلسة وتجديدها تلقائيًا.
-- بيانات طلاب تجريبية محلية.
-- لا توجد مفاتيح أو أسرار داخل المستودع.
-- لا تنفذ الواجهة أي استعلامات على جداول قاعدة البيانات في هذه المرحلة.
+- Supabase Auth وPostgreSQL وRow Level Security.
+- pnpm 10.4.1 وNode.js 22 أو أحدث.
+- اختبارات Node المدمجة وVitest وReact Testing Library.
 
-## المتطلبات
-
-- Node.js 22 أو أحدث.
-- pnpm 10.4.1.
-
-## التثبيت والتشغيل
+## التشغيل المحلي
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-يفتح Vite افتراضيًا على:
-
-```text
-http://localhost:5173
-```
-
-## أوامر التحقق والبناء
-
-```bash
-pnpm check
-pnpm build
-pnpm preview
-```
-
-لا يحتوي المشروع حاليًا على test script أو ملفات اختبار آلية.
-
-## متغيرات البيئة
-
-انسخ قالب البيئة قبل تشغيل مصادقة Supabase:
-
-```bash
-cp .env.example .env.local
-```
-
-المتغيرات المطلوبة:
+انسخ `.env.example` إلى `.env.local` وأضف فقط:
 
 ```text
 VITE_SUPABASE_URL
 VITE_SUPABASE_PUBLISHABLE_KEY
 ```
 
-لا تضع أي مفتاح سري في متغير يبدأ بـ`VITE_`، لأن متغيرات Vite تصل إلى المتصفح. ضع القيم الحقيقية في `.env.local` فقط ولا ترفعها إلى Git.
+لا تضع أي مفتاح سري أو `service_role` في متغيرات Vite أو داخل المستودع.
 
 ## المسارات الحالية
 
-| المسار | الصفحة |
+| المسار | الوحدة |
 | --- | --- |
-| `/` | تحويل إلى `/login` |
-| `/login` | تسجيل الدخول عبر Supabase |
-| `/forgot-password` | طلب رابط استعادة كلمة المرور |
-| `/reset-password` | تعيين كلمة مرور جديدة |
-| `/dashboard` | لوحة المدير |
-| `/students` | قائمة الطلاب |
-| `/students/new` | إضافة طالب عبر نموذج من 6 خطوات |
+| `/login` | تسجيل الدخول |
+| `/forgot-password` و`/reset-password` | استعادة كلمة المرور |
+| `/dashboard` | لوحة التحكم |
+| `/students` و`/students/new` | الطلاب والتسجيل |
+| `/teachers` و`/teachers/new` | المعلمون |
+| `/classes` و`/classes/new` | الحلقات وربط الطلاب والمعلمين |
+| `/finance` ومساراتها الفرعية | الخطط والاستحقاقات والدفعات والمصروفات والتقارير |
+| `/attendance` | الحضور والغياب |
+| `/memorization` | متابعة الحفظ والمراجعة |
+| `/members` | دليل أعضاء المدرسة للعرض فقط |
 
-## هيكل المشروع
+يظهر كل مسار محمي وفق الجلسة والمدرسة والصلاحيات المناسبة. دليل الأعضاء يتطلب `school_admin` أو الصلاحيتين `members.view` و`profiles.view` معًا، ولا يحتوي أدوات دعوة أو تعديل عضويات أو أدوار.
 
-```text
-.
-├── client/
-│   ├── public/
-│   ├── index.html
-│   └── src/
-│       ├── _core/hooks/useAuth.ts
-│       ├── components/
-│       ├── contexts/
-│       ├── hooks/
-│       ├── lib/
-│       ├── mock-data/
-│       ├── pages/
-│       ├── App.tsx
-│       ├── index.css
-│       └── main.tsx
-├── supabase/
-│   ├── 001_initial_schema.sql
-│   ├── 002_rls_policies.sql
-│   ├── 003_bootstrap_first_admin.sql
-│   └── seed.sql
-├── .env.example
-├── .gitignore
-├── package.json
-├── pnpm-lock.yaml
-├── tsconfig.json
-└── vite.config.ts
+## قاعدة البيانات
+
+ملفات `supabase/001_initial_schema.sql` إلى `supabase/014_memorization_module.sql` تمثل المراحل الحالية للمخطط والسياسات والوحدات. تشمل الأساس متعدد المدارس، الطلاب، المعلمين، المالية، الحضور، والحفظ. لا تُشغّل migration مطبقة سابقًا مرة أخرى، ولا تُنشئ Migration جديدة دون مهمة مستقلة ومراجعة صريحة.
+
+## التحقق
+
+```bash
+node --test tests/*.test.mjs
+node --test tests/memorization-interface.test.mjs
+node --test tests/memorization-database.test.mjs
+node --test tests/members-directory.test.mjs
+pnpm test:runtime
+pnpm check
+pnpm exec vite build
+git diff --check
 ```
 
-## ملفات Supabase
+أمر `pnpm build` يشغّل مجموعة القبول الكاملة قبل إنشاء حزمة الإنتاج.
 
-ملفات `supabase/` محفوظة كمرجع ومراحل تنفيذ منفصلة. لم تُشغّل أثناء تجهيز هذه النسخة.
+## حدود الأمان
 
-الترتيب التاريخي للمشروع:
-
-1. `001_initial_schema.sql` — الجداول والعلاقات والفهارس.
-2. `002_rls_policies.sql` — دوال وسياسات Row Level Security.
-3. `seed.sql` — المدرسة التجريبية والفرع والأدوار والصلاحيات.
-4. `003_bootstrap_first_admin.sql` — ربط مستخدم Auth موجود بأول عضوية إدارية بعد استبدال `__AUTH_USER_ID__`.
-
-لا تشغّل `003_bootstrap_first_admin.sql` قبل مراجعة UUID والتأكد من أن المستخدم موجود في Supabase Auth.
-
-## حدود المرحلة
-
-- مصادقة Supabase فقط؛ لا توجد قراءة للملفات الشخصية أو العضويات أو الأدوار بعد.
-- لا توجد جداول أو عمليات للطلاب والحلقات والحضور في قاعدة البيانات ضمن هذه المرحلة.
-- لا توجد اختبارات آلية حاليًا.
-- لا توجد عملية نشر GitHub Actions ضمن هذه النسخة.
+- الوصول من المتصفح يستخدم المفتاح القابل للنشر فقط.
+- عزل المدارس وعمليات القراءة والكتابة تحكمها RLS ودوال الصلاحيات الموجودة.
+- لا توجد Edge Functions حاليًا.
+- دعوات الموظفين وإنشاء الحسابات وإدارة العضويات والأدوار خارج نطاق دليل `/members` الحالي.
