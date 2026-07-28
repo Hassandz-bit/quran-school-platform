@@ -1,0 +1,423 @@
+name: Apply Issue 31 stale-runtime guard
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: github.head_ref == 'agent/fix-memorization-runtime-update' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out working branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-memorization-runtime-update
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Activate pnpm and install dependencies
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.4.1 --activate
+          pnpm install --ignore-workspace --frozen-lockfile
+          pnpm add -D --ignore-workspace vitest@4.1.10 jsdom@latest @testing-library/react@latest @testing-library/user-event@latest @testing-library/jest-dom@latest
+
+      - name: Apply focused runtime protection and behavioral tests
+        run: |
+          cat > vite.config.ts <<'EOF'
+          import react from "@vitejs/plugin-react";
+          import tailwindcss from "@tailwindcss/vite";
+          import path from "path";
+          import { defineConfig } from "vite";
+
+          function resolveAppVersion(): string {
+            const rawVersion =
+              process.env.VERCEL_GIT_COMMIT_SHA ??
+              process.env.GITHUB_SHA ??
+              process.env.VITE_APP_VERSION ??
+              "unknown";
+            const normalized = rawVersion.trim();
+            return normalized === "unknown" ? normalized : normalized.slice(0, 7);
+          }
+
+          export default defineConfig(() => {
+            const appVersion = resolveAppVersion();
+
+            return {
+              define: {
+                __APP_VERSION__: JSON.stringify(appVersion),
+              },
+              plugins: [
+                react(),
+                tailwindcss(),
+                {
+                  name: "inject-app-version",
+                  transformIndexHtml(html) {
+                    return html.replace(
+                      "</head>",
+                      `    <meta name="app-version" content="${appVersion}" />\n  </head>`
+                    );
+                  },
+                },
+              ],
+              resolve: {
+                alias: {
+                  "@": path.resolve(import.meta.dirname, "client", "src"),
+                },
+              },
+              root: path.resolve(import.meta.dirname, "client"),
+              publicDir: path.resolve(import.meta.dirname, "client", "public"),
+              build: {
+                outDir: path.resolve(import.meta.dirname, "dist"),
+                emptyOutDir: true,
+              },
+              server: {
+                host: true,
+                port: 5173,
+              },
+            };
+          });
+          EOF
+
+          cat > client/src/lib/app-version.ts <<'EOF'
+          declare const __APP_VERSION__: string;
+
+          export const APP_VERSION =
+            typeof __APP_VERSION__ === "string" && __APP_VERSION__.trim()
+              ? __APP_VERSION__.trim()
+              : "unknown";
+
+          export class StaleAppVersionError extends Error {
+            constructor() {
+              super("STALE_APP_VERSION");
+              this.name = "StaleAppVersionError";
+            }
+          }
+
+          export function isStaleAppVersionError(
+            error: unknown
+          ): error is StaleAppVersionError {
+            return error instanceof StaleAppVersionError;
+          }
+
+          function readVersionFromHtml(html: string): string | null {
+            return (
+              html.match(
+                /<meta\s+name=["']app-version["']\s+content=["']([^"']+)["']/i
+              )?.[1]?.trim() ?? null
+            );
+          }
+
+          export async function assertCurrentAppVersion(
+            fetcher: typeof fetch = fetch
+          ): Promise<void> {
+            if (APP_VERSION === "unknown") return;
+
+            try {
+              const response = await fetcher(
+                `/?app-version-check=${encodeURIComponent(APP_VERSION)}-${Date.now()}`,
+                {
+                  cache: "no-store",
+                  headers: {
+                    "cache-control": "no-cache",
+                    pragma: "no-cache",
+                  },
+                }
+              );
+              if (!response.ok) return;
+
+              const latestVersion = readVersionFromHtml(await response.text());
+              if (
+                latestVersion &&
+                latestVersion !== "unknown" &&
+                latestVersion !== APP_VERSION
+              ) {
+                throw new StaleAppVersionError();
+              }
+            } catch (error) {
+              if (isStaleAppVersionError(error)) throw error;
+              // Network failures must not block legitimate offline or unstable connections.
+            }
+          }
+          EOF
+
+          python <<'PY'
+          import json
+          from pathlib import Path
+
+          page_path = Path("client/src/pages/Memorization.tsx")
+          page = page_path.read_text(encoding="utf-8")
+          import_marker = 'import { useAuth } from "@/contexts/AuthContext";\n'
+          version_import = '''import {
+            APP_VERSION,
+            assertCurrentAppVersion,
+            isStaleAppVersionError,
+          } from "@/lib/app-version";
+          '''
+          version_import = "\n".join(line[10:] if line.startswith("          ") else line for line in version_import.splitlines()) + "\n"
+          if version_import.strip() not in page:
+              page = page.replace(import_marker, import_marker + version_import, 1)
+
+          save_marker = '''      const result = await saveMemorizationRecord({
+          schoolId: school.id,'''
+          save_replacement = '''      await assertCurrentAppVersion();
+          const result = await saveMemorizationRecord({
+          schoolId: school.id,'''
+          if save_marker not in page:
+              raise SystemExit("save marker not found")
+          page = page.replace(save_marker, save_replacement, 1)
+
+          catch_marker = '''    } catch (error) {
+          const message = getMemorizationErrorMessage(error);
+          setWorkspaceError(message);
+          toast.error(message);'''
+          catch_replacement = '''    } catch (error) {
+          const message = isStaleAppVersionError(error)
+            ? "توجد نسخة أحدث من المنصة. أعد تحميل الصفحة قبل الحفظ لتجنب إنشاء سجل غير مقصود."
+            : getMemorizationErrorMessage(error);
+          setWorkspaceError(message);
+          toast.error(message);'''
+          if catch_marker not in page:
+              raise SystemExit("catch marker not found")
+          page = page.replace(catch_marker, catch_replacement, 1)
+
+          school_marker = '''            <p className="text-xs text-white/65">{school?.name}</p>'''
+          school_replacement = '''            <p className="text-xs text-white/65">
+              {school?.name} · النسخة {APP_VERSION}
+            </p>'''
+          if school_marker not in page:
+              raise SystemExit("school marker not found")
+          page = page.replace(school_marker, school_replacement, 1)
+          page_path.write_text(page, encoding="utf-8")
+
+          package_path = Path("package.json")
+          package = json.loads(package_path.read_text(encoding="utf-8"))
+          package["scripts"]["test:runtime"] = (
+              "vitest --config vitest.config.ts run "
+              "tests/memorization-runtime-behavior.test.tsx"
+          )
+          package["scripts"]["build"] = (
+              "node --test tests/*.test.mjs && "
+              "node --test tests/memorization-interface.test.mjs && "
+              "node --test tests/memorization-database.test.mjs && "
+              "pnpm test:runtime && tsc --noEmit && vite build && git diff --check"
+          )
+          package_path.write_text(
+              json.dumps(package, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          cat > vitest.config.ts <<'EOF'
+          import path from "node:path";
+          import { fileURLToPath } from "node:url";
+          import { defineConfig } from "vitest/config";
+
+          const root = path.dirname(fileURLToPath(import.meta.url));
+
+          export default defineConfig({
+            define: {
+              __APP_VERSION__: JSON.stringify("test123"),
+            },
+            resolve: {
+              alias: {
+                "@": path.resolve(root, "client/src"),
+              },
+            },
+            test: {
+              environment: "jsdom",
+              globals: true,
+            },
+          });
+          EOF
+
+          cat > tests/memorization-runtime-behavior.test.tsx <<'EOF'
+          import React from "react";
+          import "@testing-library/jest-dom/vitest";
+          import { beforeEach, describe, expect, test, vi } from "vitest";
+          import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+          import userEvent from "@testing-library/user-event";
+
+          const mocks = vi.hoisted(() => ({
+            save: vi.fn(),
+            records: vi.fn(),
+            location: vi.fn(),
+            assertVersion: vi.fn(),
+            updateCalls: 0,
+            insertCalls: 0,
+            recordCount: 1,
+          }));
+
+          const existingRecord = {
+            id: "record-existing-12345678",
+            studentId: "student-1",
+            teacherId: "teacher-1",
+            recordDate: "2026-07-28",
+            sessionType: "new_memorization" as const,
+            surahNumber: 1,
+            ayahStart: 1,
+            ayahEnd: 4,
+            rating: 4,
+            errorsCount: 1,
+            notes: "ملاحظة قائمة",
+            nextAssignment: "واجب قائم",
+            createdAt: "2026-07-28T09:00:00.000Z",
+            updatedAt: "2026-07-28T09:00:00.000Z",
+          };
+
+          class MockStaleAppVersionError extends Error {}
+
+          vi.mock("wouter", () => ({ useLocation: () => ["/memorization", mocks.location] }));
+          vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+          vi.mock("@/lib/app-version", () => ({
+            APP_VERSION: "test123",
+            assertCurrentAppVersion: (...args: unknown[]) => mocks.assertVersion(...args),
+            isStaleAppVersionError: (error: unknown) => error instanceof MockStaleAppVersionError,
+          }));
+          vi.mock("@/contexts/AuthContext", () => ({
+            useAuth: () => ({
+              school: { id: "school-1", name: "مدرسة الاختبار" },
+              session: { user: { id: "profile-admin" } },
+              membership: { id: "membership-1" },
+              roles: [{ id: "role-admin", code: "school_admin" }],
+              isSchoolAdmin: true,
+              signOut: vi.fn().mockResolvedValue({ error: null }),
+            }),
+          }));
+          vi.mock("@/lib/memorization-manager-scope", () => ({
+            fetchMemorizationManagerScope: vi.fn().mockResolvedValue({ schoolWide: true, branchIds: [] }),
+          }));
+          vi.mock("@/lib/memorization", async importOriginal => {
+            const actual = await importOriginal<typeof import("@/lib/memorization")>();
+            return {
+              ...actual,
+              fetchMemorizationScope: vi.fn().mockResolvedValue({
+                canView: true,
+                canManage: true,
+                branches: [{ id: "branch-1", name: "الفرع", isMain: true, canManage: true }],
+                classes: [{ id: "class-1", branchId: "branch-1", name: "الحلقة", scheduleLabel: null, canManage: true }],
+              }),
+              fetchMemorizationWorkspace: vi.fn().mockResolvedValue({
+                students: [{ id: "student-1", fullName: "طالب الاختبار" }],
+                teachers: [{ id: "teacher-1", profileId: null, fullName: "معلم الاختبار" }],
+              }),
+              fetchStudentMemorizationRecords: (...args: unknown[]) => mocks.records(...args),
+              fetchMemorizationAudit: vi.fn().mockResolvedValue([]),
+              saveMemorizationRecord: (...args: unknown[]) => mocks.save(...args),
+              getTodayInputValue: () => "2026-07-28",
+            };
+          });
+
+          import Memorization from "@/pages/Memorization";
+
+          function prepareMocks() {
+            existingRecord.ayahEnd = 4;
+            mocks.updateCalls = 0;
+            mocks.insertCalls = 0;
+            mocks.recordCount = 1;
+            mocks.records.mockResolvedValue([existingRecord]);
+            mocks.assertVersion.mockResolvedValue(undefined);
+            mocks.save.mockImplementation(async input => {
+              const typed = input as { draft: { recordId: string | null; ayahEnd: number } };
+              if (typed.draft.recordId) {
+                mocks.updateCalls += 1;
+                existingRecord.ayahEnd = typed.draft.ayahEnd;
+                return { recordId: typed.draft.recordId, mode: "updated" };
+              }
+              mocks.insertCalls += 1;
+              mocks.recordCount += 1;
+              return { recordId: "unexpected-new-record", mode: "created" };
+            });
+          }
+
+          async function enterEditMode() {
+            const user = userEvent.setup();
+            render(<Memorization />);
+            const editButton = await screen.findByRole("button", { name: "تعديل" });
+            await user.click(editButton);
+            expect(await screen.findByText(/^وضع التعديل ·/)).toHaveTextContent("record-e");
+            const ayahEnd = screen
+              .getAllByRole("spinbutton")
+              .find(element => (element as HTMLInputElement).value === "4") as HTMLInputElement;
+            fireEvent.change(ayahEnd, { target: { value: "5" } });
+            await waitFor(() => expect(ayahEnd).toHaveValue(5));
+            return user;
+          }
+
+          describe("memorization edit runtime", () => {
+            beforeEach(() => {
+              vi.clearAllMocks();
+              window.scrollTo = vi.fn();
+              prepareMocks();
+            });
+
+            test("Edit then Save performs UPDATE without INSERT and preserves edit mode", async () => {
+              const user = await enterEditMode();
+              await new Promise(resolve => setTimeout(resolve, 30));
+              expect(screen.getByText(/^وضع التعديل ·/)).toBeInTheDocument();
+
+              await user.click(screen.getByRole("button", { name: "حفظ التعديل" }));
+              await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+
+              const savedInput = mocks.save.mock.calls[0][0];
+              expect(mocks.assertVersion).toHaveBeenCalledTimes(1);
+              expect(savedInput.draft.recordId).toBe(existingRecord.id);
+              expect(savedInput.draft.ayahEnd).toBe(5);
+              expect(mocks.updateCalls).toBe(1);
+              expect(mocks.insertCalls).toBe(0);
+              expect(mocks.recordCount).toBe(1);
+              expect(screen.getByText("تم تحديث سجل المتابعة بنجاح.")).toBeInTheDocument();
+              expect(screen.getByText(/^وضع التعديل ·/)).toBeInTheDocument();
+              expect(screen.getByRole("button", { name: "حفظ التعديل" })).toBeDisabled();
+              await waitFor(() => expect(screen.getByText(/إلى 5/)).toBeInTheDocument());
+            });
+
+            test("a stale loaded build blocks saving before any database write", async () => {
+              mocks.assertVersion.mockRejectedValue(new MockStaleAppVersionError());
+              const user = await enterEditMode();
+              await user.click(screen.getByRole("button", { name: "حفظ التعديل" }));
+
+              await waitFor(() => expect(mocks.assertVersion).toHaveBeenCalledTimes(1));
+              expect(mocks.save).not.toHaveBeenCalled();
+              expect(mocks.updateCalls).toBe(0);
+              expect(mocks.insertCalls).toBe(0);
+              expect(mocks.recordCount).toBe(1);
+              expect(
+                screen.getByText(/توجد نسخة أحدث من المنصة/)
+              ).toBeInTheDocument();
+              expect(screen.getByText(/^وضع التعديل ·/)).toBeInTheDocument();
+            });
+          });
+          EOF
+
+          rm -f .github/workflows/issue31-*.yml
+
+      - name: Run all requested validation
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test tests/*.test.mjs | tee /tmp/all-tests.log
+          node --test tests/memorization-interface.test.mjs | tee /tmp/interface-tests.log
+          node --test tests/memorization-database.test.mjs | tee /tmp/database-tests.log
+          pnpm test:runtime | tee /tmp/runtime-tests.log
+          ./node_modules/.bin/tsc --noEmit
+          ./node_modules/.bin/vite build
+          git diff --check
+          ! grep -R "\.delete(" client/src/pages/Memorization.tsx client/src/lib/app-version.ts tests/memorization-runtime-behavior.test.tsx
+          ! grep -R "service_role\|SUPABASE_SERVICE" client/src/pages/Memorization.tsx client/src/lib/app-version.ts tests/memorization-runtime-behavior.test.tsx
+
+      - name: Commit focused fix and remove diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vite.config.ts package.json pnpm-lock.yaml client/src/pages/Memorization.tsx client/src/lib/app-version.ts vitest.config.ts tests/memorization-runtime-behavior.test.tsx .github/workflows
+          git commit -m "fix: block stale memorization runtime writes"
+          git push origin HEAD:agent/fix-memorization-runtime-update
+          git rev-parse HEAD
