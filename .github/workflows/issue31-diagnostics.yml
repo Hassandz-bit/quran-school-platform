@@ -1,0 +1,194 @@
+name: Diagnose Issue 31 deployments
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  deployments: read
+  pull-requests: read
+  statuses: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'agent/fix-memorization-runtime-update'
+    runs-on: ubuntu-latest
+    env:
+      PROD_SHA: e4416758218ee62d4eff2c567900cdb7b7f419fc
+      PREVIEW_SHA: 2ed5971ff5c46a4cf291df79138655e5217a1498
+      PROD_URL: https://quran-school-platform-livid.vercel.app
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@v4
+
+      - name: Resolve GitHub deployment URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/deployments?per_page=100" > deployments.json
+          python <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+
+          repository = os.environ['GITHUB_REPOSITORY']
+          wanted = {
+              'production': os.environ['PROD_SHA'],
+              'preview': os.environ['PREVIEW_SHA'],
+          }
+          deployments = json.loads(Path('deployments.json').read_text())
+          resolved = {}
+
+          for label, sha in wanted.items():
+              matches = [item for item in deployments if item.get('sha') == sha]
+              print(f'::group::{label} deployments for {sha}')
+              if not matches:
+                  print('No GitHub Deployment objects found')
+              for deployment in matches:
+                  print(json.dumps({
+                      'id': deployment.get('id'),
+                      'sha': deployment.get('sha'),
+                      'ref': deployment.get('ref'),
+                      'environment': deployment.get('environment'),
+                      'production_environment': deployment.get('production_environment'),
+                      'transient_environment': deployment.get('transient_environment'),
+                      'created_at': deployment.get('created_at'),
+                  }, ensure_ascii=False))
+                  output = subprocess.check_output([
+                      'gh', 'api', f"repos/{repository}/deployments/{deployment['id']}/statuses?per_page=100"
+                  ], text=True)
+                  statuses = json.loads(output)
+                  for status in statuses:
+                      print(json.dumps({
+                          'state': status.get('state'),
+                          'environment': status.get('environment'),
+                          'environment_url': status.get('environment_url'),
+                          'log_url': status.get('log_url'),
+                          'created_at': status.get('created_at'),
+                      }, ensure_ascii=False))
+                      if status.get('state') == 'success' and status.get('environment_url'):
+                          resolved.setdefault(label, status['environment_url'])
+              print('::endgroup::')
+
+          status_urls = {}
+          for label, sha in wanted.items():
+              output = subprocess.check_output([
+                  'gh', 'api', f'repos/{repository}/commits/{sha}/status'
+              ], text=True)
+              combined = json.loads(output)
+              vercel = next((s for s in combined.get('statuses', []) if s.get('context') == 'Vercel'), None)
+              status_urls[label] = vercel.get('target_url') if vercel else None
+              print(f'{label} Vercel status target: {status_urls[label]}')
+
+          Path('resolved.json').write_text(json.dumps({
+              'resolved': resolved,
+              'status_targets': status_urls,
+          }, ensure_ascii=False, indent=2))
+
+          preview_url = resolved.get('preview', '')
+          with Path(os.environ['GITHUB_ENV']).open('a') as env:
+              env.write(f'PREVIEW_URL={preview_url}\n')
+          print('Resolved preview URL:', preview_url or '(missing)')
+          PY
+
+      - name: Inspect Vercel dashboard metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          import json
+          from pathlib import Path
+          info = json.loads(Path('resolved.json').read_text())
+          for label, url in info['status_targets'].items():
+              if url:
+                  print(f'{label}_status_target={url}')
+          PY
+          while IFS='=' read -r label url; do
+            [ -n "$url" ] || continue
+            echo "::group::$label"
+            curl -sS -L -D - -o /tmp/vercel-dashboard.html "$url" | sed -n '1,30p' || true
+            grep -Eo 'https://[^" ]+\.vercel\.app' /tmp/vercel-dashboard.html | sort -u | head -20 || true
+            echo "::endgroup::"
+          done < <(python - <<'PY'
+          import json
+          from pathlib import Path
+          info = json.loads(Path('resolved.json').read_text())
+          for label, url in info['status_targets'].items():
+              if url:
+                  print(f'{label}={url}')
+          PY
+          )
+
+      - name: Fetch production and preview bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p inspection
+          if [ -z "${PREVIEW_URL:-}" ]; then
+            echo 'Preview URL was not resolved from GitHub Deployments' >&2
+            exit 1
+          fi
+          python <<'PY'
+          import os, re, subprocess, time
+          from pathlib import Path
+          from urllib.parse import urljoin, urlparse
+
+          urls = {
+              'production': os.environ['PROD_URL'].rstrip('/') + '/',
+              'preview': os.environ['PREVIEW_URL'].rstrip('/') + '/',
+          }
+          needles = [
+              'وضع التعديل',
+              'الحفظ القادم سيعدّل السجل الحالي',
+              'تم حفظ السجل، وأصبح النموذج في وضع التعديل',
+          ]
+
+          for label, url in urls.items():
+              target = Path('inspection') / label
+              target.mkdir(parents=True, exist_ok=True)
+              headers = target / 'headers.txt'
+              html = target / 'index.html'
+              start = time.monotonic()
+              subprocess.run([
+                  'curl', '-sS', '-L', '--compressed', '-D', str(headers), '-o', str(html),
+                  '-w', '%{http_code} %{url_effective} %{time_total}\n', url
+              ], check=True)
+              elapsed = time.monotonic() - start
+              print(f'::group::{label} {url}')
+              print(f'elapsed_seconds={elapsed:.3f}')
+              important = ('cache-control:', 'age:', 'etag:', 'x-vercel-cache:', 'x-vercel-id:', 'server:', 'date:', 'location:')
+              for line in headers.read_text(errors='replace').splitlines():
+                  if line.lower().startswith(important) or line.startswith('HTTP/'):
+                      print(line)
+
+              source = html.read_text(errors='replace')
+              scripts = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', source)
+              print('script_sources=', scripts)
+              combined = ''
+              for index, src in enumerate(scripts):
+                  asset_url = urljoin(url, src)
+                  name = Path(urlparse(asset_url).path).name or f'asset-{index}.js'
+                  output = target / name
+                  asset_headers = target / f'{name}.headers.txt'
+                  subprocess.run([
+                      'curl', '-sS', '-L', '--compressed', '-D', str(asset_headers), '-o', str(output), asset_url
+                  ], check=True)
+                  text = output.read_text(errors='replace')
+                  combined += '\n' + text
+                  print(f'asset={asset_url} bytes={output.stat().st_size}')
+              for needle in needles:
+                  print(f'needle[{needle}]={needle in combined}')
+              print('::endgroup::')
+          PY
+
+      - name: Upload diagnostic evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue31-deployment-evidence
+          path: |
+            resolved.json
+            deployments.json
+            inspection/
+          if-no-files-found: error
