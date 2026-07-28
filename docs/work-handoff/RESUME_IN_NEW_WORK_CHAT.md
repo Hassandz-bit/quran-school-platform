@@ -1,57 +1,25 @@
 واصل مشروع **نظام المدارس القرآنية** من الحالة التالية دون تكرار الأعمال المنجزة.
 
-المستودع: `Hassandz-bit/quran-school-platform`.
+- المستودع: `Hassandz-bit/quran-school-platform`.
+- Base SHA: `bdce2eebf758992aa043bd6411205fd5458a3d20` بعد دمج PR #32.
+- PR #32 مدمج، Issue #31 مغلق، وVercel ناجح.
+- قبول الحفظ: `records=4`, `inserts=4`, `updates=1`، ولم يُنشأ سجل خامس.
+- migrations `001` إلى `014` مطبقة، وMigration 014 لا تُعاد.
+- النسخة المحمية: `backup/main-bdce2ee-after-pr32-20260728`.
 
-## الحالة الحالية
+## Issue #33
 
-- أحدث `main`: `e4416758218ee62d4eff2c567900cdb7b7f419fc`، وهو Merge SHA الخاص بـPR #30.
-- Issue #29 مغلق وPR #30 مدمج.
-- Issue #31 مفتوح ومربوط بـDraft PR #32.
-- الفرع: `agent/fix-memorization-runtime-update`.
-- Head الوظيفي المختبر قبل تحديث التوثيق: `61a07edd756df73ecc0941e97fa9b01aa2b11ad7`.
-- migrations `001` إلى `014` مطبقة، وMigration 014 مطبقة مرة واحدة فقط ولا تُعاد.
+- الفرع: `agent/members-directory`.
+- Draft PR: #34.
+- المسار الجديد: `/members`.
+- الوحدة دليل أعضاء للعرض فقط.
+- الحماية تسمح لـ`school_admin` أو لمن يملك `members.view` و`profiles.view` معًا.
+- لوحة التحكم لا تعرض رابط الأعضاء لغير المصرح له.
+- طبقة البيانات تستخدم قراءات منفصلة ومقيدة بالمدرسة من `school_memberships`, `profiles`, `membership_roles`, `roles`, `branches` وتعتمد على RLS.
+- العضويات revoked مستبعدة، والأدوار المدرسية والفرعية والمتعددة وعضو بلا أدوار ممثلة بوضوح.
+- توجد فلاتر للاسم والحالة والدور والفرع والأعضاء دون أدوار.
+- لا توجد دعوات أو إنشاء حسابات أو تعديل عضويات أو أدوار.
 
-## التشخيص المثبت لـIssue #31
+## ما بعد الدمج والاختبار فقط
 
-- Production Deployment SHA هو `e4416758218ee62d4eff2c567900cdb7b7f419fc`.
-- Production alias العام: `https://quran-school-platform-livid.vercel.app`.
-- Production deployment المباشر: `https://quran-school-platform-jv8l9fgub-wadaker1437-gmailcoms-projects.vercel.app`.
-- Preview SHA الخاص بـPR #30: `2ed5971ff5c46a4cf291df79138655e5217a1498`.
-- Preview URL: `https://quran-school-platform-igh2ft3z5-wadaker1437-gmailcoms-projects.vercel.app`.
-- bundle الحفظ المنشور على النطاق العام يحتوي نصوص إصلاح PR #30.
-- اختبار React Testing Library حقيقي نفّذ Edit ثم Save على سجل قائم وأثبت UPDATE واحدًا و0 INSERT وبقاء عدد السجلات واحدًا وبقاء وضع التعديل.
-- effects الحالية لا تمسح `draft.recordId` أثناء مسار تعديل عادي.
-- السلوك التشغيلي المسجل يطابق نسخة JavaScript قديمة بقيت محملة في تبويب مفتوح قبل نشر PR #30، وليس bundle الإنتاج الحالي.
-
-## إصلاح Draft PR #32
-
-- حقن معرف بناء غير حساس من أول 7 أحرف من Commit SHA في HTML وJavaScript.
-- عرض معرف النسخة في رأس صفحة الحفظ.
-- قبل الحفظ، تقارن الصفحة نسخة JavaScript المحملة مع نسخة HTML الحالية عبر طلب `no-store`.
-- إذا كان التبويب قديمًا، يُمنع الحفظ قبل استدعاء طبقة البيانات وتظهر رسالة تطلب إعادة التحميل.
-- لا يتغير RLS ولا Supabase ولا طبقة حفظ السجلات.
-
-## التحقق
-
-- جميع اختبارات Node: `198/198` ناجحة.
-- اختبار واجهة الحفظ: `27/27` ناجحًا.
-- اختبار قاعدة الحفظ: `14/14` ناجحًا.
-- اختبارات Runtime الجديدة: `3/3` ناجحة.
-- TypeScript: ناجح.
-- بناء Vite: ناجح.
-- `git diff --check`: ناجح.
-- Vercel: Success على Head الوظيفي.
-
-## الأمان والقيود
-
-- لا `.delete()` ولا زر حذف.
-- لا `service_role` ولا `SUPABASE_SERVICE`.
-- لم يُشغّل SQL تغييري أو Migration.
-- لم تتغير Supabase أو بيانات الإنتاج.
-- لم تُحذف أو تُعدّل سجلات الاختبار الأربعة ولم يُنشأ سجل خامس.
-- لم تُعد Migration 014.
-- لم يُمس `backup/main-e441675-after-pr30-20260728` أو أي فرع `backup/*`.
-
-## المهمة التالية فقط
-
-بعد مراجعة ودمج Draft PR #32، اختبر UPDATE حقيقيًا من صفحة محملة حديثًا، وتحقق من بقاء عدد السجلات أربعة وظهور حركة `update` في سجل التدقيق. لا تبدأ وحدة جديدة.
+المهمة التالية المستقلة هي دعوات الموظفين وإدارة الأدوار. لا تبدأها داخل PR دليل الأعضاء.

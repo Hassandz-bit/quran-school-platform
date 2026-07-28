@@ -26,6 +26,7 @@ import {
   type DashboardErrorKind,
 } from "@/lib/dashboard";
 import { toast } from "sonner";
+import { fetchMembersAccess } from "@/lib/members";
 
 const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -35,7 +36,8 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<DashboardErrorKind | null>(null);
   const [, setLocation] = useLocation();
-  const { school, signOut } = useAuth();
+  const { school, signOut, isSchoolAdmin } = useAuth();
+  const [canViewMembers, setCanViewMembers] = useState(false);
 
   const content = {
     ar: {
@@ -47,6 +49,7 @@ const Dashboard: React.FC = () => {
       finance: "المالية",
       attendance: "الحضور",
       memorization: "متابعة الحفظ",
+      members: "أعضاء المدرسة",
       settings: "الإعدادات",
       logout: "تسجيل الخروج",
       welcome: "مرحبًا بك في لوحة التحكم",
@@ -72,6 +75,7 @@ const Dashboard: React.FC = () => {
       availableModules: "الوحدات المتاحة",
       attendanceModule: "الحضور والغياب",
       memorizationModule: "الحفظ والمراجعة",
+      membersModule: "دليل أعضاء المدرسة",
       availableNow: "متاح",
       loading: "جارٍ تحميل بيانات لوحة التحكم...",
       retry: "إعادة المحاولة",
@@ -85,6 +89,7 @@ const Dashboard: React.FC = () => {
       finance: "Finance",
       attendance: "Attendance",
       memorization: "Memorization",
+      members: "Members",
       settings: "Settings",
       logout: "Sign Out",
       welcome: "Welcome to Dashboard",
@@ -110,6 +115,7 @@ const Dashboard: React.FC = () => {
       availableModules: "Available modules",
       attendanceModule: "Attendance and Absence",
       memorizationModule: "Memorization and Revision",
+      membersModule: "School member directory",
       availableNow: "Available",
       loading: "Loading dashboard data...",
       retry: "Try again",
@@ -142,6 +148,37 @@ const Dashboard: React.FC = () => {
     void loadDashboard();
   }, [loadDashboard]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!school?.id) {
+      setCanViewMembers(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (isSchoolAdmin) {
+      setCanViewMembers(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setCanViewMembers(false);
+    void fetchMembersAccess(school.id, false)
+      .then(access => {
+        if (!cancelled) setCanViewMembers(access.canView);
+      })
+      .catch(() => {
+        if (!cancelled) setCanViewMembers(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSchoolAdmin, school?.id]);
+
   const handleLogout = async () => {
     try {
       const { error } = await signOut();
@@ -167,6 +204,9 @@ const Dashboard: React.FC = () => {
       path: "/memorization",
     },
     { label: t.finance, icon: DollarSign, path: "/finance" },
+    ...(canViewMembers
+      ? [{ label: t.members, icon: Users, path: "/members" }]
+      : []),
     { label: t.settings, icon: Settings, path: null },
   ];
 
@@ -458,6 +498,16 @@ const Dashboard: React.FC = () => {
                   icon: BookOpenCheck,
                   path: "/memorization",
                 },
+                ...(canViewMembers
+                  ? [
+                      {
+                        label: t.membersModule,
+                        status: t.availableNow,
+                        icon: Users,
+                        path: "/members",
+                      },
+                    ]
+                  : []),
               ].map(module => (
                 <button
                   key={module.label}
