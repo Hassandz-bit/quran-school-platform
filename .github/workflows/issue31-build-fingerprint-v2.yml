@@ -1,0 +1,51 @@
+name: Fingerprint Issue 31 builds v2
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  fingerprint:
+    if: github.head_ref == 'agent/fix-memorization-runtime-update'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: before-pr30
+            sha: acd61bdf79ebc196e35d736f1a786a1c7aae5e39
+          - label: after-pr30
+            sha: e4416758218ee62d4eff2c567900cdb7b7f419fc
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          corepack enable
+          corepack prepare pnpm@10.4.1 --activate
+          pnpm install --ignore-workspace --frozen-lockfile
+          ./node_modules/.bin/vite build
+      - name: Save fingerprint
+        run: |
+          {
+            echo "LABEL=${{ matrix.label }}"
+            echo "SHA=${{ matrix.sha }}"
+            find dist -type f -name '*.js' -printf '%f %s\n' | sort
+            echo '--- repair strings ---'
+            for text in 'وضع التعديل' 'الحفظ القادم سيعدّل السجل الحالي' 'تم حفظ السجل، وأصبح النموذج في وضع التعديل'; do
+              printf '%s=' "$text"
+              if grep -RIl --include='Memorization-*.js' "$text" dist >/dev/null; then echo true; else echo false; fi
+            done
+          } > fingerprint.txt
+          cat fingerprint.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue31-fingerprint-${{ matrix.label }}
+          path: fingerprint.txt
+          if-no-files-found: error
