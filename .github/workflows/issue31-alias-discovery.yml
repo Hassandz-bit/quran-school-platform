@@ -1,0 +1,80 @@
+name: Discover Issue 31 production aliases
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    if: github.head_ref == 'agent/fix-memorization-runtime-update'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe candidate aliases
+        shell: bash
+        run: |
+          set -u
+          mkdir -p alias-evidence
+          cat > aliases.txt <<'EOF'
+          https://quran-school-platform-livid.vercel.app
+          https://quran-school-platform-wadaker1437-gmailcoms-projects.vercel.app
+          https://quran-school-platform-git-main-wadaker1437-gmailcoms-projects.vercel.app
+          https://quran-school-platform.vercel.app
+          EOF
+          python <<'PY'
+          import re, subprocess
+          from pathlib import Path
+          from urllib.parse import urljoin, urlparse
+
+          urls=[line.strip() for line in Path('aliases.txt').read_text().splitlines() if line.strip()]
+          needles=['وضع التعديل','الحفظ القادم سيعدّل السجل الحالي','تم حفظ السجل، وأصبح النموذج في وضع التعديل']
+          report=[]
+          for index,url in enumerate(urls):
+              folder=Path('alias-evidence')/str(index)
+              folder.mkdir(parents=True,exist_ok=True)
+              headers=folder/'headers.txt'; html=folder/'index.html'
+              r=subprocess.run(['curl','-sS','-L','--compressed','--connect-timeout','8','--max-time','25','-D',str(headers),'-o',str(html),'-w','%{http_code}|%{url_effective}|%{time_total}',url+'/'],text=True,capture_output=True)
+              row={'url':url,'curl_rc':r.returncode,'summary':r.stdout.strip(),'stderr':r.stderr.strip()}
+              source=html.read_text(errors='replace') if html.exists() else ''
+              row['is_quran_app']='منصة المدرسة القرآنية الذكية' in source
+              row['is_vercel_login']='data-dpl-id' in source and 'vercel' in source.lower()
+              scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',source)
+              row['scripts']=scripts
+              combined=''
+              if row['is_quran_app']:
+                  for i,src in enumerate(scripts):
+                      asset=urljoin(url+'/',src)
+                      name=Path(urlparse(asset).path).name or f'asset-{i}.js'
+                      out=folder/name
+                      subprocess.run(['curl','-sS','-L','--compressed','--connect-timeout','8','--max-time','25','-o',str(out),asset],capture_output=True)
+                      if out.exists():
+                          text=out.read_text(errors='replace'); combined+='\n'+text
+                          for match in re.findall(r'assets/[A-Za-z0-9_.-]+\.js',text):
+                              lazy=urljoin(url+'/',match)
+                              lazy_name=Path(urlparse(lazy).path).name
+                              lazy_out=folder/lazy_name
+                              if not lazy_out.exists():
+                                  subprocess.run(['curl','-sS','-L','--compressed','--connect-timeout','8','--max-time','25','-o',str(lazy_out),lazy],capture_output=True)
+                              if lazy_out.exists(): combined+='\n'+lazy_out.read_text(errors='replace')
+              row['needles']={needle:(needle in combined) for needle in needles}
+              important=[]
+              if headers.exists():
+                  for line in headers.read_text(errors='replace').splitlines():
+                      lower=line.lower()
+                      if line.startswith('HTTP/') or lower.startswith(('cache-control:','age:','etag:','x-vercel-cache:','x-vercel-id:','server:','date:','location:')):
+                          important.append(line)
+              row['headers']=important
+              report.append(row)
+          import json
+          Path('alias-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue31-alias-evidence
+          path: |
+            alias-report.json
+            alias-evidence/
+          if-no-files-found: error
