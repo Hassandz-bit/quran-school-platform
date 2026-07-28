@@ -31,6 +31,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  APP_VERSION,
+  assertCurrentAppVersion,
+  isStaleAppVersionError,
+} from "@/lib/app-version";
+import {
   fetchMemorizationManagerScope,
   type MemorizationManagerScope,
 } from "@/lib/memorization-manager-scope";
@@ -417,6 +422,7 @@ export default function Memorization() {
     setWorkspaceError(null);
 
     try {
+      await assertCurrentAppVersion();
       const result = await saveMemorizationRecord({
         schoolId: school.id,
         branchId,
@@ -439,7 +445,9 @@ export default function Memorization() {
       toast.success(message);
       setRecordsReload(current => current + 1);
     } catch (error) {
-      const message = getMemorizationErrorMessage(error);
+      const message = isStaleAppVersionError(error)
+        ? "توجد نسخة أحدث من المنصة. أعد تحميل الصفحة قبل الحفظ لتجنب إنشاء سجل غير مقصود."
+        : getMemorizationErrorMessage(error);
       setWorkspaceError(message);
       toast.error(message);
     } finally {
@@ -537,7 +545,9 @@ export default function Memorization() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0B4738] text-white shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 md:px-6">
           <div className="min-w-0">
-            <p className="text-xs text-white/65">{school?.name}</p>
+            <p className="text-xs text-white/65">
+              {school?.name} · النسخة {APP_VERSION}
+            </p>
             <h1 className="truncate text-lg font-bold">
               متابعة الحفظ والمراجعة
             </h1>
