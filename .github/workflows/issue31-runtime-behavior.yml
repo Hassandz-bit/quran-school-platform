@@ -1,0 +1,202 @@
+name: Test Issue 31 runtime behavior
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-test:
+    if: github.head_ref == 'agent/fix-memorization-runtime-update'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out merged PR 30 code
+        uses: actions/checkout@v4
+        with:
+          ref: e4416758218ee62d4eff2c567900cdb7b7f419fc
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.4.1 --activate
+
+      - name: Install project dependencies
+        run: pnpm install --ignore-workspace --frozen-lockfile
+
+      - name: Run existing full validation
+        run: |
+          node --test tests/*.test.mjs
+          node --test tests/memorization-interface.test.mjs
+          node --test tests/memorization-database.test.mjs
+          ./node_modules/.bin/tsc --noEmit
+          ./node_modules/.bin/vite build
+          git diff --check
+
+      - name: Install ephemeral browser-test dependencies
+        run: pnpm add -D --ignore-workspace vitest@latest jsdom@latest @testing-library/react@latest @testing-library/user-event@latest
+
+      - name: Create behavioral runtime test
+        run: |
+          cat > vitest.issue31.config.ts <<'EOF'
+          import { defineConfig } from "vitest/config";
+          import path from "node:path";
+          import { fileURLToPath } from "node:url";
+
+          const root = path.dirname(fileURLToPath(import.meta.url));
+
+          export default defineConfig({
+            resolve: {
+              alias: {
+                "@": path.resolve(root, "client/src"),
+              },
+            },
+            test: {
+              environment: "jsdom",
+              globals: true,
+            },
+          });
+          EOF
+
+          cat > tests/memorization-runtime-behavior.test.tsx <<'EOF'
+          import React from "react";
+          import { beforeEach, describe, expect, test, vi } from "vitest";
+          import { render, screen, waitFor } from "@testing-library/react";
+          import userEvent from "@testing-library/user-event";
+
+          const saveMock = vi.fn();
+          const recordsMock = vi.fn();
+          const locationMock = vi.fn();
+
+          const existingRecord = {
+            id: "record-existing-12345678",
+            studentId: "student-1",
+            teacherId: "teacher-1",
+            recordDate: "2026-07-28",
+            sessionType: "new_memorization" as const,
+            surahNumber: 1,
+            ayahStart: 1,
+            ayahEnd: 4,
+            rating: 4,
+            errorsCount: 1,
+            notes: "ملاحظة قائمة",
+            nextAssignment: "واجب قائم",
+            createdAt: "2026-07-28T09:00:00.000Z",
+            updatedAt: "2026-07-28T09:00:00.000Z",
+          };
+
+          vi.mock("wouter", () => ({
+            useLocation: () => ["/memorization", locationMock],
+          }));
+
+          vi.mock("sonner", () => ({
+            toast: { success: vi.fn(), error: vi.fn() },
+          }));
+
+          vi.mock("@/contexts/AuthContext", () => ({
+            useAuth: () => ({
+              school: { id: "school-1", name: "مدرسة الاختبار" },
+              session: { user: { id: "profile-admin" } },
+              membership: { id: "membership-1" },
+              roles: [{ id: "role-admin", code: "school_admin" }],
+              isSchoolAdmin: true,
+              signOut: vi.fn().mockResolvedValue({ error: null }),
+            }),
+          }));
+
+          vi.mock("@/lib/memorization-manager-scope", () => ({
+            fetchMemorizationManagerScope: vi.fn().mockResolvedValue({
+              schoolWide: true,
+              branchIds: [],
+            }),
+          }));
+
+          vi.mock("@/lib/memorization", async importOriginal => {
+            const actual = await importOriginal<typeof import("@/lib/memorization")>();
+            return {
+              ...actual,
+              fetchMemorizationScope: vi.fn().mockResolvedValue({
+                canView: true,
+                canManage: true,
+                branches: [{ id: "branch-1", name: "الفرع", isMain: true, canManage: true }],
+                classes: [{ id: "class-1", branchId: "branch-1", name: "الحلقة", scheduleLabel: null, canManage: true }],
+              }),
+              fetchMemorizationWorkspace: vi.fn().mockResolvedValue({
+                students: [{ id: "student-1", fullName: "طالب الاختبار" }],
+                teachers: [{ id: "teacher-1", profileId: null, fullName: "معلم الاختبار" }],
+              }),
+              fetchStudentMemorizationRecords: (...args: unknown[]) => recordsMock(...args),
+              fetchMemorizationAudit: vi.fn().mockResolvedValue([]),
+              saveMemorizationRecord: (...args: unknown[]) => saveMock(...args),
+              getTodayInputValue: () => "2026-07-28",
+            };
+          });
+
+          import Memorization from "@/pages/Memorization";
+
+          describe("memorization edit runtime", () => {
+            beforeEach(() => {
+              vi.clearAllMocks();
+              window.scrollTo = vi.fn();
+              recordsMock.mockResolvedValue([existingRecord]);
+              saveMock.mockImplementation(async input => {
+                const typed = input as { draft: { recordId: string | null; ayahEnd: number } };
+                expect(typed.draft.recordId).toBe(existingRecord.id);
+                existingRecord.ayahEnd = typed.draft.ayahEnd;
+                return { recordId: existingRecord.id, mode: "updated" };
+              });
+            });
+
+            test("clicking edit then save updates the same record and remains in edit mode", async () => {
+              const user = userEvent.setup();
+              render(<Memorization />);
+
+              const editButton = await screen.findByRole("button", { name: "تعديل" });
+              expect(screen.getAllByRole("button", { name: "تعديل" })).toHaveLength(1);
+
+              await user.click(editButton);
+              expect(await screen.findByText(/وضع التعديل/)).toHaveTextContent("record-e");
+              expect(screen.getByRole("button", { name: "حفظ التعديل" })).toBeDisabled();
+
+              await new Promise(resolve => setTimeout(resolve, 20));
+              expect(screen.getByText(/وضع التعديل/)).toBeInTheDocument();
+
+              const ayahEnd = screen.getByLabelText("إلى الآية");
+              await user.clear(ayahEnd);
+              await user.type(ayahEnd, "5");
+
+              const saveButton = screen.getByRole("button", { name: "حفظ التعديل" });
+              expect(saveButton).toBeEnabled();
+              await user.click(saveButton);
+
+              await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(1));
+              const input = saveMock.mock.calls[0][0];
+              expect(input.draft.recordId).toBe(existingRecord.id);
+              expect(input.draft.ayahEnd).toBe(5);
+              expect(screen.getByText("تم تحديث سجل المتابعة بنجاح.")).toBeInTheDocument();
+              expect(screen.getByText(/وضع التعديل/)).toBeInTheDocument();
+              expect(screen.getByRole("button", { name: "حفظ التعديل" })).toBeDisabled();
+
+              await waitFor(() => {
+                expect(screen.getAllByRole("button", { name: "تعديل" })).toHaveLength(1);
+                expect(screen.getByText(/إلى 5/)).toBeInTheDocument();
+              });
+            });
+          });
+          EOF
+
+      - name: Run behavioral test alone
+        run: pnpm exec vitest --config vitest.issue31.config.ts run tests/memorization-runtime-behavior.test.tsx
+
+      - name: Restore clean checkout
+        if: always()
+        run: |
+          git restore package.json pnpm-lock.yaml
+          rm -f vitest.issue31.config.ts tests/memorization-runtime-behavior.test.tsx
+          git diff --check
+          test -z "$(git status --short)"
