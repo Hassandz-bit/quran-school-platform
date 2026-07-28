@@ -1,0 +1,4 @@
+project_id = "quran-school-platform"
+
+[functions.invite-teacher]
+verify_jwt = true

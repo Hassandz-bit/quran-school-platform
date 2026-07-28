@@ -15,6 +15,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import TeacherInvitationDialog from "@/components/TeacherInvitationDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchMembersDirectory,
@@ -267,21 +268,24 @@ export default function Members() {
             <p className="truncate text-xs text-white/65">{school?.name}</p>
             <h1 className="text-xl font-bold">أعضاء المدرسة</h1>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            onClick={() => setLocation("/dashboard")}
-          >
-            <ArrowRight size={16} />
-            لوحة التحكم
-          </Button>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <TeacherInvitationDialog onInvitationSent={loadDirectory} />
+            <Button
+              type="button"
+              variant="outline"
+              className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+              onClick={() => setLocation("/dashboard")}
+            >
+              <ArrowRight size={16} />
+              لوحة التحكم
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 p-4 pb-12 md:p-6">
         <section className="rounded-2xl border border-[#C8A26A]/30 bg-[#C8A26A]/10 p-4 text-sm leading-7 text-[#69491F]">
-          إدارة الدعوات والأدوار ستتوفر في مرحلة مستقلة.
+          إدارة الدعوات والأدوار ستتوفر في مرحلة مستقلة. دعوة المعلمين المؤهلين متاحة فقط للمخولين، بينما تبقى إدارة الأدوار العامة وبقية الموظفين خارج النطاق.
         </section>
 
         {loading ? (
