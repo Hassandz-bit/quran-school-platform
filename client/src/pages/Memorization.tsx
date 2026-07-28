@@ -426,15 +426,18 @@ export default function Memorization() {
       });
       const message =
         result.mode === "created"
-          ? "تم حفظ متابعة الطالب بنجاح."
+          ? "تم حفظ السجل، وأصبح النموذج في وضع التعديل. اضغط «سجل جديد» لإضافة متابعة أخرى."
           : "تم تحديث سجل المتابعة بنجاح.";
+      setDraft(current => ({
+        ...current,
+        recordId: result.recordId,
+        notes: current.notes.trim(),
+        nextAssignment: current.nextAssignment.trim(),
+      }));
+      setDirty(false);
       setSaveSuccess(message);
       toast.success(message);
       setRecordsReload(current => current + 1);
-      const defaultTeacherId =
-        currentTeacherId ?? workspace?.teachers[0]?.id ?? "";
-      setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
-      setDirty(false);
     } catch (error) {
       const message = getMemorizationErrorMessage(error);
       setWorkspaceError(message);
@@ -721,13 +724,25 @@ export default function Memorization() {
               <Card className="border border-gray-100 p-4 shadow-sm">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 className="flex items-center gap-2 font-bold text-[#2C3E50]">
-                      <BookOpenCheck size={20} className="text-[#0B4738]" />
-                      {draft.recordId ? "تعديل سجل المتابعة" : "تسجيل متابعة جديدة"}
-                    </h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="flex items-center gap-2 font-bold text-[#2C3E50]">
+                        <BookOpenCheck size={20} className="text-[#0B4738]" />
+                        {draft.recordId ? "تعديل سجل المتابعة" : "تسجيل متابعة جديدة"}
+                      </h2>
+                      {draft.recordId && (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
+                          وضع التعديل · {draft.recordId.slice(0, 8)}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 text-xs text-gray-500">
                       الطالب: {selectedStudent?.fullName ?? "غير محدد"}
                     </p>
+                    {draft.recordId && (
+                      <p className="mt-2 text-xs font-medium text-amber-800">
+                        الحفظ القادم سيعدّل السجل الحالي. استخدم «سجل جديد» لإضافة متابعة أخرى.
+                      </p>
+                    )}
                   </div>
                   {draft.recordId && (
                     <Button
