@@ -222,6 +222,59 @@ test("does not render editing controls for view-only records", () => {
   assert.match(page, /!canManageSelectedClass/);
 });
 
+test("returns the saved record id for create and update operations", () => {
+  assert.match(
+    data,
+    /return \{ recordId: data\.id as string, mode: "updated" \};/
+  );
+  assert.match(
+    data,
+    /return \{ recordId: data\.id as string, mode: "created" \};/
+  );
+});
+
+test("keeps the saved draft in edit mode instead of resetting after save", () => {
+  const saveBlock = page.slice(
+    page.indexOf("const handleSave"),
+    page.indexOf("const handleAuditToggle")
+  );
+
+  assert.match(saveBlock, /recordId:\s*result\.recordId/);
+  assert.match(saveBlock, /notes:\s*current\.notes\.trim\(\)/);
+  assert.match(
+    saveBlock,
+    /nextAssignment:\s*current\.nextAssignment\.trim\(\)/
+  );
+  assert.doesNotMatch(saveBlock, /createMemorizationDraft/);
+  assert.match(
+    saveBlock,
+    /تم حفظ السجل، وأصبح النموذج في وضع التعديل/
+  );
+  assert.match(
+    data,
+    /if \(input\.draft\.recordId\)[\s\S]*?\.update\(normalizedWritePayload\(input\.draft\)\)[\s\S]*?\.eq\("id", input\.draft\.recordId\)/
+  );
+});
+
+test("uses the explicit new-record action as the edit-mode exit", () => {
+  const newRecordBlock = page.slice(
+    page.indexOf("const handleNewRecord"),
+    page.indexOf("const handleEditRecord")
+  );
+
+  assert.match(
+    newRecordBlock,
+    /setDraft\(createMemorizationDraft\(recordDate, defaultTeacherId\)\)/
+  );
+  assert.match(page, /onClick=\{handleNewRecord\}/);
+  assert.match(page, /وضع التعديل/);
+  assert.match(page, /الحفظ القادم سيعدّل السجل الحالي/);
+  assert.match(
+    page,
+    /\{draft\.recordId \? "حفظ التعديل" : "حفظ المتابعة"\}/
+  );
+});
+
 test("covers loading error empty forbidden and success states", () => {
   for (const text of [
     "جارٍ تحميل نطاق متابعة الحفظ",
@@ -232,7 +285,7 @@ test("covers loading error empty forbidden and success states", () => {
     "جارٍ تحميل طلاب الحلقة",
     "لا يوجد طلاب في الحلقة",
     "لا توجد سجلات متابعة",
-    "تم حفظ متابعة الطالب بنجاح",
+    "تم حفظ السجل، وأصبح النموذج في وضع التعديل",
   ]) {
     assert.match(page, new RegExp(text));
   }
