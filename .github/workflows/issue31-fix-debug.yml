@@ -1,0 +1,75 @@
+name: Debug Issue 31 final fix
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  debug:
+    if: github.head_ref == 'agent/fix-memorization-runtime-update'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-memorization-runtime-update
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          corepack enable
+          corepack prepare pnpm@10.4.1 --activate
+          pnpm install --ignore-workspace --frozen-lockfile
+          pnpm add -D --ignore-workspace vitest@4.1.10 jsdom@latest @testing-library/react@latest @testing-library/user-event@latest @testing-library/jest-dom@latest
+      - name: Generate candidate files
+        run: |
+          python <<'PY'
+          import json, re
+          from pathlib import Path
+          source=Path('.github/workflows/issue31-apply-fix.yml').read_text(encoding='utf-8')
+          def extract(path):
+              m=re.search(rf"          cat > {re.escape(path)} <<'EOF'\n(.*?)\n          EOF",source,re.S)
+              if not m: raise SystemExit(path)
+              content='\n'.join(line[10:] if line.startswith('          ') else line for line in m.group(1).splitlines())+'\n'
+              p=Path(path); p.parent.mkdir(parents=True,exist_ok=True); p.write_text(content,encoding='utf-8')
+          for p in ['vite.config.ts','client/src/lib/app-version.ts','vitest.config.ts','tests/memorization-runtime-behavior.test.tsx']: extract(p)
+          page_path=Path('client/src/pages/Memorization.tsx'); page=page_path.read_text(encoding='utf-8')
+          anchor='import { useAuth } from "@/contexts/AuthContext";\n'
+          imp='import {\n  APP_VERSION,\n  assertCurrentAppVersion,\n  isStaleAppVersionError,\n} from "@/lib/app-version";\n'
+          page=page.replace(anchor,anchor+imp,1)
+          page=re.sub(r'(?m)^(\s*)const result = await saveMemorizationRecord\(\{',r'\1await assertCurrentAppVersion();\n\1const result = await saveMemorizationRecord({',page,count=1)
+          page=re.sub(r'(?m)^(\s*)const message = getMemorizationErrorMessage\(error\);$',r'\1const message = isStaleAppVersionError(error)\n\1  ? "توجد نسخة أحدث من المنصة. أعد تحميل الصفحة قبل الحفظ لتجنب إنشاء سجل غير مقصود."\n\1  : getMemorizationErrorMessage(error);',page,count=1)
+          page=page.replace('<p className="text-xs text-white/65">{school?.name}</p>','<p className="text-xs text-white/65">\n              {school?.name} · النسخة {APP_VERSION}\n            </p>',1)
+          page_path.write_text(page,encoding='utf-8')
+          pp=Path('package.json'); package=json.loads(pp.read_text())
+          package['scripts']['test:runtime']='vitest --config vitest.config.ts run tests/memorization-runtime-behavior.test.tsx'
+          pp.write_text(json.dumps(package,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Run checks and capture every result
+        shell: bash
+        run: |
+          set +e
+          mkdir -p issue31-debug
+          run_check() {
+            name="$1"; shift
+            echo "=== $name ===" | tee "issue31-debug/$name.log"
+            "$@" >> "issue31-debug/$name.log" 2>&1
+            code=$?
+            echo "EXIT_CODE=$code" | tee -a "issue31-debug/$name.log"
+            echo "$name=$code" >> issue31-debug/statuses.txt
+          }
+          run_check all-tests node --test tests/*.test.mjs
+          run_check interface-tests node --test tests/memorization-interface.test.mjs
+          run_check database-tests node --test tests/memorization-database.test.mjs
+          run_check runtime-tests pnpm test:runtime
+          run_check typescript ./node_modules/.bin/tsc --noEmit
+          run_check vite-build ./node_modules/.bin/vite build
+          run_check diff-check git diff --check
+          cat issue31-debug/statuses.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue31-final-fix-debug
+          path: issue31-debug/
+          if-no-files-found: error
