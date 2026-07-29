@@ -9,6 +9,7 @@ import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
 import MembersRoute from "./components/MembersRoute";
+import { captureTeacherInviteSession } from "./lib/invite-session";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Login from "./pages/Login";
@@ -30,6 +31,7 @@ const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
 );
@@ -98,6 +100,24 @@ function MembersPageFallback() {
   );
 }
 
+function AcceptInvitePageFallback() {
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center bg-[#0B4738] p-4 text-white"
+      dir="rtl"
+    >
+      <div className="flex items-center gap-3" role="status">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        <span className="text-sm font-medium">
+          جارٍ تحميل صفحة قبول الدعوة...
+        </span>
+      </div>
+    </main>
+  );
+}
+
+captureTeacherInviteSession();
+
 function Router() {
   return (
     <Suspense fallback={<FinancePageFallback />}>
@@ -105,6 +125,11 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/accept-invite">
+          <Suspense fallback={<AcceptInvitePageFallback />}>
+            <AcceptInvite />
+          </Suspense>
+        </Route>
         <Route path="/dashboard">
           <ProtectedRoute>
             <Dashboard />

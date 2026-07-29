@@ -59,6 +59,7 @@ export type AuthContextValue = {
   ) => Promise<AuthOperationResult>;
   updateUser: (attributes: UserAttributes) => Promise<AuthOperationResult>;
   clearPasswordRecovery: () => void;
+  reloadAuthorization: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -266,6 +267,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsPasswordRecovery(false);
   }, []);
 
+  const reloadAuthorization = useCallback(async () => {
+    const currentUser = session?.user;
+    if (!currentUser) {
+      clearAuthorization();
+      return;
+    }
+    const generation = ++authorizationGenerationRef.current;
+    await loadCurrentAuthorization(currentUser.id, generation);
+  }, [clearAuthorization, loadCurrentAuthorization, session?.user]);
+
   if (clientState.configurationError) {
     return (
       <main
@@ -311,6 +322,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resetPasswordForEmail,
         updateUser,
         clearPasswordRecovery,
+        reloadAuthorization,
       }}
     >
       {children}
