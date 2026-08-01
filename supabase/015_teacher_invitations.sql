@@ -476,7 +476,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   current_user_id uuid := (select auth.uid());
   invitation_record public.teacher_invitations%rowtype;
@@ -563,7 +563,7 @@ begin
 
   return true;
 end;
-$;
+$$;
 
 revoke all on function public.accept_teacher_invitation()
 from public, anon;
