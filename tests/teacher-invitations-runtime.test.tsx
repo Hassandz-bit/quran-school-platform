@@ -197,6 +197,22 @@ describe("invite acceptance and password recovery isolation", () => {
     expect(mocks.location).toHaveBeenCalledWith("/dashboard");
   });
 
+  test("keeps invite acceptance available while authorization is still pending", async () => {
+    resetAuth({
+      profile: null,
+      membership: null,
+      school: null,
+      roles: [],
+      activeRoleCodes: [],
+      authorizationError: "لا توجد مدرسة نشطة مرتبطة بهذا الحساب.",
+      isSchoolAdmin: false,
+    });
+    render(<AcceptInvite />);
+    expect(await screen.findByText("قبول دعوة المعلم")).toBeInTheDocument();
+    expect(mocks.context).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("مدرسة الاختبار")).toBeInTheDocument();
+  });
+
   test("does not show a password form without a valid invite session", async () => {
     mocks.inviteSession = false;
     render(<AcceptInvite />);
