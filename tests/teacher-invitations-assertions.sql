@@ -311,7 +311,7 @@ reset role;
 create or replace function public.test_reject_accept_invitation()
 returns trigger
 language plpgsql
-as $
+as $$
 begin
   if new.id = '60000000-0000-4000-8000-000000000006'
     and old.status = 'sent'
@@ -321,14 +321,14 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 create trigger test_reject_accept_invitation
 before update on public.teacher_invitations
 for each row execute function public.test_reject_accept_invitation();
 
 select set_config('request.jwt.claim.sub', '40000000-0000-4000-8000-000000000002', false);
 set role authenticated;
-do $
+do $$
 begin
   begin
     perform public.accept_teacher_invitation();
@@ -337,11 +337,11 @@ begin
     if sqlerrm = 'forced acceptance failure did not occur' then raise; end if;
   end;
 end;
-$;
+$$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
-do $
+do $$
 begin
   if not exists (
     select 1 from public.school_memberships
@@ -358,7 +358,7 @@ begin
       and accepted_at is null
   ) then raise exception 'invitation update survived failed acceptance'; end if;
 end;
-$;
+$$;
 
 drop trigger test_reject_accept_invitation on public.teacher_invitations;
 drop function public.test_reject_accept_invitation();
@@ -488,11 +488,11 @@ begin
     raise exception 'second invite acceptance was not idempotent';
   end if;
 end;
-$;
+$$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
-do $
+do $$
 declare
   accepted_membership_id uuid;
 begin
@@ -511,17 +511,17 @@ begin
       and accepted_at is not null
   ) then raise exception 'invitation not accepted atomically'; end if;
 end;
-$;
+$$;
 
 select set_config('request.jwt.claim.sub', '40000000-0000-4000-8000-000000000003', false);
 set role authenticated;
-do $
+do $$
 begin
   if coalesce(public.accept_teacher_invitation(), false) then
     raise exception 'unrelated user accepted another invitation';
   end if;
 end;
-$;
+$$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
