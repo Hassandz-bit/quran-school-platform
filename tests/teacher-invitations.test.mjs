@@ -50,6 +50,12 @@ test("privileged provisioning is atomic, server-derived and unavailable to authe
   assert.match(migration, /count\(distinct permission\.code\) = 3/i);
   assert.match(migration, /insert into public\.profiles/i);
   assert.match(migration, /insert into public\.school_memberships/i);
+  const membershipInsertBlock = migration.slice(
+    migration.indexOf("insert into public.school_memberships"),
+    migration.indexOf("insert into public.membership_roles")
+  );
+  assert.match(membershipInsertBlock, /'pending'[\s\S]*null/i);
+  assert.doesNotMatch(membershipInsertBlock, /'active'[\s\S]*now\(\)/i);
   assert.match(migration, /insert into public\.membership_roles/i);
   assert.match(migration, /update public\.teachers/i);
   assert.match(migration, /status = 'sent'/i);
@@ -59,6 +65,19 @@ test("privileged provisioning is atomic, server-derived and unavailable to authe
   assert.match(migration, /revoke all on function public\.provision_teacher_invitation[\s\S]*from public, anon, authenticated/i);
   assert.match(migration, /grant execute on function public\.provision_teacher_invitation[\s\S]*to service_role/i);
   assert.doesNotMatch(migration, /target_role|target_branch|target_profile|target_full_name/i);
+});
+
+test("accepting an invite activates the pending membership atomically", () => {
+  const acceptBlock = migration.slice(
+    migration.indexOf("create or replace function public.accept_teacher_invitation"),
+    migration.indexOf("revoke all on function public.accept_teacher_invitation")
+  );
+  assert.match(acceptBlock, /invitation\.status in \('sent', 'accepted'\)/i);
+  assert.match(acceptBlock, /for update/i);
+  assert.match(acceptBlock, /membership_record\.status <> 'pending'/i);
+  assert.match(acceptBlock, /set status = 'active'[\s\S]*joined_at = accepted_at_value/i);
+  assert.match(acceptBlock, /set status = 'accepted'[\s\S]*accepted_at = accepted_at_value/i);
+  assert.match(acceptBlock, /invitation_record\.status = 'accepted'[\s\S]*return true/i);
 });
 
 test("invitation records never store tokens, passwords, links or internal errors", () => {
