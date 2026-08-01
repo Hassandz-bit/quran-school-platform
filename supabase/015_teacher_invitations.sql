@@ -371,8 +371,8 @@ begin
   ) values (
     target_school_id,
     target_invited_user_id,
-    'active',
-    now()
+    'pending',
+    null
   ) returning id into created_membership_id;
 
   insert into public.membership_roles (
@@ -476,23 +476,94 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $
 declare
   current_user_id uuid := (select auth.uid());
+  invitation_record public.teacher_invitations%rowtype;
+  membership_record public.school_memberships%rowtype;
+  accepted_at_value timestamptz := now();
 begin
   if current_user_id is null then
     raise exception using errcode = '42501', message = 'authenticated_user_required';
   end if;
 
+  select invitation.*
+  into invitation_record
+  from public.teacher_invitations as invitation
+  where invitation.invited_user_id = current_user_id
+    and invitation.status in ('sent', 'accepted')
+  order by invitation.created_at desc
+  limit 1
+  for update;
+
+  if not found then
+    return false;
+  end if;
+
+  select membership.*
+  into membership_record
+  from public.school_memberships as membership
+  join public.teachers as teacher
+    on teacher.school_id = invitation_record.school_id
+   and teacher.branch_id = invitation_record.branch_id
+   and teacher.id = invitation_record.teacher_id
+   and teacher.profile_id = membership.profile_id
+   and teacher.status = 'active'
+  where membership.school_id = invitation_record.school_id
+    and membership.profile_id = current_user_id
+  for update of membership;
+
+  if not found
+    or membership_record.profile_id <> current_user_id
+    or membership_record.school_id <> invitation_record.school_id
+  then
+    raise exception using errcode = '23514', message = 'invitation_membership_mismatch';
+  end if;
+
+  if invitation_record.status = 'accepted' then
+    if membership_record.status = 'active'
+      and membership_record.joined_at is not null
+      and invitation_record.accepted_at is not null
+    then
+      return true;
+    end if;
+
+    raise exception using errcode = '23514', message = 'invitation_acceptance_state_inconsistent';
+  end if;
+
+  if membership_record.status <> 'pending'
+    or membership_record.joined_at is not null
+  then
+    raise exception using errcode = '23514', message = 'membership_not_pending';
+  end if;
+
+  update public.school_memberships as membership
+  set status = 'active',
+      joined_at = accepted_at_value
+  where membership.id = membership_record.id
+    and membership.school_id = membership_record.school_id
+    and membership.profile_id = current_user_id
+    and membership.status = 'pending'
+    and membership.joined_at is null;
+
+  if not found then
+    raise exception using errcode = '40001', message = 'membership_acceptance_race_detected';
+  end if;
+
   update public.teacher_invitations as invitation
   set status = 'accepted',
-      accepted_at = now()
-  where invitation.invited_user_id = current_user_id
+      accepted_at = accepted_at_value
+  where invitation.id = invitation_record.id
+    and invitation.invited_user_id = current_user_id
     and invitation.status = 'sent';
 
-  return found;
+  if not found then
+    raise exception using errcode = '40001', message = 'invitation_acceptance_race_detected';
+  end if;
+
+  return true;
 end;
-$$;
+$;
 
 revoke all on function public.accept_teacher_invitation()
 from public, anon;
