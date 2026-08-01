@@ -192,8 +192,16 @@ begin
   from public.school_memberships
   where school_id = '10000000-0000-4000-8000-000000000001'
     and profile_id = '40000000-0000-4000-8000-000000000001'
-    and status = 'active';
-  if created_membership_id is null then raise exception 'membership not provisioned'; end if;
+    and status = 'pending'
+    and joined_at is null;
+  if created_membership_id is null then raise exception 'pending membership not provisioned'; end if;
+
+  if exists (
+    select 1 from public.school_memberships
+    where school_id = '10000000-0000-4000-8000-000000000001'
+      and profile_id = '40000000-0000-4000-8000-000000000001'
+      and status = 'active'
+  ) then raise exception 'membership active before invite acceptance'; end if;
 
   if not exists (
     select 1
@@ -287,6 +295,73 @@ $$;
 
 drop trigger test_reject_rollback_role on public.membership_roles;
 drop function public.test_reject_rollback_role();
+
+-- Acceptance rolls back if either the membership or invitation update fails.
+set role service_role;
+select * from public.provision_teacher_invitation(
+  '60000000-0000-4000-8000-000000000006',
+  '10000000-0000-4000-8000-000000000001',
+  '50000000-0000-4000-8000-000000000006',
+  '40000000-0000-4000-8000-000000000002',
+  'rollback@example.test',
+  '30000000-0000-4000-8000-000000000001'
+);
+reset role;
+
+create or replace function public.test_reject_accept_invitation()
+returns trigger
+language plpgsql
+as $
+begin
+  if new.id = '60000000-0000-4000-8000-000000000006'
+    and old.status = 'sent'
+    and new.status = 'accepted'
+  then
+    raise exception 'forced_invitation_acceptance_failure';
+  end if;
+  return new;
+end;
+$;
+create trigger test_reject_accept_invitation
+before update on public.teacher_invitations
+for each row execute function public.test_reject_accept_invitation();
+
+select set_config('request.jwt.claim.sub', '40000000-0000-4000-8000-000000000002', false);
+set role authenticated;
+do $
+begin
+  begin
+    perform public.accept_teacher_invitation();
+    raise exception 'forced acceptance failure did not occur';
+  exception when others then
+    if sqlerrm = 'forced acceptance failure did not occur' then raise; end if;
+  end;
+end;
+$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
+do $
+begin
+  if not exists (
+    select 1 from public.school_memberships
+    where school_id = '10000000-0000-4000-8000-000000000001'
+      and profile_id = '40000000-0000-4000-8000-000000000002'
+      and status = 'pending'
+      and joined_at is null
+  ) then raise exception 'membership update survived failed acceptance'; end if;
+
+  if not exists (
+    select 1 from public.teacher_invitations
+    where id = '60000000-0000-4000-8000-000000000006'
+      and status = 'sent'
+      and accepted_at is null
+  ) then raise exception 'invitation update survived failed acceptance'; end if;
+end;
+$;
+
+drop trigger test_reject_accept_invitation on public.teacher_invitations;
+drop function public.test_reject_accept_invitation();
 
 -- Auth ID/email mismatch is rejected before any provisioning writes.
 insert into public.teacher_invitations (
@@ -404,8 +479,49 @@ begin
       and branch_name = 'Main Branch'
       and invitation_status = 'sent'
   ) then raise exception 'safe recipient RPC context incorrect'; end if;
+
+  if not coalesce(public.accept_teacher_invitation(), false) then
+    raise exception 'invite acceptance failed';
+  end if;
+
+  if not coalesce(public.accept_teacher_invitation(), false) then
+    raise exception 'second invite acceptance was not idempotent';
+  end if;
 end;
-$$;
+$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
+do $
+declare
+  accepted_membership_id uuid;
+begin
+  select id into accepted_membership_id
+  from public.school_memberships
+  where school_id = '10000000-0000-4000-8000-000000000001'
+    and profile_id = '40000000-0000-4000-8000-000000000001'
+    and status = 'active'
+    and joined_at is not null;
+  if accepted_membership_id is null then raise exception 'membership not activated after acceptance'; end if;
+
+  if not exists (
+    select 1 from public.teacher_invitations
+    where id = '60000000-0000-4000-8000-000000000005'
+      and status = 'accepted'
+      and accepted_at is not null
+  ) then raise exception 'invitation not accepted atomically'; end if;
+end;
+$;
+
+select set_config('request.jwt.claim.sub', '40000000-0000-4000-8000-000000000003', false);
+set role authenticated;
+do $
+begin
+  if coalesce(public.accept_teacher_invitation(), false) then
+    raise exception 'unrelated user accepted another invitation';
+  end if;
+end;
+$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
