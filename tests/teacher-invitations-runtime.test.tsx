@@ -265,8 +265,8 @@ describe("post-authentication route selection", () => {
 
     render(<Login />);
 
-    await user.type(screen.getByLabelText("البريد الإلكتروني"), "teacher@example.test");
-    await user.type(screen.getByLabelText("كلمة المرور"), "StrongPass123");
+    await user.type(screen.getByPlaceholderText("admin@school.com"), "teacher@example.test");
+    await user.type(screen.getByPlaceholderText("••••••••"), "StrongPass123");
     await user.click(screen.getByRole("button", { name: "تسجيل الدخول" }));
 
     await waitFor(() =>
