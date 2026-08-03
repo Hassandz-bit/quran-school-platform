@@ -99,7 +99,7 @@ export default function AcceptInvite() {
       return;
     }
 
-    setLocation("/dashboard");
+    setLocation("/post-login");
   };
 
   if (loading || state === "checking") {
@@ -139,8 +139,8 @@ export default function AcceptInvite() {
           <p className="mt-3 text-sm leading-7 text-amber-800">
             حُفظت كلمة المرور الجديدة، لكن تعذر تحديث حالة سجل الدعوة. يمكنك متابعة الدخول، وسيُراجع السجل بصورة مستقلة دون إعادة كلمة المرور.
           </p>
-          <Button type="button" onClick={() => setLocation("/dashboard")} className="mt-6 w-full bg-[#0B4738] text-white">
-            الانتقال إلى لوحة التحكم
+          <Button type="button" onClick={() => setLocation("/post-login")} className="mt-6 w-full bg-[#0B4738] text-white">
+            متابعة الدخول
           </Button>
         </section>
       </main>

@@ -215,16 +215,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithPassword = useCallback(
     async (email: string, password: string): Promise<AuthOperationResult> => {
-      const { error } = await clientState.client!.auth.signInWithPassword({
+      const { data, error } = await clientState.client!.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (!error) setIsPasswordRecovery(false);
+      if (!error) {
+        setIsPasswordRecovery(false);
+
+        if (data.session?.user) {
+          const generation = ++authorizationGenerationRef.current;
+          setSession(data.session);
+          setUser(data.session.user);
+          setLoading(false);
+          await loadCurrentAuthorization(data.session.user.id, generation);
+        }
+      }
 
       return { error };
     },
-    [clientState.client]
+    [clientState.client, loadCurrentAuthorization]
   );
 
   const signOut = useCallback(async (): Promise<AuthOperationResult> => {

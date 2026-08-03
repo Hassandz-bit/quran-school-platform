@@ -3,6 +3,7 @@ import { LogOut, ShieldAlert } from "lucide-react";
 import { Redirect, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { getDefaultAuthenticatedRoute } from "@/lib/default-route";
 
 const DEFAULT_DENIAL_MESSAGE =
   "لا تملك صلاحية الدخول إلى لوحة إدارة المدرسة.";
@@ -15,11 +16,16 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     authorizationError,
     isSchoolAdmin,
     school,
+    activeRoleCodes,
     signOut,
   } = useAuth();
   const [, setLocation] = useLocation();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
+  const defaultRoute = getDefaultAuthenticatedRoute({
+    isSchoolAdmin,
+    activeRoleCodes,
+  });
 
   if (loading || authorizationLoading) {
     return (
@@ -84,14 +90,14 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
             <p className="mt-3 text-sm text-red-700">{signOutError}</p>
           )}
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            {school && (
+            {school && defaultRoute && (
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setLocation("/finance")}
+                onClick={() => setLocation(defaultRoute.path)}
                 className="gap-2 border-[#0B4738] text-[#0B4738] hover:bg-[#0B4738]/5"
               >
-                الانتقال إلى المالية
+                الانتقال إلى {defaultRoute.label}
               </Button>
             )}
             <Button

@@ -22,6 +22,7 @@ import TeachersList from "./pages/TeachersList";
 import AddTeacherForm from "./pages/AddTeacherForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import PostLoginRedirect from "./pages/PostLoginRedirect";
 const FinanceDashboard = lazy(() => import("./pages/FinanceDashboard"));
 const FeePlans = lazy(() => import("./pages/FeePlans"));
 const StudentCharges = lazy(() => import("./pages/StudentCharges"));
@@ -125,6 +126,7 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/post-login" component={PostLoginRedirect} />
         <Route path="/accept-invite">
           <Suspense fallback={<AcceptInvitePageFallback />}>
             <AcceptInvite />

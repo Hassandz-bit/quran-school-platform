@@ -43,7 +43,10 @@ vi.mock("@/lib/teacher-invitations", async () => {
 });
 
 import TeacherInvitationDialog from "@/components/TeacherInvitationDialog";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import AcceptInvite from "@/pages/AcceptInvite";
+import Login from "@/pages/Login";
+import PostLoginRedirect from "@/pages/PostLoginRedirect";
 import ResetPassword from "@/pages/ResetPassword";
 import { TeacherInvitationError } from "@/lib/teacher-invitations";
 
@@ -63,6 +66,7 @@ function resetAuth(overrides: Record<string, unknown> = {}) {
     school: { id: teacher.schoolId, name: "مدرسة الاختبار" },
     session: { user: { id: "44444444-4444-4444-8444-444444444444" } },
     loading: false,
+    signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
     updateUser: vi.fn().mockResolvedValue({ error: null }),
     reloadAuthorization: vi.fn().mockResolvedValue(undefined),
     isPasswordRecovery: false,
@@ -194,7 +198,7 @@ describe("invite acceptance and password recovery isolation", () => {
     expect(mocks.accepted).toHaveBeenCalledTimes(1);
     expect(mocks.auth.reloadAuthorization).toHaveBeenCalledTimes(1);
     expect(mocks.clearInviteSession).toHaveBeenCalledTimes(1);
-    expect(mocks.location).toHaveBeenCalledWith("/dashboard");
+    expect(mocks.location).toHaveBeenCalledWith("/post-login");
   });
 
   test("keeps invite acceptance available while authorization is still pending", async () => {
@@ -237,5 +241,100 @@ describe("invite acceptance and password recovery isolation", () => {
     resetAuth({ isPasswordRecovery: true });
     render(<ResetPassword />);
     expect(await screen.findByRole("button", { name: "حفظ كلمة المرور" })).toBeInTheDocument();
+  });
+});
+
+
+describe("post-authentication route selection", () => {
+  test("routes a teacher to attendance after invite acceptance", async () => {
+    resetAuth({
+      activeRoleCodes: ["teacher"],
+      roles: [{ id: "role-teacher", code: "teacher" }],
+      isSchoolAdmin: false,
+    });
+
+    render(<PostLoginRedirect />);
+
+    await waitFor(() => expect(mocks.location).toHaveBeenCalledWith("/attendance"));
+  });
+
+  test("sends successful password login through post-login route selection", async () => {
+    const user = userEvent.setup();
+    const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
+    resetAuth({ signInWithPassword });
+
+    render(<Login />);
+
+    await user.type(screen.getByPlaceholderText("admin@school.com"), "teacher@example.test");
+    await user.type(screen.getByPlaceholderText("••••••••"), "StrongPass123");
+    await user.click(screen.getByRole("button", { name: "تسجيل الدخول" }));
+
+    await waitFor(() =>
+      expect(signInWithPassword).toHaveBeenCalledWith(
+        "teacher@example.test",
+        "StrongPass123"
+      )
+    );
+    expect(mocks.location).toHaveBeenCalledWith("/post-login");
+  });
+
+  test("routes a finance user to finance after login", async () => {
+    resetAuth({
+      activeRoleCodes: ["finance_officer"],
+      roles: [{ id: "role-finance", code: "finance_officer" }],
+      isSchoolAdmin: false,
+    });
+
+    render(<PostLoginRedirect />);
+
+    await waitFor(() => expect(mocks.location).toHaveBeenCalledWith("/finance"));
+  });
+
+  test("routes a school admin to the dashboard after login", async () => {
+    resetAuth({
+      activeRoleCodes: ["school_admin"],
+      roles: [{ id: "role-admin", code: "school_admin" }],
+      isSchoolAdmin: true,
+    });
+
+    render(<PostLoginRedirect />);
+
+    await waitFor(() => expect(mocks.location).toHaveBeenCalledWith("/dashboard"));
+  });
+
+  test("shows a safe state when no route is available", async () => {
+    resetAuth({
+      activeRoleCodes: ["observer"],
+      roles: [{ id: "role-observer", code: "observer" }],
+      isSchoolAdmin: false,
+    });
+
+    render(<PostLoginRedirect />);
+
+    expect(await screen.findByText("لا توجد وجهة متاحة")).toBeInTheDocument();
+    expect(screen.queryByText("الانتقال إلى المالية")).not.toBeInTheDocument();
+    expect(mocks.location).not.toHaveBeenCalledWith("/finance");
+  });
+
+  test("offers teachers attendance instead of finance from the dashboard denial", async () => {
+    const user = userEvent.setup();
+    resetAuth({
+      activeRoleCodes: ["teacher"],
+      roles: [{ id: "role-teacher", code: "teacher" }],
+      isSchoolAdmin: false,
+    });
+
+    render(
+      <ProtectedRoute>
+        <div>بيانات إدارية</div>
+      </ProtectedRoute>
+    );
+
+    expect(await screen.findByText("تعذر فتح لوحة الإدارة")).toBeInTheDocument();
+    expect(screen.queryByText("بيانات إدارية")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "الانتقال إلى المالية" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "الانتقال إلى الحضور" }));
+    expect(mocks.location).toHaveBeenCalledWith("/attendance");
   });
 });
