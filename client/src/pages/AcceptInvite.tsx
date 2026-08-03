@@ -140,7 +140,7 @@ export default function AcceptInvite() {
             حُفظت كلمة المرور الجديدة، لكن تعذر تحديث حالة سجل الدعوة. يمكنك متابعة الدخول، وسيُراجع السجل بصورة مستقلة دون إعادة كلمة المرور.
           </p>
           <Button type="button" onClick={() => setLocation("/post-login")} className="mt-6 w-full bg-[#0B4738] text-white">
-            الانتقال إلى لوحة التحكم
+            متابعة الدخول
           </Button>
         </section>
       </main>
