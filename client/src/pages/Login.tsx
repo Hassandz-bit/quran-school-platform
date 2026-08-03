@@ -28,7 +28,7 @@ const Login: React.FC = () => {
         return;
       }
 
-      setLocation("/dashboard");
+      setLocation("/post-login");
     } catch {
       setErrorMessage("تعذر تسجيل الدخول حاليًا. حاول مرة أخرى لاحقًا.");
     } finally {
