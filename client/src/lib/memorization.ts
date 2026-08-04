@@ -257,7 +257,6 @@ type ClassRow = {
   schedule_label: string | null;
 };
 type StudentRow = { id: string; first_name: string; last_name: string };
-type ClassTeacherRow = { teacher_id: string };
 type TeacherRow = {
   id: string;
   profile_id: string | null;
@@ -544,6 +543,30 @@ async function assertViewOrManage(
   if (!canView && !canManage) throw new MemorizationPermissionError();
 }
 
+async function listMemorizationClassTeachers(
+  client: SupabaseClient,
+  schoolId: string,
+  branchId: string,
+  classId: string
+): Promise<MemorizationTeacher[]> {
+  const { data, error } = await client.rpc(
+    "list_memorization_class_teachers",
+    {
+      target_school_id: schoolId,
+      target_branch_id: branchId,
+      target_class_id: classId,
+    }
+  );
+
+  if (error) throw error;
+
+  return ((data ?? []) as TeacherRow[]).map(teacher => ({
+    id: teacher.id,
+    profileId: teacher.profile_id,
+    fullName: `${teacher.first_name} ${teacher.last_name}`.trim(),
+  }));
+}
+
 export async function fetchMemorizationWorkspace(
   schoolId: string,
   branchId: string,
@@ -552,7 +575,7 @@ export async function fetchMemorizationWorkspace(
 ): Promise<MemorizationWorkspace> {
   await assertViewOrManage(client, schoolId, branchId, classId);
 
-  const [studentsResult, assignmentsResult] = await Promise.all([
+  const [studentsResult, teachers] = await Promise.all([
     client
       .from("students")
       .select("id, first_name, last_name")
@@ -562,52 +585,17 @@ export async function fetchMemorizationWorkspace(
       .eq("status", "active")
       .order("last_name", { ascending: true })
       .order("first_name", { ascending: true }),
-    client
-      .from("class_teachers")
-      .select("teacher_id")
-      .eq("school_id", schoolId)
-      .eq("branch_id", branchId)
-      .eq("class_id", classId)
-      .eq("status", "active"),
+    listMemorizationClassTeachers(client, schoolId, branchId, classId),
   ]);
 
   if (studentsResult.error) throw studentsResult.error;
-  if (assignmentsResult.error) throw assignmentsResult.error;
 
   const students = ((studentsResult.data ?? []) as StudentRow[]).map(student => ({
     id: student.id,
     fullName: `${student.first_name} ${student.last_name}`.trim(),
   }));
-  const teacherIds = [
-    ...new Set(
-      ((assignmentsResult.data ?? []) as ClassTeacherRow[]).map(
-        assignment => assignment.teacher_id
-      )
-    ),
-  ];
 
-  if (teacherIds.length === 0) return { students, teachers: [] };
-
-  const { data: teacherData, error: teacherError } = await client
-    .from("teachers")
-    .select("id, profile_id, first_name, last_name")
-    .eq("school_id", schoolId)
-    .eq("branch_id", branchId)
-    .eq("status", "active")
-    .in("id", teacherIds)
-    .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true });
-
-  if (teacherError) throw teacherError;
-
-  return {
-    students,
-    teachers: ((teacherData ?? []) as TeacherRow[]).map(teacher => ({
-      id: teacher.id,
-      profileId: teacher.profile_id,
-      fullName: `${teacher.first_name} ${teacher.last_name}`.trim(),
-    })),
-  };
+  return { students, teachers };
 }
 
 export async function fetchStudentMemorizationRecords(
@@ -787,30 +775,16 @@ async function verifyTeacherAssignment(
   client: SupabaseClient,
   input: SaveMemorizationInput
 ): Promise<void> {
-  const { data: assignment, error: assignmentError } = await client
-    .from("class_teachers")
-    .select("id")
-    .eq("school_id", input.schoolId)
-    .eq("branch_id", input.branchId)
-    .eq("class_id", input.classId)
-    .eq("teacher_id", input.draft.teacherId)
-    .eq("status", "active")
-    .maybeSingle();
+  const teachers = await listMemorizationClassTeachers(
+    client,
+    input.schoolId,
+    input.branchId,
+    input.classId
+  );
 
-  if (assignmentError) throw assignmentError;
-  if (!assignment) throw new MemorizationValidationError("teacher_not_assigned");
-
-  const { data: teacher, error: teacherError } = await client
-    .from("teachers")
-    .select("id")
-    .eq("id", input.draft.teacherId)
-    .eq("school_id", input.schoolId)
-    .eq("branch_id", input.branchId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (teacherError) throw teacherError;
-  if (!teacher) throw new MemorizationValidationError("teacher_not_active");
+  if (!teachers.some(teacher => teacher.id === input.draft.teacherId)) {
+    throw new MemorizationValidationError("teacher_not_assigned");
+  }
 }
 
 function normalizedWritePayload(draft: MemorizationDraft) {
