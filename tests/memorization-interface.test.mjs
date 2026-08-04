@@ -5,16 +5,25 @@ import test from "node:test";
 const read = path =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [app, route, page, data, managerScope, dashboard, migration] =
-  await Promise.all([
-    read("client/src/App.tsx"),
-    read("client/src/components/MemorizationRoute.tsx"),
-    read("client/src/pages/Memorization.tsx"),
-    read("client/src/lib/memorization.ts"),
-    read("client/src/lib/memorization-manager-scope.ts"),
-    read("client/src/pages/Dashboard.tsx"),
-    read("supabase/014_memorization_module.sql"),
-  ]);
+const [
+  app,
+  route,
+  page,
+  data,
+  managerScope,
+  dashboard,
+  migration,
+  teacherRpcMigration,
+] = await Promise.all([
+  read("client/src/App.tsx"),
+  read("client/src/components/MemorizationRoute.tsx"),
+  read("client/src/pages/Memorization.tsx"),
+  read("client/src/lib/memorization.ts"),
+  read("client/src/lib/memorization-manager-scope.ts"),
+  read("client/src/pages/Dashboard.tsx"),
+  read("supabase/014_memorization_module.sql"),
+  read("supabase/016_memorization_class_teachers_rpc.sql"),
+]);
 
 const interfaceSources = [app, route, page, data, managerScope, dashboard].join(
   "\n"
@@ -85,14 +94,26 @@ test("loads only active students in the exact class scope", () => {
   );
 });
 
-test("loads only active teachers assigned to the class", () => {
+test("loads only active teachers assigned to the class through a scoped RPC", () => {
   assert.match(
     data,
-    /\.from\("class_teachers"\)[\s\S]*?\.select\("teacher_id"\)[\s\S]*?\.eq\("class_id", classId\)[\s\S]*?\.eq\("status", "active"\)/
+    /client\.rpc\(\s*"list_memorization_class_teachers"[\s\S]*?target_school_id: schoolId[\s\S]*?target_branch_id: branchId[\s\S]*?target_class_id: classId/
   );
   assert.match(
+    teacherRpcMigration,
+    /create or replace function public\.list_memorization_class_teachers/i
+  );
+  assert.match(teacherRpcMigration, /join public\.class_teachers/i);
+  assert.match(teacherRpcMigration, /join public\.teachers/i);
+  assert.match(teacherRpcMigration, /class_teacher\.status = 'active'/i);
+  assert.match(teacherRpcMigration, /teacher\.status = 'active'/i);
+  assert.doesNotMatch(
     data,
-    /\.from\("teachers"\)[\s\S]*?\.select\("id, profile_id, first_name, last_name"\)[\s\S]*?\.eq\("status", "active"\)[\s\S]*?\.in\("id", teacherIds\)/
+    /\.from\("class_teachers"\)[\s\S]*?\.select\("teacher_id"\)/
+  );
+  assert.doesNotMatch(
+    data,
+    /\.from\("teachers"\)[\s\S]*?\.select\("id, profile_id, first_name, last_name"\)/
   );
   assert.match(page, /تم ربط السجل بحساب المعلم الحالي تلقائيًا/);
 });
@@ -177,7 +198,8 @@ test("verifies the active student and assigned teacher before saving", () => {
   assert.match(data, /async function verifyStudent/);
   assert.match(data, /async function verifyTeacherAssignment/);
   assert.match(data, /\.eq\("student_id", input\.studentId\)/);
-  assert.match(data, /\.eq\("teacher_id", input\.draft\.teacherId\)/);
+  assert.match(data, /await listMemorizationClassTeachers/);
+  assert.match(data, /teacher\.id === input\.draft\.teacherId/);
   assert.match(data, /await Promise\.all\(\[[\s\S]*?verifyStudent[\s\S]*?verifyTeacherAssignment/);
 });
 
@@ -311,4 +333,6 @@ test("contains no forbidden browser data-access patterns", () => {
   assert.equal(interfaceSources.includes("service_role"), false);
   assert.equal(interfaceSources.includes(".delete("), false);
   assert.equal(interfaceSources.includes("SUPABASE_SERVICE"), false);
+  assert.equal(interfaceSources.includes('.from("class_teachers")'), false);
+  assert.equal(interfaceSources.includes('.from("teachers")'), false);
 });
