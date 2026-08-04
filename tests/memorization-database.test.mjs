@@ -6,6 +6,10 @@ const migration = readFileSync(
   new URL("../supabase/014_memorization_module.sql", import.meta.url),
   "utf8",
 );
+const teacherRpcMigration = readFileSync(
+  new URL("../supabase/016_memorization_class_teachers_rpc.sql", import.meta.url),
+  "utf8",
+);
 
 test("memorization migration creates records and append-only history", () => {
   assert.match(migration, /create table public\.memorization_records/i);
@@ -104,6 +108,44 @@ test("teacher access requires an active profile-linked class assignment", () => 
   );
   assert.match(migration, /class_teacher\.class_id = target_class_id/i);
   assert.match(migration, /class_teacher\.status = 'active'/i);
+});
+
+
+test("memorization teacher RPC is narrowly scoped and browser-callable only for authenticated users", () => {
+  assert.match(
+    teacherRpcMigration,
+    /create or replace function public\.list_memorization_class_teachers/i,
+  );
+  assert.match(
+    teacherRpcMigration,
+    /returns table \([\s\S]*id uuid,[\s\S]*profile_id uuid,[\s\S]*first_name text,[\s\S]*last_name text[\s\S]*\)/i,
+  );
+  assert.match(
+    teacherRpcMigration,
+    /security definer\s+set search_path = ''/i,
+  );
+  assert.match(
+    teacherRpcMigration,
+    /public\.can_access_memorization_class\([\s\S]*'memorization\.view'[\s\S]*\)[\s\S]*or public\.can_access_memorization_class\([\s\S]*'memorization\.manage'/i,
+  );
+  assert.match(teacherRpcMigration, /join public\.class_teachers/i);
+  assert.match(teacherRpcMigration, /join public\.teachers/i);
+  assert.match(teacherRpcMigration, /class_teacher\.status = 'active'/i);
+  assert.match(teacherRpcMigration, /teacher\.status = 'active'/i);
+  assert.match(
+    teacherRpcMigration,
+    /revoke all on function public\.list_memorization_class_teachers\(uuid, uuid, uuid\)[\s\S]*from public/i,
+  );
+  assert.match(
+    teacherRpcMigration,
+    /revoke execute on function public\.list_memorization_class_teachers\(uuid, uuid, uuid\)[\s\S]*from anon/i,
+  );
+  assert.match(
+    teacherRpcMigration,
+    /grant execute on function public\.list_memorization_class_teachers\(uuid, uuid, uuid\)[\s\S]*to authenticated/i,
+  );
+  assert.doesNotMatch(teacherRpcMigration, /service_role/i);
+  assert.doesNotMatch(teacherRpcMigration, /select\s+(?:\w+\.)?\*/i);
 });
 
 test("students and teachers are validated in the exact active class", () => {
