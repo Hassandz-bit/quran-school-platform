@@ -14,11 +14,38 @@ returns table (
   first_name text,
   last_name text
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
+begin
+  if auth.uid() is null then
+    raise exception using
+      errcode = '42501',
+      message = 'authentication required';
+  end if;
+
+  if not (
+    public.can_access_memorization_class(
+      target_school_id,
+      target_branch_id,
+      target_class_id,
+      'memorization.view'
+    )
+    or public.can_access_memorization_class(
+      target_school_id,
+      target_branch_id,
+      target_class_id,
+      'memorization.manage'
+    )
+  ) then
+    raise exception using
+      errcode = '42501',
+      message = 'permission denied';
+  end if;
+
+  return query
   select
     teacher.id,
     teacher.profile_id,
@@ -39,21 +66,8 @@ as $$
     and target_class.branch_id = target_branch_id
     and target_class.id = target_class_id
     and target_class.status = 'active'
-    and (
-      public.can_access_memorization_class(
-        target_school_id,
-        target_branch_id,
-        target_class_id,
-        'memorization.view'
-      )
-      or public.can_access_memorization_class(
-        target_school_id,
-        target_branch_id,
-        target_class_id,
-        'memorization.manage'
-      )
-    )
   order by teacher.last_name asc, teacher.first_name asc, teacher.id asc;
+end;
 $$;
 
 revoke all on function public.list_memorization_class_teachers(uuid, uuid, uuid)
