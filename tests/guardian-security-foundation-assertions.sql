@@ -514,6 +514,19 @@ end;
 $$;
 reset role;
 
+select set_config(
+  'test.guardian_one_relationship_id',
+  (
+    select id::text
+    from public.student_guardians
+    where school_id = '10000000-0000-4000-8000-000000000001'
+      and student_id = '50000000-0000-4000-8000-000000000001'
+      and guardian_profile_id =
+        '60000000-0000-4000-8000-000000000006'
+  ),
+  false
+);
+
 set role authenticated;
 select set_config(
   'request.jwt.claim.sub',
@@ -834,15 +847,9 @@ select set_config(
 );
 do $$
 declare
-  relationship_id uuid;
+  relationship_id uuid :=
+    current_setting('test.guardian_one_relationship_id')::uuid;
 begin
-  select id into strict relationship_id
-  from public.student_guardians
-  where school_id = '10000000-0000-4000-8000-000000000001'
-    and student_id = '50000000-0000-4000-8000-000000000001'
-    and guardian_profile_id =
-      '60000000-0000-4000-8000-000000000006';
-
   begin
     perform public.revoke_student_guardian_link(
       '10000000-0000-4000-8000-000000000001',
@@ -856,6 +863,16 @@ end;
 $$;
 reset role;
 
+select set_config(
+  'test.school_b_relationship_id',
+  (
+    select id::text
+    from public.student_guardians
+    where school_id = '10000000-0000-4000-8000-000000000002'
+  ),
+  false
+);
+
 set role authenticated;
 select set_config(
   'request.jwt.claim.sub',
@@ -864,12 +881,9 @@ select set_config(
 );
 do $$
 declare
-  relationship_id uuid;
+  relationship_id uuid :=
+    current_setting('test.school_b_relationship_id')::uuid;
 begin
-  select id into strict relationship_id
-  from public.student_guardians
-  where school_id = '10000000-0000-4000-8000-000000000002';
-
   begin
     perform public.revoke_student_guardian_link(
       '10000000-0000-4000-8000-000000000002',
