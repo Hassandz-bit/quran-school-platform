@@ -1037,7 +1037,7 @@ declare
   event_count integer;
   event_id uuid;
 begin
-  select count(*), min(id)
+  select count(*), min(id::text)::uuid
   into event_count, event_id
   from public.guardian_access_events;
 
