@@ -901,7 +901,7 @@ select * from public.claim_guardian_invitation_delivery(
 );
 reset role;
 update public.profiles
-set status = 'inactive'
+set status = 'disabled'
 where id = '60000000-0000-4000-8000-000000000010';
 set role authenticated;
 select set_config(
