@@ -39,7 +39,7 @@ vi.mock("@/lib/dashboard", async () => {
   };
 });
 
-import Dashboard from "@/pages/Dashboard";
+import AppShell from "@/components/AppShell";
 import MembersRoute from "@/components/MembersRoute";
 import Members from "@/pages/Members";
 
@@ -147,13 +147,12 @@ describe("read-only members directory runtime", () => {
     });
   });
 
-  test("shows the dashboard members link only for an authorized user", async () => {
-    const first = render(<Dashboard />);
+  test("shows the members link in the shared shell only for an authorized user", async () => {
+    const first = render(<AppShell><div>محتوى تجريبي</div></AppShell>);
     await waitFor(() => expect(mocks.access).toHaveBeenCalled());
-    expect((await screen.findAllByText("أعضاء المدرسة")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("الأعضاء")).length).toBeGreaterThan(0);
     first.unmount();
     mocks.access.mockClear();
-    mocks.dashboard.mockClear();
 
     mocks.access.mockResolvedValue({
       canView: false,
@@ -161,16 +160,16 @@ describe("read-only members directory runtime", () => {
       hasProfilesView: false,
       viaSchoolAdmin: false,
     });
-    render(<Dashboard />);
+    render(<AppShell><div>محتوى تجريبي</div></AppShell>);
     await waitFor(() => expect(mocks.access).toHaveBeenCalledTimes(1));
-    await screen.findByText("مرحبًا بك في لوحة التحكم");
-    expect(screen.queryByText("أعضاء المدرسة")).not.toBeInTheDocument();
+    expect(screen.queryByText("الأعضاء")).not.toBeInTheDocument();
   });
 
-  test("allows school_admin on the dashboard without waiting for permission RPCs", async () => {
+  test("shows the members destination for school_admin without a permission RPC", async () => {
     resetAuth({ isSchoolAdmin: true });
-    render(<Dashboard />);
-    expect((await screen.findAllByText("أعضاء المدرسة")).length).toBeGreaterThan(0);
+    render(<AppShell><div>محتوى تجريبي</div></AppShell>);
+    expect((await screen.findAllByText("الأعضاء")).length).toBeGreaterThan(0);
+    expect(mocks.access).not.toHaveBeenCalled();
   });
 
   test("blocks direct /members access and renders no child data when unauthorized", async () => {
