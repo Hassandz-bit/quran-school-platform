@@ -92,9 +92,7 @@ with grants(role_code, permission_code) as (
     ('finance_officer', 'school.view'),
     ('finance_officer', 'branches.view'),
     ('student', 'school.view'),
-    ('student', 'branches.view'),
-    ('guardian', 'school.view'),
-    ('guardian', 'branches.view')
+    ('student', 'branches.view')
 )
 insert into public.role_permissions (school_id, role_id, permission_id)
 select r.school_id, r.id, p.id

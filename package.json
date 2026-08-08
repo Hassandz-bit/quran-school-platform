@@ -12,7 +12,8 @@
     "test:runtime": "vitest --config vitest.config.ts run tests/memorization-runtime-behavior.test.tsx tests/memorization-workspace-rpc.test.ts tests/app-version.test.ts tests/members-runtime.test.tsx tests/teacher-invitations-runtime.test.tsx tests/student-360-runtime.test.ts tests/academic-reports-runtime.test.ts",
     "test:teacher-invitations:function": "deno test --config supabase/functions/invite-teacher/deno.json supabase/functions/invite-teacher/index.test.ts",
     "test:teacher-invitations:migration": "bash tests/run-teacher-invitations-migration-test.sh",
-    "test:memorization-teacher-rpc:migration": "bash tests/run-memorization-teacher-rpc-migration-test.sh"
+    "test:memorization-teacher-rpc:migration": "bash tests/run-memorization-teacher-rpc-migration-test.sh",
+    "test:guardian-security:migration": "bash tests/run-guardian-security-foundation-migration-test.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

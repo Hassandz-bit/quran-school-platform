@@ -1,0 +1,34 @@
+name: Guardian Security Foundation Validation
+
+on:
+  pull_request:
+    paths:
+      - "supabase/017_guardian_security_foundation.sql"
+      - "supabase/seed.sql"
+      - "tests/guardian-security-foundation*"
+      - "tests/run-guardian-security-foundation-migration-test.sh"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/guardian-security-foundation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  guardian-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:guardian-security:migration
+      - run: pnpm test
+      - run: pnpm check
+      - run: pnpm build
