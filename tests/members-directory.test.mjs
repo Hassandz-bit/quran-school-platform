@@ -217,7 +217,10 @@ test("registers a lazy protected members route with a dedicated fallback", () =>
 test("keeps the members link conditional in the shared app shell", () => {
   assert.match(appShell, /fetchMembersAccess/);
   assert.match(appShell, /canViewMembers/);
-  assert.match(appShell, /getAppNavigation\(\{ isSchoolAdmin, activeRoleCodes, canViewMembers \}\)/);
+  assert.match(
+    appShell,
+    /getAppNavigation\(\{[\s\S]*?canViewMembers,[\s\S]*?canViewAcademicReports,[\s\S]*?\}\)/
+  );
   assert.match(appShell, /setCanViewMembers\(access\.canView\)/);
 });
 
