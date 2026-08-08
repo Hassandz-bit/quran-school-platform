@@ -1,0 +1,47 @@
+name: Guardian Invitation Validation
+
+on:
+  pull_request:
+    paths:
+      - "supabase/018_guardian_invitations.sql"
+      - "supabase/config.toml"
+      - "supabase/functions/invite-guardian/**"
+      - "client/src/App.tsx"
+      - "client/src/lib/guardian-invitations.ts"
+      - "client/src/lib/invite-session.ts"
+      - "client/src/pages/AcceptGuardianInvite.tsx"
+      - "tests/guardian-invitations*"
+      - "tests/run-guardian-invitations-migration-test.sh"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/guardian-invitation-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  guardian-invitation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:guardian-invitations:migration
+      - run: pnpm test:guardian-invitations:migration
+      - run: pnpm test:guardian-invitations:function
+      - run: pnpm test:teacher-invitations:migration
+      - run: pnpm test:teacher-invitations:function
+      - run: pnpm test
+      - run: pnpm check
+      - run: pnpm build
+      - run: git diff --check
