@@ -202,8 +202,7 @@ async function fetchFinance(
       .eq("branch_id", branchId)
       .eq("student_id", studentId)
       .order("payment_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(5),
+      .order("created_at", { ascending: false }),
   ]);
 
   if (chargesResult.error) throw chargesResult.error;
@@ -225,7 +224,7 @@ async function fetchFinance(
       (total, balance) => total + balance.remaining,
       0
     ),
-    recentPayments: payments.map(payment => ({
+    recentPayments: payments.slice(0, 5).map(payment => ({
       id: payment.id,
       amount: payment.amount,
       payment_date: payment.payment_date,
