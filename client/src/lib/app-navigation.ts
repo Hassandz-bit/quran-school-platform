@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   BookOpenCheck,
+  ChartNoAxesCombined,
   CalendarDays,
   DollarSign,
   GraduationCap,
@@ -13,6 +14,7 @@ export type AppNavigationInput = {
   isSchoolAdmin: boolean;
   activeRoleCodes: readonly string[];
   canViewMembers?: boolean;
+  canViewAcademicReports?: boolean;
 };
 
 export type AppNavigationItem = {
@@ -23,6 +25,7 @@ export type AppNavigationItem = {
     | "classes"
     | "attendance"
     | "memorization"
+    | "academic-reports"
     | "finance"
     | "members";
   label: string;
@@ -37,6 +40,7 @@ export function getAppNavigation({
   isSchoolAdmin,
   activeRoleCodes,
   canViewMembers = false,
+  canViewAcademicReports = false,
 }: AppNavigationInput): AppNavigationItem[] {
   const roles = new Set(activeRoleCodes);
   const canManageSchool = isSchoolAdmin;
@@ -98,6 +102,17 @@ export function getAppNavigation({
           },
         ]
       : []),
+    ...(canViewAcademicReports
+      ? [
+          {
+            id: "academic-reports" as const,
+            label: "التقارير التعليمية",
+            path: "/academic-reports",
+            group: "learning" as const,
+            icon: ChartNoAxesCombined,
+          },
+        ]
+      : []),
     ...(canUseFinance
       ? [
           {
@@ -131,6 +146,7 @@ export function getBottomNavigation(
     "attendance",
     "students",
     "memorization",
+    "academic-reports",
     "finance",
     "members",
   ] as const;

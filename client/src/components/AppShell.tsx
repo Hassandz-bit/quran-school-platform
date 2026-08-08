@@ -19,6 +19,10 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchMembersAccess } from "@/lib/members";
 import {
+  fetchAcademicReportsAccess,
+  hasAnyAcademicReportsAccess,
+} from "@/lib/academic-reports";
+import {
   getAppNavigation,
   getBottomNavigation,
   getCurrentPageLabel,
@@ -134,6 +138,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [canViewMembers, setCanViewMembers] = useState(false);
+  const [canViewAcademicReports, setCanViewAcademicReports] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,9 +170,45 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [isSchoolAdmin, school?.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!school?.id) {
+      setCanViewAcademicReports(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void fetchAcademicReportsAccess(school.id)
+      .then(access => {
+        if (!cancelled) {
+          setCanViewAcademicReports(hasAnyAcademicReportsAccess(access));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCanViewAcademicReports(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [school?.id]);
+
   const navigation = useMemo(
-    () => getAppNavigation({ isSchoolAdmin, activeRoleCodes, canViewMembers }),
-    [activeRoleCodes, canViewMembers, isSchoolAdmin]
+    () =>
+      getAppNavigation({
+        isSchoolAdmin,
+        activeRoleCodes,
+        canViewMembers,
+        canViewAcademicReports,
+      }),
+    [
+      activeRoleCodes,
+      canViewAcademicReports,
+      canViewMembers,
+      isSchoolAdmin,
+    ]
   );
   const bottomNavigation = useMemo(
     () => getBottomNavigation(navigation),
