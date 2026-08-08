@@ -34,14 +34,20 @@ function resultQuery<T>(result: { data: T; error: null }) {
 function buildClient(options: {
   student: Record<string, unknown> | null;
   financeAccess?: boolean;
+  charges?: Record<string, unknown>[];
+  payments?: Record<string, unknown>[];
 }) {
   const studentQuery = resultQuery({ data: options.student, error: null });
   const branchQuery = resultQuery({ data: { id: "branch-1", name: "الفرع" }, error: null });
   const classQuery = resultQuery({ data: { id: "class-1", name: "حلقة الفجر" }, error: null });
+  const chargesQuery = resultQuery({ data: options.charges ?? [], error: null });
+  const paymentsQuery = resultQuery({ data: options.payments ?? [], error: null });
   const from = vi.fn((table: string) => {
     if (table === "students") return studentQuery;
     if (table === "branches") return branchQuery;
     if (table === "classes") return classQuery;
+    if (table === "student_charges") return chargesQuery;
+    if (table === "payments") return paymentsQuery;
     throw new Error(`Unexpected table: ${table}`);
   });
   const rpc = vi.fn(async () => ({
@@ -52,6 +58,8 @@ function buildClient(options: {
   return {
     client: { from, rpc } as unknown as SupabaseClient,
     studentQuery,
+    chargesQuery,
+    paymentsQuery,
     from,
     rpc,
   };
@@ -111,5 +119,71 @@ describe("Student 360 read-only access boundaries", () => {
     expect(rpc).toHaveBeenCalled();
     expect(from).not.toHaveBeenCalledWith("student_charges");
     expect(from).not.toHaveBeenCalledWith("payments");
+  });
+
+  test("calculates balances from all payments while keeping only five recent payments", async () => {
+    const payments = Array.from({ length: 7 }, (_, index) => ({
+      id: `payment-${7 - index}`,
+      school_id: "school-1",
+      branch_id: "branch-1",
+      student_id: "student-1",
+      charge_id: "charge-1",
+      amount: 100,
+      payment_method: "cash",
+      payment_date: `2026-08-${String(7 - index).padStart(2, "0")}`,
+      reference_number: null,
+      notes: null,
+      status: "completed",
+      created_at: `2026-08-${String(7 - index).padStart(2, "0")}T09:00:00Z`,
+    }));
+    const { client, paymentsQuery } = buildClient({
+      financeAccess: true,
+      student: {
+        id: "student-1",
+        branch_id: "branch-1",
+        class_id: null,
+        first_name: "طالب",
+        last_name: "اختبار",
+        start_date: "2026-08-01",
+        status: "active",
+      },
+      charges: [
+        {
+          id: "charge-1",
+          branch_id: "branch-1",
+          student_id: "student-1",
+          fee_plan_id: null,
+          description: "رسوم شهرية",
+          original_amount: 700,
+          net_amount: 700,
+          due_date: "2026-08-01",
+          status: "partially_paid",
+        },
+      ],
+      payments,
+    });
+
+    const data = await fetchStudent360("school-1", "student-1", client);
+
+    expect(data?.finance).toMatchObject({
+      state: "ready",
+      data: {
+        totalDue: 700,
+        paid: 700,
+        remaining: 0,
+      },
+    });
+    if (data?.finance.state !== "ready") throw new Error("Expected finance data");
+    expect(data.finance.data.recentPayments).toHaveLength(5);
+    expect(data.finance.data.recentPayments.map(payment => payment.id)).toEqual([
+      "payment-7",
+      "payment-6",
+      "payment-5",
+      "payment-4",
+      "payment-3",
+    ]);
+    expect(paymentsQuery.eq).toHaveBeenCalledWith("school_id", "school-1");
+    expect(paymentsQuery.eq).toHaveBeenCalledWith("branch_id", "branch-1");
+    expect(paymentsQuery.eq).toHaveBeenCalledWith("student_id", "student-1");
   });
 });
