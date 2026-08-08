@@ -29,7 +29,7 @@ test("loads roster assignment tools lazily on students and classes pages", () =>
     /<ClassesList \/>[\s\S]*?<RosterAssignmentLauncher mode="class-teacher" \/>/
   );
   assert.match(launcher, /dir="rtl"/);
-  assert.match(launcher, /fixed bottom-5 left-5/);
+  assert.match(launcher, /fixed bottom-\[calc\(5rem\+env\(safe-area-inset-bottom\)\)\] left-5/);
 });
 
 test("hides write tools when no branch grants the required manage permission", () => {
