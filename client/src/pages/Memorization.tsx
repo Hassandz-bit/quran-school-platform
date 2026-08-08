@@ -11,9 +11,7 @@ import {
   CheckCircle2,
   ClipboardList,
   History,
-  Home,
   Loader2,
-  LogOut,
   Pencil,
   RefreshCw,
   RotateCcw,
@@ -23,7 +21,6 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -151,9 +148,7 @@ export default function Memorization() {
     membership,
     roles,
     isSchoolAdmin,
-    signOut,
   } = useAuth();
-  const [, setLocation] = useLocation();
   const [scope, setScope] = useState<MemorizationScope | null>(null);
   const [scopeLoading, setScopeLoading] = useState(true);
   const [scopeError, setScopeError] = useState<string | null>(null);
@@ -485,15 +480,6 @@ export default function Memorization() {
     }
   };
 
-  const handleSignOut = async () => {
-    const { error } = await signOut();
-    if (error) {
-      toast.error("تعذر تسجيل الخروج حاليًا.");
-      return;
-    }
-    setLocation("/login");
-  };
-
   if (scopeLoading) {
     return (
       <main className="min-h-screen bg-[#F8F9FA] p-4 md:p-8" dir="rtl">
@@ -542,41 +528,6 @@ export default function Memorization() {
 
   return (
     <main className="min-h-screen bg-[#F8F9FA] pb-28" dir="rtl">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0B4738] text-white shadow-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 md:px-6">
-          <div className="min-w-0">
-            <p className="text-xs text-white/65">
-              {school?.name} · النسخة {APP_VERSION}
-            </p>
-            <h1 className="truncate text-lg font-bold">
-              متابعة الحفظ والمراجعة
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {isSchoolAdmin && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-white hover:bg-white/10 hover:text-white"
-                onClick={() => setLocation("/dashboard")}
-                aria-label="العودة إلى لوحة التحكم"
-              >
-                <Home size={18} />
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-white hover:bg-white/10 hover:text-white"
-              onClick={() => void handleSignOut()}
-              aria-label="تسجيل الخروج"
-            >
-              <LogOut size={18} />
-            </Button>
-          </div>
-        </div>
-      </header>
-
       <div className="mx-auto max-w-6xl space-y-4 px-4 py-5 md:px-6">
         <Card className="border border-gray-100 p-4 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
@@ -1178,7 +1129,7 @@ export default function Memorization() {
         workspace &&
         workspace.teachers.length > 0 &&
         selectedStudentId && (
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur md:bottom-0">
             <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
               <div className="min-w-0 text-xs text-gray-500">
                 {dirty

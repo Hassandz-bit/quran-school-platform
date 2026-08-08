@@ -644,7 +644,7 @@ export default function RosterAssignmentLauncher({
       <Button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 left-5 z-40 gap-2 rounded-full bg-[#0B4738] px-5 text-white shadow-xl hover:bg-[#08382d] md:bottom-7 md:left-7"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-5 z-40 gap-2 rounded-full bg-[#0B4738] px-5 text-white shadow-xl hover:bg-[#08382d] md:bottom-7 md:left-7"
         aria-label={isStudentMode ? "إدارة ربط الطلاب بالحلقات" : "إدارة تعيين المعلمين للحلقات"}
       >
         {isStudentMode ? <Link2 size={18} /> : <BookOpenCheck size={18} />}

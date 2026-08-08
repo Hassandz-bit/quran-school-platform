@@ -195,12 +195,13 @@ test("uses only read operations and explicit school filters in the members data 
 });
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
-const [app, route, page, data, dashboard] = await Promise.all([
+const [app, route, page, data, dashboard, appShell] = await Promise.all([
   read("client/src/App.tsx"),
   read("client/src/components/MembersRoute.tsx"),
   read("client/src/pages/Members.tsx"),
   read("client/src/lib/members.ts"),
   read("client/src/pages/Dashboard.tsx"),
+  read("client/src/components/AppShell.tsx"),
 ]);
 
 test("registers a lazy protected members route with a dedicated fallback", () => {
@@ -213,11 +214,11 @@ test("registers a lazy protected members route with a dedicated fallback", () =>
   assert.match(route, /الوصول غير مسموح/);
 });
 
-test("keeps the dashboard link conditional instead of rendering then denying it", () => {
-  assert.match(dashboard, /fetchMembersAccess/);
-  assert.match(dashboard, /canViewMembers/);
-  assert.match(dashboard, /path: "\/members"/);
-  assert.match(dashboard, /\.\.\.\(canViewMembers/);
+test("keeps the members link conditional in the shared app shell", () => {
+  assert.match(appShell, /fetchMembersAccess/);
+  assert.match(appShell, /canViewMembers/);
+  assert.match(appShell, /getAppNavigation\(\{ isSchoolAdmin, activeRoleCodes, canViewMembers \}\)/);
+  assert.match(appShell, /setCanViewMembers\(access\.canView\)/);
 });
 
 test("covers all required visible states without mutation controls", () => {
@@ -242,7 +243,7 @@ test("covers all required visible states without mutation controls", () => {
 });
 
 test("contains no forbidden data or account-management patterns", () => {
-  const sources = [app, route, page, data, dashboard].join("\n");
+  const sources = [app, route, page, data, dashboard, appShell].join("\n");
   for (const forbidden of [
     ".delete(".split("").join(""),
     ["service", "role"].join("_"),

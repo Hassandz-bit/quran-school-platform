@@ -275,18 +275,20 @@ test("maps a check constraint error to a safe validation message", () => {
   );
 });
 
-test("uses the teachers route in every current application sidebar", async () => {
-  const files = [
-    "../client/src/pages/Dashboard.tsx",
-    "../client/src/pages/StudentsList.tsx",
-    "../client/src/pages/ClassesList.tsx",
-    "../client/src/pages/TeachersList.tsx",
-  ];
+test("keeps the teachers route in the centralized role-aware app navigation", async () => {
+  const navigationSource = await readFile(
+    new URL("../client/src/lib/app-navigation.ts", import.meta.url),
+    "utf8"
+  );
+  assert.match(navigationSource, /id:\s*"teachers"/);
+  assert.match(navigationSource, /path:\s*"\/teachers"/);
+  assert.match(navigationSource, /canManageSchool = isSchoolAdmin/);
 
-  for (const file of files) {
-    const source = await readFile(new URL(file, import.meta.url), "utf8");
-    assert.match(source, /path:\s*["']\/teachers["']/);
-  }
+  const shellSource = await readFile(
+    new URL("../client/src/components/AppShell.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(shellSource, /getAppNavigation/);
 
   const appSource = await readFile(
     new URL("../client/src/App.tsx", import.meta.url),
