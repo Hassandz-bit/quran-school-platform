@@ -12,6 +12,7 @@ import {
 export type AppNavigationInput = {
   isSchoolAdmin: boolean;
   activeRoleCodes: readonly string[];
+  canViewMembers?: boolean;
 };
 
 export type AppNavigationItem = {
@@ -35,6 +36,7 @@ const hasRole = (roles: ReadonlySet<string>, role: string) => roles.has(role);
 export function getAppNavigation({
   isSchoolAdmin,
   activeRoleCodes,
+  canViewMembers = false,
 }: AppNavigationInput): AppNavigationItem[] {
   const roles = new Set(activeRoleCodes);
   const canManageSchool = isSchoolAdmin;
@@ -43,7 +45,7 @@ export function getAppNavigation({
     hasRole(roles, "teacher") ||
     hasRole(roles, "academic_supervisor");
   const canUseFinance = isSchoolAdmin || hasRole(roles, "finance_officer");
-  const canUseMembers = isSchoolAdmin || hasRole(roles, "registrar");
+  const canUseMembers = isSchoolAdmin || canViewMembers;
 
   return [
     ...(canManageSchool
