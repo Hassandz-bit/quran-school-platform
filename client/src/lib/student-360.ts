@@ -291,11 +291,20 @@ export async function fetchStudent360(
 
   const classId = profile.classId;
   if (!classId) {
+    const [financeResult] = await Promise.allSettled([
+      fetchFinance(client, schoolId, profile.branchId, profile.id),
+    ]);
+
     return {
       profile,
       attendance: { state: "hidden" },
       memorization: { state: "hidden" },
-      finance: { state: "hidden" },
+      finance:
+        financeResult.status === "rejected"
+          ? { state: "error" }
+          : financeResult.value === null
+            ? { state: "hidden" }
+            : { state: "ready", data: financeResult.value },
     };
   }
 
