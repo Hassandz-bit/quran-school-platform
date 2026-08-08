@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   RefreshCw,
+  FileSearch,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
@@ -75,6 +76,7 @@ const StudentsList: React.FC = () => {
       retry: "إعادة المحاولة",
       empty: "لم تتم إضافة أي طالب بعد.",
       noResults: "لا توجد نتائج مطابقة.",
+      viewProfile: "عرض الملف",
     },
     en: {
       dashboard: "Dashboard",
@@ -106,6 +108,7 @@ const StudentsList: React.FC = () => {
       retry: "Try again",
       empty: "No students have been added yet.",
       noResults: "No matching results.",
+      viewProfile: "View profile",
     },
   };
 
@@ -282,8 +285,14 @@ const StudentsList: React.FC = () => {
                       key={student.id}
                       className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
                     >
-                      <td className="px-4 py-3 font-medium text-[#2C3E50] text-sm">
-                        {student.first_name} {student.last_name}
+                      <td className="px-4 py-3 text-sm">
+                        <button
+                          type="button"
+                          onClick={() => setLocation(`/students/${student.id}`)}
+                          className="font-medium text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                        >
+                          {student.first_name} {student.last_name}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {student.phone ?? t.noValue}
@@ -328,9 +337,13 @@ const StudentsList: React.FC = () => {
             filteredStudents.map(student => (
               <Card key={student.id} className="p-4 border border-gray-100">
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <p className="font-semibold text-[#2C3E50]">
+                  <button
+                    type="button"
+                    onClick={() => setLocation(`/students/${student.id}`)}
+                    className="min-h-11 text-right font-semibold text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                  >
                     {student.first_name} {student.last_name}
-                  </p>
+                  </button>
                   <span
                     className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.status)}`}
                   >
@@ -344,6 +357,14 @@ const StudentsList: React.FC = () => {
                   <div><dt className="inline text-gray-400">{t.class}: </dt><dd className="inline">{student.class_id ? (classNames.get(student.class_id) ?? t.unavailable) : t.noClass}</dd></div>
                   <div><dt className="inline text-gray-400">{t.registrationDate}: </dt><dd className="inline">{formatDate(student.start_date)}</dd></div>
                 </dl>
+                <button
+                  type="button"
+                  onClick={() => setLocation(`/students/${student.id}`)}
+                  className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-[#17663B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                >
+                  <FileSearch className="size-4" />
+                  {t.viewProfile}
+                </button>
               </Card>
             ))
           ) : (

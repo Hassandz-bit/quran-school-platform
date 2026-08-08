@@ -34,6 +34,7 @@ const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
+const Student360 = lazy(() => import("./pages/Student360"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
@@ -65,6 +66,10 @@ function MemorizationPageFallback() {
   return <ModuleFallback label="جارٍ تحميل وحدة متابعة الحفظ..." />;
 }
 
+function Student360PageFallback() {
+  return <ModuleFallback label="جارٍ تحميل ملف الطالب..." />;
+}
+
 function MembersPageFallback() {
   return <ModuleFallback label="جارٍ تحميل دليل أعضاء المدرسة..." />;
 }
@@ -94,6 +99,15 @@ function Router() {
         </Route>
         <Route path="/dashboard">
           <ProtectedRoute><Shell><Dashboard /></Shell></ProtectedRoute>
+        </Route>
+        <Route path="/students/:studentId">
+          <ProtectedRoute>
+            <Shell>
+              <Suspense fallback={<Student360PageFallback />}>
+                <Student360 />
+              </Suspense>
+            </Shell>
+          </ProtectedRoute>
         </Route>
         <Route path="/students">
           <ProtectedRoute>
