@@ -27,7 +27,11 @@ test("app shell provides compact mobile navigation and an accessible drawer", ()
   assert.match(shell, /aria-label="المزيد"/);
   assert.match(shell, /aria-label="قائمة المزيد"/);
   assert.match(shell, /min-h-12/);
-  assert.match(shell, /pb-\\[calc\\(7rem\\+env\\(safe-area-inset-bottom\\)\\)\\]/);\n  assert.match(shell, /overflow-x-clip/);\n  assert.match(shell, /variant\\?: "dark" \\| "light"/);\n  assert.match(shell, /variant="light"/);\n  assert.match(shell, /md:hidden/);
+  assert.match(shell, /pb-\[calc\(7rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(shell, /overflow-x-clip/);
+  assert.match(shell, /variant\?: "dark" \| "light"/);
+  assert.match(shell, /variant="light"/);
+  assert.match(shell, /md:hidden/);
   assert.match(shell, /dir="rtl"/);
 });
 
