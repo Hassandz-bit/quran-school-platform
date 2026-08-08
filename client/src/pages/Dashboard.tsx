@@ -1,22 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   BookOpenCheck,
-  Calendar,
-  DollarSign,
+  CalendarDays,
   GraduationCap,
-  Home,
-  LogOut,
-  Menu,
+  Landmark,
   Plus,
   RefreshCw,
-  Settings,
   Users,
-  X,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import {
+  EmptyState,
+  PageHeader,
+  QuickActionCard,
+  SectionHeader,
+  StatCard,
+} from "@/components/ui/app-primitives";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchDashboardData,
@@ -25,119 +26,35 @@ import {
   type DashboardData,
   type DashboardErrorKind,
 } from "@/lib/dashboard";
-import { toast } from "sonner";
-import { fetchMembersAccess } from "@/lib/members";
 
-const Dashboard: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [language, setLanguage] = useState<"ar" | "en">("ar");
+const roleLabels: Record<string, string> = {
+  teacher: "معلم",
+  academic_supervisor: "مشرف أكاديمي",
+  finance_officer: "مسؤول مالي",
+  registrar: "مسؤول التسجيل",
+};
+
+export default function Dashboard() {
+  const [, setLocation] = useLocation();
+  const { school, profile, activeRoleCodes, isSchoolAdmin } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<DashboardErrorKind | null>(null);
-  const [, setLocation] = useLocation();
-  const { school, signOut, isSchoolAdmin } = useAuth();
-  const [canViewMembers, setCanViewMembers] = useState(false);
-
-  const content = {
-    ar: {
-      dashboard: "لوحة التحكم",
-      school: "المدرسة القرآنية",
-      students: "الطلاب",
-      teachers: "المعلمون",
-      classes: "الحلقات",
-      finance: "المالية",
-      attendance: "الحضور",
-      memorization: "متابعة الحفظ",
-      members: "أعضاء المدرسة",
-      settings: "الإعدادات",
-      logout: "تسجيل الخروج",
-      welcome: "مرحبًا بك في لوحة التحكم",
-      totalStudents: "إجمالي الطلاب",
-      dailyAttendance: "الحضور اليومي",
-      activeClasses: "الحلقات النشطة",
-      pendingPayments: "المتأخرات المالية",
-      unavailable: "غير متاح بعد",
-      attendanceHint: "يُفعّل بعد إنشاء وحدة الحضور",
-      financeHint: "يُفعّل بعد إنشاء الوحدة المالية",
-      quickActions: "إجراءات سريعة",
-      addStudent: "إضافة طالب",
-      createClass: "إنشاء حلقة",
-      addTeacher: "إضافة معلم",
-      recordMemorization: "تسجيل متابعة",
-      comingSoon: "قريبًا",
-      activeClassesSection: "الحلقات النشطة",
-      viewAllClasses: "عرض جميع الحلقات",
-      noActiveClasses: "لا توجد حلقات نشطة حاليًا.",
-      branch: "الفرع",
-      schedule: "التوقيت",
-      unavailableBranch: "غير متاح",
-      availableModules: "الوحدات المتاحة",
-      attendanceModule: "الحضور والغياب",
-      memorizationModule: "الحفظ والمراجعة",
-      membersModule: "دليل أعضاء المدرسة",
-      availableNow: "متاح",
-      loading: "جارٍ تحميل بيانات لوحة التحكم...",
-      retry: "إعادة المحاولة",
-    },
-    en: {
-      dashboard: "Dashboard",
-      school: "Quran School",
-      students: "Students",
-      teachers: "Teachers",
-      classes: "Classes",
-      finance: "Finance",
-      attendance: "Attendance",
-      memorization: "Memorization",
-      members: "Members",
-      settings: "Settings",
-      logout: "Sign Out",
-      welcome: "Welcome to Dashboard",
-      totalStudents: "Total Students",
-      dailyAttendance: "Daily Attendance",
-      activeClasses: "Active Classes",
-      pendingPayments: "Pending Payments",
-      unavailable: "Not available yet",
-      attendanceHint: "Enabled after the attendance module is created",
-      financeHint: "Enabled after the finance module is created",
-      quickActions: "Quick Actions",
-      addStudent: "Add Student",
-      createClass: "Create Class",
-      addTeacher: "Add Teacher",
-      recordMemorization: "Record follow-up",
-      comingSoon: "Coming soon",
-      activeClassesSection: "Active Classes",
-      viewAllClasses: "View all classes",
-      noActiveClasses: "There are no active classes yet.",
-      branch: "Branch",
-      schedule: "Schedule",
-      unavailableBranch: "Unavailable",
-      availableModules: "Available modules",
-      attendanceModule: "Attendance and Absence",
-      memorizationModule: "Memorization and Revision",
-      membersModule: "School member directory",
-      availableNow: "Available",
-      loading: "Loading dashboard data...",
-      retry: "Try again",
-    },
-  };
-
-  const t = content[language];
 
   const loadDashboard = useCallback(async () => {
-    setDashboardData(null);
-    setLoadError(null);
-
     if (!school?.id) {
-      setIsLoading(false);
+      setDashboardData(null);
       setLoadError("missingSchool");
+      setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
+    setLoadError(null);
     try {
       setDashboardData(await fetchDashboardData(school.id));
     } catch {
+      setDashboardData(null);
       setLoadError("load");
     } finally {
       setIsLoading(false);
@@ -148,494 +65,265 @@ const Dashboard: React.FC = () => {
     void loadDashboard();
   }, [loadDashboard]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const roles = useMemo(() => new Set(activeRoleCodes), [activeRoleCodes]);
+  const canManageSchool = isSchoolAdmin;
+  const canRegisterStudents = isSchoolAdmin || roles.has("registrar");
+  const canUseLearning =
+    isSchoolAdmin || roles.has("teacher") || roles.has("academic_supervisor");
+  const canUseFinance = isSchoolAdmin || roles.has("finance_officer");
+  const userRole = isSchoolAdmin
+    ? "مدير المدرسة"
+    : activeRoleCodes.map(role => roleLabels[role]).find(Boolean) ?? "عضو المدرسة";
+  const formattedDate = new Intl.DateTimeFormat("ar-DZ", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 
-    if (!school?.id) {
-      setCanViewMembers(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    if (isSchoolAdmin) {
-      setCanViewMembers(true);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setCanViewMembers(false);
-    void fetchMembersAccess(school.id, false)
-      .then(access => {
-        if (!cancelled) setCanViewMembers(access.canView);
-      })
-      .catch(() => {
-        if (!cancelled) setCanViewMembers(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isSchoolAdmin, school?.id]);
-
-  const handleLogout = async () => {
-    try {
-      const { error } = await signOut();
-      if (error) {
-        toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
-        return;
-      }
-      setLocation("/login");
-    } catch {
-      toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
-    }
-  };
-
-  const menuItems = [
-    { label: t.dashboard, icon: Home, path: "/dashboard" },
-    { label: t.students, icon: Users, path: "/students" },
-    { label: t.teachers, icon: GraduationCap, path: "/teachers" },
-    { label: t.classes, icon: BookOpen, path: "/classes" },
-    { label: t.attendance, icon: Calendar, path: "/attendance" },
-    {
-      label: t.memorization,
-      icon: BookOpenCheck,
-      path: "/memorization",
-    },
-    { label: t.finance, icon: DollarSign, path: "/finance" },
-    ...(canViewMembers
-      ? [{ label: t.members, icon: Users, path: "/members" }]
+  const quickActions = [
+    ...(canUseLearning
+      ? [
+          {
+            label: "تسجيل الحضور",
+            description: "إدارة حضور طلاب الحلقة اليوم",
+            icon: CalendarDays,
+            path: "/attendance",
+            tone: "green" as const,
+          },
+          {
+            label: "متابعة الحفظ",
+            description: "تسجيل إنجاز الطالب ومراجعته",
+            icon: BookOpenCheck,
+            path: "/memorization",
+            tone: "blue" as const,
+          },
+        ]
       : []),
-    { label: t.settings, icon: Settings, path: null },
-  ];
+    ...(canRegisterStudents
+      ? [
+          {
+            label: "إضافة طالب",
+            description: "تسجيل طالب جديد في المدرسة",
+            icon: Plus,
+            path: "/students/new",
+            tone: "green" as const,
+          },
+        ]
+      : []),
+    ...(canManageSchool
+      ? [
+          {
+            label: "إنشاء حلقة",
+            description: "إضافة حلقة أو مجموعة تعليمية",
+            icon: BookOpen,
+            path: "/classes/new",
+            tone: "amber" as const,
+          },
+          {
+            label: "إضافة معلم",
+            description: "إدراج معلم في دليل المدرسة",
+            icon: GraduationCap,
+            path: "/teachers/new",
+            tone: "blue" as const,
+          },
+        ]
+      : []),
+    ...(canUseFinance
+      ? [
+          {
+            label: "إجراء مالي",
+            description: "تسجيل دفعة أو مراجعة الحسابات",
+            icon: Landmark,
+            path: "/finance/payments",
+            tone: "amber" as const,
+          },
+        ]
+      : []),
+  ].slice(0, 4);
 
   const branchNames = useMemo(
     () => new Map(dashboardData?.branches.map(branch => [branch.id, branch.name])),
     [dashboardData?.branches]
   );
 
-  const statCards = dashboardData
-    ? [
-        {
-          label: t.totalStudents,
-          value: dashboardData.totalStudents.toString(),
-          description: null,
-          icon: Users,
-          bgColor: "bg-[#0B4738]/10",
-          iconColor: "text-[#0B4738]",
-        },
-        {
-          label: t.dailyAttendance,
-          value: t.unavailable,
-          description: t.attendanceHint,
-          icon: Calendar,
-          bgColor: "bg-[#0B4738]/10",
-          iconColor: "text-[#0B4738]",
-        },
-        {
-          label: t.activeClasses,
-          value: dashboardData.activeClassesCount.toString(),
-          description: null,
-          icon: BookOpen,
-          bgColor: "bg-[#C8A26A]/10",
-          iconColor: "text-[#C8A26A]",
-        },
-        {
-          label: t.pendingPayments,
-          value: t.unavailable,
-          description: t.financeHint,
-          icon: DollarSign,
-          bgColor: "bg-gray-100",
-          iconColor: "text-gray-500",
-        },
-      ]
-    : [];
-
-  const SidebarContent = ({ showLabels }: { showLabels: boolean }) => (
-    <>
-      <div className="border-b border-white/10 p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#C8A26A]">
-            <span className="text-lg font-bold text-[#0B4738]">ق</span>
-          </div>
-          {showLabels && (
-            <span className="line-clamp-2 text-sm font-semibold text-white">
-              {school?.name ?? t.school}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <nav className="flex-1 space-y-1 p-3">
-        {menuItems.map(item => {
-          const itemContent = (
-            <>
-              <item.icon size={20} className="shrink-0" />
-              {showLabels && (
-                <span className="text-sm font-medium">{item.label}</span>
-              )}
-            </>
-          );
-
-          if (!item.path) {
-            return (
-              <div
-                key={item.label}
-                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-4 py-3 text-white/45"
-                aria-disabled="true"
-              >
-                {itemContent}
-              </div>
-            );
-          }
-
-          return (
-            <a
-              key={item.label}
-              href={item.path}
-              onClick={event => {
-                event.preventDefault();
-                setLocation(item.path);
-                setMobileSidebarOpen(false);
-              }}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 ${
-                item.path === "/dashboard"
-                  ? "bg-white/15 text-white"
-                  : "text-white/80 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {itemContent}
-            </a>
-          );
-        })}
-      </nav>
-
-      <div className="border-t border-white/10 p-3">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-white/70 transition-all duration-200 hover:bg-red-500/20 hover:text-white"
-        >
-          <LogOut size={20} className="shrink-0" />
-          {showLabels && <span className="text-sm font-medium">{t.logout}</span>}
-        </button>
-      </div>
-    </>
-  );
-
-  const renderDashboardContent = () => {
-    if (isLoading) {
-      return (
-        <Card className="border border-gray-100 p-10 text-center text-gray-500">
-          <RefreshCw className="mx-auto mb-3 animate-spin" size={24} />
-          <p role="status">{t.loading}</p>
-        </Card>
-      );
-    }
-
-    if (loadError || !dashboardData) {
-      return (
-        <Card className="border border-red-100 p-10 text-center" role="alert">
-          <p className="mb-4 text-red-700">
-            {getDashboardErrorMessage(loadError ?? "load", language)}
-          </p>
-          <Button type="button" variant="outline" onClick={() => void loadDashboard()}>
-            <RefreshCw size={16} />
-            {t.retry}
-          </Button>
-        </Card>
-      );
-    }
-
-    return (
-      <>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {statCards.map(stat => (
-            <Card
-              key={stat.label}
-              className="border border-gray-100 p-5 transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="mb-1 text-sm text-gray-500">{stat.label}</p>
-                  <p className="break-words text-xl font-bold text-[#2C3E50]">
-                    {stat.value}
-                  </p>
-                  {stat.description && (
-                    <p className="mt-2 text-xs leading-5 text-gray-500">
-                      {stat.description}
-                    </p>
-                  )}
-                </div>
-                <div className={`${stat.bgColor} shrink-0 rounded-xl p-3`}>
-                  <stat.icon className={stat.iconColor} size={22} />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        <section>
-          <h2 className="mb-4 text-lg font-bold text-[#2C3E50]">
-            {t.quickActions}
-          </h2>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Button
-              type="button"
-              onClick={() => setLocation("/students/new")}
-              className="flex h-auto flex-col gap-2 rounded-xl py-4 font-medium text-white transition-all duration-200 hover:shadow-md active:scale-[0.97]"
-              style={{ backgroundColor: "#0B4738" }}
-            >
-              <Plus size={20} />
-              <span className="text-xs">{t.addStudent}</span>
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setLocation("/classes/new")}
-              className="flex h-auto flex-col gap-2 rounded-xl border-2 border-[#0B4738] bg-transparent py-4 font-medium text-[#0B4738] transition-all duration-200 hover:bg-[#0B4738]/5 hover:shadow-md active:scale-[0.97]"
-              variant="outline"
-            >
-              <Plus size={20} />
-              <span className="text-xs">{t.createClass}</span>
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setLocation("/teachers/new")}
-              className="flex h-auto flex-col gap-2 rounded-xl border-2 border-[#C8A26A] bg-transparent py-4 font-medium text-[#9A7137] transition-all duration-200 hover:bg-[#C8A26A]/5 hover:shadow-md active:scale-[0.97]"
-              variant="outline"
-            >
-              <GraduationCap size={20} />
-              <span className="text-xs">{t.addTeacher}</span>
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setLocation("/memorization")}
-              className="flex h-auto flex-col gap-2 rounded-xl border-2 border-[#0B4738] bg-[#0B4738]/5 py-4 font-medium text-[#0B4738] transition-all duration-200 hover:bg-[#0B4738]/10 hover:shadow-md active:scale-[0.97]"
-              variant="outline"
-            >
-              <BookOpenCheck size={20} />
-              <span className="text-xs">{t.recordMemorization}</span>
-            </Button>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card className="border border-gray-100 p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-base font-bold text-[#2C3E50]">
-                {t.activeClassesSection}
-              </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-auto px-2 py-1 text-xs text-[#0B4738]"
-                onClick={() => setLocation("/classes")}
-              >
-                {t.viewAllClasses}
-              </Button>
-            </div>
-
-            {dashboardData.activeClasses.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500">
-                {t.noActiveClasses}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {dashboardData.activeClasses.map(classItem => (
-                  <div
-                    key={classItem.id}
-                    className="rounded-xl border border-[#0B4738]/10 bg-[#0B4738]/5 p-4"
-                  >
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <p className="font-semibold text-[#2C3E50]">
-                          {classItem.name}
-                        </p>
-                        <p className="mt-1 font-mono text-xs text-gray-500" dir="ltr">
-                          {classItem.code}
-                        </p>
-                      </div>
-                      <span className="rounded-lg bg-white px-2.5 py-1 text-xs text-gray-600">
-                        {getDashboardScheduleLabel(classItem.schedule_label, language)}
-                      </span>
-                    </div>
-                    <dl className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-600 sm:grid-cols-2">
-                      <div>
-                        <dt className="inline text-gray-400">{t.branch}: </dt>
-                        <dd className="inline">
-                          {branchNames.get(classItem.branch_id) ?? t.unavailableBranch}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="inline text-gray-400">{t.schedule}: </dt>
-                        <dd className="inline">
-                          {getDashboardScheduleLabel(classItem.schedule_label, language)}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card className="border border-gray-100 p-5">
-            <h2 className="mb-4 text-base font-bold text-[#2C3E50]">
-              {t.availableModules}
-            </h2>
-            <div className="space-y-3">
-              {[
-                {
-                  label: t.attendanceModule,
-                  status: t.availableNow,
-                  icon: Calendar,
-                  path: "/attendance",
-                },
-                {
-                  label: t.memorizationModule,
-                  status: t.availableNow,
-                  icon: BookOpenCheck,
-                  path: "/memorization",
-                },
-                ...(canViewMembers
-                  ? [
-                      {
-                        label: t.membersModule,
-                        status: t.availableNow,
-                        icon: Users,
-                        path: "/members",
-                      },
-                    ]
-                  : []),
-              ].map(module => (
-                <button
-                  key={module.label}
-                  type="button"
-                  onClick={() => setLocation(module.path)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 text-start transition hover:border-[#0B4738]/20 hover:bg-[#0B4738]/5"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="rounded-lg bg-white p-2 text-[#0B4738]">
-                      <module.icon size={18} />
-                    </span>
-                    <span className="text-sm font-medium text-[#2C3E50]">
-                      {module.label}
-                    </span>
-                  </span>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-xs text-emerald-700">
-                    {module.status}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </>
-    );
-  };
-
   return (
-    <div
-      className="flex min-h-screen bg-[#F8F9FA]"
-      dir={language === "ar" ? "rtl" : "ltr"}
-    >
-      <aside
-        className={`hidden ${sidebarOpen ? "w-64" : "w-20"} flex-col shadow-xl transition-all duration-300 md:flex`}
-        style={{ backgroundColor: "#0B4738" }}
-      >
-        <SidebarContent showLabels={sidebarOpen} />
-      </aside>
+    <div className="space-y-7">
+      <PageHeader
+        eyebrow="لوحة التحكم"
+        title={profile?.full_name ? `مرحبًا، ${profile.full_name}` : "مرحبًا بك"}
+        description="نظرة سريعة على ما يحتاج اهتمامك اليوم."
+      />
 
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          <aside
-            className="absolute bottom-0 right-0 top-0 flex w-72 flex-col shadow-xl"
-            style={{ backgroundColor: "#0B4738" }}
-          >
-            <SidebarContent showLabels />
-          </aside>
+      <section className="overflow-hidden rounded-3xl bg-[#123B2C] p-5 text-white shadow-[0_16px_36px_rgba(18,59,44,0.16)] sm:p-7">
+        <div className="relative">
+          <span className="absolute -left-12 -top-16 size-36 rounded-full border border-white/10" />
+          <span className="absolute -bottom-20 right-1/3 size-40 rounded-full bg-[#2F855A]/20 blur-2xl" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[#D7E9DA]">{userRole}</p>
+              <h2 className="mt-2 truncate text-xl font-extrabold sm:text-2xl">
+                {school?.name ?? "المدرسة القرآنية"}
+              </h2>
+              <p className="mt-2 text-sm text-white/75">{formattedDate}</p>
+            </div>
+            <span className="w-fit rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
+              أهلاً بك في QuranOS
+            </span>
+          </div>
         </div>
-      )}
+      </section>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-4 shadow-sm md:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                if (window.innerWidth < 768) {
-                  setMobileSidebarOpen(!mobileSidebarOpen);
-                } else {
-                  setSidebarOpen(!sidebarOpen);
-                }
-              }}
-              className="rounded-lg p-2 transition-colors hover:bg-gray-100"
-              aria-label={language === "ar" ? "القائمة" : "Menu"}
-            >
-              {mobileSidebarOpen ? (
-                <X size={22} className="text-gray-600" />
-              ) : (
-                <Menu size={22} className="text-gray-600" />
-              )}
-            </button>
-            <h2 className="hidden truncate text-lg font-semibold text-[#2C3E50] sm:block">
-              {school?.name ?? t.school}
-            </h2>
-          </div>
-
-          <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
-            <button
-              type="button"
-              onClick={() => setLanguage("ar")}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
-                language === "ar"
-                  ? "bg-[#0B4738] text-white shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              العربية
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage("en")}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
-                language === "en"
-                  ? "bg-[#0B4738] text-white shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              English
-            </button>
-          </div>
-        </header>
-
-        <main className="flex-1 space-y-6 overflow-auto p-4 md:p-6">
-          <section
-            className="rounded-xl p-6 text-white shadow-lg"
-            style={{ backgroundColor: "#0B4738" }}
+      {isLoading ? (
+        <section
+          className="rounded-2xl border border-[#E2EAE3] bg-white p-8 text-center"
+          role="status"
+        >
+          <RefreshCw className="mx-auto size-6 animate-spin text-[#2F855A]" aria-hidden="true" />
+          <p className="mt-3 text-sm font-semibold text-[#607368]">
+            جارٍ تحميل بيانات لوحة التحكم...
+          </p>
+        </section>
+      ) : loadError || !dashboardData ? (
+        <section
+          className="rounded-2xl border border-red-100 bg-white p-8 text-center"
+          role="alert"
+        >
+          <p className="text-sm font-semibold text-red-700">
+            {getDashboardErrorMessage(loadError ?? "load")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 min-h-11 border-[#BFDCC7] text-[#17663B]"
+            onClick={() => void loadDashboard()}
           >
-            <h1 className="mb-2 text-2xl font-bold text-white md:text-3xl">
-              {t.welcome}
-            </h1>
-            <p className="text-sm text-white/80">
-              {school?.name ?? t.school}
-              {" · "}
-              {language === "ar"
-                ? new Date().toLocaleDateString("ar-DZ")
-                : new Date().toLocaleDateString("en-GB")}
-            </p>
+            <RefreshCw size={16} aria-hidden="true" />
+            إعادة المحاولة
+          </Button>
+        </section>
+      ) : (
+        <>
+          <section>
+            <SectionHeader title="ملخص المدرسة" description="بيانات متاحة ضمن نطاقك الحالي." />
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:max-w-2xl">
+              <StatCard
+                label="إجمالي الطلاب"
+                value={dashboardData.totalStudents.toLocaleString("ar-DZ")}
+                icon={Users}
+                tone="green"
+              />
+              <StatCard
+                label="الحلقات النشطة"
+                value={dashboardData.activeClassesCount.toLocaleString("ar-DZ")}
+                icon={BookOpen}
+                tone="blue"
+              />
+            </div>
           </section>
 
-          {renderDashboardContent()}
-        </main>
-      </div>
+          {quickActions.length > 0 && (
+            <section>
+              <SectionHeader title="إجراءات سريعة" description="اختصارات تناسب صلاحياتك." />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {quickActions.map(action => (
+                  <QuickActionCard
+                    key={action.path}
+                    {...action}
+                    onClick={() => setLocation(action.path)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
+            <div className="rounded-3xl border border-[#E5EDE7] bg-white p-4 shadow-[0_1px_2px_rgba(23,59,45,0.04)] sm:p-5">
+              <SectionHeader
+                title="الحلقات النشطة"
+                description="أحدث الحلقات المسجلة في المدرسة."
+                action={
+                  canManageSchool ? (
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/classes")}
+                      className="min-h-10 rounded-xl px-3 text-xs font-bold text-[#17663B] transition hover:bg-[#EEF6F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                    >
+                      كل الحلقات
+                    </button>
+                  ) : undefined
+                }
+              />
+              {dashboardData.activeClasses.length === 0 ? (
+                <EmptyState
+                  title="لا توجد حلقات نشطة بعد"
+                  description="ستظهر الحلقات هنا فور إضافتها إلى المدرسة."
+                  icon={BookOpen}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {dashboardData.activeClasses.map(classItem => (
+                    <article
+                      key={classItem.id}
+                      className="flex min-w-0 flex-col gap-3 rounded-2xl border border-[#E8EFE9] bg-[#FCFDFC] p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-extrabold text-[#173B2D]">
+                          {classItem.name}
+                        </h3>
+                        <p className="mt-1 truncate text-xs text-[#718377]">
+                          {branchNames.get(classItem.branch_id) ?? "فرع غير محدد"}
+                        </p>
+                      </div>
+                      <span className="w-fit shrink-0 rounded-full bg-[#EEF6F0] px-3 py-1 text-xs font-bold text-[#2F6E46]">
+                        {getDashboardScheduleLabel(classItem.schedule_label)}
+                      </span>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <aside className="rounded-3xl border border-[#E5EDE7] bg-white p-4 shadow-[0_1px_2px_rgba(23,59,45,0.04)] sm:p-5">
+              <SectionHeader title="البدء السريع" description="انتقل مباشرة إلى وحدة عملك." />
+              <div className="space-y-2">
+                {[
+                  ...(canUseLearning
+                    ? [
+                        { label: "الحضور والغياب", path: "/attendance", icon: CalendarDays },
+                        { label: "الحفظ والمراجعة", path: "/memorization", icon: BookOpenCheck },
+                      ]
+                    : []),
+                  ...(canUseFinance
+                    ? [{ label: "المالية", path: "/finance", icon: Landmark }]
+                    : []),
+                ].map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.path}
+                      type="button"
+                      onClick={() => setLocation(item.path)}
+                      className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-right text-sm font-bold text-[#244E3B] transition hover:bg-[#F0F6F1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                    >
+                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EEF6F0] text-[#17663B]">
+                        <Icon size={18} aria-hidden="true" />
+                      </span>
+                      {item.label}
+                    </button>
+                  );
+                })}
+                {!canUseLearning && !canUseFinance && (
+                  <EmptyState
+                    title="لا توجد اختصارات إضافية"
+                    description="استخدم قائمة المزيد للوصول إلى الوحدات المتاحة لك."
+                  />
+                )}
+              </div>
+            </aside>
+          </section>
+        </>
+      )}
     </div>
   );
-};
-
-export default Dashboard;
+}
