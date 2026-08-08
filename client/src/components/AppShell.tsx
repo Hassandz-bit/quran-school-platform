@@ -17,6 +17,7 @@ import {
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchMembersAccess } from "@/lib/members";
 import {
   getAppNavigation,
   getBottomNavigation,
@@ -120,9 +121,41 @@ export default function AppShell({ children }: { children: ReactNode }) {
   } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [canViewMembers, setCanViewMembers] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!school?.id) {
+      setCanViewMembers(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (isSchoolAdmin) {
+      setCanViewMembers(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void fetchMembersAccess(school.id, false)
+      .then(access => {
+        if (!cancelled) setCanViewMembers(access.canView);
+      })
+      .catch(() => {
+        if (!cancelled) setCanViewMembers(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSchoolAdmin, school?.id]);
+
   const navigation = useMemo(
-    () => getAppNavigation({ isSchoolAdmin, activeRoleCodes }),
-    [activeRoleCodes, isSchoolAdmin]
+    () => getAppNavigation({ isSchoolAdmin, activeRoleCodes, canViewMembers }),
+    [activeRoleCodes, canViewMembers, isSchoolAdmin]
   );
   const bottomNavigation = useMemo(
     () => getBottomNavigation(navigation),
