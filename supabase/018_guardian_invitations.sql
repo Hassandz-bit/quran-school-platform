@@ -133,8 +133,8 @@ comment on column public.guardian_invitations.request_payload_hash is
 comment on column public.guardian_invitations.requires_password_setup is
   'Recipient-only acceptance hint. It is never returned to the inviting staff member.';
 
-create unique index guardian_invitations_school_idempotency_unique_idx
-  on public.guardian_invitations (school_id, idempotency_key_hash);
+create unique index guardian_invitations_idempotency_unique_idx
+  on public.guardian_invitations (idempotency_key_hash);
 
 create unique index guardian_invitations_live_relationship_unique_idx
   on public.guardian_invitations (student_guardian_id)
@@ -280,14 +280,14 @@ begin
   select invitation.*
   into attempt
   from public.guardian_invitations as invitation
-  where invitation.school_id = target_school_id
-    and invitation.idempotency_key_hash = target_idempotency_key_hash;
+  where invitation.idempotency_key_hash = target_idempotency_key_hash;
 
   if not found then
     return;
   end if;
 
-  if attempt.student_id <> target_student_id
+  if attempt.school_id <> target_school_id
+    or attempt.student_id <> target_student_id
     or attempt.request_payload_hash <> target_request_payload_hash
   then
     raise exception using errcode = '22023', message = 'idempotency payload mismatch';
@@ -298,13 +298,15 @@ end;
 $$;
 
 -- The Edge Function resolves the global Auth/Profile identity, then this RPC
--- validates the exact pending relationship, tenant, branch and idempotency key.
+-- prepares the relationship and invitation atomically after tenant/branch checks.
 create or replace function public.prepare_guardian_invitation(
   target_school_id uuid,
   target_student_id uuid,
   target_student_guardian_id uuid,
   target_guardian_profile_id uuid,
   target_email text,
+  target_relationship_type text,
+  target_is_primary boolean,
   target_idempotency_key_hash text,
   target_request_payload_hash text,
   target_requires_password_setup boolean
@@ -323,6 +325,7 @@ declare
   auth_email text;
   relationship_record public.student_guardians%rowtype;
   existing_attempt public.guardian_invitations%rowtype;
+  resolved_relationship_id uuid;
   created_invitation_id uuid;
 begin
   if current_user_id is null then
@@ -331,10 +334,18 @@ begin
 
   if target_school_id is null
     or target_student_id is null
-    or target_student_guardian_id is null
     or target_guardian_profile_id is null
     or normalized_email is null
     or normalized_email <> target_email
+    or target_relationship_type is null
+    or target_relationship_type not in (
+      'father',
+      'mother',
+      'legal_guardian',
+      'relative',
+      'other'
+    )
+    or target_is_primary is null
     or target_idempotency_key_hash !~ '^[0-9a-f]{64}$'
     or target_request_payload_hash !~ '^[0-9a-f]{64}$'
     or target_requires_password_setup is null
@@ -355,32 +366,49 @@ begin
   end if;
 
   perform pg_advisory_xact_lock(
-    hashtextextended(
-      target_school_id::text || ':' || target_idempotency_key_hash,
-      0
-    )
+    hashtextextended(target_idempotency_key_hash, 0)
   );
 
   select invitation.*
   into existing_attempt
   from public.guardian_invitations as invitation
-  where invitation.school_id = target_school_id
-    and invitation.idempotency_key_hash = target_idempotency_key_hash
+  where invitation.idempotency_key_hash = target_idempotency_key_hash
   for update;
 
   if found then
-    if existing_attempt.student_id <> target_student_id
-      or existing_attempt.student_guardian_id <> target_student_guardian_id
+    if existing_attempt.school_id <> target_school_id
+      or existing_attempt.student_id <> target_student_id
       or existing_attempt.guardian_profile_id <> target_guardian_profile_id
       or existing_attempt.target_email <> normalized_email
       or existing_attempt.request_payload_hash <> target_request_payload_hash
       or existing_attempt.requires_password_setup <> target_requires_password_setup
+      or not exists (
+        select 1
+        from public.student_guardians as relationship
+        where relationship.id = existing_attempt.student_guardian_id
+          and relationship.school_id = existing_attempt.school_id
+          and relationship.student_id = existing_attempt.student_id
+          and relationship.guardian_profile_id = existing_attempt.guardian_profile_id
+          and relationship.relationship_type = target_relationship_type
+          and relationship.is_primary = target_is_primary
+      )
     then
       raise exception using errcode = '22023', message = 'idempotency payload mismatch';
     end if;
 
     return query select existing_attempt.id, existing_attempt.status;
     return;
+  end if;
+
+  resolved_relationship_id := target_student_guardian_id;
+  if resolved_relationship_id is null then
+    resolved_relationship_id := public.prepare_student_guardian_link(
+      target_school_id,
+      target_student_id,
+      target_guardian_profile_id,
+      target_relationship_type,
+      target_is_primary
+    );
   end if;
 
   select relationship.*
@@ -396,10 +424,12 @@ begin
   join public.profiles as guardian_profile
     on guardian_profile.id = relationship.guardian_profile_id
    and guardian_profile.status = 'active'
-  where relationship.id = target_student_guardian_id
+  where relationship.id = resolved_relationship_id
     and relationship.school_id = target_school_id
     and relationship.student_id = target_student_id
     and relationship.guardian_profile_id = target_guardian_profile_id
+    and relationship.relationship_type = target_relationship_type
+    and relationship.is_primary = target_is_primary
   for update of relationship;
 
   if not found or relationship_record.status <> 'pending' then
@@ -768,9 +798,9 @@ from public, anon;
 grant execute on function public.get_guardian_invitation_retry(uuid, uuid, text, text)
 to authenticated;
 
-revoke all on function public.prepare_guardian_invitation(uuid, uuid, uuid, uuid, text, text, text, boolean)
+revoke all on function public.prepare_guardian_invitation(uuid, uuid, uuid, uuid, text, text, boolean, text, text, boolean)
 from public, anon;
-grant execute on function public.prepare_guardian_invitation(uuid, uuid, uuid, uuid, text, text, text, boolean)
+grant execute on function public.prepare_guardian_invitation(uuid, uuid, uuid, uuid, text, text, boolean, text, text, boolean)
 to authenticated;
 
 revoke all on function public.claim_guardian_invitation_delivery(uuid)

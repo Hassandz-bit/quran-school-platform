@@ -48,7 +48,7 @@ test("invitation rows use exact tenant-safe relationship identity", () => {
   );
   assert.match(
     migration,
-    /guardian_invitations_school_idempotency_unique_idx[\s\S]*?school_id, idempotency_key_hash/
+    /guardian_invitations_idempotency_unique_idx[\s\S]*?idempotency_key_hash/
   );
 });
 
@@ -141,8 +141,10 @@ test("the Edge Function keeps account operations server-side and responses gener
   assert.match(edgeServices, /auth\.admin\.listUsers/);
   assert.match(edgeServices, /auth\.admin\.createUser/);
   assert.match(edgeServices, /shouldCreateUser: false/);
-  assert.match(edgeServices, /prepare_student_guardian_link/);
+  assert.doesNotMatch(edgeServices, /prepare_student_guardian_link/);
+  assert.match(migration, /resolved_relationship_id := public\.prepare_student_guardian_link/);
   assert.match(edgeServices, /prepare_guardian_invitation/);
+  assert.match(edgeServices, /auth\.admin\.deleteUser/);
   const successResponse = edgeLogic.slice(
     edgeLogic.indexOf("export function safeSuccessResponse"),
     edgeLogic.length

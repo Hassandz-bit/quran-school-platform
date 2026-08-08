@@ -30,6 +30,7 @@ export type GuardianInvitationAttempt = {
 export type GuardianAccount = {
   userId: string;
   requiresPasswordSetup: boolean;
+  createdByThisAttempt: boolean;
 };
 
 export type GuardianDeliveryClaim = {
@@ -56,17 +57,14 @@ export type InviteGuardianDependencies = {
     requestPayloadHash: string;
   }) => Promise<GuardianInvitationAttempt | null>;
   resolveAccount: (email: string, fullName: string) => Promise<GuardianAccount>;
-  prepareRelationship: (
-    token: string,
-    input: InviteGuardianRequest & { guardianProfileId: string }
-  ) => Promise<string>;
   prepareInvitation: (input: {
     token: string;
     schoolId: string;
     studentId: string;
-    studentGuardianId: string;
     guardianProfileId: string;
     email: string;
+    relationshipType: InviteGuardianRequest["relationshipType"];
+    isPrimary: boolean;
     idempotencyKeyHash: string;
     requestPayloadHash: string;
     requiresPasswordSetup: boolean;
@@ -77,6 +75,7 @@ export type InviteGuardianDependencies = {
     invitationId: string,
     failureCode: string
   ) => Promise<void>;
+  deleteCreatedAuthUser: (userId: string) => Promise<void>;
   log: (event: Record<string, unknown>) => void;
 };
 
@@ -102,6 +101,7 @@ export function createInviteGuardianHandler(
     let schoolId: string | null = null;
     let studentId: string | null = null;
     let invitationId: string | null = null;
+    let createdUserId: string | null = null;
 
     const recordOutcome = (outcome: string) => {
       dependencies.log({
@@ -194,21 +194,39 @@ export function createInviteGuardianHandler(
           payload.email,
           payload.fullName
         );
-        const studentGuardianId = await dependencies.prepareRelationship(token, {
-          ...payload,
-          guardianProfileId: account.userId,
-        });
-        const attempt = await dependencies.prepareInvitation({
-          token,
-          schoolId,
-          studentId,
-          studentGuardianId,
-          guardianProfileId: account.userId,
-          email: payload.email,
-          idempotencyKeyHash,
-          requestPayloadHash,
-          requiresPasswordSetup: account.requiresPasswordSetup,
-        });
+        createdUserId = account.createdByThisAttempt ? account.userId : null;
+        let attempt: GuardianInvitationAttempt;
+        try {
+          attempt = await dependencies.prepareInvitation({
+            token,
+            schoolId,
+            studentId,
+            guardianProfileId: account.userId,
+            email: payload.email,
+            relationshipType: payload.relationshipType,
+            isPrimary: payload.isPrimary,
+            idempotencyKeyHash,
+            requestPayloadHash,
+            requiresPasswordSetup: account.requiresPasswordSetup,
+          });
+        } catch (error) {
+          if (createdUserId) {
+            try {
+              await dependencies.deleteCreatedAuthUser(createdUserId);
+            } catch {
+              dependencies.log({
+                requestId,
+                callerId,
+                schoolId,
+                studentId,
+                outcome: "compensation_failed",
+              });
+            }
+          }
+          createdUserId = null;
+          throw error;
+        }
+        createdUserId = null;
         invitationId = attempt.id;
         if (completed(attempt.status)) {
           recordOutcome("idempotent_success");

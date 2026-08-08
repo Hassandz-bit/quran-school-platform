@@ -219,28 +219,24 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
         }
       }
 
-      await ensureActiveProfile(user.id, fullName);
+      try {
+        await ensureActiveProfile(user.id, fullName);
+      } catch (error) {
+        if (created) {
+          try {
+            await admin.auth.admin.deleteUser(user.id);
+          } catch {
+            // The outward error remains generic; a referenced account is retained.
+          }
+        }
+        throw error;
+      }
       return {
         userId: user.id,
         requiresPasswordSetup:
           created || (!user.confirmed_at && !user.last_sign_in_at),
+        createdByThisAttempt: created,
       };
-    },
-
-    async prepareRelationship(token, input) {
-      const client = createUserClient(supabaseUrl, publishableKey, token);
-      const { data, error } = await client.rpc("prepare_student_guardian_link", {
-        target_school_id: input.schoolId,
-        target_student_id: input.studentId,
-        target_guardian_profile_id: input.guardianProfileId,
-        target_relationship_type: input.relationshipType,
-        target_is_primary: input.isPrimary,
-      });
-      if (error) mapDatabaseError(error);
-      if (typeof data !== "string") {
-        throw new SafeGuardianInvitationError("provisioning_failed", 500);
-      }
-      return data;
     },
 
     async prepareInvitation(input) {
@@ -248,9 +244,11 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
       const { data, error } = await client.rpc("prepare_guardian_invitation", {
         target_school_id: input.schoolId,
         target_student_id: input.studentId,
-        target_student_guardian_id: input.studentGuardianId,
+        target_student_guardian_id: null,
         target_guardian_profile_id: input.guardianProfileId,
         target_email: input.email,
+        target_relationship_type: input.relationshipType,
+        target_is_primary: input.isPrimary,
         target_idempotency_key_hash: input.idempotencyKeyHash,
         target_request_payload_hash: input.requestPayloadHash,
         target_requires_password_setup: input.requiresPasswordSetup,
@@ -308,6 +306,11 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
       if (error || data !== true) {
         throw new SafeGuardianInvitationError("provisioning_failed", 500);
       }
+    },
+
+    async deleteCreatedAuthUser(userId) {
+      const { error } = await admin.auth.admin.deleteUser(userId);
+      if (error) throw new Error("auth_compensation_failed");
     },
 
     log(event) {

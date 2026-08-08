@@ -16,7 +16,6 @@ const SCHOOL_ID = "11111111-1111-4111-8111-111111111111";
 const OTHER_SCHOOL_ID = "11111111-1111-4111-8111-111111111112";
 const STUDENT_ID = "22222222-2222-4222-8222-222222222222";
 const GUARDIAN_ID = "33333333-3333-4333-8333-333333333333";
-const RELATIONSHIP_ID = "44444444-4444-4444-8444-444444444444";
 const CALLER_ID = "55555555-5555-4555-8555-555555555555";
 const INVITATION_ID = "66666666-6666-4666-8666-666666666666";
 const IDEMPOTENCY_KEY = "guardian-invite-request-00000001";
@@ -71,7 +70,6 @@ function request(
 type Calls = {
   authorization: Array<{ schoolId: string; studentId: string }>;
   accountKinds: boolean[];
-  relationships: Array<Record<string, unknown>>;
   preparations: Array<Record<string, unknown>>;
   claims: string[];
   deliveries: Array<{ email: string; redirectTo: string }>;
@@ -85,7 +83,6 @@ function dependencies(
   const calls: Calls = {
     authorization: [],
     accountKinds: [],
-    relationships: [],
     preparations: [],
     claims: [],
     deliveries: [],
@@ -108,11 +105,11 @@ function dependencies(
     findRetry: async () => null,
     resolveAccount: async () => {
       calls.accountKinds.push(true);
-      return { userId: GUARDIAN_ID, requiresPasswordSetup: true };
-    },
-    prepareRelationship: async (_token, input) => {
-      calls.relationships.push(input);
-      return RELATIONSHIP_ID;
+      return {
+        userId: GUARDIAN_ID,
+        requiresPasswordSetup: true,
+        createdByThisAttempt: true,
+      };
     },
     prepareInvitation: async input => {
       calls.preparations.push(input);
@@ -133,6 +130,7 @@ function dependencies(
     markDeliveryFailed: async (id, code) => {
       calls.failures.push({ id, code });
     },
+    deleteCreatedAuthUser: async () => undefined,
     log: event => calls.logs.push(event),
     ...overrides,
   };
@@ -285,6 +283,7 @@ Deno.test("new and existing Auth users receive the same outward response", async
       resolveAccount: async () => ({
         userId: GUARDIAN_ID,
         requiresPasswordSetup,
+        createdByThisAttempt: requiresPasswordSetup,
       }),
     });
     const response = await createInviteGuardianHandler(deps)(request());
@@ -349,6 +348,38 @@ Deno.test("maps database preparation failure without internal details", async ()
   assertMatch(text, /provisioning_failed/);
   assertFalse(text.includes("cross-tenant"));
   assertEquals(calls.deliveries.length, 0);
+});
+
+Deno.test("compensates only an Auth user created by the failing attempt", async () => {
+  const deletedUsers: string[] = [];
+  const { deps } = dependencies({
+    prepareInvitation: async () => {
+      throw new Error("database preparation failed");
+    },
+    deleteCreatedAuthUser: async userId => {
+      deletedUsers.push(userId);
+    },
+  });
+  const response = await createInviteGuardianHandler(deps)(request());
+  assertEquals(response.status, 500);
+  assertEquals(deletedUsers, [GUARDIAN_ID]);
+
+  deletedUsers.length = 0;
+  const existing = dependencies({
+    resolveAccount: async () => ({
+      userId: GUARDIAN_ID,
+      requiresPasswordSetup: false,
+      createdByThisAttempt: false,
+    }),
+    prepareInvitation: async () => {
+      throw new Error("database preparation failed");
+    },
+    deleteCreatedAuthUser: async userId => {
+      deletedUsers.push(userId);
+    },
+  });
+  await createInviteGuardianHandler(existing.deps)(request());
+  assertEquals(deletedUsers, []);
 });
 
 Deno.test("records a generic terminal failure when Auth delivery fails", async () => {

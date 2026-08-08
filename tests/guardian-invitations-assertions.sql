@@ -115,7 +115,7 @@ declare
 begin
   foreach function_signature in array array[
     'public.get_guardian_invitation_retry(uuid,uuid,text,text)',
-    'public.prepare_guardian_invitation(uuid,uuid,uuid,uuid,text,text,text,boolean)',
+    'public.prepare_guardian_invitation(uuid,uuid,uuid,uuid,text,text,boolean,text,text,boolean)',
     'public.claim_guardian_invitation_delivery(uuid)',
     'public.fail_guardian_invitation_delivery(uuid,text)',
     'public.get_my_guardian_invitation(uuid)',
@@ -335,6 +335,45 @@ select set_config(
 );
 reset role;
 
+-- Relationship preparation and invitation creation share one transaction.
+set role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '60000000-0000-4000-8000-000000000001',
+  false
+);
+do $$
+begin
+  begin
+    perform public.prepare_guardian_invitation(
+      '10000000-0000-4000-8000-000000000001',
+      '50000000-0000-4000-8000-000000000003',
+      null,
+      '60000000-0000-4000-8000-000000000010',
+      'guardian-two@example.test',
+      'other',
+      false,
+      repeat('c1', 32),
+      repeat('d1', 32),
+      false
+    );
+    raise exception 'auth mismatch unexpectedly prepared an invitation';
+  exception when check_violation then null;
+  end;
+
+  if exists (
+    select 1
+    from public.student_guardians
+    where school_id = '10000000-0000-4000-8000-000000000001'
+      and student_id = '50000000-0000-4000-8000-000000000003'
+      and guardian_profile_id = '60000000-0000-4000-8000-000000000010'
+  ) then
+    raise exception 'failed invitation left an orphan pending relationship';
+  end if;
+end;
+$$;
+reset role;
+
 -- School admin prepares the first invitation; exact retries are idempotent,
 -- key reuse with another payload is rejected, and live duplicates are blocked.
 set role authenticated;
@@ -355,6 +394,8 @@ begin
     current_setting('test.rel_a1')::uuid,
     '60000000-0000-4000-8000-000000000006',
     'guardian-one@example.test',
+    'father',
+    true,
     repeat('a', 64),
     repeat('b', 64),
     false
@@ -367,6 +408,8 @@ begin
     current_setting('test.rel_a1')::uuid,
     '60000000-0000-4000-8000-000000000006',
     'guardian-one@example.test',
+    'father',
+    true,
     repeat('a', 64),
     repeat('b', 64),
     false
@@ -395,12 +438,43 @@ begin
       current_setting('test.rel_a1')::uuid,
       '60000000-0000-4000-8000-000000000006',
       'guardian-one@example.test',
+      'father',
+      true,
       repeat('d', 64),
       repeat('e', 64),
       false
     );
     raise exception 'a second live invitation was created';
   exception when unique_violation then null;
+  end;
+end;
+$$;
+reset role;
+
+-- A key is globally bound to one normalized payload, including its school.
+set role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '60000000-0000-4000-8000-000000000008',
+  false
+);
+do $$
+begin
+  begin
+    perform public.prepare_guardian_invitation(
+      '10000000-0000-4000-8000-000000000002',
+      '50000000-0000-4000-8000-000000000005',
+      current_setting('test.rel_b1')::uuid,
+      '60000000-0000-4000-8000-000000000006',
+      'guardian-one@example.test',
+      'father',
+      false,
+      repeat('a', 64),
+      repeat('9', 64),
+      false
+    );
+    raise exception 'idempotency key was reused in another school';
+  exception when invalid_parameter_value then null;
   end;
 end;
 $$;
@@ -530,6 +604,8 @@ select set_config(
       current_setting('test.rel_a2')::uuid,
       '60000000-0000-4000-8000-000000000006',
       'guardian-one@example.test',
+      'father',
+      false,
       repeat('f', 64),
       repeat('1', 64),
       false
@@ -642,6 +718,8 @@ select set_config(
       current_setting('test.rel_revoked')::uuid,
       '60000000-0000-4000-8000-000000000007',
       'guardian-two@example.test',
+      'mother',
+      false,
       repeat('2', 64),
       repeat('3', 64),
       false
@@ -717,6 +795,8 @@ select set_config(
       current_setting('test.rel_expired')::uuid,
       '60000000-0000-4000-8000-000000000007',
       'guardian-two@example.test',
+      'mother',
+      false,
       repeat('4', 64),
       repeat('5', 64),
       false
@@ -776,6 +856,8 @@ select set_config(
       current_setting('test.rel_terminal')::uuid,
       '60000000-0000-4000-8000-000000000010',
       'guardian-three@example.test',
+      'legal_guardian',
+      false,
       repeat('6', 64),
       repeat('7', 64),
       false
@@ -831,6 +913,8 @@ select set_config(
       current_setting('test.rel_b1')::uuid,
       '60000000-0000-4000-8000-000000000006',
       'guardian-one@example.test',
+      'father',
+      false,
       repeat('8', 64),
       repeat('9', 64),
       false
@@ -887,6 +971,8 @@ select set_config(
       current_setting('test.rel_inactive_profile')::uuid,
       '60000000-0000-4000-8000-000000000010',
       'guardian-three@example.test',
+      'legal_guardian',
+      false,
       repeat('a1', 32),
       repeat('b1', 32),
       false
