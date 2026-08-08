@@ -210,7 +210,10 @@ async function fetchFinance(
 
   const charges = (chargesResult.data ?? []) as PaymentCharge[];
   const payments = (paymentsResult.data ?? []) as PaymentRow[];
-  const balances = buildChargeBalances(charges, payments);
+  const billableCharges = charges.filter(
+    charge => charge.status !== "waived" && charge.status !== "cancelled"
+  );
+  const balances = buildChargeBalances(billableCharges, payments);
   const toAmount = (value: number | string) =>
     typeof value === "number" ? value : Number(value) || 0;
 
