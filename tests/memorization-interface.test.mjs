@@ -324,6 +324,13 @@ test("is mobile-first RTL with a sticky save bar", () => {
   assert.match(page, /min-h-11/);
 });
 
+test("relies on AppShell instead of rendering a second memorization header", () => {
+  assert.doesNotMatch(page, /متابعة الحفظ والمراجعة/);
+  assert.doesNotMatch(page, /aria-label="العودة إلى لوحة التحكم"/);
+  assert.doesNotMatch(page, /aria-label="تسجيل الخروج"/);
+});
+
+
 test("links memorization from the dashboard", () => {
   assert.match(dashboard, /path: "\/memorization"/);
 });
