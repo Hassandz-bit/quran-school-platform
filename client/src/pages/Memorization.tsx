@@ -1178,7 +1178,7 @@ export default function Memorization() {
         workspace &&
         workspace.teachers.length > 0 &&
         selectedStudentId && (
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur md:bottom-0">
             <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
               <div className="min-w-0 text-xs text-gray-500">
                 {dirty
