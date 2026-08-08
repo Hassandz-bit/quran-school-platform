@@ -121,7 +121,7 @@ describe("Student 360 read-only access boundaries", () => {
     expect(from).not.toHaveBeenCalledWith("payments");
   });
 
-  test("calculates balances from all payments while keeping only five recent payments", async () => {
+  test("excludes waived and cancelled charges from totals while keeping five recent payments", async () => {
     const payments = Array.from({ length: 7 }, (_, index) => ({
       id: `payment-${7 - index}`,
       school_id: "school-1",
@@ -158,6 +158,28 @@ describe("Student 360 read-only access boundaries", () => {
           net_amount: 700,
           due_date: "2026-08-01",
           status: "partially_paid",
+        },
+        {
+          id: "charge-waived",
+          branch_id: "branch-1",
+          student_id: "student-1",
+          fee_plan_id: null,
+          description: "رسوم معفاة",
+          original_amount: 200,
+          net_amount: 200,
+          due_date: "2026-08-01",
+          status: "waived",
+        },
+        {
+          id: "charge-cancelled",
+          branch_id: "branch-1",
+          student_id: "student-1",
+          fee_plan_id: null,
+          description: "رسوم ملغاة",
+          original_amount: 300,
+          net_amount: 300,
+          due_date: "2026-08-01",
+          status: "cancelled",
         },
       ],
       payments,
