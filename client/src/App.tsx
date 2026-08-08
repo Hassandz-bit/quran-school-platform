@@ -34,6 +34,7 @@ const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
+const Student360 = lazy(() => import("./pages/Student360"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
