@@ -289,7 +289,8 @@ export async function fetchStudent360(
     className: (classResult.data as LookupRow | null)?.name ?? null,
   };
 
-  if (!profile.classId) {
+  const classId = profile.classId;
+  if (!classId) {
     return {
       profile,
       attendance: { state: "hidden" },
@@ -303,7 +304,7 @@ export async function fetchStudent360(
       client,
       schoolId,
       profile.branchId,
-      profile.classId,
+      classId,
       profile.id
     ),
     (async () => {
@@ -312,14 +313,14 @@ export async function fetchStudent360(
           client,
           schoolId,
           profile.branchId,
-          profile.classId,
+          classId,
           "memorization.view"
         ),
         canAccessMemorizationClass(
           client,
           schoolId,
           profile.branchId,
-          profile.classId,
+          classId,
           "memorization.manage"
         ),
       ]);
@@ -328,7 +329,7 @@ export async function fetchStudent360(
       return fetchStudentMemorizationRecords(
         schoolId,
         profile.branchId,
-        profile.classId,
+        classId,
         profile.id,
         null,
         client
