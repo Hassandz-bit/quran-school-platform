@@ -4,16 +4,21 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const INVITATION_ID = "66666666-6666-4666-8666-666666666666";
+const { INVITATION_ID, mocks } = vi.hoisted(() => {
+  const invitationId = "66666666-6666-4666-8666-666666666666";
 
-const mocks = vi.hoisted(() => ({
-  auth: {} as Record<string, unknown>,
-  context: vi.fn(),
-  activate: vi.fn(),
-  inviteSession: INVITATION_ID as string | null,
-  clearSession: vi.fn(),
-  location: vi.fn(),
-}));
+  return {
+    INVITATION_ID: invitationId,
+    mocks: {
+      auth: {} as Record<string, unknown>,
+      context: vi.fn(),
+      activate: vi.fn(),
+      inviteSession: invitationId as string | null,
+      clearSession: vi.fn(),
+      location: vi.fn(),
+    },
+  };
+});
 
 vi.mock("wouter", async () => {
   const actual = await vi.importActual<typeof import("wouter")>("wouter");
