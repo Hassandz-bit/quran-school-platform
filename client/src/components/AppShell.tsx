@@ -36,7 +36,17 @@ function isActive(path: string, itemPath: string) {
   return path === itemPath || (itemPath !== "/dashboard" && path.startsWith(`${itemPath}/`));
 }
 
-function Brand({ schoolName, compact = false }: { schoolName?: string; compact?: boolean }) {
+function Brand({
+  schoolName,
+  compact = false,
+  variant = "dark",
+}: {
+  schoolName?: string;
+  compact?: boolean;
+  variant?: "dark" | "light";
+}) {
+  const isLight = variant === "light";
+
   return (
     <div className="flex min-w-0 items-center gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#D7B56D] text-base font-extrabold text-[#123B2C] shadow-sm">
@@ -44,8 +54,10 @@ function Brand({ schoolName, compact = false }: { schoolName?: string; compact?:
       </span>
       {!compact && (
         <span className="min-w-0">
-          <span className="block text-sm font-extrabold text-white">QuranOS</span>
-          <span className="block truncate text-[11px] text-white/70">
+          <span className={cn("block text-sm font-extrabold", isLight ? "text-[#173B2D]" : "text-white")}>
+            QuranOS
+          </span>
+          <span className={cn("block truncate text-[11px]", isLight ? "text-[#4C6256]" : "text-white/70")}>
             {schoolName ?? "المدرسة القرآنية"}
           </span>
         </span>
@@ -189,7 +201,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8F3] text-[#173B2D]" dir="rtl">
+    <div className="min-h-screen overflow-x-clip bg-[#F7F8F3] text-[#173B2D]" dir="rtl">
       <aside
         className={cn(
           "fixed inset-y-0 right-0 z-30 hidden flex-col bg-[#123B2C] px-3 py-5 shadow-[0_0_30px_rgba(18,59,44,0.14)] transition-[width] duration-200 md:flex",
@@ -249,7 +261,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="grid size-11 shrink-0 place-items-center rounded-xl text-[#244E3B] transition hover:bg-[#EAF3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+              className="grid size-11 shrink-0 place-items-center rounded-xl text-[#244E3B] transition hover:bg-[#EAF3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A] md:hidden"
               aria-label="فتح قائمة المزيد"
             >
               <Menu size={21} aria-hidden="true" />
@@ -268,7 +280,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </span>
         </header>
 
-        <main className="min-w-0 px-4 py-5 pb-28 sm:px-6 md:px-8 md:pb-8">
+        <main className="min-w-0 px-4 py-5 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:pb-8">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
@@ -322,7 +334,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             aria-label="قائمة المزيد"
           >
             <div className="mb-5 flex items-center justify-between">
-              <Brand schoolName={school?.name} />
+              <Brand schoolName={school?.name} variant="light" />
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
