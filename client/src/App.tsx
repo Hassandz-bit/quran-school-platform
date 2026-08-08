@@ -65,6 +65,10 @@ function MemorizationPageFallback() {
   return <ModuleFallback label="جارٍ تحميل وحدة متابعة الحفظ..." />;
 }
 
+function Student360PageFallback() {
+  return <ModuleFallback label="جارٍ تحميل ملف الطالب..." />;
+}
+
 function MembersPageFallback() {
   return <ModuleFallback label="جارٍ تحميل دليل أعضاء المدرسة..." />;
 }
@@ -94,6 +98,15 @@ function Router() {
         </Route>
         <Route path="/dashboard">
           <ProtectedRoute><Shell><Dashboard /></Shell></ProtectedRoute>
+        </Route>
+        <Route path="/students/:studentId">
+          <ProtectedRoute>
+            <Shell>
+              <Suspense fallback={<Student360PageFallback />}>
+                <Student360 />
+              </Suspense>
+            </Shell>
+          </ProtectedRoute>
         </Route>
         <Route path="/students">
           <ProtectedRoute>
