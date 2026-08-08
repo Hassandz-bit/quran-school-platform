@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -9,6 +9,7 @@ import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
 import MembersRoute from "./components/MembersRoute";
+import AppShell from "./components/AppShell";
 import { captureTeacherInviteSession } from "./lib/invite-session";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -23,6 +24,7 @@ import AddTeacherForm from "./pages/AddTeacherForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import PostLoginRedirect from "./pages/PostLoginRedirect";
+
 const FinanceDashboard = lazy(() => import("./pages/FinanceDashboard"));
 const FeePlans = lazy(() => import("./pages/FeePlans"));
 const StudentCharges = lazy(() => import("./pages/StudentCharges"));
@@ -37,203 +39,127 @@ const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
 );
 
-function FinancePageFallback() {
+function ModuleFallback({ label }: { label: string }) {
   return (
     <main
-      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4 text-[#2C3E50]"
+      className="flex min-h-screen items-center justify-center bg-[#F7F8F3] p-4 text-[#173B2D]"
       dir="rtl"
     >
       <div className="flex items-center gap-3" role="status">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
-        <span className="text-sm font-medium">
-          جارٍ تحميل الوحدة المالية...
-        </span>
+        <span className="size-5 animate-spin rounded-full border-2 border-[#17663B]/30 border-t-[#17663B]" />
+        <span className="text-sm font-medium">{label}</span>
       </div>
     </main>
   );
 }
 
-function AttendancePageFallback() {
-  return (
-    <main
-      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4 text-[#2C3E50]"
-      dir="rtl"
-    >
-      <div className="flex items-center gap-3" role="status">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
-        <span className="text-sm font-medium">
-          جارٍ تحميل وحدة الحضور...
-        </span>
-      </div>
-    </main>
-  );
-}
-
-function MemorizationPageFallback() {
-  return (
-    <main
-      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4 text-[#2C3E50]"
-      dir="rtl"
-    >
-      <div className="flex items-center gap-3" role="status">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
-        <span className="text-sm font-medium">
-          جارٍ تحميل وحدة متابعة الحفظ...
-        </span>
-      </div>
-    </main>
-  );
-}
-
-function MembersPageFallback() {
-  return (
-    <main
-      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4 text-[#2C3E50]"
-      dir="rtl"
-    >
-      <div className="flex items-center gap-3" role="status">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#0B4738]/30 border-t-[#0B4738]" />
-        <span className="text-sm font-medium">
-          جارٍ تحميل دليل أعضاء المدرسة...
-        </span>
-      </div>
-    </main>
-  );
-}
-
-function AcceptInvitePageFallback() {
-  return (
-    <main
-      className="flex min-h-screen items-center justify-center bg-[#0B4738] p-4 text-white"
-      dir="rtl"
-    >
-      <div className="flex items-center gap-3" role="status">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-        <span className="text-sm font-medium">
-          جارٍ تحميل صفحة قبول الدعوة...
-        </span>
-      </div>
-    </main>
-  );
+function Shell({ children }: { children: ReactNode }) {
+  return <AppShell>{children}</AppShell>;
 }
 
 captureTeacherInviteSession();
 
 function Router() {
   return (
-    <Suspense fallback={<FinancePageFallback />}>
+    <Suspense fallback={<ModuleFallback label="جارٍ تحميل الصفحة..." />}>
       <Switch>
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/post-login" component={PostLoginRedirect} />
         <Route path="/accept-invite">
-          <Suspense fallback={<AcceptInvitePageFallback />}>
+          <Suspense fallback={<ModuleFallback label="جارٍ تحميل صفحة قبول الدعوة..." />}>
             <AcceptInvite />
           </Suspense>
         </Route>
         <Route path="/dashboard">
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
+          <ProtectedRoute><Shell><Dashboard /></Shell></ProtectedRoute>
         </Route>
         <Route path="/students">
           <ProtectedRoute>
-            <StudentsList />
-            <Suspense fallback={null}>
-              <RosterAssignmentLauncher mode="student-class" />
-            </Suspense>
+            <Shell>
+              <StudentsList />
+              <Suspense fallback={null}>
+                <RosterAssignmentLauncher mode="student-class" />
+              </Suspense>
+            </Shell>
           </ProtectedRoute>
         </Route>
         <Route path="/students/new">
-          <ProtectedRoute>
-            <AddStudentForm />
-          </ProtectedRoute>
+          <ProtectedRoute><Shell><AddStudentForm /></Shell></ProtectedRoute>
         </Route>
         <Route path="/classes">
           <ProtectedRoute>
-            <ClassesList />
-            <Suspense fallback={null}>
-              <RosterAssignmentLauncher mode="class-teacher" />
-            </Suspense>
+            <Shell>
+              <ClassesList />
+              <Suspense fallback={null}>
+                <RosterAssignmentLauncher mode="class-teacher" />
+              </Suspense>
+            </Shell>
           </ProtectedRoute>
         </Route>
         <Route path="/classes/new">
-          <ProtectedRoute>
-            <AddClassForm />
-          </ProtectedRoute>
+          <ProtectedRoute><Shell><AddClassForm /></Shell></ProtectedRoute>
         </Route>
         <Route path="/teachers">
-          <ProtectedRoute>
-            <TeachersList />
-          </ProtectedRoute>
+          <ProtectedRoute><Shell><TeachersList /></Shell></ProtectedRoute>
         </Route>
         <Route path="/teachers/new">
-          <ProtectedRoute>
-            <AddTeacherForm />
-          </ProtectedRoute>
+          <ProtectedRoute><Shell><AddTeacherForm /></Shell></ProtectedRoute>
         </Route>
         <Route path="/finance">
-          <FinanceRoute>
-            <FinanceDashboard />
-          </FinanceRoute>
+          <FinanceRoute><Shell><FinanceDashboard /></Shell></FinanceRoute>
         </Route>
         <Route path="/finance/fee-plans">
-          <FinanceRoute>
-            <FeePlans />
-          </FinanceRoute>
+          <FinanceRoute><Shell><FeePlans /></Shell></FinanceRoute>
         </Route>
         <Route path="/finance/charges">
-          <FinanceRoute>
-            <StudentCharges />
-          </FinanceRoute>
+          <FinanceRoute><Shell><StudentCharges /></Shell></FinanceRoute>
         </Route>
         <Route path="/finance/payments">
-          <FinanceRoute>
-            <Payments />
-          </FinanceRoute>
+          <FinanceRoute><Shell><Payments /></Shell></FinanceRoute>
         </Route>
         <Route path="/finance/expenses">
-          <FinanceRoute>
-            <Expenses />
-          </FinanceRoute>
+          <FinanceRoute><Shell><Expenses /></Shell></FinanceRoute>
         </Route>
         <Route path="/finance/reports">
-          <FinanceRoute>
-            <FinancialReports />
-          </FinanceRoute>
+          <FinanceRoute><Shell><FinancialReports /></Shell></FinanceRoute>
         </Route>
         <Route path="/attendance">
           <AttendanceRoute>
-            <Suspense fallback={<AttendancePageFallback />}>
-              <Attendance />
-            </Suspense>
+            <Shell>
+              <Suspense fallback={<ModuleFallback label="جارٍ تحميل وحدة الحضور..." />}>
+                <Attendance />
+              </Suspense>
+            </Shell>
           </AttendanceRoute>
         </Route>
         <Route path="/memorization">
           <MemorizationRoute>
-            <Suspense fallback={<MemorizationPageFallback />}>
-              <Memorization />
-            </Suspense>
+            <Shell>
+              <Suspense fallback={<ModuleFallback label="جارٍ تحميل وحدة متابعة الحفظ..." />}>
+                <Memorization />
+              </Suspense>
+            </Shell>
           </MemorizationRoute>
         </Route>
         <Route path="/members">
           <MembersRoute>
-            <Suspense fallback={<MembersPageFallback />}>
-              <Members />
-            </Suspense>
+            <Shell>
+              <Suspense fallback={<ModuleFallback label="جارٍ تحميل دليل أعضاء المدرسة..." />}>
+                <Members />
+              </Suspense>
+            </Shell>
           </MembersRoute>
         </Route>
-        <Route path="/">
-          <Redirect to="/login" />
-        </Route>
+        <Route path="/"><Redirect to="/login" /></Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -247,5 +173,3 @@ function App() {
     </ErrorBoundary>
   );
 }
-
-export default App;
