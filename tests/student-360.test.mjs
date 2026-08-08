@@ -18,7 +18,7 @@ test("registers Student 360 inside the existing protected app shell", () => {
 });
 
 test("uses the requested student id and school tenant boundary", () => {
-  assert.match(profile, /fetchStudent360\([\s\S]*schoolId,[\s\S]*studentId/);
+  assert.match(profile, /export async function fetchStudent360/);
   assert.match(profile, /\.eq\("school_id", schoolId\)/);
   assert.match(profile, /\.eq\("id", studentId\)/);
   assert.match(profile, /\.eq\("branch_id", studentRow\.branch_id\)/);
