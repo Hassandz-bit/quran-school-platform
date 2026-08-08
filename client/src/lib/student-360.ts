@@ -41,11 +41,16 @@ export type Student360Finance = {
   recentPayments: Array<Pick<PaymentRow, "id" | "amount" | "payment_date" | "status">>;
 };
 
+export type Student360Section<T> =
+  | { state: "hidden" }
+  | { state: "ready"; data: T }
+  | { state: "error" };
+
 export type Student360Data = {
   profile: Student360Profile;
-  attendance: Student360AttendanceRecord[] | null;
-  memorization: MemorizationRecord[] | null;
-  finance: Student360Finance | null;
+  attendance: Student360Section<Student360AttendanceRecord[]>;
+  memorization: Student360Section<MemorizationRecord[]>;
+  finance: Student360Section<Student360Finance>;
 };
 
 type StudentRow = {
@@ -285,7 +290,12 @@ export async function fetchStudent360(
   };
 
   if (!profile.classId) {
-    return { profile, attendance: null, memorization: null, finance: null };
+    return {
+      profile,
+      attendance: { state: "hidden" },
+      memorization: { state: "hidden" },
+      finance: { state: "hidden" },
+    };
   }
 
   const results = await Promise.allSettled([
@@ -327,14 +337,18 @@ export async function fetchStudent360(
     fetchFinance(client, schoolId, profile.branchId, profile.id),
   ]);
 
-  const valueOrNull = <T,>(
-    result: PromiseSettledResult<T>
-  ): T | null => (result.status === "fulfilled" ? result.value : null);
+  const sectionFrom = <T,>(
+    result: PromiseSettledResult<T | null>
+  ): Student360Section<T> => {
+    if (result.status === "rejected") return { state: "error" };
+    if (result.value === null) return { state: "hidden" };
+    return { state: "ready", data: result.value };
+  };
 
   return {
     profile,
-    attendance: valueOrNull(results[0]),
-    memorization: valueOrNull(results[1]),
-    finance: valueOrNull(results[2]),
+    attendance: sectionFrom(results[0]),
+    memorization: sectionFrom(results[1]),
+    finance: sectionFrom(results[2]),
   };
 }
