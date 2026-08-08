@@ -195,12 +195,13 @@ test("uses only read operations and explicit school filters in the members data 
 });
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
-const [app, route, page, data, dashboard] = await Promise.all([
+const [app, route, page, data, dashboard, appShell] = await Promise.all([
   read("client/src/App.tsx"),
   read("client/src/components/MembersRoute.tsx"),
   read("client/src/pages/Members.tsx"),
   read("client/src/lib/members.ts"),
   read("client/src/pages/Dashboard.tsx"),
+  read("client/src/components/AppShell.tsx"),
 ]);
 
 test("registers a lazy protected members route with a dedicated fallback", () => {
