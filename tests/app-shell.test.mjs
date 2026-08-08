@@ -16,6 +16,8 @@ test("app shell keeps role-aware destinations isolated", () => {
   assert.match(navigation, /hasRole\(roles, "finance_officer"\)/);
   assert.match(navigation, /hasRole\(roles, "registrar"\)/);
   assert.match(navigation, /canManageSchool = isSchoolAdmin/);
+  assert.match(shell, /fetchMembersAccess/);
+  assert.match(shell, /canViewMembers/);
   assert.match(navigation, /\.slice\(0, 4\)/);
   assert.doesNotMatch(navigation, /service_role/i);
 });
