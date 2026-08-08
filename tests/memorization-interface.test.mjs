@@ -320,7 +320,7 @@ test("is mobile-first RTL with a sticky save bar", () => {
   assert.match(page, /sm:grid-cols-2/);
   assert.match(page, /lg:grid-cols-4/);
   assert.match(page, /grid-cols-5/);
-  assert.match(page, /fixed inset-x-0 bottom-0/);
+  assert.match(page, /fixed inset-x-0 bottom-\[calc\(5rem\+env\(safe-area-inset-bottom\)\)\]/);
   assert.match(page, /min-h-11/);
 });
 
