@@ -53,6 +53,26 @@ function ModuleFallback({ label }: { label: string }) {
   );
 }
 
+function FinancePageFallback() {
+  return <ModuleFallback label="جارٍ تحميل الوحدة المالية..." />;
+}
+
+function AttendancePageFallback() {
+  return <ModuleFallback label="جارٍ تحميل وحدة الحضور..." />;
+}
+
+function MemorizationPageFallback() {
+  return <ModuleFallback label="جارٍ تحميل وحدة متابعة الحفظ..." />;
+}
+
+function MembersPageFallback() {
+  return <ModuleFallback label="جارٍ تحميل دليل أعضاء المدرسة..." />;
+}
+
+function AcceptInvitePageFallback() {
+  return <ModuleFallback label="جارٍ تحميل صفحة قبول الدعوة..." />;
+}
+
 function Shell({ children }: { children: ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
@@ -61,14 +81,14 @@ captureTeacherInviteSession();
 
 function Router() {
   return (
-    <Suspense fallback={<ModuleFallback label="جارٍ تحميل الصفحة..." />}>
+    <Suspense fallback={<FinancePageFallback />}>
       <Switch>
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/post-login" component={PostLoginRedirect} />
         <Route path="/accept-invite">
-          <Suspense fallback={<ModuleFallback label="جارٍ تحميل صفحة قبول الدعوة..." />}>
+          <Suspense fallback={<AcceptInvitePageFallback />}>
             <AcceptInvite />
           </Suspense>
         </Route>
@@ -128,7 +148,7 @@ function Router() {
         <Route path="/attendance">
           <AttendanceRoute>
             <Shell>
-              <Suspense fallback={<ModuleFallback label="جارٍ تحميل وحدة الحضور..." />}>
+              <Suspense fallback={<AttendancePageFallback />}>
                 <Attendance />
               </Suspense>
             </Shell>
@@ -137,7 +157,7 @@ function Router() {
         <Route path="/memorization">
           <MemorizationRoute>
             <Shell>
-              <Suspense fallback={<ModuleFallback label="جارٍ تحميل وحدة متابعة الحفظ..." />}>
+              <Suspense fallback={<MemorizationPageFallback />}>
                 <Memorization />
               </Suspense>
             </Shell>
@@ -146,7 +166,7 @@ function Router() {
         <Route path="/members">
           <MembersRoute>
             <Shell>
-              <Suspense fallback={<ModuleFallback label="جارٍ تحميل دليل أعضاء المدرسة..." />}>
+              <Suspense fallback={<MembersPageFallback />}>
                 <Members />
               </Suspense>
             </Shell>
