@@ -14,6 +14,15 @@ const [migration, parentLib, app, postLogin] = await Promise.all([
   readFile(postLoginPath, "utf8"),
 ]);
 
+function routeBlock(path) {
+  const marker = `<Route path="${path}">`;
+  const start = app.indexOf(marker);
+  assert.notEqual(start, -1, `missing route ${path}`);
+  const end = app.indexOf("</Route>", start);
+  assert.notEqual(end, -1, `unterminated route ${path}`);
+  return app.slice(start, end + "</Route>".length);
+}
+
 test("Migration 019 exposes dedicated guardian academic RPCs only", () => {
   for (const name of [
     "list_my_guardian_students",
@@ -48,10 +57,14 @@ test("Parent data client uses RPCs instead of direct core table reads", () => {
 });
 
 test("Parent portal stays outside the administrative AppShell", () => {
-  assert.match(app, /<Route path="\/parent\/students\/:studentId">/);
-  assert.match(app, /<Route path="\/parent">/);
-  assert.match(app, /<ParentRoute>[\s\S]*?<ParentShell>/);
-  assert.doesNotMatch(app, /<Route path="\/parent">[\s\S]{0,300}<Shell>/);
+  const childRoute = routeBlock("/parent/students/:studentId");
+  const homeRoute = routeBlock("/parent");
+
+  for (const block of [childRoute, homeRoute]) {
+    assert.match(block, /<ParentRoute>/);
+    assert.match(block, /<ParentShell>/);
+    assert.doesNotMatch(block, /<Shell>/);
+  }
 });
 
 test("Post-login preserves staff precedence and supports parent-only accounts", () => {
