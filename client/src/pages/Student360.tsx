@@ -13,8 +13,14 @@ import {
 } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchStudent360, type Student360Data } from "@/lib/student-360";
-import { getMemorizationSessionLabel, getSurahByNumber } from "@/lib/memorization";
+import {
+  fetchStudent360,
+  type Student360Data,
+} from "@/lib/student-360";
+import {
+  getMemorizationSessionLabel,
+  getSurahByNumber,
+} from "@/lib/memorization";
 import { formatEducation, translateStudentStatus } from "@/lib/students";
 import {
   EmptyState,
@@ -41,21 +47,25 @@ function formatCurrency(value: number): string {
 }
 
 function attendanceLabel(status: string): string {
-  return ({
-    present: "حاضر",
-    absent: "غائب",
-    late: "متأخر",
-    excused_absence: "غياب بعذر",
-  }[status] ?? status);
+  return (
+    {
+      present: "حاضر",
+      absent: "غائب",
+      late: "متأخر",
+      excused_absence: "غياب بعذر",
+    }[status] ?? status
+  );
 }
 
 function attendanceTone(status: string): string {
-  return ({
-    present: "bg-[#E8F3EC] text-[#17663B]",
-    absent: "bg-[#FDECEC] text-[#B83A3A]",
-    late: "bg-[#FFF4DE] text-[#A76009]",
-    excused_absence: "bg-[#EAF3FA] text-[#256D95]",
-  }[status] ?? "bg-[#F1F4F2] text-[#607368]");
+  return (
+    {
+      present: "bg-[#E8F3EC] text-[#17663B]",
+      absent: "bg-[#FDECEC] text-[#B83A3A]",
+      late: "bg-[#FFF4DE] text-[#A76009]",
+      excused_absence: "bg-[#EAF3FA] text-[#256D95]",
+    }[status] ?? "bg-[#F1F4F2] text-[#607368]"
+  );
 }
 
 type Activity = {
@@ -71,13 +81,16 @@ export default function Student360() {
   const { school } = useAuth();
   const studentId = params?.studentId ?? "";
   const [data, setData] = useState<Student360Data | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "missing" | "error">(
+    "loading"
+  );
 
   const load = useCallback(async () => {
     if (!school?.id || !studentId) {
       setState("missing");
       return;
     }
+
     setState("loading");
     try {
       const nextData = await fetchStudent360(school.id, studentId);
@@ -94,8 +107,8 @@ export default function Student360() {
 
   const activities = useMemo<Activity[]>(() => {
     if (!data) return [];
-    const nextActivities: Activity[] = [];
 
+    const nextActivities: Activity[] = [];
     if (data.attendance.state === "ready") {
       data.attendance.data.forEach(record => {
         nextActivities.push({
@@ -106,7 +119,6 @@ export default function Student360() {
         });
       });
     }
-
     if (data.memorization.state === "ready") {
       data.memorization.data.forEach(record => {
         const surah = getSurahByNumber(record.surahNumber);
@@ -118,7 +130,6 @@ export default function Student360() {
         });
       });
     }
-
     if (data.finance.state === "ready") {
       data.finance.data.recentPayments.forEach(payment => {
         nextActivities.push({
@@ -126,7 +137,9 @@ export default function Student360() {
           date: payment.payment_date,
           label: "دفعة مالية",
           detail: formatCurrency(
-            typeof payment.amount === "number" ? payment.amount : Number(payment.amount) || 0
+            typeof payment.amount === "number"
+              ? payment.amount
+              : Number(payment.amount) || 0
           ),
         });
       });
@@ -141,7 +154,9 @@ export default function Student360() {
     return (
       <section className="flex min-h-56 items-center justify-center" role="status">
         <RefreshCw className="size-5 animate-spin text-[#17663B]" />
-        <span className="mr-3 text-sm font-medium text-[#607368]">جارٍ تحميل ملف الطالب...</span>
+        <span className="mr-3 text-sm font-medium text-[#607368]">
+          جارٍ تحميل ملف الطالب...
+        </span>
       </section>
     );
   }
@@ -152,7 +167,11 @@ export default function Student360() {
         icon={UserRound}
         title="تعذر العثور على ملف الطالب"
         description="قد لا يكون الطالب موجودًا ضمن مدرستك أو لا تملك صلاحية عرضه."
-        action={<Button variant="outline" onClick={() => setLocation("/students")}>العودة إلى الطلاب</Button>}
+        action={
+          <Button variant="outline" onClick={() => setLocation("/students")}>
+            العودة إلى الطلاب
+          </Button>
+        }
       />
     );
   }
@@ -165,7 +184,8 @@ export default function Student360() {
         description="حدث خطأ أثناء جلب البيانات المسموح بها. يمكنك المحاولة مرة أخرى."
         action={
           <Button variant="outline" onClick={() => void load()}>
-            <RefreshCw className="size-4" /> إعادة المحاولة
+            <RefreshCw className="size-4" />
+            إعادة المحاولة
           </Button>
         }
       />
@@ -173,11 +193,15 @@ export default function Student360() {
   }
 
   const { profile } = data;
-  const attendance = data.attendance.state === "ready" ? data.attendance.data : null;
-  const memorization = data.memorization.state === "ready" ? data.memorization.data : null;
+  const attendance =
+    data.attendance.state === "ready" ? data.attendance.data : null;
+  const memorization =
+    data.memorization.state === "ready" ? data.memorization.data : null;
   const finance = data.finance.state === "ready" ? data.finance.data : null;
-  const attendancePresent = attendance?.filter(record => record.status === "present").length ?? 0;
-  const attendanceAbsent = attendance?.filter(record => record.status === "absent").length ?? 0;
+  const attendancePresent =
+    attendance?.filter(record => record.status === "present").length ?? 0;
+  const attendanceAbsent =
+    attendance?.filter(record => record.status === "absent").length ?? 0;
   const latestMemorization = memorization?.[0] ?? null;
 
   return (
@@ -187,8 +211,13 @@ export default function Student360() {
         title="ملف الطالب"
         description="عرض موحد للبيانات المتاحة حسب صلاحياتك الحالية."
         action={
-          <Button variant="outline" onClick={() => setLocation("/students")} className="min-h-11">
-            <ArrowRight className="size-4" /> الطلاب
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/students")}
+            className="min-h-11"
+          >
+            <ArrowRight className="size-4" />
+            الطلاب
           </Button>
         }
       />
@@ -230,7 +259,9 @@ export default function Student360() {
         <dl className="mt-5 grid gap-3 border-t border-[#EEF3EF] pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-xs font-semibold text-[#718377]">تاريخ التسجيل</dt>
-            <dd className="mt-1 font-medium text-[#244E3B]">{formatDate(profile.startDate)}</dd>
+            <dd className="mt-1 font-medium text-[#244E3B]">
+              {formatDate(profile.startDate)}
+            </dd>
           </div>
           <div>
             <dt className="text-xs font-semibold text-[#718377]">المستوى التعليمي</dt>
@@ -240,11 +271,15 @@ export default function Student360() {
           </div>
           <div>
             <dt className="text-xs font-semibold text-[#718377]">الفرع</dt>
-            <dd className="mt-1 font-medium text-[#244E3B]">{profile.branchName ?? "لا توجد بيانات"}</dd>
+            <dd className="mt-1 font-medium text-[#244E3B]">
+              {profile.branchName ?? "لا توجد بيانات"}
+            </dd>
           </div>
           <div>
             <dt className="text-xs font-semibold text-[#718377]">الحلقة الحالية</dt>
-            <dd className="mt-1 font-medium text-[#244E3B]">{profile.className ?? "لا توجد حلقة معيّنة"}</dd>
+            <dd className="mt-1 font-medium text-[#244E3B]">
+              {profile.className ?? "لا توجد حلقة معيّنة"}
+            </dd>
           </div>
         </dl>
       </section>
@@ -273,7 +308,11 @@ export default function Student360() {
             <StatCard
               label="سجلات الحفظ والمراجعة"
               value={String(memorization.length)}
-              hint={latestMemorization ? `آخر متابعة: ${formatDate(latestMemorization.recordDate)}` : "لا توجد متابعة مسجلة"}
+              hint={
+                latestMemorization
+                  ? `آخر متابعة: ${formatDate(latestMemorization.recordDate)}`
+                  : "لا توجد متابعة مسجلة"
+              }
               icon={BookOpenCheck}
               tone="blue"
             />
@@ -288,22 +327,38 @@ export default function Student360() {
             />
           )}
           {!attendance && !memorization && !finance && (
-            <EmptyState title="لا توجد بيانات ملخصة متاحة" description="تظهر الوحدات التي تملك صلاحية عرضها فقط." />
+            <EmptyState
+              title="لا توجد بيانات ملخصة متاحة"
+              description="تظهر الوحدات التي تملك صلاحية عرضها فقط."
+            />
           )}
         </div>
       </section>
 
       {data.attendance.state !== "hidden" && (
         <section>
-          <SectionHeader title="الحضور" description="آخر سجلات الحضور ضمن الحلقة المصرح بها." />
+          <SectionHeader
+            title="الحضور"
+            description="آخر سجلات الحضور ضمن الحلقة المصرح بها."
+          />
           {data.attendance.state === "error" ? (
-            <EmptyState title="تعذر تحميل الحضور" description="لم يؤثر هذا الخطأ على بقية ملف الطالب." />
+            <EmptyState
+              title="تعذر تحميل الحضور"
+              description="لم يؤثر هذا الخطأ على بقية ملف الطالب."
+            />
           ) : attendance && attendance.length > 0 ? (
             <div className="overflow-hidden rounded-2xl border border-[#E5EDE7] bg-white">
               <div className="divide-y divide-[#EEF3EF]">
                 {attendance.map(record => (
-                  <div key={record.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                    <p className="text-sm font-bold text-[#244E3B]">{formatDate(record.date)}</p>
+                  <div
+                    key={record.id}
+                    className="flex items-center justify-between gap-4 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-[#244E3B]">
+                        {formatDate(record.date)}
+                      </p>
+                    </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${attendanceTone(record.status)}`}>
                       {attendanceLabel(record.status)}
                     </span>
@@ -312,22 +367,35 @@ export default function Student360() {
               </div>
             </div>
           ) : (
-            <EmptyState icon={CalendarDays} title="لا توجد سجلات حضور" description="لا توجد سجلات حضور متاحة لهذا الطالب في الوقت الحالي." />
+            <EmptyState
+              icon={CalendarDays}
+              title="لا توجد سجلات حضور"
+              description="لا توجد سجلات حضور متاحة لهذا الطالب في الوقت الحالي."
+            />
           )}
         </section>
       )}
 
       {data.memorization.state !== "hidden" && (
         <section>
-          <SectionHeader title="الحفظ والمراجعة" description="آخر المتابعات ضمن الحلقة المصرح بها." />
+          <SectionHeader
+            title="الحفظ والمراجعة"
+            description="آخر المتابعات ضمن الحلقة المصرح بها."
+          />
           {data.memorization.state === "error" ? (
-            <EmptyState title="تعذر تحميل الحفظ والمراجعة" description="لم يؤثر هذا الخطأ على بقية ملف الطالب." />
+            <EmptyState
+              title="تعذر تحميل الحفظ والمراجعة"
+              description="لم يؤثر هذا الخطأ على بقية ملف الطالب."
+            />
           ) : memorization && memorization.length > 0 ? (
             <div className="space-y-3">
               {memorization.slice(0, 8).map(record => {
                 const surah = getSurahByNumber(record.surahNumber);
                 return (
-                  <article key={record.id} className="rounded-2xl border border-[#E5EDE7] bg-white p-4">
+                  <article
+                    key={record.id}
+                    className="rounded-2xl border border-[#E5EDE7] bg-white p-4"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-bold text-[#244E3B]">
@@ -341,27 +409,55 @@ export default function Student360() {
                         التقييم {record.rating}/5
                       </span>
                     </div>
-                    {record.notes && <p className="mt-3 text-sm leading-6 text-[#607368]">{record.notes}</p>}
+                    {record.notes && (
+                      <p className="mt-3 text-sm leading-6 text-[#607368]">
+                        {record.notes}
+                      </p>
+                    )}
                   </article>
                 );
               })}
             </div>
           ) : (
-            <EmptyState icon={BookOpenCheck} title="لا توجد متابعات حفظ أو مراجعة" description="تظهر هنا السجلات عند إضافتها ضمن الحلقة المصرح بها." />
+            <EmptyState
+              icon={BookOpenCheck}
+              title="لا توجد متابعات حفظ أو مراجعة"
+              description="تظهر هنا السجلات عند إضافتها ضمن الحلقة المصرح بها."
+            />
           )}
         </section>
       )}
 
       {data.finance.state !== "hidden" && (
         <section>
-          <SectionHeader title="المالية" description="ملخص مالي متاح بحسب صلاحيات المالية الحالية." />
+          <SectionHeader
+            title="المالية"
+            description="ملخص مالي متاح بحسب صلاحيات المالية الحالية."
+          />
           {data.finance.state === "error" ? (
-            <EmptyState title="تعذر تحميل المالية" description="لم يؤثر هذا الخطأ على بقية ملف الطالب." />
+            <EmptyState
+              title="تعذر تحميل المالية"
+              description="لم يؤثر هذا الخطأ على بقية ملف الطالب."
+            />
           ) : finance ? (
             <div className="grid gap-3 sm:grid-cols-3">
-              <StatCard label="إجمالي المستحق" value={formatCurrency(finance.totalDue)} icon={CircleDollarSign} tone="amber" />
-              <StatCard label="إجمالي المدفوع" value={formatCurrency(finance.paid)} icon={CheckCircle2} />
-              <StatCard label="المتبقي" value={formatCurrency(finance.remaining)} icon={Clock3} tone="red" />
+              <StatCard
+                label="إجمالي المستحق"
+                value={formatCurrency(finance.totalDue)}
+                icon={CircleDollarSign}
+                tone="amber"
+              />
+              <StatCard
+                label="إجمالي المدفوع"
+                value={formatCurrency(finance.paid)}
+                icon={CheckCircle2}
+              />
+              <StatCard
+                label="المتبقي"
+                value={formatCurrency(finance.remaining)}
+                icon={Clock3}
+                tone="red"
+              />
             </div>
           ) : null}
         </section>
@@ -369,16 +465,24 @@ export default function Student360() {
 
       {activities.length > 0 && (
         <section>
-          <SectionHeader title="آخر النشاطات" description="مجمعة من البيانات المسموح بعرضها في هذا الملف." />
+          <SectionHeader
+            title="آخر النشاطات"
+            description="مجمعة من البيانات المسموح بعرضها في هذا الملف."
+          />
           <div className="overflow-hidden rounded-2xl border border-[#E5EDE7] bg-white">
             <div className="divide-y divide-[#EEF3EF]">
               {activities.map(activity => (
-                <div key={activity.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between gap-4 px-4 py-3"
+                >
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-[#244E3B]">{activity.label}</p>
                     <p className="truncate text-xs text-[#718377]">{activity.detail}</p>
                   </div>
-                  <span className="shrink-0 text-xs font-medium text-[#718377]">{formatDate(activity.date)}</span>
+                  <span className="shrink-0 text-xs font-medium text-[#718377]">
+                    {formatDate(activity.date)}
+                  </span>
                 </div>
               ))}
             </div>
