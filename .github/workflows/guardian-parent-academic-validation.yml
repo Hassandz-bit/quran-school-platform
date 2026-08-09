@@ -1,0 +1,41 @@
+name: Guardian Parent Academic Validation
+
+on:
+  pull_request:
+    paths:
+      - "supabase/019_guardian_parent_academic_reads.sql"
+      - "client/src/App.tsx"
+      - "client/src/components/ParentRoute.tsx"
+      - "client/src/components/ParentShell.tsx"
+      - "client/src/lib/parent-portal.ts"
+      - "client/src/pages/ParentHome.tsx"
+      - "client/src/pages/ParentStudent.tsx"
+      - "client/src/pages/PostLoginRedirect.tsx"
+      - "tests/guardian-parent-academic*"
+      - "tests/run-guardian-parent-academic-migration-test.sh"
+      - "package.json"
+      - ".github/workflows/guardian-parent-academic-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  guardian-parent-academic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:guardian-parent-academic:migration
+      - run: pnpm test:guardian-parent-academic:migration
+      - run: pnpm test
+      - run: pnpm check
+      - run: pnpm build
+      - run: git diff --check
