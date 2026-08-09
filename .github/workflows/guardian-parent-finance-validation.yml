@@ -1,0 +1,36 @@
+name: Guardian Parent Finance Validation
+
+on:
+  pull_request:
+    paths:
+      - "supabase/020_guardian_parent_finance_reads.sql"
+      - "client/src/lib/parent-portal.ts"
+      - "client/src/pages/ParentStudent.tsx"
+      - "tests/guardian-parent-finance*"
+      - "tests/run-guardian-parent-finance-migration-test.sh"
+      - "package.json"
+      - ".github/workflows/guardian-parent-finance-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  guardian-parent-finance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:guardian-parent-finance:migration
+      - run: pnpm test:guardian-parent-finance:migration
+      - run: pnpm test
+      - run: pnpm check
+      - run: pnpm build
+      - run: git diff --check

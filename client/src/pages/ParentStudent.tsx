@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowRight,
   BookOpenCheck,
   CalendarCheck2,
   CheckCircle2,
+  CircleDollarSign,
   Clock3,
+  ReceiptText,
   RefreshCw,
   Star,
   XCircle,
@@ -14,9 +17,11 @@ import { Button } from "@/components/ui/button";
 import { QURAN_SURAHS } from "@/lib/memorization";
 import {
   fetchParentStudentAcademic,
+  fetchParentStudentFinance,
   listMyGuardianStudents,
   type ParentStudent,
   type ParentStudentAcademicData,
+  type ParentStudentFinanceData,
 } from "@/lib/parent-portal";
 
 function formatDate(value: string | null): string {
@@ -25,6 +30,14 @@ function formatDate(value: string | null): string {
   return Number.isNaN(date.getTime())
     ? "—"
     : new Intl.DateTimeFormat("ar-DZ", { dateStyle: "medium" }).format(date);
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("ar-DZ", {
+    style: "currency",
+    currency: "DZD",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function attendanceLabel(status: string): string {
@@ -64,6 +77,58 @@ function surahName(number: number): string {
   return QURAN_SURAHS.find(surah => surah.number === number)?.name ?? `سورة ${number}`;
 }
 
+function chargeTypeLabel(value: string): string {
+  return (
+    {
+      fee: "رسوم",
+      registration: "تسجيل",
+      materials: "لوازم",
+      transport: "نقل",
+      other: "أخرى",
+    }[value] ?? value
+  );
+}
+
+function chargeStatusLabel(value: string): string {
+  return (
+    {
+      pending: "مستحق",
+      partially_paid: "مدفوع جزئيًا",
+      paid: "مدفوع",
+      waived: "معفى",
+      cancelled: "ملغى",
+    }[value] ?? value
+  );
+}
+
+function chargeStatusTone(value: string): string {
+  return (
+    {
+      pending: "bg-[#FFF4DE] text-[#A76009]",
+      partially_paid: "bg-[#EAF3FA] text-[#256D95]",
+      paid: "bg-[#E8F3EC] text-[#17663B]",
+      waived: "bg-[#EEF2F0] text-[#55685E]",
+      cancelled: "bg-[#FDECEC] text-[#B83A3A]",
+    }[value] ?? "bg-[#F1F4F2] text-[#607368]"
+  );
+}
+
+function paymentMethodLabel(value: string): string {
+  return (
+    {
+      cash: "نقدًا",
+      bank_transfer: "تحويل بنكي",
+      postal: "تحويل بريدي",
+      cheque: "صك",
+      other: "طريقة أخرى",
+    }[value] ?? value
+  );
+}
+
+function paymentStatusLabel(value: string): string {
+  return value === "reversed" ? "معكوس" : "مكتمل";
+}
+
 function Stat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
     <div className="rounded-2xl border border-[#DCE7DF] bg-white p-4 shadow-sm">
@@ -80,6 +145,7 @@ export default function ParentStudent() {
   const studentId = params?.studentId ?? "";
   const [student, setStudent] = useState<ParentStudent | null>(null);
   const [data, setData] = useState<ParentStudentAcademicData | null>(null);
+  const [finance, setFinance] = useState<ParentStudentFinanceData | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
 
   const load = useCallback(async () => {
@@ -95,16 +161,24 @@ export default function ParentStudent() {
       if (!currentStudent) {
         setStudent(null);
         setData(null);
+        setFinance(null);
         setState("missing");
         return;
       }
 
-      const academic = await fetchParentStudentAcademic(
-        currentStudent.schoolId,
-        currentStudent.studentId
-      );
+      const [academic, financeData] = await Promise.all([
+        fetchParentStudentAcademic(
+          currentStudent.schoolId,
+          currentStudent.studentId
+        ),
+        fetchParentStudentFinance(
+          currentStudent.schoolId,
+          currentStudent.studentId
+        ),
+      ]);
       setStudent(currentStudent);
       setData(academic);
+      setFinance(financeData);
       setState("ready");
     } catch {
       setState("error");
@@ -145,10 +219,10 @@ export default function ParentStudent() {
     );
   }
 
-  if (state === "error" || !student || !data) {
+  if (state === "error" || !student || !data || !finance) {
     return (
       <section className="rounded-2xl border border-red-200 bg-white p-7 text-center shadow-sm">
-        <h1 className="text-xl font-bold text-[#173B2D]">تعذر تحميل المتابعة الأكاديمية</h1>
+        <h1 className="text-xl font-bold text-[#173B2D]">تعذر تحميل ملف الطالب</h1>
         <p className="mt-2 text-sm text-red-700">تعذر جلب بيانات الطالب حاليًا.</p>
         <Button type="button" onClick={() => void load()} className="mt-5 gap-2 bg-[#0B4738] text-white">
           <RefreshCw size={17} /> إعادة المحاولة
@@ -264,6 +338,109 @@ export default function ParentStudent() {
                 )}
               </article>
             ))
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <CircleDollarSign size={21} className="text-[#17663B]" />
+          <h2 className="text-lg font-bold text-[#173B2D]">المالية</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="إجمالي الرسوم" value={formatCurrency(finance.summary.totalCharged)} />
+          <Stat label="المدفوع" value={formatCurrency(finance.summary.totalPaid)} />
+          <Stat label="المتبقي" value={formatCurrency(finance.summary.remainingAmount)} />
+          <Stat
+            label="المتأخر"
+            value={formatCurrency(finance.summary.overdueAmount)}
+            hint={finance.summary.overdueAmount > 0 ? "مبالغ تجاوز تاريخ استحقاقها" : "لا توجد متأخرات"}
+          />
+        </div>
+        <p className="text-xs text-[#718279]">
+          الاستحقاقات المفتوحة: {finance.summary.openChargesCount} · آخر دفعة مكتملة: {formatDate(finance.summary.lastPaymentDate)}
+        </p>
+
+        {finance.summary.overdueAmount > 0 && (
+          <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            <AlertTriangle className="mt-0.5 shrink-0" size={18} />
+            <p>يوجد مبلغ متأخر قدره {formatCurrency(finance.summary.overdueAmount)}. يرجى مراجعة إدارة المدرسة عند الحاجة إلى توضيح.</p>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-bold text-[#173B2D]">
+            <ReceiptText size={18} className="text-[#17663B]" /> الاستحقاقات
+          </h3>
+          {finance.charges.length === 0 ? (
+            <div className="rounded-2xl border border-[#DCE7DF] bg-white p-6 text-center text-sm text-[#718279]">
+              لا توجد استحقاقات مالية مسجلة.
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {finance.charges.map(charge => (
+                <article key={charge.id} className="rounded-2xl border border-[#DCE7DF] bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-[#8A6A2E]">{chargeTypeLabel(charge.chargeType)}</p>
+                      <h4 className="mt-1 font-bold text-[#173B2D]">{charge.description}</h4>
+                      <p className="mt-1 text-xs text-[#718279]">الاستحقاق: {formatDate(charge.dueDate)}</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${chargeStatusTone(charge.status)}`}>
+                      {chargeStatusLabel(charge.status)}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="rounded-xl bg-[#F5F8F5] p-2">
+                      <p className="text-[#718279]">الصافي</p>
+                      <p className="mt-1 font-bold text-[#173B2D]">{formatCurrency(charge.netAmount)}</p>
+                    </div>
+                    <div className="rounded-xl bg-[#F5F8F5] p-2">
+                      <p className="text-[#718279]">المدفوع</p>
+                      <p className="mt-1 font-bold text-[#173B2D]">{formatCurrency(charge.paidAmount)}</p>
+                    </div>
+                    <div className="rounded-xl bg-[#F5F8F5] p-2">
+                      <p className="text-[#718279]">المتبقي</p>
+                      <p className={`mt-1 font-bold ${charge.isOverdue ? "text-[#B83A3A]" : "text-[#173B2D]"}`}>
+                        {formatCurrency(charge.remainingAmount)}
+                      </p>
+                    </div>
+                  </div>
+                  {charge.discountAmount > 0 && (
+                    <p className="mt-3 text-xs text-[#607368]">
+                      الخصم المطبق: {formatCurrency(charge.discountAmount)} من أصل {formatCurrency(charge.originalAmount)}
+                    </p>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="font-bold text-[#173B2D]">سجل المدفوعات</h3>
+          {finance.payments.length === 0 ? (
+            <div className="rounded-2xl border border-[#DCE7DF] bg-white p-6 text-center text-sm text-[#718279]">
+              لا توجد مدفوعات مسجلة.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-[#DCE7DF] bg-white shadow-sm">
+              <div className="divide-y divide-[#E7EEE9]">
+                {finance.payments.map(payment => (
+                  <div key={payment.id} className="flex items-center justify-between gap-4 p-4">
+                    <div>
+                      <p className="text-sm font-medium text-[#173B2D]">{payment.chargeDescription}</p>
+                      <p className="mt-1 text-xs text-[#718279]">
+                        {formatDate(payment.paymentDate)} · {paymentMethodLabel(payment.paymentMethod)} · {paymentStatusLabel(payment.status)}
+                      </p>
+                    </div>
+                    <p className={`shrink-0 font-bold ${payment.status === "reversed" ? "text-[#8A6A72] line-through" : "text-[#17663B]"}`}>
+                      {formatCurrency(payment.amount)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </section>
