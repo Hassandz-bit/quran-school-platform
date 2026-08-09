@@ -47,8 +47,12 @@ export function getAppNavigation({
   const canUseLearning =
     isSchoolAdmin ||
     hasRole(roles, "teacher") ||
-    hasRole(roles, "academic_supervisor");
-  const canUseFinance = isSchoolAdmin || hasRole(roles, "finance_officer");
+    hasRole(roles, "academic_supervisor") ||
+    hasRole(roles, "branch_manager");
+  const canUseFinance =
+    isSchoolAdmin ||
+    hasRole(roles, "finance_officer") ||
+    hasRole(roles, "branch_manager");
   const canUseMembers = isSchoolAdmin || canViewMembers;
 
   return [
