@@ -3,11 +3,12 @@ import {
   SafeGuardianInvitationError,
   parseAllowedOrigins,
 } from "./logic.ts";
-import type {
-  GuardianDeliveryClaim,
-  GuardianInvitationAttempt,
-  GuardianInvitationStatus,
-  InviteGuardianDependencies,
+import {
+  GuardianAccountIneligibleError,
+  type GuardianDeliveryClaim,
+  type GuardianInvitationAttempt,
+  type GuardianInvitationStatus,
+  type InviteGuardianDependencies,
 } from "./handler.ts";
 
 function getMappedEnvironmentValue(name: string): string | null {
@@ -117,7 +118,7 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
     }
     if (existing) {
       if (existing.status !== "active") {
-        throw new SafeGuardianInvitationError("invitation_unavailable", 409);
+        throw new GuardianAccountIneligibleError();
       }
       return;
     }
@@ -138,8 +139,11 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
       .select("id, status")
       .eq("id", userId)
       .maybeSingle();
-    if (retryError || racedProfile?.status !== "active") {
-      throw new SafeGuardianInvitationError("invitation_unavailable", 409);
+    if (retryError || !racedProfile) {
+      throw new SafeGuardianInvitationError("provisioning_failed", 500);
+    }
+    if (racedProfile.status !== "active") {
+      throw new GuardianAccountIneligibleError();
     }
   }
 

@@ -1,6 +1,7 @@
 import nodeAssert from "node:assert/strict";
 import {
   createInviteGuardianHandler,
+  GuardianAccountIneligibleError,
   type InviteGuardianDependencies,
 } from "./handler.ts";
 import { SafeGuardianInvitationError } from "./logic.ts";
@@ -276,7 +277,7 @@ Deno.test("resumes a prepared retry but delivery claim prevents duplicate mail",
   assertEquals(calls.deliveries.length, 0);
 });
 
-Deno.test("new and existing Auth users receive the same outward response", async () => {
+Deno.test("eligible new and existing Auth users receive the same outward response", async () => {
   const responses: Array<Record<string, unknown>> = [];
   for (const requiresPasswordSetup of [true, false]) {
     const { deps, calls } = dependencies({
@@ -297,6 +298,69 @@ Deno.test("new and existing Auth users receive the same outward response", async
   assertFalse("accountExists" in responses[0]);
   assertFalse("requiresPasswordSetup" in responses[0]);
   assertFalse("guardianProfileId" in responses[0]);
+});
+
+Deno.test("new, active existing and inactive existing accounts have the same outward response", async () => {
+  const outwardResponses: Array<Record<string, unknown>> = [];
+  const scenarios = [
+    {
+      resolveAccount: async () => ({
+        userId: GUARDIAN_ID,
+        requiresPasswordSetup: true,
+        createdByThisAttempt: true,
+      }),
+      delivers: true,
+    },
+    {
+      resolveAccount: async () => ({
+        userId: GUARDIAN_ID,
+        requiresPasswordSetup: false,
+        createdByThisAttempt: false,
+      }),
+      delivers: true,
+    },
+    {
+      resolveAccount: async (): Promise<never> => {
+        throw new GuardianAccountIneligibleError();
+      },
+      delivers: false,
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const { deps, calls } = dependencies({
+      resolveAccount: scenario.resolveAccount,
+    });
+    const response = await createInviteGuardianHandler(deps)(request());
+    const result = await json(response);
+    outwardResponses.push({
+      httpStatus: response.status,
+      bodyKeys: Object.keys(result).sort(),
+      ok: result.ok,
+      status: result.status,
+      error: result.error ?? null,
+    });
+    assertEquals(response.status, 200);
+    assertEquals(result.ok, true);
+    assertEquals(result.status, "sent");
+    assertFalse("error" in result);
+    assertFalse("accountExists" in result);
+    assertFalse("requiresPasswordSetup" in result);
+    assertFalse("guardianProfileId" in result);
+    assertEquals(calls.deliveries.length, scenario.delivers ? 1 : 0);
+
+    if (!scenario.delivers) {
+      assertEquals(calls.preparations.length, 0);
+      assertEquals(calls.claims.length, 0);
+      const serializedLogs = JSON.stringify(calls.logs);
+      assert(serializedLogs.includes("account_ineligible"));
+      assertFalse(serializedLogs.includes(EMAIL));
+      assertFalse(serializedLogs.includes(GUARDIAN_ID));
+    }
+  }
+
+  assertEquals(outwardResponses[0], outwardResponses[1]);
+  assertEquals(outwardResponses[1], outwardResponses[2]);
 });
 
 Deno.test("uses only the trusted PUBLIC_SITE_URL for Auth delivery", async () => {

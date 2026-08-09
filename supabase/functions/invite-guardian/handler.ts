@@ -40,6 +40,13 @@ export type GuardianDeliveryClaim = {
   deliveryClaimed: boolean;
 };
 
+export class GuardianAccountIneligibleError extends Error {
+  constructor() {
+    super("guardian_account_ineligible");
+    this.name = "GuardianAccountIneligibleError";
+  }
+}
+
 export type InviteGuardianDependencies = {
   allowedOrigins: Set<string>;
   publicSiteUrl: string;
@@ -275,6 +282,10 @@ export function createInviteGuardianHandler(
       recordOutcome("sent");
       return safeSuccessResponse(origin, requestId);
     } catch (error) {
+      if (error instanceof GuardianAccountIneligibleError) {
+        recordOutcome("account_ineligible");
+        return safeSuccessResponse(origin, requestId);
+      }
       const safeError = asSafeError(error);
       recordOutcome(safeError.code);
       return safeErrorResponse(
