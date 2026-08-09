@@ -140,8 +140,15 @@ export default function AcceptGuardianInvite() {
             تم تفعيل وصول ولي الأمر بنجاح
           </h1>
           <p className="mt-3 text-sm leading-7 text-gray-600">
-            تم ربط الحساب بأمان. ستتاح خدمات بوابة ولي الأمر عند إطلاقها.
+            تم ربط الحساب بأمان. يمكنك الآن متابعة الأبناء المرتبطين بحسابك.
           </p>
+          <Button
+            type="button"
+            onClick={() => setLocation("/post-login")}
+            className="mt-6 w-full bg-[#0B4738] text-white"
+          >
+            متابعة إلى حسابي
+          </Button>
         </section>
       </main>
     );

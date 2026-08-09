@@ -60,7 +60,7 @@ beforeEach(() => {
 });
 
 describe("guardian invitation acceptance", () => {
-  test("new Auth user sets a password and activates exactly once", async () => {
+  test("new Auth user sets a password, activates exactly once, and can continue to authenticated routing", async () => {
     const user = userEvent.setup();
     render(<AcceptGuardianInvite />);
     expect(await screen.findByText("تفعيل حساب ولي الأمر")).toBeInTheDocument();
@@ -76,6 +76,9 @@ describe("guardian invitation acceptance", () => {
     expect(mocks.activate).toHaveBeenCalledWith(INVITATION_ID);
     expect(await screen.findByText("تم تفعيل وصول ولي الأمر بنجاح")).toBeInTheDocument();
     expect(mocks.clearSession).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "متابعة إلى حسابي" }));
+    expect(mocks.location).toHaveBeenCalledWith("/post-login");
   });
 
   test("existing Auth user activates without a password change", async () => {
