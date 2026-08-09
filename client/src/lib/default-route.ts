@@ -16,9 +16,17 @@ const ROUTES = {
   members: { path: "/members", label: "أعضاء المدرسة" },
 } as const satisfies Record<string, AuthenticatedRoute>;
 
-const ATTENDANCE_ROLE_CODES = new Set(["teacher", "academic_supervisor"]);
-const MEMORIZATION_ROLE_CODES = new Set(["teacher", "academic_supervisor"]);
-const FINANCE_ROLE_CODES = new Set(["finance_officer"]);
+const ATTENDANCE_ROLE_CODES = new Set([
+  "teacher",
+  "academic_supervisor",
+  "branch_manager",
+]);
+const MEMORIZATION_ROLE_CODES = new Set([
+  "teacher",
+  "academic_supervisor",
+  "branch_manager",
+]);
+const FINANCE_ROLE_CODES = new Set(["finance_officer", "branch_manager"]);
 const MEMBERS_ROLE_CODES = new Set(["registrar"]);
 
 function hasAnyRole(
