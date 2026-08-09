@@ -9,7 +9,12 @@ export type StudentStatus =
   | "withdrawn";
 
 export type StudentGender = "male" | "female";
-export type EducationLevel = "primary" | "middle" | "secondary" | "university";
+
+export type EducationLevel =
+  | "primary"
+  | "middle"
+  | "secondary"
+  | "university";
 
 export type GuardianRelation =
   | "father"
@@ -22,8 +27,18 @@ export type GuardianRelation =
   | "grandmother"
   | "other";
 
-export type BranchOption = { id: string; name: string; is_main: boolean };
-export type ClassOption = { id: string; branch_id: string; name: string; schedule_label: string | null };
+export type BranchOption = {
+  id: string;
+  name: string;
+  is_main: boolean;
+};
+
+export type ClassOption = {
+  id: string;
+  branch_id: string;
+  name: string;
+  schedule_label: string | null;
+};
 
 export type StudentRow = {
   id: string;
@@ -94,28 +109,50 @@ export type StudentInsert = {
   previous_certificate_provided: boolean;
 };
 
-type LookupOptions = { activeOnly?: boolean };
+type LookupOptions = {
+  activeOnly?: boolean;
+};
 
 const optionalText = (value: string): string | null => {
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
 };
 
-const EDUCATION_LEVELS = new Set<EducationLevel>(["primary", "middle", "secondary", "university"]);
+const EDUCATION_LEVELS = new Set<EducationLevel>([
+  "primary",
+  "middle",
+  "secondary",
+  "university",
+]);
+
 const educationYearLimits: Record<EducationLevel, number> = {
   primary: 5,
   middle: 4,
   secondary: 3,
   university: 10,
 };
+
 const educationLabels: Record<"ar" | "en", Record<EducationLevel, string>> = {
-  ar: { primary: "ابتدائي", middle: "متوسط", secondary: "ثانوي", university: "جامعي" },
-  en: { primary: "Primary", middle: "Middle school", secondary: "Secondary", university: "University" },
+  ar: {
+    primary: "ابتدائي",
+    middle: "متوسط",
+    secondary: "ثانوي",
+    university: "جامعي",
+  },
+  en: {
+    primary: "Primary",
+    middle: "Middle school",
+    secondary: "Secondary",
+    university: "University",
+  },
 };
 
 export function getEducationYearOptions(level: EducationLevel | ""): number[] {
   if (!level) return [];
-  return Array.from({ length: educationYearLimits[level] }, (_, index) => index + 1);
+  return Array.from(
+    { length: educationYearLimits[level] },
+    (_, index) => index + 1
+  );
 }
 
 export function translateEducationLevel(
@@ -136,13 +173,20 @@ export function formatEducation(
   return locale === "ar" ? `${stage} — السنة ${year}` : `${stage} — Year ${year}`;
 }
 
-export function buildStudentInsert(schoolId: string, values: StudentFormValues): StudentInsert {
+export function buildStudentInsert(
+  schoolId: string,
+  values: StudentFormValues
+): StudentInsert {
   const rawEducationLevel = String(values.educationLevel ?? "").trim();
-  const educationLevel = EDUCATION_LEVELS.has(rawEducationLevel as EducationLevel)
+  const educationLevel = EDUCATION_LEVELS.has(
+    rawEducationLevel as EducationLevel
+  )
     ? (rawEducationLevel as EducationLevel)
     : null;
   const educationYearText = values.educationYear?.trim() ?? "";
-  const parsedEducationYear = educationYearText ? Number(educationYearText) : null;
+  const parsedEducationYear = educationYearText
+    ? Number(educationYearText)
+    : null;
 
   return {
     school_id: schoolId,
@@ -158,7 +202,10 @@ export function buildStudentInsert(schoolId: string, values: StudentFormValues):
     address: optionalText(values.address),
     previous_school: optionalText(values.previousSchool),
     education_level: educationLevel,
-    education_year: educationLevel && Number.isInteger(parsedEducationYear) ? parsedEducationYear : null,
+    education_year:
+      educationLevel && Number.isInteger(parsedEducationYear)
+        ? parsedEducationYear
+        : null,
     guardian_name: values.guardianName.trim(),
     guardian_relation: values.guardianRelation as GuardianRelation,
     guardian_phone: values.guardianPhone.trim(),
@@ -184,9 +231,14 @@ export async function fetchBranches(
     .eq("school_id", schoolId)
     .order("is_main", { ascending: false })
     .order("name", { ascending: true });
-  if (activeOnly) query = query.eq("status", "active");
+
+  if (activeOnly) {
+    query = query.eq("status", "active");
+  }
+
   const { data, error } = await query;
   if (error) throw error;
+
   return (data ?? []) as BranchOption[];
 }
 
@@ -201,28 +253,47 @@ export async function fetchClasses(
     .select("id, branch_id, name, schedule_label")
     .eq("school_id", schoolId)
     .order("name", { ascending: true });
-  if (branchId) query = query.eq("branch_id", branchId);
-  if (activeOnly) query = query.eq("status", "active");
+
+  if (branchId) {
+    query = query.eq("branch_id", branchId);
+  }
+
+  if (activeOnly) {
+    query = query.eq("status", "active");
+  }
+
   const { data, error } = await query;
   if (error) throw error;
+
   return (data ?? []) as ClassOption[];
 }
 
 export async function fetchStudents(schoolId: string): Promise<StudentRow[]> {
   const { data, error } = await getSupabaseClient()
     .from("students")
-    .select("id, branch_id, class_id, first_name, last_name, phone, email, education_level, education_year, photo_path, start_date, status")
+    .select(
+      "id, branch_id, class_id, first_name, last_name, phone, email, education_level, education_year, photo_path, start_date, status"
+    )
     .eq("school_id", schoolId)
     .order("start_date", { ascending: false })
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true });
+
   if (error) throw error;
   return (data ?? []) as StudentRow[];
 }
 
-export async function addStudent(schoolId: string, values: StudentFormValues): Promise<string> {
+export async function addStudent(
+  schoolId: string,
+  values: StudentFormValues
+): Promise<string> {
   const payload = buildStudentInsert(schoolId, values);
-  const { data, error } = await getSupabaseClient().from("students").insert(payload).select("id").single();
+  const { data, error } = await getSupabaseClient()
+    .from("students")
+    .insert(payload)
+    .select("id")
+    .single();
+
   if (error) throw error;
   if (!data?.id) throw new Error("student_insert_missing_id");
   return data.id as string;
@@ -239,14 +310,23 @@ function photoExtension(file: File): string {
 }
 
 export function validateStudentPhoto(file: File): string | null {
-  if (!STUDENT_PHOTO_TYPES.has(file.type)) return "الصورة يجب أن تكون JPG أو PNG أو WebP.";
-  if (file.size > STUDENT_PHOTO_MAX_BYTES) return "حجم صورة الطالب يجب ألا يتجاوز 5 ميغابايت.";
+  if (!STUDENT_PHOTO_TYPES.has(file.type)) {
+    return "الصورة يجب أن تكون JPG أو PNG أو WebP.";
+  }
+  if (file.size > STUDENT_PHOTO_MAX_BYTES) {
+    return "حجم صورة الطالب يجب ألا يتجاوز 5 ميغابايت.";
+  }
   return null;
 }
 
-export async function uploadStudentPhoto(schoolId: string, studentId: string, file: File): Promise<string> {
+export async function uploadStudentPhoto(
+  schoolId: string,
+  studentId: string,
+  file: File
+): Promise<string> {
   const validationError = validateStudentPhoto(file);
   if (validationError) throw new Error(validationError);
+
   const client = getSupabaseClient();
   const path = `${schoolId}/${studentId}/profile-${crypto.randomUUID()}.${photoExtension(file)}`;
   const upload = await client.storage.from(STUDENT_PHOTO_BUCKET).upload(path, file, {
@@ -254,6 +334,7 @@ export async function uploadStudentPhoto(schoolId: string, studentId: string, fi
     contentType: file.type,
     upsert: false,
   });
+
   if (upload.error) throw upload.error;
 
   const { error: updateError } = await client
@@ -261,47 +342,70 @@ export async function uploadStudentPhoto(schoolId: string, studentId: string, fi
     .update({ photo_path: path, photos_provided: true })
     .eq("school_id", schoolId)
     .eq("id", studentId);
+
   if (updateError) {
     await client.storage.from(STUDENT_PHOTO_BUCKET).remove([path]);
     throw updateError;
   }
+
   return path;
 }
 
-export async function createStudentPhotoSignedUrl(
-  photoPath: string,
-  expiresInSeconds = 3600
-): Promise<string | null> {
-  const { data, error } = await getSupabaseClient().storage
-    .from(STUDENT_PHOTO_BUCKET)
-    .createSignedUrl(photoPath, expiresInSeconds);
-  if (error) return null;
-  return data?.signedUrl ?? null;
-}
-
 const statusLabels: Record<"ar" | "en", Record<StudentStatus, string>> = {
-  ar: { active: "نشط", suspended: "موقوف", transferred: "منقول", graduated: "متخرج", withdrawn: "منسحب" },
-  en: { active: "Active", suspended: "Suspended", transferred: "Transferred", graduated: "Graduated", withdrawn: "Withdrawn" },
+  ar: {
+    active: "نشط",
+    suspended: "موقوف",
+    transferred: "منقول",
+    graduated: "متخرج",
+    withdrawn: "منسحب",
+  },
+  en: {
+    active: "Active",
+    suspended: "Suspended",
+    transferred: "Transferred",
+    graduated: "Graduated",
+    withdrawn: "Withdrawn",
+  },
 };
 
-export function translateStudentStatus(status: StudentStatus, locale: "ar" | "en" = "ar"): string {
+export function translateStudentStatus(
+  status: StudentStatus,
+  locale: "ar" | "en" = "ar"
+): string {
   return statusLabels[locale][status];
 }
 
 type SafeError = Pick<PostgrestError, "code" | "message"> | null | undefined;
+
 export function getStudentSaveErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.startsWith("الصورة")) return error.message;
+  if (error instanceof Error && error.message.startsWith("الصورة")) {
+    return error.message;
+  }
+
   const safeError = error as SafeError;
   const code = safeError?.code;
   const message = safeError?.message?.toLowerCase() ?? "";
-  if (code === "23505") return "رقم الهوية مستخدم لطالب آخر.";
-  if (code === "23503") return "تعذر التحقق من الفرع أو الحلقة المختارة.";
-  if (code === "23514") return "تحقق من المرحلة الدراسية والسنة المختارة.";
+
+  if (code === "23505") {
+    return "رقم الهوية مستخدم لطالب آخر.";
+  }
+
+  if (code === "23503") {
+    return "تعذر التحقق من الفرع أو الحلقة المختارة.";
+  }
+
+  if (code === "23514") {
+    return "تحقق من المرحلة الدراسية والسنة المختارة.";
+  }
+
   if (
     code === "42501" ||
     code === "PGRST301" ||
     message.includes("row-level security") ||
     message.includes("permission denied")
-  ) return "لا تملك صلاحية إضافة أو تعديل الطلاب.";
+  ) {
+    return "لا تملك صلاحية إضافة أو تعديل الطلاب.";
+  }
+
   return "تعذر حفظ بيانات الطالب حاليًا.";
 }
