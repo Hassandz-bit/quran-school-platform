@@ -9,6 +9,7 @@ import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
 import MembersRoute from "./components/MembersRoute";
+import AcademicReportsRoute from "./components/AcademicReportsRoute";
 import ParentRoute from "./components/ParentRoute";
 import AppShell from "./components/AppShell";
 import ParentShell from "./components/ParentShell";
@@ -212,13 +213,13 @@ function Router() {
           </AttendanceRoute>
         </Route>
         <Route path="/academic-reports">
-          <ProtectedRoute>
+          <AcademicReportsRoute>
             <Shell>
               <Suspense fallback={<AcademicReportsPageFallback />}>
                 <AcademicReports />
               </Suspense>
             </Shell>
-          </ProtectedRoute>
+          </AcademicReportsRoute>
         </Route>
         <Route path="/memorization">
           <MemorizationRoute>
