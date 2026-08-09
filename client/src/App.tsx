@@ -10,7 +10,10 @@ import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
 import MembersRoute from "./components/MembersRoute";
 import AppShell from "./components/AppShell";
-import { captureTeacherInviteSession } from "./lib/invite-session";
+import {
+  captureGuardianInviteSession,
+  captureTeacherInviteSession,
+} from "./lib/invite-session";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Login from "./pages/Login";
@@ -37,6 +40,9 @@ const Members = lazy(() => import("./pages/Members"));
 const Student360 = lazy(() => import("./pages/Student360"));
 const AcademicReports = lazy(() => import("./pages/AcademicReports"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const AcceptGuardianInvite = lazy(
+  () => import("./pages/AcceptGuardianInvite")
+);
 const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
 );
@@ -88,6 +94,7 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 captureTeacherInviteSession();
+captureGuardianInviteSession();
 
 function Router() {
   return (
@@ -100,6 +107,11 @@ function Router() {
         <Route path="/accept-invite">
           <Suspense fallback={<AcceptInvitePageFallback />}>
             <AcceptInvite />
+          </Suspense>
+        </Route>
+        <Route path="/accept-guardian-invite">
+          <Suspense fallback={<AcceptInvitePageFallback />}>
+            <AcceptGuardianInvite />
           </Suspense>
         </Route>
         <Route path="/dashboard">
