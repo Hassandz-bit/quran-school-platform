@@ -1,0 +1,107 @@
+import type { PostgrestError } from "@supabase/supabase-js";
+import { getSupabaseClient } from "./supabase";
+
+export type DemoStatus = {
+  active: boolean;
+  batchId: string | null;
+  createdAt: string | null;
+  studentCount: number;
+  teacherCount: number;
+  classCount: number;
+};
+
+type DemoStatusRow = {
+  active: boolean;
+  batch_id: string | null;
+  created_at: string | null;
+  student_count: number | string;
+  teacher_count: number | string;
+  class_count: number | string;
+};
+
+function toCount(value: number | string): number {
+  const count = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(count) ? count : 0;
+}
+
+export async function fetchDemoStatus(schoolId: string): Promise<DemoStatus> {
+  const { data, error } = await getSupabaseClient().rpc("get_school_demo_status", {
+    target_school_id: schoolId,
+  });
+
+  if (error) throw error;
+  const row = ((data ?? []) as DemoStatusRow[])[0];
+
+  if (!row) {
+    return {
+      active: false,
+      batchId: null,
+      createdAt: null,
+      studentCount: 0,
+      teacherCount: 0,
+      classCount: 0,
+    };
+  }
+
+  return {
+    active: row.active === true,
+    batchId: row.batch_id,
+    createdAt: row.created_at,
+    studentCount: toCount(row.student_count),
+    teacherCount: toCount(row.teacher_count),
+    classCount: toCount(row.class_count),
+  };
+}
+
+export async function createDemoData(schoolId: string): Promise<string> {
+  const { data, error } = await getSupabaseClient().rpc("create_school_demo_data", {
+    target_school_id: schoolId,
+  });
+
+  if (error) throw error;
+  if (typeof data !== "string" || !data) {
+    throw new Error("demo_create_missing_batch");
+  }
+  return data;
+}
+
+export async function clearDemoData(schoolId: string): Promise<number> {
+  const { data, error } = await getSupabaseClient().rpc("clear_school_demo_data", {
+    target_school_id: schoolId,
+  });
+
+  if (error) throw error;
+  const count = typeof data === "number" ? data : Number(data);
+  return Number.isFinite(count) ? count : 0;
+}
+
+type SafeError = Pick<PostgrestError, "code" | "message"> | null | undefined;
+
+export function getDemoErrorMessage(error: unknown): string {
+  const safe = error as SafeError;
+  const message = safe?.message ?? "";
+
+  if (message.includes("demo_already_active")) {
+    return "البيانات التجريبية مفعلة بالفعل لهذه المدرسة.";
+  }
+  if (message.includes("demo_requires_active_branch")) {
+    return "يلزم وجود فرع نشط قبل إنشاء البيانات التجريبية.";
+  }
+  if (message.includes("demo_cleanup_blocked_teacher_invitation")) {
+    return "تعذر مسح العرض لأن معلّمًا تجريبيًا استُخدم في دعوة حساب حقيقية. راجع الدعوات أولًا.";
+  }
+  if (message.includes("demo_cleanup_blocked_guardian_link")) {
+    return "تعذر مسح العرض لأن طالبًا تجريبيًا مرتبط بولي أمر أو دعوة ولي أمر. فك الارتباط أولًا.";
+  }
+  if (message.includes("demo_cleanup_blocked_real_student_in_demo_class")) {
+    return "تعذر مسح العرض لأن طالبًا حقيقيًا أُضيف إلى حلقة تجريبية. انقله إلى حلقة حقيقية أولًا.";
+  }
+  if (message.includes("demo_cleanup_blocked_real_memorization_with_demo_teacher")) {
+    return "تعذر مسح العرض لأن معلّمًا تجريبيًا استُخدم في سجل حفظ لطالب حقيقي.";
+  }
+  if (safe?.code === "42501" || message.includes("demo_access_denied")) {
+    return "هذه العملية متاحة لمدير المدرسة فقط.";
+  }
+
+  return "تعذر تنفيذ عملية البيانات التجريبية حاليًا.";
+}
