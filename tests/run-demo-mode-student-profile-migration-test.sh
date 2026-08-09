@@ -70,5 +70,26 @@ docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_te
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < supabase/021_demo_mode_student_profile.sql
 
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < tests/demo-mode-student-profile-assertions.sql
+if ! docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/demo-mode-student-profile-assertions.sql; then
+  echo "Demo migration assertions failed. Diagnostic student education rows:" >&2
+  docker exec "$container_name" psql -U postgres -d quran_test -P pager=off -c "
+    select
+      s.first_name,
+      s.last_name,
+      s.education_level,
+      s.education_year,
+      s.birth_date,
+      extract(year from age(current_date, s.birth_date))::integer as age_years
+    from public.students s
+    join public.demo_seed_records r
+      on r.record_id = s.id
+     and r.entity_type = 'student'
+    join public.demo_seed_batches b
+      on b.id = r.batch_id
+     and b.school_id = r.school_id
+    where b.status = 'active'
+    order by s.created_at, s.id;
+  " >&2 || true
+  exit 1
+fi
