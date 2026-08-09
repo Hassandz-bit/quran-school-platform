@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDefaultAuthenticatedRoute } from "@/lib/default-route";
+import { listMyGuardianStudents } from "@/lib/parent-portal";
 
 function LoadingState({ message }: { message: string }) {
   return (
@@ -33,27 +34,58 @@ export default function PostLoginRedirect() {
   } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
+  const [parentCheck, setParentCheck] = useState<
+    "idle" | "checking" | "none" | "error"
+  >("idle");
 
   const defaultRoute = getDefaultAuthenticatedRoute({
     isSchoolAdmin,
     activeRoleCodes,
   });
+  const defaultRoutePath = defaultRoute?.path ?? null;
 
   useEffect(() => {
-    if (loading || authorizationLoading) return;
+    let cancelled = false;
+
+    if (loading || authorizationLoading) return () => {
+      cancelled = true;
+    };
 
     if (!session) {
       setLocation("/login");
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    if (school && !authorizationError && defaultRoute) {
-      setLocation(defaultRoute.path);
+    if (school && !authorizationError && defaultRoutePath) {
+      setLocation(defaultRoutePath);
+      return () => {
+        cancelled = true;
+      };
     }
+
+    setParentCheck("checking");
+    void listMyGuardianStudents()
+      .then(students => {
+        if (cancelled) return;
+        if (students.length > 0) {
+          setLocation("/parent");
+          return;
+        }
+        setParentCheck("none");
+      })
+      .catch(() => {
+        if (!cancelled) setParentCheck("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     authorizationError,
     authorizationLoading,
-    defaultRoute,
+    defaultRoutePath,
     loading,
     school,
     session,
@@ -80,7 +112,7 @@ export default function PostLoginRedirect() {
     }
   };
 
-  if (loading || authorizationLoading) {
+  if (loading || authorizationLoading || parentCheck === "checking") {
     return <LoadingState message="جارٍ تجهيز وجهة الدخول المناسبة..." />;
   }
 
@@ -88,61 +120,42 @@ export default function PostLoginRedirect() {
     return <LoadingState message="جارٍ العودة إلى تسجيل الدخول..." />;
   }
 
-  if (!school || authorizationError) {
-    return (
-      <main
-        className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4"
-        dir="rtl"
-      >
-        <section
-          role="alert"
-          className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-8 text-center shadow-lg"
-        >
-          <ShieldAlert className="mx-auto mb-3 text-red-700" size={32} />
-          <h1 className="text-xl font-bold text-[#2C3E50]">
-            تعذر تحديد وجهة الدخول
-          </h1>
-          <p className="mt-3 text-sm leading-7 text-red-700">
-            {authorizationError ?? "تعذر تحديد المدرسة الحالية."}
-          </p>
-        </section>
-      </main>
-    );
+  if (school && !authorizationError && defaultRoute) {
+    return <LoadingState message={`جارٍ فتح ${defaultRoute.label}...`} />;
   }
 
-  if (!defaultRoute) {
-    return (
-      <main
-        className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4"
-        dir="rtl"
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4"
+      dir="rtl"
+    >
+      <section
+        role="alert"
+        className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-8 text-center shadow-lg"
       >
-        <section
-          role="alert"
-          className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-8 text-center shadow-lg"
+        <ShieldAlert className="mx-auto mb-3 text-amber-700" size={32} />
+        <h1 className="text-xl font-bold text-[#2C3E50]">
+          لا توجد وجهة متاحة
+        </h1>
+        <p className="mt-3 text-sm leading-7 text-gray-700">
+          {parentCheck === "error"
+            ? "تعذر التحقق من بوابة ولي الأمر حاليًا. حاول مرة أخرى لاحقًا."
+            : authorizationError ??
+              "لا توجد عضوية مدرسية أو علاقة ولي أمر نشطة متاحة لهذا الحساب."}
+        </p>
+        {signOutError && (
+          <p className="mt-3 text-sm text-red-700">{signOutError}</p>
+        )}
+        <Button
+          type="button"
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+          className="mt-6 gap-2 bg-[#0B4738] text-white hover:bg-[#08382d]"
         >
-          <ShieldAlert className="mx-auto mb-3 text-amber-700" size={32} />
-          <h1 className="text-xl font-bold text-[#2C3E50]">
-            لا توجد وجهة متاحة
-          </h1>
-          <p className="mt-3 text-sm leading-7 text-gray-700">
-            حسابك فعّال، لكن لا توجد وحدة مناسبة مفعّلة لهذا الدور حاليًا.
-          </p>
-          {signOutError && (
-            <p className="mt-3 text-sm text-red-700">{signOutError}</p>
-          )}
-          <Button
-            type="button"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            className="mt-6 gap-2 bg-[#0B4738] text-white hover:bg-[#08382d]"
-          >
-            <LogOut aria-hidden="true" size={18} />
-            {isSigningOut ? "جارٍ تسجيل الخروج..." : "تسجيل الخروج"}
-          </Button>
-        </section>
-      </main>
-    );
-  }
-
-  return <LoadingState message={`جارٍ فتح ${defaultRoute.label}...`} />;
+          <LogOut aria-hidden="true" size={18} />
+          {isSigningOut ? "جارٍ تسجيل الخروج..." : "تسجيل الخروج"}
+        </Button>
+      </section>
+    </main>
+  );
 }

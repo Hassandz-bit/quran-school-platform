@@ -9,7 +9,9 @@ import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
 import MembersRoute from "./components/MembersRoute";
+import ParentRoute from "./components/ParentRoute";
 import AppShell from "./components/AppShell";
+import ParentShell from "./components/ParentShell";
 import {
   captureGuardianInviteSession,
   captureTeacherInviteSession,
@@ -43,6 +45,8 @@ const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const AcceptGuardianInvite = lazy(
   () => import("./pages/AcceptGuardianInvite")
 );
+const ParentHome = lazy(() => import("./pages/ParentHome"));
+const ParentStudent = lazy(() => import("./pages/ParentStudent"));
 const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
 );
@@ -89,6 +93,10 @@ function AcceptInvitePageFallback() {
   return <ModuleFallback label="جارٍ تحميل صفحة قبول الدعوة..." />;
 }
 
+function ParentPageFallback() {
+  return <ModuleFallback label="جارٍ تحميل بوابة ولي الأمر..." />;
+}
+
 function Shell({ children }: { children: ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
@@ -113,6 +121,24 @@ function Router() {
           <Suspense fallback={<AcceptInvitePageFallback />}>
             <AcceptGuardianInvite />
           </Suspense>
+        </Route>
+        <Route path="/parent/students/:studentId">
+          <ParentRoute>
+            <ParentShell>
+              <Suspense fallback={<ParentPageFallback />}>
+                <ParentStudent />
+              </Suspense>
+            </ParentShell>
+          </ParentRoute>
+        </Route>
+        <Route path="/parent">
+          <ParentRoute>
+            <ParentShell>
+              <Suspense fallback={<ParentPageFallback />}>
+                <ParentHome />
+              </Suspense>
+            </ParentShell>
+          </ParentRoute>
         </Route>
         <Route path="/dashboard">
           <ProtectedRoute><Shell><Dashboard /></Shell></ProtectedRoute>
