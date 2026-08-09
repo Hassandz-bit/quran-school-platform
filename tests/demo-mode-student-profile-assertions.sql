@@ -23,6 +23,19 @@ $$;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', false);
 select public.create_school_demo_data('10000000-0000-4000-8000-000000000001') as demo_batch_id \gset
 
+select
+  :'demo_batch_id' as captured_demo_batch_id,
+  (select count(*) from public.demo_seed_batches where id = :'demo_batch_id'::uuid and school_id = '10000000-0000-4000-8000-000000000001' and status = 'active') as active_batch_count,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'student') as students,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'teacher') as teachers,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'class') as classes,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'attendance_session') as attendance_sessions,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'attendance_record') as attendance_records,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'memorization_record') as memorization_records,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'student_charge') as student_charges,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'payment') as payments,
+  (select count(*) from public.demo_seed_records where batch_id = :'demo_batch_id'::uuid and entity_type = 'expense') as expenses;
+
 select case when count(*) = 1 then 1 else 1/0 end
 from public.demo_seed_batches
 where id = :'demo_batch_id'::uuid
