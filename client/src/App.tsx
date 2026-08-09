@@ -10,6 +10,7 @@ import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
 import MembersRoute from "./components/MembersRoute";
 import AcademicReportsRoute from "./components/AcademicReportsRoute";
+import LoginRoute from "./components/LoginRoute";
 import ParentRoute from "./components/ParentRoute";
 import AppShell from "./components/AppShell";
 import ParentShell from "./components/ParentShell";
@@ -109,7 +110,11 @@ function Router() {
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
-        <Route path="/login" component={Login} />
+        <Route path="/login">
+          <LoginRoute>
+            <Login />
+          </LoginRoute>
+        </Route>
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/post-login" component={PostLoginRedirect} />
@@ -239,7 +244,7 @@ function Router() {
             </Shell>
           </MembersRoute>
         </Route>
-        <Route path="/"><Redirect to="/login" /></Route>
+        <Route path="/"><Redirect to="/post-login" /></Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>
