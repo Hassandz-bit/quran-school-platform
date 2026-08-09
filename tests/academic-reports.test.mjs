@@ -3,8 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [app, shell, navigation, helper, page, packageJson] = await Promise.all([
+const [app, route, shell, navigation, helper, page, packageJson] = await Promise.all([
   read("client/src/App.tsx"),
+  read("client/src/components/AcademicReportsRoute.tsx"),
   read("client/src/components/AppShell.tsx"),
   read("client/src/lib/app-navigation.ts"),
   read("client/src/lib/academic-reports.ts"),
@@ -12,10 +13,21 @@ const [app, shell, navigation, helper, page, packageJson] = await Promise.all([
   read("package.json"),
 ]);
 
-test("registers Academic Reports inside the protected AppShell", () => {
+test("registers Academic Reports inside the permission-aware AppShell", () => {
   assert.match(app, /path="\/academic-reports"/);
-  assert.match(app, /<ProtectedRoute>[\s\S]*?<Shell>[\s\S]*?<AcademicReports \/>/);
+  assert.match(app, /<AcademicReportsRoute>[\s\S]*?<Shell>[\s\S]*?<AcademicReports \/>/);
+  assert.doesNotMatch(
+    app,
+    /path="\/academic-reports"[\s\S]{0,200}<ProtectedRoute>/
+  );
   assert.match(navigation, /label: "التقارير التعليمية"/);
+});
+
+test("route and navigation share actual academic access semantics", () => {
+  assert.match(route, /fetchAcademicReportsAccess\(school\.id\)/);
+  assert.match(route, /hasAnyAcademicReportsAccess\(access\)/);
+  assert.match(route, /<Redirect to="\/login" \/>/);
+  assert.doesNotMatch(route, /activeRoleCodes|finance\.view|finance_officer/);
 });
 
 test("shows navigation from actual academic access rather than finance roles", () => {
