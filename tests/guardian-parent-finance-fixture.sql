@@ -12,6 +12,9 @@ insert into public.student_charges (
   description,
   original_amount,
   discount_amount,
+  discount_value_type,
+  discount_value,
+  discount_reason,
   due_date,
   status,
   created_by
@@ -25,6 +28,9 @@ insert into public.student_charges (
     'Monthly fee',
     1000,
     0,
+    null,
+    null,
+    null,
     current_date - 30,
     'pending',
     '60000000-0000-4000-8000-000000000001'
@@ -38,6 +44,9 @@ insert into public.student_charges (
     'Registration fee',
     600,
     100,
+    'fixed',
+    100,
+    'Sibling discount test',
     current_date - 20,
     'pending',
     '60000000-0000-4000-8000-000000000001'
@@ -51,6 +60,9 @@ insert into public.student_charges (
     'Waived materials',
     300,
     0,
+    null,
+    null,
+    null,
     current_date - 15,
     'waived',
     '60000000-0000-4000-8000-000000000001'
@@ -64,6 +76,9 @@ insert into public.student_charges (
     'Cancelled fee',
     200,
     0,
+    null,
+    null,
+    null,
     current_date - 10,
     'cancelled',
     '60000000-0000-4000-8000-000000000001'
@@ -77,6 +92,9 @@ insert into public.student_charges (
     'Future transport',
     600,
     0,
+    null,
+    null,
+    null,
     current_date + 30,
     'pending',
     '60000000-0000-4000-8000-000000000001'
@@ -142,6 +160,9 @@ insert into public.student_charges (
   description,
   original_amount,
   discount_amount,
+  discount_value_type,
+  discount_value,
+  discount_reason,
   due_date,
   status,
   created_by
@@ -154,6 +175,9 @@ insert into public.student_charges (
   'School B fee',
   700,
   0,
+  null,
+  null,
+  null,
   current_date + 5,
   'pending',
   '60000000-0000-4000-8000-000000000008'
@@ -194,6 +218,9 @@ insert into public.student_charges (
   description,
   original_amount,
   discount_amount,
+  discount_value_type,
+  discount_value,
+  discount_reason,
   due_date,
   status,
   created_by
@@ -207,6 +234,9 @@ insert into public.student_charges (
     'Pending guardian child fee',
     900,
     0,
+    null,
+    null,
+    null,
     current_date,
     'pending',
     '60000000-0000-4000-8000-000000000001'
@@ -220,6 +250,9 @@ insert into public.student_charges (
     'Unrelated student fee',
     800,
     0,
+    null,
+    null,
+    null,
     current_date,
     'pending',
     '60000000-0000-4000-8000-000000000001'
