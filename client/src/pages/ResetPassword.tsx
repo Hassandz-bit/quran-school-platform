@@ -45,7 +45,7 @@ export default function ResetPassword() {
       }
 
       clearPasswordRecovery();
-      setLocation("/dashboard");
+      setLocation("/post-login");
     } catch {
       setErrorMessage("تعذر تغيير كلمة المرور حاليًا. حاول مرة أخرى لاحقًا.");
     } finally {
