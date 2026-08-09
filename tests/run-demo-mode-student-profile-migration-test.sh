@@ -65,10 +65,12 @@ docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_te
   < tests/demo-mode-storage-bootstrap.sql
 
 # Apply twice to prove replay safety before Production is touched.
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < supabase/021_demo_mode_student_profile.sql
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < supabase/021_demo_mode_student_profile.sql
+for _ in 1 2; do
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+    < supabase/021_demo_mode_student_profile.sql
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+    < supabase/022_student_profile_column_privileges.sql
+done
 
 if ! docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/demo-mode-student-profile-assertions.sql; then
