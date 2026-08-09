@@ -295,7 +295,16 @@ begin
       selected_class_id,
       first_names[i],
       last_names[i],
-      (date '2007-01-15' + (i * 170))::date,
+      (
+        current_date
+        - make_interval(years => case stages[i]
+            when 'primary' then 5 + years[i]
+            when 'middle' then 10 + years[i]
+            when 'secondary' then 14 + years[i]
+            when 'university' then 17 + years[i]
+          end)
+        - make_interval(days => i * 7)
+      )::date,
       case when i % 2 = 0 then 'female' else 'male' end,
       null,
       'عنوان تجريبي — الجزائر',
@@ -452,7 +461,7 @@ begin
         case when student_row.seq <= 8 then 1500 else 750 end,
         case when student_row.seq % 3 = 0 then 'postal' else 'cash' end,
         current_date - (student_row.seq % 6),
-        'DEMO-' || lpad(student_row.seq::text, 3, '0'),
+        'DEMO-PAY-' || lpad(student_row.seq::text, 3, '0'),
         'دفعة تجريبية.', 'completed', actor_id
       ) returning id into payment_id;
 
