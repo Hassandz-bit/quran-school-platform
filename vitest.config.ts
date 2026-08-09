@@ -7,5 +7,9 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify("test123") },
   resolve: { alias: { "@": path.resolve(root, "client/src") } },
-  test: { environment: "jsdom", globals: true },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: [path.resolve(root, "tests/vitest-network-guard.ts")],
+  },
 });
