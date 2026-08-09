@@ -57,6 +57,45 @@ export type ParentStudentAcademicData = {
   memorizationRecords: ParentMemorizationRecord[];
 };
 
+export type ParentFinanceSummary = {
+  totalCharged: number;
+  totalPaid: number;
+  remainingAmount: number;
+  overdueAmount: number;
+  openChargesCount: number;
+  lastPaymentDate: string | null;
+};
+
+export type ParentFinanceCharge = {
+  id: string;
+  chargeType: string;
+  description: string;
+  originalAmount: number;
+  discountAmount: number;
+  netAmount: number;
+  dueDate: string;
+  status: string;
+  paidAmount: number;
+  remainingAmount: number;
+  isOverdue: boolean;
+};
+
+export type ParentFinancePayment = {
+  id: string;
+  chargeId: string;
+  chargeDescription: string;
+  amount: number;
+  paymentMethod: string;
+  paymentDate: string;
+  status: string;
+};
+
+export type ParentStudentFinanceData = {
+  summary: ParentFinanceSummary;
+  charges: ParentFinanceCharge[];
+  payments: ParentFinancePayment[];
+};
+
 function asNumber(value: unknown): number {
   const numberValue = Number(value ?? 0);
   return Number.isFinite(numberValue) ? numberValue : 0;
@@ -168,6 +207,67 @@ export async function fetchParentStudentAcademic(
       rating: asNumber(row.rating),
       errorsCount: asNumber(row.errors_count),
       nextAssignment: row.next_assignment ?? null,
+    })),
+  };
+}
+
+export async function fetchParentStudentFinance(
+  schoolId: string,
+  studentId: string,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<ParentStudentFinanceData> {
+  const [summaryResult, chargesResult, paymentsResult] = await Promise.all([
+    client.rpc("get_my_guardian_student_finance_summary", {
+      target_school_id: schoolId,
+      target_student_id: studentId,
+    }),
+    client.rpc("list_my_guardian_student_charges", {
+      target_school_id: schoolId,
+      target_student_id: studentId,
+      target_limit: 30,
+    }),
+    client.rpc("list_my_guardian_student_payments", {
+      target_school_id: schoolId,
+      target_student_id: studentId,
+      target_limit: 30,
+    }),
+  ]);
+
+  const firstError = [summaryResult.error, chargesResult.error, paymentsResult.error].find(Boolean);
+  if (firstError) throw firstError;
+
+  const summaryRow = Array.isArray(summaryResult.data) ? summaryResult.data[0] : null;
+
+  return {
+    summary: {
+      totalCharged: asNumber(summaryRow?.total_charged),
+      totalPaid: asNumber(summaryRow?.total_paid),
+      remainingAmount: asNumber(summaryRow?.remaining_amount),
+      overdueAmount: asNumber(summaryRow?.overdue_amount),
+      openChargesCount: asNumber(summaryRow?.open_charges_count),
+      lastPaymentDate: summaryRow?.last_payment_date ?? null,
+    },
+    charges: (Array.isArray(chargesResult.data) ? chargesResult.data : []).map(row => ({
+      id: row.charge_id,
+      chargeType: row.charge_type,
+      description: row.description,
+      originalAmount: asNumber(row.original_amount),
+      discountAmount: asNumber(row.discount_amount),
+      netAmount: asNumber(row.net_amount),
+      dueDate: row.due_date,
+      status: row.charge_status,
+      paidAmount: asNumber(row.paid_amount),
+      remainingAmount: asNumber(row.remaining_amount),
+      isOverdue: row.is_overdue === true,
+    })),
+    payments: (Array.isArray(paymentsResult.data) ? paymentsResult.data : []).map(row => ({
+      id: row.payment_id,
+      chargeId: row.charge_id,
+      chargeDescription: row.charge_description,
+      amount: asNumber(row.amount),
+      paymentMethod: row.payment_method,
+      paymentDate: row.payment_date,
+      status: row.payment_status,
     })),
   };
 }
