@@ -27,9 +27,10 @@ test("demo cleanup fails closed when demo entities are mixed with real relations
 });
 
 test("student education is structured and the photo bucket is private", async () => {
-  const [sql, students, form, profile] = await Promise.all([
+  const [sql, students, student360Data, form, profile] = await Promise.all([
     read("supabase/021_demo_mode_student_profile.sql"),
     read("client/src/lib/students.ts"),
+    read("client/src/lib/student-360.ts"),
     read("client/src/pages/AddStudentForm.tsx"),
     read("client/src/pages/Student360.tsx"),
   ]);
@@ -40,8 +41,11 @@ test("student education is structured and the photo bucket is private", async ()
   assert.match(sql, /education_year between 1 and 3/);
   assert.match(sql, /education_year between 1 and 10/);
   assert.match(sql, /'student-photos'[\s\S]*false[\s\S]*5242880/);
-  assert.match(students, /createSignedUrl/);
   assert.match(students, /crypto\.randomUUID/);
+  assert.match(students, /\.storage\.from\(STUDENT_PHOTO_BUCKET\)\.upload/);
+  assert.match(student360Data, /client\.storage/);
+  assert.match(student360Data, /createSignedUrl/);
+  assert.doesNotMatch(student360Data, /getSupabaseClient\(\)\.storage/);
   assert.match(form, /ابتدائي/);
   assert.match(form, /متوسط/);
   assert.match(form, /ثانوي/);
