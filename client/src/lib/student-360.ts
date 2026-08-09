@@ -14,7 +14,11 @@ import {
   type PaymentCharge,
   type PaymentRow,
 } from "./payments";
-import type { StudentStatus } from "./students";
+import {
+  createStudentPhotoSignedUrl,
+  type EducationLevel,
+  type StudentStatus,
+} from "./students";
 
 export type Student360Profile = {
   id: string;
@@ -22,6 +26,10 @@ export type Student360Profile = {
   classId: string | null;
   firstName: string;
   lastName: string;
+  educationLevel: EducationLevel | null;
+  educationYear: number | null;
+  photoPath: string | null;
+  photoUrl: string | null;
   startDate: string;
   status: StudentStatus;
   branchName: string | null;
@@ -59,25 +67,16 @@ type StudentRow = {
   class_id: string | null;
   first_name: string;
   last_name: string;
+  education_level: EducationLevel | null;
+  education_year: number | null;
+  photo_path: string | null;
   start_date: string;
   status: StudentStatus;
 };
 
-type LookupRow = {
-  id: string;
-  name: string;
-};
-
-type AttendanceSessionRow = {
-  id: string;
-  session_date: string;
-};
-
-type AttendanceRecordRow = {
-  id: string;
-  session_id: string;
-  status: AttendanceStatus;
-};
+type LookupRow = { id: string; name: string };
+type AttendanceSessionRow = { id: string; session_date: string };
+type AttendanceRecordRow = { id: string; session_id: string; status: AttendanceStatus };
 
 const financePermissionCodes = ["finance.view", "finance.manage"] as const;
 
@@ -104,7 +103,6 @@ async function hasAnyFinanceAccess(
     if (check.error) throw check.error;
     if (check.data === true) return true;
   }
-
   return false;
 }
 
@@ -116,22 +114,9 @@ async function fetchAttendanceRecords(
   studentId: string
 ): Promise<Student360AttendanceRecord[] | null> {
   const [canView, canManage] = await Promise.all([
-    canAccessAttendanceClass(
-      client,
-      schoolId,
-      branchId,
-      classId,
-      "attendance.view"
-    ),
-    canAccessAttendanceClass(
-      client,
-      schoolId,
-      branchId,
-      classId,
-      "attendance.manage"
-    ),
+    canAccessAttendanceClass(client, schoolId, branchId, classId, "attendance.view"),
+    canAccessAttendanceClass(client, schoolId, branchId, classId, "attendance.manage"),
   ]);
-
   if (!canView && !canManage) return null;
 
   const { data: sessions, error: sessionsError } = await client
@@ -142,7 +127,6 @@ async function fetchAttendanceRecords(
     .eq("class_id", classId)
     .order("session_date", { ascending: false })
     .limit(12);
-
   if (sessionsError) throw sessionsError;
 
   const sessionRows = (sessions ?? []) as AttendanceSessionRow[];
@@ -155,17 +139,10 @@ async function fetchAttendanceRecords(
     .eq("branch_id", branchId)
     .eq("class_id", classId)
     .eq("student_id", studentId)
-    .in(
-      "session_id",
-      sessionRows.map(session => session.id)
-    );
-
+    .in("session_id", sessionRows.map(session => session.id));
   if (recordsError) throw recordsError;
 
-  const dateBySession = new Map(
-    sessionRows.map(session => [session.id, session.session_date])
-  );
-
+  const dateBySession = new Map(sessionRows.map(session => [session.id, session.session_date]));
   return ((records ?? []) as AttendanceRecordRow[])
     .map(record => ({
       id: record.id,
@@ -186,18 +163,14 @@ async function fetchFinance(
   const [chargesResult, paymentsResult] = await Promise.all([
     client
       .from("student_charges")
-      .select(
-        "id, branch_id, student_id, fee_plan_id, description, original_amount, net_amount, due_date, status"
-      )
+      .select("id, branch_id, student_id, fee_plan_id, description, original_amount, net_amount, due_date, status")
       .eq("school_id", schoolId)
       .eq("branch_id", branchId)
       .eq("student_id", studentId)
       .order("due_date", { ascending: false }),
     client
       .from("payments")
-      .select(
-        "id, school_id, branch_id, student_id, charge_id, amount, payment_method, payment_date, reference_number, notes, status, created_at"
-      )
+      .select("id, school_id, branch_id, student_id, charge_id, amount, payment_method, payment_date, reference_number, notes, status, created_at")
       .eq("school_id", schoolId)
       .eq("branch_id", branchId)
       .eq("student_id", studentId)
@@ -218,15 +191,9 @@ async function fetchFinance(
     typeof value === "number" ? value : Number(value) || 0;
 
   return {
-    totalDue: balances.reduce(
-      (total, balance) => total + toAmount(balance.charge.net_amount),
-      0
-    ),
+    totalDue: balances.reduce((total, balance) => total + toAmount(balance.charge.net_amount), 0),
     paid: balances.reduce((total, balance) => total + balance.paid, 0),
-    remaining: balances.reduce(
-      (total, balance) => total + balance.remaining,
-      0
-    ),
+    remaining: balances.reduce((total, balance) => total + balance.remaining, 0),
     recentPayments: payments.slice(0, 5).map(payment => ({
       id: payment.id,
       amount: payment.amount,
@@ -236,10 +203,7 @@ async function fetchFinance(
   };
 }
 
-/**
- * Loads a read-only student profile with only the sections whose existing
- * RLS-backed module permissions allow access. It performs no writes.
- */
+/** Loads a read-only student profile with only sections allowed by existing RLS-backed permissions. */
 export async function fetchStudent360(
   schoolId: string,
   studentId: string,
@@ -247,9 +211,7 @@ export async function fetchStudent360(
 ): Promise<Student360Data | null> {
   const { data: student, error: studentError } = await client
     .from("students")
-    .select(
-      "id, branch_id, class_id, first_name, last_name, start_date, status"
-    )
+    .select("id, branch_id, class_id, first_name, last_name, education_level, education_year, photo_path, start_date, status")
     .eq("school_id", schoolId)
     .eq("id", studentId)
     .maybeSingle();
@@ -258,7 +220,7 @@ export async function fetchStudent360(
   if (!student) return null;
 
   const studentRow = student as StudentRow;
-  const [branchResult, classResult] = await Promise.all([
+  const [branchResult, classResult, photoResult] = await Promise.all([
     client
       .from("branches")
       .select("id, name")
@@ -274,6 +236,9 @@ export async function fetchStudent360(
           .eq("id", studentRow.class_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    studentRow.photo_path
+      ? createStudentPhotoSignedUrl(studentRow.photo_path)
+      : Promise.resolve(null),
   ]);
 
   if (branchResult.error) throw branchResult.error;
@@ -285,57 +250,41 @@ export async function fetchStudent360(
     classId: studentRow.class_id,
     firstName: studentRow.first_name,
     lastName: studentRow.last_name,
+    educationLevel: studentRow.education_level,
+    educationYear: studentRow.education_year,
+    photoPath: studentRow.photo_path,
+    photoUrl: photoResult,
     startDate: studentRow.start_date,
     status: studentRow.status,
     branchName: (branchResult.data as LookupRow | null)?.name ?? null,
     className: (classResult.data as LookupRow | null)?.name ?? null,
   };
 
-  const classId = profile.classId;
-  if (!classId) {
-    const [financeResult] = await Promise.allSettled([
+  if (!profile.classId) {
+    const financeResult = await Promise.allSettled([
       fetchFinance(client, schoolId, profile.branchId, profile.id),
     ]);
-
     return {
       profile,
       attendance: { state: "hidden" },
       memorization: { state: "hidden" },
       finance:
-        financeResult.status === "rejected"
+        financeResult[0].status === "rejected"
           ? { state: "error" }
-          : financeResult.value === null
+          : financeResult[0].value === null
             ? { state: "hidden" }
-            : { state: "ready", data: financeResult.value },
+            : { state: "ready", data: financeResult[0].value },
     };
   }
 
+  const classId = profile.classId;
   const results = await Promise.allSettled([
-    fetchAttendanceRecords(
-      client,
-      schoolId,
-      profile.branchId,
-      classId,
-      profile.id
-    ),
+    fetchAttendanceRecords(client, schoolId, profile.branchId, classId, profile.id),
     (async () => {
       const [canView, canManage] = await Promise.all([
-        canAccessMemorizationClass(
-          client,
-          schoolId,
-          profile.branchId,
-          classId,
-          "memorization.view"
-        ),
-        canAccessMemorizationClass(
-          client,
-          schoolId,
-          profile.branchId,
-          classId,
-          "memorization.manage"
-        ),
+        canAccessMemorizationClass(client, schoolId, profile.branchId, classId, "memorization.view"),
+        canAccessMemorizationClass(client, schoolId, profile.branchId, classId, "memorization.manage"),
       ]);
-
       if (!canView && !canManage) return null;
       return fetchStudentMemorizationRecords(
         schoolId,
@@ -349,9 +298,7 @@ export async function fetchStudent360(
     fetchFinance(client, schoolId, profile.branchId, profile.id),
   ]);
 
-  const sectionFrom = <T,>(
-    result: PromiseSettledResult<T | null>
-  ): Student360Section<T> => {
+  const sectionFrom = <T,>(result: PromiseSettledResult<T | null>): Student360Section<T> => {
     if (result.status === "rejected") return { state: "error" };
     if (result.value === null) return { state: "hidden" };
     return { state: "ready", data: result.value };
