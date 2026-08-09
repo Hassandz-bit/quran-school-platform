@@ -68,7 +68,7 @@ export type StudentFormValues = {
   address: string;
   previousSchool: string;
   educationLevel: EducationLevel | "";
-  educationYear: string;
+  educationYear?: string;
   guardianName: string;
   guardianRelation: GuardianRelation | "";
   guardianPhone: string;
@@ -168,9 +168,8 @@ export function buildStudentInsert(
   values: StudentFormValues
 ): StudentInsert {
   const educationLevel = values.educationLevel || null;
-  const parsedEducationYear = values.educationYear.trim()
-    ? Number(values.educationYear)
-    : null;
+  const educationYearText = values.educationYear?.trim() ?? "";
+  const parsedEducationYear = educationYearText ? Number(educationYearText) : null;
 
   return {
     school_id: schoolId,
