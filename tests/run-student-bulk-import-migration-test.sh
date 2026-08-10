@@ -54,7 +54,8 @@ for file in \
   supabase/023_guardian_push_foundation.sql supabase/024_guardian_absence_notifications.sql \
   supabase/025_guardian_directory_notification_center.sql supabase/026_notification_center_module_categories.sql \
   supabase/027_official_receipts.sql supabase/028_student_bulk_import.sql \
-  supabase/029_student_bulk_import_consistency.sql supabase/030_student_bulk_import_plpgsql_resolution.sql; do
+  supabase/029_student_bulk_import_consistency.sql supabase/030_student_bulk_import_plpgsql_resolution.sql \
+  supabase/031_student_bulk_import_rollback_fk_order.sql; do
   run_sql "$file"
 done
 run_sql tests/student-bulk-import-fixture.sql
