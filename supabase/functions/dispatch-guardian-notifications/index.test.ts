@@ -31,7 +31,7 @@ const absenceDelivery: GuardianPushDelivery = {
   attemptNumber: 1,
 };
 
-function request(body = scope): Request {
+function request(body: unknown = scope): Request {
   return new Request("https://example.test/functions/v1/dispatch-guardian-notifications", {
     method: "POST",
     headers: {
@@ -47,8 +47,10 @@ function dependencies(
 ): GuardianNotificationDependencies {
   return {
     authorizeScope: async () => true,
+    authorizeCron: async () => false,
     requeueStale: async () => {},
     claimDeliveries: async () => [absenceDelivery],
+    claimDueDeliveries: async () => [],
     sendPush: async () => ({ outcome: "delivered" }),
     finishDelivery: async () => {},
     ...overrides,
@@ -57,10 +59,7 @@ function dependencies(
 
 Deno.test("rejects requests outside the scoped authenticated dispatch contract", async () => {
   const handler = createGuardianNotificationHandler(dependencies());
-
-  const methodResponse = await handler(
-    new Request("https://example.test", { method: "GET" })
-  );
+  const methodResponse = await handler(new Request("https://example.test", { method: "GET" }));
   if (methodResponse.status !== 405) throw new Error("GET should be rejected");
 
   const invalidResponse = await handler(request({ ...scope, sessionId: "bad" }));
@@ -81,6 +80,37 @@ Deno.test("rejects requests outside the scoped authenticated dispatch contract",
   if (claimed) throw new Error("unauthorized request reached service claim");
 });
 
+Deno.test("cron retry sweep requires its independent server secret path", async () => {
+  let globalClaimed = false;
+  const denied = createGuardianNotificationHandler(
+    dependencies({
+      authorizeCron: async () => false,
+      claimDueDeliveries: async () => {
+        globalClaimed = true;
+        return [];
+      },
+    })
+  );
+  const deniedResponse = await denied(request({ mode: "retry_sweep" }));
+  if (deniedResponse.status !== 403) throw new Error("cron without secret should fail");
+  if (globalClaimed) throw new Error("unauthorized cron reached global claim");
+
+  const allowed = createGuardianNotificationHandler(
+    dependencies({
+      authorizeCron: async () => true,
+      claimDueDeliveries: async limit => {
+        if (limit !== 50) throw new Error("cron claim limit mismatch");
+        globalClaimed = true;
+        return [absenceDelivery];
+      },
+    })
+  );
+  const allowedResponse = await allowed(request({ mode: "retry_sweep" }));
+  if (allowedResponse.status !== 200 || !globalClaimed) {
+    throw new Error("authorized cron did not dispatch due work");
+  }
+});
+
 Deno.test("builds bounded parent-only absence and correction payloads", () => {
   const absence = buildGuardianPushPayload(absenceDelivery);
   if (!absence.body.includes("لم يُسجَّل حضور أحمد محمد")) {
@@ -99,9 +129,7 @@ Deno.test("builds bounded parent-only absence and correction payloads", () => {
     eventType: "absence_corrected",
     newStatus: "late",
   });
-  if (!correction.body.includes("متأخرًا")) {
-    throw new Error("late correction copy is missing");
-  }
+  if (!correction.body.includes("متأخرًا")) throw new Error("late correction copy is missing");
 });
 
 Deno.test("dispatches claimed work and persists each provider outcome", async () => {
@@ -127,15 +155,9 @@ Deno.test("dispatches claimed work and persists each provider outcome", async ()
         sendCount += 1;
         return sendCount === 1
           ? { outcome: "delivered" }
-          : {
-              outcome: "retry",
-              errorCode: "push_http_503",
-              retryAfterSeconds: 120,
-            };
+          : { outcome: "retry", errorCode: "push_http_503", retryAfterSeconds: 120 };
       },
-      finishDelivery: async (id, result) => {
-        finished.push({ id, result });
-      },
+      finishDelivery: async (id, result) => finished.push({ id, result }),
     })
   );
 
