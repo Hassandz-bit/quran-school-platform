@@ -1,0 +1,57 @@
+name: Guardian Absence Notification Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop/v2
+    paths:
+      - "supabase/023_guardian_push_foundation.sql"
+      - "supabase/024_guardian_absence_notifications.sql"
+      - "supabase/functions/dispatch-guardian-notifications/**"
+      - "client/src/lib/guardian-push.ts"
+      - "client/src/lib/guardian-notification-dispatch.ts"
+      - "client/src/pages/Attendance.tsx"
+      - "tests/guardian-absence-notifications*"
+      - "tests/run-guardian-absence-notifications-migration-test.sh"
+      - "package.json"
+      - ".github/workflows/guardian-absence-notifications-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guardian-absence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate guardian absence notifications
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verify Docker
+        run: docker info
+
+      - name: Validate guardian absence migration
+        run: bash tests/run-guardian-absence-notifications-migration-test.sh
+
+      - name: Validate guardian notification dispatcher
+        run: |
+          deno test --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.test.ts
+          deno check --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.ts supabase/functions/dispatch-guardian-notifications/services.ts
+
+      - name: Check whitespace
+        run: git diff --check
