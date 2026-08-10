@@ -12,3 +12,8 @@ verify_jwt = true
 # this function only; requests without either credential fail closed in handler.
 [functions.dispatch-guardian-notifications]
 verify_jwt = false
+
+# The import function validates the bearer token itself before parsing or staging
+# any workbook. This keeps authorization testable and fail-closed inside handler.
+[functions.import-students]
+verify_jwt = false
