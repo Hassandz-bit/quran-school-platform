@@ -26,6 +26,13 @@ if ! docker exec "$container_name" \
   exit 1
 fi
 
+# Supabase projects include this internal server-only role. Plain PostgreSQL
+# does not, so model it only inside this isolated fixture before Migration 024
+# verifies its service-only worker grants.
+docker exec "$container_name" \
+  psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  -c 'CREATE ROLE service_role NOLOGIN;' >/dev/null
+
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/guardian-security-foundation-bootstrap.sql
 
