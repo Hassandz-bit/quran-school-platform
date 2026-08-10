@@ -195,12 +195,11 @@ export function createGuardianNotificationHandler(
     }
 
     try {
-      await dependencies.requeueStale();
-
       if (isRetrySweep(body)) {
         if (!(await dependencies.authorizeCron(request))) {
           return jsonResponse({ error: "not_authorized" }, 403);
         }
+        await dependencies.requeueStale();
         return await dispatchClaimed(
           dependencies,
           await dependencies.claimDueDeliveries(50)
@@ -213,6 +212,7 @@ export function createGuardianNotificationHandler(
         return jsonResponse({ error: "not_authorized" }, 403);
       }
 
+      await dependencies.requeueStale();
       return await dispatchClaimed(
         dependencies,
         await dependencies.claimDeliveries(scope, 25)
