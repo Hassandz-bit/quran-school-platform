@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="QuranOS">
+  <rect width="512" height="512" fill="#0B4738"/>
+  <rect x="112" y="112" width="288" height="288" rx="68" fill="#D7B56D"/>
+  <rect x="148" y="148" width="216" height="216" rx="50" fill="#0B4738"/>
+  <circle cx="256" cy="190" r="24" fill="#F7F8F3"/>
+  <circle cx="267" cy="183" r="23" fill="#0B4738"/>
+  <path d="M172 232c34 0 62 10 77 25v96c-23-16-51-25-85-25v-88c0-5 3-8 8-8Z" fill="#F7F8F3"/>
+  <path d="M340 232c-34 0-62 10-77 25v96c23-16 51-25 85-25v-88c0-5-3-8-8-8Z" fill="#F7F8F3"/>
+  <path d="M256 256v98" stroke="#D7B56D" stroke-width="9" stroke-linecap="round"/>
+</svg>
