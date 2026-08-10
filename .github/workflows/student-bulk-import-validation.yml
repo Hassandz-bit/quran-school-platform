@@ -57,7 +57,7 @@ jobs:
 
       - name: Validate Excel import Edge Function
         run: |
-          deno test --allow-env --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.test.ts
+          deno test --allow-env --allow-sys=umask --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.test.ts
           deno check --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.ts supabase/functions/import-students/handler.ts supabase/functions/import-students/services.ts
 
       - name: Validate whitespace
