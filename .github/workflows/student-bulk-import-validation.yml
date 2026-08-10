@@ -1,0 +1,55 @@
+name: Student Bulk Import Validation
+
+on:
+  pull_request:
+    branches:
+      - develop/v2
+    paths:
+      - "client/src/components/StudentsRoute.tsx"
+      - "client/src/lib/student-import.ts"
+      - "client/src/pages/StudentImport.tsx"
+      - "client/src/pages/StudentsList.tsx"
+      - "client/src/App.tsx"
+      - "supabase/028_student_bulk_import.sql"
+      - "tests/student-bulk-import*"
+      - "tests/run-student-bulk-import-migration-test.sh"
+      - "package.json"
+      - ".github/workflows/student-bulk-import-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: student-bulk-import-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: student-bulk-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      - name: Verify Docker
+        run: |
+          docker --version
+          docker info
+
+      - name: Run static student import contracts
+        run: node --test tests/student-bulk-import.test.mjs
+
+      - name: Run PostgreSQL 17 student import migration test
+        run: bash tests/run-student-bulk-import-migration-test.sh
+
+      - name: Final whitespace check
+        run: git diff --check
