@@ -6,6 +6,7 @@ import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StaffRoute from "./components/StaffRoute";
+import StudentsRoute from "./components/StudentsRoute";
 import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
@@ -49,6 +50,7 @@ const Guardians = lazy(() => import("./pages/Guardians"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Student360 = lazy(() => import("./pages/Student360"));
+const StudentBulkImport = lazy(() => import("./pages/StudentBulkImport"));
 const AcademicReports = lazy(() => import("./pages/AcademicReports"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const AcceptGuardianInvite = lazy(
@@ -193,27 +195,36 @@ function Router() {
         <Route path="/dashboard">
           <ProtectedRoute><Shell><Dashboard /></Shell></ProtectedRoute>
         </Route>
+        <Route path="/students/import">
+          <StudentsRoute requireManage>
+            <Shell>
+              <Suspense fallback={<Student360PageFallback />}>
+                <StudentBulkImport />
+              </Suspense>
+            </Shell>
+          </StudentsRoute>
+        </Route>
+        <Route path="/students/new">
+          <StudentsRoute requireManage><Shell><AddStudentForm /></Shell></StudentsRoute>
+        </Route>
         <Route path="/students/:studentId">
-          <ProtectedRoute>
+          <StudentsRoute>
             <Shell>
               <Suspense fallback={<Student360PageFallback />}>
                 <Student360 />
               </Suspense>
             </Shell>
-          </ProtectedRoute>
+          </StudentsRoute>
         </Route>
         <Route path="/students">
-          <ProtectedRoute>
+          <StudentsRoute>
             <Shell>
               <StudentsList />
               <Suspense fallback={null}>
                 <RosterAssignmentLauncher mode="student-class" />
               </Suspense>
             </Shell>
-          </ProtectedRoute>
-        </Route>
-        <Route path="/students/new">
-          <ProtectedRoute><Shell><AddStudentForm /></Shell></ProtectedRoute>
+          </StudentsRoute>
         </Route>
         <Route path="/classes">
           <ProtectedRoute>
