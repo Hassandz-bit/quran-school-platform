@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Bell,
   BookOpen,
   BookOpenCheck,
   ChartNoAxesCombined,
@@ -7,6 +8,7 @@ import {
   DollarSign,
   GraduationCap,
   Home,
+  UserRoundCheck,
   Users,
 } from "lucide-react";
 
@@ -27,6 +29,8 @@ export type AppNavigationItem = {
     | "memorization"
     | "academic-reports"
     | "finance"
+    | "guardians"
+    | "notifications"
     | "members";
   label: string;
   path: string;
@@ -54,6 +58,8 @@ export function getAppNavigation({
     hasRole(roles, "finance_officer") ||
     hasRole(roles, "branch_manager");
   const canUseMembers = isSchoolAdmin || canViewMembers;
+  const canUseGuardians = isSchoolAdmin || hasRole(roles, "registrar");
+  const canUseNotifications = isSchoolAdmin || roles.size > 0;
 
   return [
     ...(canManageSchool
@@ -128,6 +134,28 @@ export function getAppNavigation({
           },
         ]
       : []),
+    ...(canUseGuardians
+      ? [
+          {
+            id: "guardians" as const,
+            label: "الأولياء",
+            path: "/guardians",
+            group: "management" as const,
+            icon: UserRoundCheck,
+          },
+        ]
+      : []),
+    ...(canUseNotifications
+      ? [
+          {
+            id: "notifications" as const,
+            label: "الإشعارات",
+            path: "/notifications",
+            group: "management" as const,
+            icon: Bell,
+          },
+        ]
+      : []),
     ...(canUseMembers
       ? [
           {
@@ -150,8 +178,10 @@ export function getBottomNavigation(
     "attendance",
     "students",
     "memorization",
+    "notifications",
     "academic-reports",
     "finance",
+    "guardians",
     "members",
   ] as const;
 
