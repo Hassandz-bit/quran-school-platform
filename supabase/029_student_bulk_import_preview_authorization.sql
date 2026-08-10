@@ -1,6 +1,8 @@
 -- QuranOS V2 - harden the bulk-import management surface.
 -- 1) Preview is management-only before any row-level details are returned.
--- 2) Rollback avoids PL/pgSQL record/alias shadowing and keeps exact scope checks.
+-- 2) Import commits serialize per school through the batch insert so two
+--    concurrent files cannot both pass duplicate checks for the same student.
+-- 3) Rollback avoids PL/pgSQL record/alias shadowing and keeps exact scope checks.
 
 begin;
 
@@ -102,6 +104,37 @@ revoke all on function public.preview_student_import(uuid, jsonb)
 from public, anon;
 grant execute on function public.preview_student_import(uuid, jsonb)
 to authenticated;
+
+create or replace function public.serialize_student_import_batch_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- Lock one stable tenant row for the transaction. Every commit RPC inserts
+  -- the batch before validating/inserting students, so same-school imports are
+  -- serialized before duplicate checks while different schools remain parallel.
+  perform 1
+  from public.schools as school
+  where school.id = new.school_id
+    and school.status = 'active'
+  for update;
+
+  if not found then
+    raise exception using errcode = '23514', message = 'student_import_school_unavailable';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger student_import_batches_serialize_school_insert
+before insert on public.student_import_batches
+for each row execute function public.serialize_student_import_batch_insert();
+
+revoke all on function public.serialize_student_import_batch_insert()
+from public, anon, authenticated;
 
 create or replace function public.rollback_student_import(target_batch_id uuid)
 returns table (
