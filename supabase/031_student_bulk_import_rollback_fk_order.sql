@@ -1,4 +1,5 @@
 -- QuranOS V2 - detach the import audit row before deleting a rolled-back student.
+-- Also revoke import-ledger read access immediately when school membership is no longer active.
 begin;
 
 create or replace function public.rollback_student_import_batch(target_batch_id uuid)
@@ -76,5 +77,65 @@ $$;
 
 revoke all on function public.rollback_student_import_batch(uuid) from public, anon;
 grant execute on function public.rollback_student_import_batch(uuid) to authenticated;
+
+create or replace function public.get_student_import_batch(target_batch_id uuid)
+returns table (
+  batch_id uuid,
+  school_id uuid,
+  file_name text,
+  status text,
+  total_count integer,
+  ready_count integer,
+  warning_count integer,
+  duplicate_count integer,
+  error_count integer,
+  created_count integer,
+  created_at timestamptz,
+  committed_at timestamptz,
+  rolled_back_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select batch.id, batch.school_id, batch.file_name, batch.status,
+    batch.total_count, batch.ready_count, batch.warning_count,
+    batch.duplicate_count, batch.error_count, batch.created_count,
+    batch.created_at, batch.committed_at, batch.rolled_back_at
+  from public.student_import_batches batch
+  where batch.id = target_batch_id
+    and batch.created_by = (select auth.uid())
+    and public.is_active_school_member(batch.school_id);
+$$;
+
+create or replace function public.list_student_import_rows(target_batch_id uuid)
+returns table (
+  row_number integer,
+  payload jsonb,
+  row_status text,
+  issues text[],
+  duplicate_student_id uuid,
+  created_student_id uuid
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select row.row_number, row.payload, row.row_status, row.issues,
+    row.duplicate_student_id, row.created_student_id
+  from public.student_import_rows row
+  join public.student_import_batches batch on batch.id = row.batch_id
+  where row.batch_id = target_batch_id
+    and batch.created_by = (select auth.uid())
+    and public.is_active_school_member(batch.school_id)
+  order by row.row_number;
+$$;
+
+revoke all on function public.get_student_import_batch(uuid) from public, anon;
+revoke all on function public.list_student_import_rows(uuid) from public, anon;
+grant execute on function public.get_student_import_batch(uuid) to authenticated;
+grant execute on function public.list_student_import_rows(uuid) to authenticated;
 
 commit;

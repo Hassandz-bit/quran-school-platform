@@ -41,6 +41,12 @@ test("migration keeps staging private and rechecks authorization on commit", asy
   assert.match(migration, /duplicate_detected_at_commit/);
 });
 
+test("import ledger reads require active school membership", async () => {
+  const hardening = await read("supabase/031_student_bulk_import_rollback_fk_order.sql");
+  assert.match(hardening, /get_student_import_batch[\s\S]*?is_active_school_member\(batch\.school_id\)/);
+  assert.match(hardening, /list_student_import_rows[\s\S]*?is_active_school_member\(batch\.school_id\)/);
+});
+
 test("rollback is batch-scoped and blocked after downstream activity", async () => {
   const consistency = await read("supabase/029_student_bulk_import_consistency.sql");
   assert.match(consistency, /student_guardians/);
