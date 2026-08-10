@@ -2,6 +2,7 @@ import ExcelJS from "npm:exceljs@4.4.0";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.110.7";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+export const MAX_FILE_BASE64_CHARS = Math.ceil(MAX_FILE_BYTES / 3) * 4;
 export const MAX_ROWS = 5000;
 
 const HEADER_ALIASES: Record<string, string> = {
@@ -82,10 +83,17 @@ function excelLoadInput(bytes: Uint8Array): Parameters<ExcelJS.Workbook["xlsx"][
 }
 
 export function decodeBase64(value: string): Uint8Array {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return bytes;
+  if (value.length === 0 || value.length > MAX_FILE_BASE64_CHARS) {
+    throw new Error("student_import_file_size");
+  }
+  try {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+  } catch {
+    throw new Error("student_import_invalid_base64");
+  }
 }
 
 export function encodeBase64(bytes: Uint8Array): string {
@@ -141,11 +149,13 @@ export async function parseStudentWorkbook(bytes: Uint8Array) {
       if (normalized !== "") hasContent = true;
       payload[key] = normalized;
     }
-    if (hasContent) rows.push(payload);
+    if (hasContent) {
+      if (rows.length >= MAX_ROWS) throw new Error("student_import_too_many_rows");
+      rows.push(payload);
+    }
   });
 
   if (rows.length === 0) throw new Error("student_import_no_rows");
-  if (rows.length > MAX_ROWS) throw new Error("student_import_too_many_rows");
   return rows;
 }
 

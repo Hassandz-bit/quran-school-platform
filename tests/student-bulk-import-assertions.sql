@@ -77,7 +77,32 @@ begin
 end;
 $$;
 
--- The registrar owns the batch and may inspect and commit it.
+-- Import-ledger PII becomes unreadable immediately if the creator loses school membership.
+update public.school_memberships
+set status = 'revoked'
+where school_id = '10000000-0000-4000-8000-000000000001'
+  and profile_id = '60000000-0000-4000-8000-000000000002';
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002', false);
+do $$
+begin
+  if exists (
+    select 1 from public.get_student_import_batch(current_setting('test.import_batch_id')::uuid)
+  ) then raise exception 'revoked registrar unexpectedly read own import batch'; end if;
+  if exists (
+    select 1 from public.list_student_import_rows(current_setting('test.import_batch_id')::uuid)
+  ) then raise exception 'revoked registrar unexpectedly read own import rows'; end if;
+end;
+$$;
+reset role;
+
+update public.school_memberships
+set status = 'active'
+where school_id = '10000000-0000-4000-8000-000000000001'
+  and profile_id = '60000000-0000-4000-8000-000000000002';
+
+-- The registrar owns the batch and may inspect and commit it while membership remains active.
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002', false);
 do $$
@@ -131,7 +156,7 @@ end;
 $$;
 reset role;
 
--- A teacher cannot read or commit a registrar-owned batch.
+-- A teacher cannot read or roll back a registrar-owned batch.
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000003', false);
 do $$

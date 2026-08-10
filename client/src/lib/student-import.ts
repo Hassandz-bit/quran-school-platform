@@ -29,6 +29,8 @@ export type StudentImportRow = {
   createdStudentId: string | null;
 };
 
+const MAX_STUDENT_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+
 const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader();
   reader.onerror = () => reject(reader.error ?? new Error("file_read_failed"));
@@ -72,6 +74,9 @@ export async function previewStudentImport(
   file: File,
   client: SupabaseClient = getSupabaseClient(),
 ) {
+  if (file.size === 0 || file.size > MAX_STUDENT_IMPORT_FILE_BYTES) {
+    throw new Error("student_import_file_size");
+  }
   const fileBase64 = await fileToBase64(file);
   const { data, error } = await client.functions.invoke("import-students", {
     body: { mode: "preview", schoolId, fileName: file.name, fileBase64 },

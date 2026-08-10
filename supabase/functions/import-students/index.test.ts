@@ -1,6 +1,12 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1.0.14";
 import ExcelJS from "npm:exceljs@4.4.0";
-import { buildStudentTemplate, parseStudentWorkbook } from "./services.ts";
+import {
+  buildStudentTemplate,
+  MAX_FILE_BASE64_CHARS,
+  MAX_FILE_BYTES,
+  MAX_ROWS,
+  parseStudentWorkbook,
+} from "./services.ts";
 
 async function workbookBytes(headers: string[], values: unknown[]) {
   const workbook = new ExcelJS.Workbook();
@@ -40,6 +46,26 @@ Deno.test("student import accepts Arabic headers", async () => {
 Deno.test("student import refuses missing required headers", async () => {
   const bytes = await workbookBytes(["first_name", "last_name"], ["A", "B"]);
   await assertRejects(() => parseStudentWorkbook(bytes), Error, "student_import_missing_header");
+});
+
+Deno.test("student import encoded-size ceiling matches the 5 MiB binary limit", () => {
+  assertEquals(MAX_FILE_BYTES, 5 * 1024 * 1024);
+  assertEquals(MAX_FILE_BASE64_CHARS, Math.ceil(MAX_FILE_BYTES / 3) * 4);
+});
+
+Deno.test("student import stops as soon as the workbook exceeds the row limit", async () => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Students");
+  sheet.addRow(["first_name", "last_name", "birth_date", "gender", "guardian_name", "guardian_relation", "guardian_phone", "branch_code"]);
+  for (let index = 0; index <= MAX_ROWS; index += 1) {
+    sheet.addRow(["Student", `Test${index}`, "2014-05-06", "male", "Guardian", "father", "+213555000011", "MAIN"]);
+  }
+  const buffer = await workbook.xlsx.writeBuffer();
+  await assertRejects(
+    () => parseStudentWorkbook(new Uint8Array(buffer)),
+    Error,
+    "student_import_too_many_rows",
+  );
 });
 
 Deno.test("generated template is a readable xlsx with required headers", async () => {

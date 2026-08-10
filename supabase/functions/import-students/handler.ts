@@ -4,6 +4,7 @@ import {
   decodeBase64,
   encodeBase64,
   getClients,
+  MAX_FILE_BASE64_CHARS,
   parseStudentWorkbook,
   sha256Hex,
   stageImport,
@@ -55,6 +56,9 @@ export async function handleStudentImport(request: Request): Promise<Response> {
     if (!/\.xlsx$/i.test(fileName) || fileName.length > 180 || fileBase64.length === 0) {
       return json(400, { error: "invalid_file" });
     }
+    if (fileBase64.length > MAX_FILE_BASE64_CHARS) {
+      return json(422, { error: "student_import_file_size" });
+    }
 
     const bytes = decodeBase64(fileBase64);
     const [rows, sha256] = await Promise.all([
@@ -67,7 +71,7 @@ export async function handleStudentImport(request: Request): Promise<Response> {
     const message = error instanceof Error ? error.message : "student_import_failed";
     if (message.includes("unauthorized")) return json(403, { error: "student_import_denied" });
     if (message.includes("missing_header")) return json(422, { error: message });
-    if (message.includes("file_size") || message.includes("too_many_rows") || message.includes("no_rows") || message.includes("sheet_missing")) {
+    if (message.includes("file_size") || message.includes("invalid_base64") || message.includes("too_many_rows") || message.includes("no_rows") || message.includes("sheet_missing")) {
       return json(422, { error: message });
     }
     console.error("student import failed", message);

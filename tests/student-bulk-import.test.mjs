@@ -22,20 +22,29 @@ test("choosing a new workbook clears any stale preview before commit", async () 
   assert.match(page, /disabled=\{busy !== null\}[\s\S]*?onChange=\{event => handleFileChange\(event\.target\.files\?\.\[0\] \?\? null\)\}/);
 });
 
+test("browser import client rejects oversized files before Base64 encoding", async () => {
+  const client = await read("client/src/lib/student-import.ts");
+  const sizeIndex = client.indexOf("file.size > MAX_STUDENT_IMPORT_FILE_BYTES");
+  const encodeIndex = client.indexOf("fileToBase64(file)");
+  assert.ok(sizeIndex >= 0 && encodeIndex > sizeIndex);
+});
+
 test("browser import client never contains privileged Supabase credentials", async () => {
   const client = await read("client/src/lib/student-import.ts");
   assert.doesNotMatch(client, /SERVICE_ROLE|service_role|SUPABASE_SECRET_KEY/);
 });
 
-test("student import Edge Function validates bearer before parsing workbooks", async () => {
+test("student import Edge Function validates bearer and encoded size before workbook decoding", async () => {
   const [config, handler] = await Promise.all([
     read("supabase/config.toml"),
     read("supabase/functions/import-students/handler.ts"),
   ]);
   assert.match(config, /\[functions\.import-students\][\s\S]*?verify_jwt = false/);
   const bearerIndex = handler.indexOf("getBearer(request)");
+  const sizeIndex = handler.indexOf("fileBase64.length > MAX_FILE_BASE64_CHARS");
+  const decodeIndex = handler.indexOf("decodeBase64(fileBase64)");
   const parseIndex = handler.indexOf("parseStudentWorkbook(bytes)");
-  assert.ok(bearerIndex >= 0 && parseIndex > bearerIndex);
+  assert.ok(bearerIndex >= 0 && sizeIndex > bearerIndex && decodeIndex > sizeIndex && parseIndex > decodeIndex);
   assert.match(handler, /authorizeImporter\(userClient, schoolId\)/);
 });
 
