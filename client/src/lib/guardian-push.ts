@@ -68,13 +68,29 @@ async function registerSubscription(subscription: PushSubscription): Promise<voi
   if (data !== true) throw new GuardianPushError("push_subscription_not_registered");
 }
 
+async function isSubscriptionOwnedByCurrentGuardian(
+  subscription: PushSubscription
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  const { data, error } = await client.rpc("has_my_guardian_push_subscription", {
+    target_endpoint: subscription.endpoint,
+  });
+
+  if (error) throw error;
+  return data === true;
+}
+
 export async function getGuardianPushStatus(): Promise<GuardianPushStatus> {
   if (!supportsGuardianPush()) return "unsupported";
   if (Notification.permission === "denied") return "denied";
 
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
-  return subscription ? "enabled" : "available";
+  if (!subscription) return "available";
+
+  return (await isSubscriptionOwnedByCurrentGuardian(subscription))
+    ? "enabled"
+    : "available";
 }
 
 export async function enableGuardianPush(): Promise<GuardianPushStatus> {
