@@ -23,11 +23,9 @@ create table public.guardian_notification_events (
   constraint guardian_notification_events_student_fk
     foreign key (student_id) references public.students(id),
   constraint guardian_notification_events_session_fk
-    foreign key (attendance_session_id)
-    references public.attendance_sessions(id),
+    foreign key (attendance_session_id) references public.attendance_sessions(id),
   constraint guardian_notification_events_record_fk
-    foreign key (attendance_record_id)
-    references public.attendance_records(id),
+    foreign key (attendance_record_id) references public.attendance_records(id),
   constraint guardian_notification_events_type_check
     check (event_type in ('absence_confirmed', 'absence_corrected')),
   constraint guardian_notification_events_old_status_check
@@ -42,7 +40,7 @@ create table public.guardian_notification_events (
 );
 
 comment on table public.guardian_notification_events is
-  'Server-only attendance notification events. At most one absence alert and one correction are emitted per student attendance record.';
+  'Server-only attendance notification events. At most one absence alert and one correction event exist per attendance record.';
 
 create table public.guardian_notification_deliveries (
   id uuid primary key default gen_random_uuid(),
@@ -62,8 +60,7 @@ create table public.guardian_notification_deliveries (
     references public.guardian_notification_events(id)
     on delete cascade,
   constraint guardian_notification_deliveries_guardian_fk
-    foreign key (guardian_profile_id)
-    references public.profiles(id),
+    foreign key (guardian_profile_id) references public.profiles(id),
   constraint guardian_notification_deliveries_subscription_fk
     foreign key (subscription_id)
     references public.guardian_push_subscriptions(id)
@@ -87,18 +84,15 @@ create table public.guardian_notification_deliveries (
 );
 
 comment on table public.guardian_notification_deliveries is
-  'Server-only Web Push outbox. Delivery always rechecks the active guardian relationship and current subscription ownership before claim.';
+  'Server-only Web Push outbox. Claims recheck active guardian access and current subscription ownership.';
 
 create index guardian_notification_events_school_created_idx
   on public.guardian_notification_events (school_id, created_at desc);
-
 create index guardian_notification_events_session_created_idx
   on public.guardian_notification_events (attendance_session_id, created_at);
-
 create index guardian_notification_deliveries_pending_idx
   on public.guardian_notification_deliveries (status, next_attempt_at, created_at)
   where status in ('pending', 'retry');
-
 create index guardian_notification_deliveries_guardian_idx
   on public.guardian_notification_deliveries (guardian_profile_id, created_at desc);
 
@@ -113,9 +107,6 @@ revoke all on public.guardian_notification_events,
   public.guardian_notification_deliveries
 from public, anon, authenticated;
 
--- Queue only meaningful attendance state transitions. Re-saving the same absent
--- state is a no-op. The unique event key also prevents repeated alerts for the
--- same student/session if an operator toggles the state more than once.
 create or replace function public.queue_guardian_attendance_notification()
 returns trigger
 language plpgsql
@@ -124,6 +115,7 @@ set search_path = ''
 as $$
 declare
   queued_event_id uuid;
+  prior_absence_event_id uuid;
   queued_event_type text;
   resolved_school_name text;
   resolved_student_name text;
@@ -142,12 +134,13 @@ begin
   elsif old.status = 'absent'
     and new.status in ('present', 'late', 'excused_absence')
   then
-    if not exists (
-      select 1
-      from public.guardian_notification_events as prior_event
-      where prior_event.attendance_record_id = new.id
-        and prior_event.event_type = 'absence_confirmed'
-    ) then
+    select prior_event.id
+    into prior_absence_event_id
+    from public.guardian_notification_events as prior_event
+    where prior_event.attendance_record_id = new.id
+      and prior_event.event_type = 'absence_confirmed';
+
+    if prior_absence_event_id is null then
       return new;
     end if;
     queued_event_type := 'absence_corrected';
@@ -213,25 +206,61 @@ begin
     return new;
   end if;
 
-  insert into public.guardian_notification_deliveries (
-    event_id,
-    guardian_profile_id,
-    subscription_id
-  )
-  select
-    queued_event_id,
-    relationship.guardian_profile_id,
-    subscription.id
-  from public.student_guardians as relationship
-  join public.profiles as guardian_profile
-    on guardian_profile.id = relationship.guardian_profile_id
-   and guardian_profile.status = 'active'
-  join public.guardian_push_subscriptions as subscription
-    on subscription.guardian_profile_id = relationship.guardian_profile_id
-  where relationship.school_id = new.school_id
-    and relationship.student_id = new.student_id
-    and relationship.status = 'active'
-  on conflict (event_id, subscription_id) do nothing;
+  if queued_event_type = 'absence_confirmed' then
+    insert into public.guardian_notification_deliveries (
+      event_id,
+      guardian_profile_id,
+      subscription_id
+    )
+    select
+      queued_event_id,
+      relationship.guardian_profile_id,
+      subscription.id
+    from public.student_guardians as relationship
+    join public.profiles as guardian_profile
+      on guardian_profile.id = relationship.guardian_profile_id
+     and guardian_profile.status = 'active'
+    join public.guardian_push_subscriptions as subscription
+      on subscription.guardian_profile_id = relationship.guardian_profile_id
+    where relationship.school_id = new.school_id
+      and relationship.student_id = new.student_id
+      and relationship.status = 'active'
+    on conflict (event_id, subscription_id) do nothing;
+  else
+    -- If the absence has not yet been delivered, suppress it instead of later
+    -- sending a stale absence immediately followed by a correction.
+    update public.guardian_notification_deliveries as absence_delivery
+    set status = 'cancelled',
+        processing_started_at = null,
+        last_error_code = 'attendance_corrected_before_delivery'
+    where absence_delivery.event_id = prior_absence_event_id
+      and absence_delivery.status in ('pending', 'retry');
+
+    -- A correction is useful only to a device that actually received the
+    -- absence. Processing deliveries are handled by finish_* after provider
+    -- outcome is known, closing the in-flight race safely.
+    insert into public.guardian_notification_deliveries (
+      event_id,
+      guardian_profile_id,
+      subscription_id
+    )
+    select
+      queued_event_id,
+      absence_delivery.guardian_profile_id,
+      absence_delivery.subscription_id
+    from public.guardian_notification_deliveries as absence_delivery
+    join public.guardian_push_subscriptions as subscription
+      on subscription.id = absence_delivery.subscription_id
+     and subscription.guardian_profile_id = absence_delivery.guardian_profile_id
+    join public.student_guardians as relationship
+      on relationship.school_id = new.school_id
+     and relationship.student_id = new.student_id
+     and relationship.guardian_profile_id = absence_delivery.guardian_profile_id
+     and relationship.status = 'active'
+    where absence_delivery.event_id = prior_absence_event_id
+      and absence_delivery.status = 'delivered'
+    on conflict (event_id, subscription_id) do nothing;
+  end if;
 
   return new;
 exception
@@ -242,8 +271,7 @@ exception
 end;
 $$;
 
-revoke all on function public.queue_guardian_attendance_notification()
-from public;
+revoke all on function public.queue_guardian_attendance_notification() from public;
 revoke execute on function public.queue_guardian_attendance_notification()
 from anon, authenticated;
 
@@ -251,13 +279,13 @@ create trigger attendance_records_guardian_notification
 after insert or update of status on public.attendance_records
 for each row execute function public.queue_guardian_attendance_notification();
 
--- Service-only claim RPC. A worker may claim only the exact school/session that
--- an authorized attendance manager asked it to dispatch. It first cancels work
--- whose guardian link was revoked or whose subscription changed ownership.
-create or replace function public.claim_guardian_push_deliveries(
+-- Internal service-only claim implementation. NULL school/session means the
+-- scheduled retry sweeper may claim due work across tenants, while the public
+-- attendance-triggered worker always uses an exact school/session scope.
+create or replace function public.claim_guardian_push_deliveries_internal(
   target_school_id uuid,
   target_session_id uuid,
-  target_limit integer default 25
+  target_limit integer
 )
 returns table (
   delivery_id uuid,
@@ -281,36 +309,31 @@ security definer
 set search_path = ''
 as $$
 begin
-  if target_school_id is null or target_session_id is null then
-    raise exception using
-      errcode = '22023',
-      message = 'notification delivery scope required';
-  end if;
-
   if target_limit is null or target_limit < 1 or target_limit > 100 then
-    raise exception using
-      errcode = '22023',
-      message = 'invalid delivery claim limit';
+    raise exception using errcode = '22023', message = 'invalid delivery claim limit';
   end if;
 
-  if not exists (
+  if (target_school_id is null) <> (target_session_id is null) then
+    raise exception using errcode = '22023', message = 'incomplete delivery scope';
+  end if;
+
+  if target_session_id is not null and not exists (
     select 1
     from public.attendance_sessions as session
     where session.id = target_session_id
       and session.school_id = target_school_id
   ) then
-    raise exception using
-      errcode = '22023',
-      message = 'invalid delivery session scope';
+    raise exception using errcode = '22023', message = 'invalid delivery session scope';
   end if;
 
   update public.guardian_notification_deliveries as delivery
   set status = 'cancelled',
+      processing_started_at = null,
       last_error_code = 'guardian_or_subscription_inactive'
   from public.guardian_notification_events as event
   where event.id = delivery.event_id
-    and event.school_id = target_school_id
-    and event.attendance_session_id = target_session_id
+    and (target_school_id is null or event.school_id = target_school_id)
+    and (target_session_id is null or event.attendance_session_id = target_session_id)
     and delivery.status in ('pending', 'retry')
     and (
       delivery.subscription_id is null
@@ -339,8 +362,8 @@ begin
     join public.guardian_push_subscriptions as subscription
       on subscription.id = delivery.subscription_id
      and subscription.guardian_profile_id = delivery.guardian_profile_id
-    where event.school_id = target_school_id
-      and event.attendance_session_id = target_session_id
+    where (target_school_id is null or event.school_id = target_school_id)
+      and (target_session_id is null or event.attendance_session_id = target_session_id)
       and delivery.status in ('pending', 'retry')
       and delivery.next_attempt_at <= now()
       and delivery.attempts < 5
@@ -391,6 +414,71 @@ begin
 end;
 $$;
 
+revoke all on function public.claim_guardian_push_deliveries_internal(uuid, uuid, integer)
+from public, anon, authenticated, service_role;
+
+create or replace function public.claim_guardian_push_deliveries(
+  target_school_id uuid,
+  target_session_id uuid,
+  target_limit integer default 25
+)
+returns table (
+  delivery_id uuid,
+  event_id uuid,
+  subscription_id uuid,
+  guardian_profile_id uuid,
+  student_id uuid,
+  endpoint text,
+  p256dh text,
+  auth_key text,
+  event_type text,
+  school_name text,
+  student_name text,
+  class_name text,
+  session_date date,
+  new_status text,
+  attempt_number integer
+)
+language sql
+security definer
+set search_path = ''
+as $$
+  select *
+  from public.claim_guardian_push_deliveries_internal(
+    target_school_id,
+    target_session_id,
+    target_limit
+  );
+$$;
+
+create or replace function public.claim_due_guardian_push_deliveries(
+  target_limit integer default 50
+)
+returns table (
+  delivery_id uuid,
+  event_id uuid,
+  subscription_id uuid,
+  guardian_profile_id uuid,
+  student_id uuid,
+  endpoint text,
+  p256dh text,
+  auth_key text,
+  event_type text,
+  school_name text,
+  student_name text,
+  class_name text,
+  session_date date,
+  new_status text,
+  attempt_number integer
+)
+language sql
+security definer
+set search_path = ''
+as $$
+  select *
+  from public.claim_guardian_push_deliveries_internal(null, null, target_limit);
+$$;
+
 create or replace function public.finish_guardian_push_delivery(
   target_delivery_id uuid,
   target_outcome text,
@@ -405,6 +493,13 @@ as $$
 declare
   current_attempts integer;
   current_subscription_id uuid;
+  current_guardian_profile_id uuid;
+  current_event_type text;
+  current_attendance_record_id uuid;
+  current_school_id uuid;
+  current_student_id uuid;
+  correction_event_id uuid;
+  correction_already_exists boolean := false;
 begin
   if target_outcome not in ('delivered', 'retry', 'invalid_subscription', 'failed') then
     raise exception using
@@ -421,15 +516,40 @@ begin
       message = 'invalid guardian push retry delay';
   end if;
 
-  select delivery.attempts, delivery.subscription_id
-  into current_attempts, current_subscription_id
+  select
+    delivery.attempts,
+    delivery.subscription_id,
+    delivery.guardian_profile_id,
+    event.event_type,
+    event.attendance_record_id,
+    event.school_id,
+    event.student_id
+  into
+    current_attempts,
+    current_subscription_id,
+    current_guardian_profile_id,
+    current_event_type,
+    current_attendance_record_id,
+    current_school_id,
+    current_student_id
   from public.guardian_notification_deliveries as delivery
+  join public.guardian_notification_events as event
+    on event.id = delivery.event_id
   where delivery.id = target_delivery_id
     and delivery.status = 'processing'
-  for update;
+  for update of delivery;
 
   if not found then
     return false;
+  end if;
+
+  if current_event_type = 'absence_confirmed' then
+    select correction.id
+    into correction_event_id
+    from public.guardian_notification_events as correction
+    where correction.attendance_record_id = current_attendance_record_id
+      and correction.event_type = 'absence_corrected';
+    correction_already_exists := correction_event_id is not null;
   end if;
 
   if target_outcome = 'delivered' then
@@ -439,6 +559,35 @@ begin
         processing_started_at = null,
         last_error_code = null
     where id = target_delivery_id;
+
+    if correction_already_exists
+      and current_subscription_id is not null
+      and exists (
+        select 1
+        from public.guardian_push_subscriptions as subscription
+        where subscription.id = current_subscription_id
+          and subscription.guardian_profile_id = current_guardian_profile_id
+      )
+      and exists (
+        select 1
+        from public.student_guardians as relationship
+        where relationship.school_id = current_school_id
+          and relationship.student_id = current_student_id
+          and relationship.guardian_profile_id = current_guardian_profile_id
+          and relationship.status = 'active'
+      )
+    then
+      insert into public.guardian_notification_deliveries (
+        event_id,
+        guardian_profile_id,
+        subscription_id
+      ) values (
+        correction_event_id,
+        current_guardian_profile_id,
+        current_subscription_id
+      )
+      on conflict (event_id, subscription_id) do nothing;
+    end if;
   elsif target_outcome = 'invalid_subscription' then
     update public.guardian_notification_deliveries
     set status = 'invalid_subscription',
@@ -450,6 +599,12 @@ begin
       delete from public.guardian_push_subscriptions
       where id = current_subscription_id;
     end if;
+  elsif correction_already_exists and target_outcome in ('retry', 'failed') then
+    update public.guardian_notification_deliveries
+    set status = 'cancelled',
+        processing_started_at = null,
+        last_error_code = 'attendance_corrected_before_delivery'
+    where id = target_delivery_id;
   elsif target_outcome = 'retry' and current_attempts < 5 then
     update public.guardian_notification_deliveries
     set status = 'retry',
@@ -469,7 +624,6 @@ begin
 end;
 $$;
 
--- Requeue a worker claim that was abandoned without a completion callback.
 create or replace function public.requeue_stale_guardian_push_deliveries()
 returns integer
 language plpgsql
@@ -479,13 +633,36 @@ as $$
 declare
   affected_count integer;
 begin
-  update public.guardian_notification_deliveries
-  set status = case when attempts < 5 then 'retry' else 'failed' end,
+  update public.guardian_notification_deliveries as delivery
+  set status = case
+        when exists (
+          select 1
+          from public.guardian_notification_events as source_event
+          join public.guardian_notification_events as correction
+            on correction.attendance_record_id = source_event.attendance_record_id
+           and correction.event_type = 'absence_corrected'
+          where source_event.id = delivery.event_id
+            and source_event.event_type = 'absence_confirmed'
+        ) then 'cancelled'
+        when delivery.attempts < 5 then 'retry'
+        else 'failed'
+      end,
       next_attempt_at = now(),
       processing_started_at = null,
-      last_error_code = 'worker_claim_timeout'
-  where status = 'processing'
-    and processing_started_at < now() - interval '5 minutes';
+      last_error_code = case
+        when exists (
+          select 1
+          from public.guardian_notification_events as source_event
+          join public.guardian_notification_events as correction
+            on correction.attendance_record_id = source_event.attendance_record_id
+           and correction.event_type = 'absence_corrected'
+          where source_event.id = delivery.event_id
+            and source_event.event_type = 'absence_confirmed'
+        ) then 'attendance_corrected_before_delivery'
+        else 'worker_claim_timeout'
+      end
+  where delivery.status = 'processing'
+    and delivery.processing_started_at < now() - interval '5 minutes';
 
   get diagnostics affected_count = row_count;
   return affected_count;
@@ -497,6 +674,13 @@ from public;
 revoke execute on function public.claim_guardian_push_deliveries(uuid, uuid, integer)
 from anon, authenticated;
 grant execute on function public.claim_guardian_push_deliveries(uuid, uuid, integer)
+to service_role;
+
+revoke all on function public.claim_due_guardian_push_deliveries(integer)
+from public;
+revoke execute on function public.claim_due_guardian_push_deliveries(integer)
+from anon, authenticated;
+grant execute on function public.claim_due_guardian_push_deliveries(integer)
 to service_role;
 
 revoke all on function public.finish_guardian_push_delivery(uuid, text, text, integer)
