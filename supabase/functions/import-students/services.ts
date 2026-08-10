@@ -114,7 +114,11 @@ export async function sha256Hex(bytes: Uint8Array): Promise<string> {
 export async function parseStudentWorkbook(bytes: Uint8Array) {
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_FILE_BYTES) throw new Error("student_import_file_size");
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(excelLoadInput(bytes));
+  try {
+    await workbook.xlsx.load(excelLoadInput(bytes));
+  } catch {
+    throw new Error("student_import_invalid_workbook");
+  }
   const sheet = workbook.getWorksheet("Students") ?? workbook.worksheets[0];
   if (!sheet) throw new Error("student_import_sheet_missing");
 

@@ -48,6 +48,14 @@ Deno.test("student import refuses missing required headers", async () => {
   await assertRejects(() => parseStudentWorkbook(bytes), Error, "student_import_missing_header");
 });
 
+Deno.test("student import rejects corrupt xlsx content as an input error", async () => {
+  await assertRejects(
+    () => parseStudentWorkbook(new TextEncoder().encode("not-an-xlsx")),
+    Error,
+    "student_import_invalid_workbook",
+  );
+});
+
 Deno.test("student import encoded-size ceiling matches the 5 MiB binary limit", () => {
   assertEquals(MAX_FILE_BYTES, 5 * 1024 * 1024);
   assertEquals(MAX_FILE_BASE64_CHARS, Math.ceil(MAX_FILE_BYTES / 3) * 4);

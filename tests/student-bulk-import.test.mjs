@@ -29,6 +29,11 @@ test("browser import client rejects oversized files before Base64 encoding", asy
   assert.ok(sizeIndex >= 0 && encodeIndex > sizeIndex);
 });
 
+test("downloaded issue reports neutralize spreadsheet formula prefixes", async () => {
+  const client = await read("client/src/lib/student-import.ts");
+  assert.ok(client.includes("const safe = /^[=+\\-@\\t\\r]/.test(raw) ? `'${raw}` : raw;"));
+});
+
 test("browser import client never contains privileged Supabase credentials", async () => {
   const client = await read("client/src/lib/student-import.ts");
   assert.doesNotMatch(client, /SERVICE_ROLE|service_role|SUPABASE_SECRET_KEY/);
@@ -46,6 +51,7 @@ test("student import Edge Function validates bearer and encoded size before work
   const parseIndex = handler.indexOf("parseStudentWorkbook(bytes)");
   assert.ok(bearerIndex >= 0 && sizeIndex > bearerIndex && decodeIndex > sizeIndex && parseIndex > decodeIndex);
   assert.match(handler, /authorizeImporter\(userClient, schoolId\)/);
+  assert.match(handler, /invalid_workbook/);
 });
 
 test("migration keeps staging private and rechecks authorization on commit", async () => {

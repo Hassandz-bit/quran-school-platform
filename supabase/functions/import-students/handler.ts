@@ -71,7 +71,7 @@ export async function handleStudentImport(request: Request): Promise<Response> {
     const message = error instanceof Error ? error.message : "student_import_failed";
     if (message.includes("unauthorized")) return json(403, { error: "student_import_denied" });
     if (message.includes("missing_header")) return json(422, { error: message });
-    if (message.includes("file_size") || message.includes("invalid_base64") || message.includes("too_many_rows") || message.includes("no_rows") || message.includes("sheet_missing")) {
+    if (message.includes("file_size") || message.includes("invalid_base64") || message.includes("invalid_workbook") || message.includes("too_many_rows") || message.includes("no_rows") || message.includes("sheet_missing")) {
       return json(422, { error: message });
     }
     console.error("student import failed", message);

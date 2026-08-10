@@ -135,7 +135,11 @@ export async function rollbackStudentImport(batchId: string, client: SupabaseCli
 export function downloadStudentImportErrors(rows: StudentImportRow[]) {
   const failing = rows.filter(row => row.rowStatus === "error" || row.rowStatus === "duplicate" || row.rowStatus === "warning");
   const headers = ["row_number", "status", "issues", "first_name", "last_name", "birth_date", "branch_code", "class_code", "guardian_name", "guardian_phone"];
-  const escape = (value: unknown) => `"${String(value ?? "").split('"').join('""')}"`;
+  const escape = (value: unknown) => {
+    const raw = String(value ?? "");
+    const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+    return `"${safe.split('"').join('""')}"`;
+  };
   const lines = [headers.join(",")];
   for (const row of failing) {
     lines.push([
