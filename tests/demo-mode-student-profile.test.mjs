@@ -55,6 +55,15 @@ test("student education is structured and the photo bucket is private", async ()
   assert.match(profile, /formatEducation\(profile\.educationLevel, profile\.educationYear\)/);
 });
 
+test("student profile privilege migration preserves column-level least privilege", async () => {
+  const sql = await read("supabase/022_student_profile_column_privileges.sql");
+  assert.match(sql, /grant insert \(education_year\)\s+on public\.students to authenticated/i);
+  assert.match(sql, /grant update \(education_year, photo_path\)\s+on public\.students to authenticated/i);
+  assert.doesNotMatch(sql, /grant\s+insert\s+on\s+public\.students/i);
+  assert.doesNotMatch(sql, /grant\s+update\s+on\s+public\.students/i);
+  assert.doesNotMatch(sql, /grant\s+all/i);
+});
+
 test("demo controls are school-admin only in the dashboard", async () => {
   const dashboard = await read("client/src/pages/Dashboard.tsx");
   assert.match(dashboard, /isSchoolAdmin && school\?\.id/);
