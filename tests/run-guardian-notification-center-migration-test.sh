@@ -77,3 +77,4 @@ run_sql supabase/024_guardian_absence_notifications.sql
 run_sql supabase/025_guardian_directory_notification_center.sql
 run_sql supabase/026_notification_center_module_categories.sql
 run_sql tests/guardian-notification-center-assertions.sql
+run_sql tests/guardian-notification-center-tenant-assertions.sql
