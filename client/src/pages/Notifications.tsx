@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Bell, CheckCheck, Inbox, RefreshCw, Send } from "lucide-react";
 import { useLocation } from "wouter";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +17,8 @@ import {
 const categories: Array<{ value: NotificationCategory | "all"; label: string }> = [
   { value: "all", label: "الكل" },
   { value: "administration", label: "الإدارة" },
+  { value: "teachers", label: "المعلمون" },
+  { value: "students", label: "الطلاب" },
   { value: "learning", label: "التعليم والحفظ" },
   { value: "attendance", label: "الحضور" },
   { value: "finance", label: "المالية" },
