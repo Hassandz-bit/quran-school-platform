@@ -3,14 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Users,
   Plus,
   Search,
   RefreshCw,
   FileSearch,
+  Upload,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchBranches,
   fetchClasses,
@@ -21,7 +22,7 @@ import {
   type StudentRow,
   type StudentStatus,
 } from "@/lib/students";
-import { toast } from "sonner";
+import { fetchStudentManagementAccess } from "@/lib/student-import";
 
 const statusOptions: StudentStatus[] = [
   "active",
@@ -32,7 +33,7 @@ const statusOptions: StudentStatus[] = [
 ];
 
 const StudentsList: React.FC = () => {
-  const language = "ar" as const;
+  const { locale, direction } = useLocale();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
   const [filterClass, setFilterClass] = useState("all");
@@ -40,6 +41,7 @@ const StudentsList: React.FC = () => {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [canManage, setCanManage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [, setLocation] = useLocation();
@@ -47,16 +49,8 @@ const StudentsList: React.FC = () => {
 
   const content = {
     ar: {
-      dashboard: "لوحة التحكم",
-      school: "المدرسة القرآنية",
-      students: "الطلاب",
-      teachers: "المعلمون",
-      classes: "الحلقات",
-      finance: "المالية",
-      settings: "الإعدادات",
-      logout: "تسجيل الخروج",
-      comingSoon: "قريبًا",
       addStudent: "إضافة طالب",
+      importStudents: "استيراد Excel",
       search: "البحث بالاسم أو الهاتف أو البريد...",
       allBranches: "جميع الفروع",
       allClasses: "جميع الحلقات",
@@ -79,16 +73,8 @@ const StudentsList: React.FC = () => {
       viewProfile: "عرض الملف",
     },
     en: {
-      dashboard: "Dashboard",
-      school: "Quran School",
-      students: "Students",
-      teachers: "Teachers",
-      classes: "Classes",
-      finance: "Finance",
-      settings: "Settings",
-      logout: "Sign Out",
-      comingSoon: "Coming soon",
       addStudent: "Add Student",
+      importStudents: "Import Excel",
       search: "Search by name, phone, or email...",
       allBranches: "All Branches",
       allClasses: "All Classes",
@@ -112,7 +98,7 @@ const StudentsList: React.FC = () => {
     },
   };
 
-  const t = content[language];
+  const t = content[locale];
 
   const loadStudents = useCallback(async () => {
     if (!school?.id) {
@@ -125,15 +111,17 @@ const StudentsList: React.FC = () => {
     setHasLoadError(false);
 
     try {
-      const [studentRows, branchRows, classRows] = await Promise.all([
+      const [studentRows, branchRows, classRows, access] = await Promise.all([
         fetchStudents(school.id),
         fetchBranches(school.id, { activeOnly: false }),
         fetchClasses(school.id, undefined, { activeOnly: false }),
+        fetchStudentManagementAccess(school.id),
       ]);
 
       setStudents(studentRows);
       setBranches(branchRows);
       setClasses(classRows);
+      setCanManage(access.canManage);
     } catch {
       setHasLoadError(true);
     } finally {
@@ -192,7 +180,7 @@ const StudentsList: React.FC = () => {
   const formatDate = (value: string) => {
     const date = new Date(`${value}T00:00:00`);
     if (Number.isNaN(date.getTime())) return t.noValue;
-    return new Intl.DateTimeFormat(language === "ar" ? "ar-DZ" : "en-GB").format(
+    return new Intl.DateTimeFormat(locale === "ar" ? "ar-DZ" : "en-GB").format(
       date
     );
   };
@@ -200,7 +188,7 @@ const StudentsList: React.FC = () => {
   const renderLoadedContent = () => {
     if (students.length === 0) {
       return (
-        <Card className="p-10 text-center text-gray-500 border border-gray-100">
+        <Card className="border border-gray-100 p-10 text-center text-gray-500">
           {t.empty}
         </Card>
       );
@@ -208,24 +196,24 @@ const StudentsList: React.FC = () => {
 
     return (
       <>
-        <Card className="p-4 border border-gray-100">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="border border-gray-100 p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="relative">
               <Search
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className={`absolute top-1/2 -translate-y-1/2 text-gray-400 ${direction === "rtl" ? "right-3" : "left-3"}`}
                 size={18}
               />
               <Input
                 placeholder={t.search}
                 value={searchQuery}
                 onChange={event => setSearchQuery(event.target.value)}
-                className="pr-10 h-10"
+                className={`h-10 ${direction === "rtl" ? "pr-10" : "pl-10"}`}
               />
             </div>
             <select
               value={filterBranch}
               onChange={event => setFilterBranch(event.target.value)}
-              className="h-10 rounded-lg border border-gray-200 px-3 text-sm bg-white text-[#2C3E50]"
+              className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-[#2C3E50]"
             >
               <option value="all">{t.allBranches}</option>
               {branches.map(branch => (
@@ -237,7 +225,7 @@ const StudentsList: React.FC = () => {
             <select
               value={filterClass}
               onChange={event => setFilterClass(event.target.value)}
-              className="h-10 rounded-lg border border-gray-200 px-3 text-sm bg-white text-[#2C3E50]"
+              className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-[#2C3E50]"
             >
               <option value="all">{t.allClasses}</option>
               {classes.map(classItem => (
@@ -249,28 +237,28 @@ const StudentsList: React.FC = () => {
             <select
               value={filterStatus}
               onChange={event => setFilterStatus(event.target.value)}
-              className="h-10 rounded-lg border border-gray-200 px-3 text-sm bg-white text-[#2C3E50]"
+              className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-[#2C3E50]"
             >
               <option value="all">{t.allStatuses}</option>
               {statusOptions.map(status => (
                 <option key={status} value={status}>
-                  {translateStudentStatus(status, language)}
+                  {translateStudentStatus(status, locale)}
                 </option>
               ))}
             </select>
           </div>
         </Card>
 
-        <Card className="hidden md:block border border-gray-100 overflow-hidden">
+        <Card className="hidden overflow-hidden border border-gray-100 md:block">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
+                <tr className="border-b border-gray-200 bg-gray-50">
                   {[t.name, t.phone, t.email, t.branch, t.class, t.status, t.registrationDate].map(
                     heading => (
                       <th
                         key={heading}
-                        className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase"
+                        className="px-4 py-3 text-start text-xs font-semibold uppercase text-gray-500"
                       >
                         {heading}
                       </th>
@@ -283,7 +271,7 @@ const StudentsList: React.FC = () => {
                   filteredStudents.map(student => (
                     <tr
                       key={student.id}
-                      className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
+                      className="border-b border-gray-100 transition-colors hover:bg-gray-50/50"
                     >
                       <td className="px-4 py-3 text-sm">
                         <button
@@ -297,7 +285,7 @@ const StudentsList: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {student.phone ?? t.noValue}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 break-all">
+                      <td className="break-all px-4 py-3 text-sm text-gray-600">
                         {student.email ?? t.noValue}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
@@ -310,9 +298,9 @@ const StudentsList: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.status)}`}
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusBadge(student.status)}`}
                         >
-                          {translateStudentStatus(student.status, language)}
+                          {translateStudentStatus(student.status, locale)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
@@ -332,22 +320,22 @@ const StudentsList: React.FC = () => {
           </div>
         </Card>
 
-        <div className="md:hidden space-y-3">
+        <div className="space-y-3 md:hidden">
           {filteredStudents.length > 0 ? (
             filteredStudents.map(student => (
-              <Card key={student.id} className="p-4 border border-gray-100">
-                <div className="flex items-start justify-between gap-3 mb-3">
+              <Card key={student.id} className="border border-gray-100 p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <button
                     type="button"
                     onClick={() => setLocation(`/students/${student.id}`)}
-                    className="min-h-11 text-right font-semibold text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                    className="min-h-11 text-start font-semibold text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
                   >
                     {student.first_name} {student.last_name}
                   </button>
                   <span
-                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.status)}`}
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusBadge(student.status)}`}
                   >
-                    {translateStudentStatus(student.status, language)}
+                    {translateStudentStatus(student.status, locale)}
                   </span>
                 </div>
                 <dl className="grid grid-cols-1 gap-2 text-sm text-gray-600">
@@ -368,7 +356,7 @@ const StudentsList: React.FC = () => {
               </Card>
             ))
           ) : (
-            <Card className="p-8 text-center text-gray-500 border border-gray-100">
+            <Card className="border border-gray-100 p-8 text-center text-gray-500">
               {t.noResults}
             </Card>
           )}
@@ -378,33 +366,43 @@ const StudentsList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
-      <div className="flex justify-end">
-        <Button
-          onClick={() => setLocation("/students/new")}
-          className="flex items-center gap-2 rounded-xl bg-[#0B4738] text-white shadow-md transition-all hover:bg-[#08382d] hover:shadow-lg active:scale-[0.97]"
-        >
-          <Plus size={18} />
-          {t.addStudent}
-        </Button>
-      </div>
+    <div className="space-y-6" dir={direction}>
+      {canManage && (
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/students/import")}
+            className="flex items-center gap-2 rounded-xl border-[#0B4738]/30 text-[#0B4738]"
+          >
+            <Upload size={18} />
+            {t.importStudents}
+          </Button>
+          <Button
+            onClick={() => setLocation("/students/new")}
+            className="flex items-center gap-2 rounded-xl bg-[#0B4738] text-white shadow-md transition-all hover:bg-[#08382d] hover:shadow-lg active:scale-[0.97]"
+          >
+            <Plus size={18} />
+            {t.addStudent}
+          </Button>
+        </div>
+      )}
 
-          {isLoading ? (
-            <Card className="p-10 text-center text-gray-500 border border-gray-100">
-              <RefreshCw className="mx-auto mb-3 animate-spin" size={24} />
-              {t.loading}
-            </Card>
-          ) : hasLoadError ? (
-            <Card className="p-10 text-center border border-red-100">
-              <p className="text-red-700 mb-4">{t.loadError}</p>
-              <Button variant="outline" onClick={() => void loadStudents()}>
-                <RefreshCw size={16} />
-                {t.retry}
-              </Button>
-            </Card>
-          ) : (
-            renderLoadedContent()
-          )}
+      {isLoading ? (
+        <Card className="border border-gray-100 p-10 text-center text-gray-500">
+          <RefreshCw className="mx-auto mb-3 animate-spin" size={24} />
+          {t.loading}
+        </Card>
+      ) : hasLoadError ? (
+        <Card className="border border-red-100 p-10 text-center">
+          <p className="mb-4 text-red-700">{t.loadError}</p>
+          <Button variant="outline" onClick={() => void loadStudents()}>
+            <RefreshCw size={16} />
+            {t.retry}
+          </Button>
+        </Card>
+      ) : (
+        renderLoadedContent()
+      )}
     </div>
   );
 };
