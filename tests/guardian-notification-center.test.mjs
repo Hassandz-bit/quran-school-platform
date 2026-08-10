@@ -5,6 +5,7 @@ import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const migration = read("supabase/025_guardian_directory_notification_center.sql");
+const categoryMigration = read("supabase/026_notification_center_module_categories.sql");
 const guardiansLib = read("client/src/lib/guardians.ts");
 const notificationsLib = read("client/src/lib/notifications.ts");
 const guardiansPage = read("client/src/pages/Guardians.tsx");
@@ -16,9 +17,10 @@ const parentShell = read("client/src/components/ParentShell.tsx");
 test("notification table stays private and self-service is RPC only", () => {
   assert.match(migration, /alter table public\.app_notifications enable row level security/i);
   assert.match(migration, /revoke all on public\.app_notifications from public, anon, authenticated/i);
-  assert.match(migration, /revoke all on function public\.create_app_notification_internal[\s\S]*authenticated, service_role/i);
+  assert.match(categoryMigration, /revoke all on function public\.create_app_notification_internal[\s\S]*authenticated/i);
+  assert.match(categoryMigration, /grant execute on function public\.create_app_notification_internal[\s\S]*to service_role/i);
   assert.match(migration, /notification\.recipient_profile_id = \(select auth\.uid\(\)\)/i);
-  assert.match(migration, /notification\.sender_profile_id = current_user_id/i);
+  assert.match(categoryMigration, /notification\.sender_profile_id = current_user_id/i);
   assert.doesNotMatch(notificationsLib, /\.from\(["']app_notifications["']\)/);
   assert.match(notificationsLib, /rpc\(["']list_my_app_notifications["']/);
 });
@@ -53,12 +55,23 @@ test("V2 navigation and routes expose guardians and notifications to staff and p
   assert.match(parentShell, /\/parent\/notifications/);
 });
 
-test("notification center includes sent, received and module filters", () => {
+test("notification center includes sent, received and all requested module filters", () => {
   assert.match(notificationsPage, /value="inbox"/);
   assert.match(notificationsPage, /value="sent"/);
-  for (const label of ["الإدارة", "التعليم والحفظ", "الحضور", "المالية", "الأولياء", "النظام"]) {
+  for (const label of [
+    "الإدارة",
+    "المعلمون",
+    "الطلاب",
+    "التعليم والحفظ",
+    "الحضور",
+    "المالية",
+    "الأولياء",
+    "النظام",
+  ]) {
     assert.match(notificationsPage, new RegExp(label));
   }
+  assert.match(categoryMigration, /'teachers'/);
+  assert.match(categoryMigration, /'students'/);
   assert.match(notificationsPage, /markNotificationRead/);
   assert.match(notificationsPage, /row\.targetPath/);
 });
