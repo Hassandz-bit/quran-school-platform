@@ -33,6 +33,13 @@ begin
   ) then
     raise exception 'authenticated unexpectedly executes internal notification writer';
   end if;
+  if not has_function_privilege(
+    'service_role',
+    'public.create_app_notification_internal(uuid,uuid,uuid,uuid,text,text,text,text,text,text,uuid)',
+    'EXECUTE'
+  ) then
+    raise exception 'service_role cannot use the validated internal notification writer';
+  end if;
   if not has_function_privilege('authenticated', 'public.list_my_app_notifications(text,text,integer)', 'EXECUTE')
     or not has_function_privilege('authenticated', 'public.get_my_unread_notification_count()', 'EXECUTE')
     or not has_function_privilege('authenticated', 'public.mark_my_app_notification_read(uuid)', 'EXECUTE')
@@ -41,6 +48,48 @@ begin
   end if;
 end;
 $$;
+
+-- Explicit module categories must accept teacher/student server notifications.
+set role service_role;
+select public.create_app_notification_internal(
+  '10000000-0000-4000-8000-000000000001',
+  '60000000-0000-4000-8000-000000000001',
+  null,
+  null,
+  'teachers',
+  'teacher_test',
+  'Teacher module test',
+  'Teacher category is available to server modules.',
+  '/notifications',
+  'test_teacher_module',
+  'a0000000-0000-4000-8000-000000000001'
+);
+select public.create_app_notification_internal(
+  '10000000-0000-4000-8000-000000000001',
+  '60000000-0000-4000-8000-000000000001',
+  null,
+  '50000000-0000-4000-8000-000000000001',
+  'students',
+  'student_test',
+  'Student module test',
+  'Student category is available to server modules.',
+  '/students/50000000-0000-4000-8000-000000000001',
+  'test_student_module',
+  'a0000000-0000-4000-8000-000000000002'
+);
+reset role;
+
+do $$
+begin
+  if (select count(*) from public.app_notifications where category in ('teachers', 'students')) <> 2 then
+    raise exception 'teacher/student module categories are not writable through the server contract';
+  end if;
+end;
+$$;
+
+-- Remove server-contract fixture rows so following inbox assertions stay exact.
+delete from public.app_notifications
+where source_type in ('test_teacher_module', 'test_student_module');
 
 -- Registrar is branch-scoped and must see only guardian-manageable students.
 set role authenticated;
@@ -93,7 +142,7 @@ begin
 end;
 $$;
 
--- Produce a real attendance event after Migration 025 so the center trigger,
+-- Produce a real attendance event after the notification-center migrations so
 -- sender attribution, guardian recipient, unread count and dedupe all run.
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', false);
 
