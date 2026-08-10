@@ -46,13 +46,9 @@ run_sql() {
   fi
 }
 
-# Supabase projects include this internal server-only role. Plain PostgreSQL
-# does not, so model it only inside this isolated fixture before Migration 024
-# verifies its service-only worker grants.
-docker exec "$container_name" \
-  psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  -c 'CREATE ROLE service_role NOLOGIN;' >/dev/null
-
+# The shared Supabase test bootstrap already models anon, authenticated, and
+# service_role (with BYPASSRLS), so this test must reuse it rather than create
+# an overlapping role fixture.
 run_sql tests/guardian-security-foundation-bootstrap.sql
 
 base_files=(
