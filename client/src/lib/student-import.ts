@@ -94,12 +94,7 @@ export type StudentManagementAccess = {
 
 export type StudentImportLookup = {
   branches: Array<{ id: string; code: string; name: string }>;
-  classes: Array<{
-    id: string;
-    branchId: string;
-    code: string;
-    name: string;
-  }>;
+  classes: Array<{ id: string; branchId: string; code: string; name: string }>;
 };
 
 type Sheet = Record<string, unknown> & {
@@ -230,14 +225,12 @@ function normalizeDate(value: unknown, xlsx: SheetJsModule): string {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
   }
-
   if (typeof value === "number" && Number.isFinite(value)) {
     const decoded = xlsx.SSF?.parse_date_code(value);
     if (decoded?.y && decoded?.m && decoded?.d) {
       return `${decoded.y}-${pad2(decoded.m)}-${pad2(decoded.d)}`;
     }
   }
-
   const raw = cellText(value);
   if (!raw) return "";
   const iso = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
@@ -307,6 +300,8 @@ function validateLocally(row: StudentImportInputRow): string[] {
   if (row.education_level && !new Set(["primary", "middle", "secondary", "university"]).has(row.education_level)) {
     errors.push("education_level_invalid");
   }
+  if (row.education_level && !row.education_year) errors.push("education_year_required");
+  if (!row.education_level && row.education_year) errors.push("education_year_without_level");
   if (row.education_year && !/^\d{1,2}$/.test(row.education_year)) errors.push("education_year_invalid");
   return [...new Set(errors)];
 }
@@ -324,7 +319,6 @@ export async function parseStudentImportFile(file: File): Promise<ParsedStudentI
   const workbook = xlsx.read(await file.arrayBuffer(), {
     type: "array",
     cellDates: true,
-    raw: true,
   });
   const sheetName = workbook.SheetNames.find(name => name.toLocaleUpperCase() === "STUDENTS") ?? workbook.SheetNames[0];
   if (!sheetName || !workbook.Sheets[sheetName]) {
@@ -335,7 +329,7 @@ export async function parseStudentImportFile(file: File): Promise<ParsedStudentI
     header: 1,
     raw: true,
     defval: "",
-    blankrows: false,
+    blankrows: true,
   });
   if (matrix.length < 1) throw new StudentImportFileError("empty_file");
 
@@ -354,18 +348,22 @@ export async function parseStudentImportFile(file: File): Promise<ParsedStudentI
     throw new StudentImportFileError("missing_required_columns");
   }
 
-  const dataRows = matrix.slice(1).filter(row => row.some(value => cellText(value) !== ""));
+  const dataRows = matrix
+    .slice(1)
+    .map((values, index) => ({ values, sourceRowNumber: index + 2 }))
+    .filter(item => item.values.some(value => cellText(value) !== ""));
+
   if (dataRows.length < 1) throw new StudentImportFileError("empty_file");
   if (dataRows.length > MAX_IMPORT_ROWS) throw new StudentImportFileError("too_many_rows");
 
-  return dataRows.map((values, index) => {
+  return dataRows.map(item => {
     const raw: Partial<Record<ImportHeader, unknown>> = {};
     for (const [columnIndex, header] of headerByIndex) {
-      raw[header] = values[columnIndex];
+      raw[header] = item.values[columnIndex];
     }
 
     const row: StudentImportInputRow = {
-      row_number: index + 2,
+      row_number: item.sourceRowNumber,
       first_name: cellText(raw.first_name),
       last_name: cellText(raw.last_name),
       birth_date: normalizeDate(raw.birth_date, xlsx),
@@ -434,15 +432,10 @@ export async function fetchStudentImportLookups(
   if (classResult.error) throw classResult.error;
   return {
     branches: (branchResult.data ?? []).map(row => ({
-      id: String(row.id),
-      code: String(row.code),
-      name: String(row.name),
+      id: String(row.id), code: String(row.code), name: String(row.name),
     })),
     classes: (classResult.data ?? []).map(row => ({
-      id: String(row.id),
-      branchId: String(row.branch_id),
-      code: String(row.code),
-      name: String(row.name),
+      id: String(row.id), branchId: String(row.branch_id), code: String(row.code), name: String(row.name),
     })),
   };
 }
@@ -458,19 +451,18 @@ export async function previewStudentImport(
   });
   if (error) throw error;
 
-  const localByRow = new Map(parsedRows.map(item => [item.row.row_number, item.localErrors]));
-  const rows = (data ?? []).map((raw: Record<string, unknown>): StudentImportPreviewRow => {
-    const rowNumber = Number(raw.row_number);
-    const localErrors = localByRow.get(rowNumber) ?? [];
+  const localByOrdinal = parsedRows.map(item => item.localErrors);
+  const sourceRowByOrdinal = parsedRows.map(item => item.row.row_number);
+  const rows = (data ?? []).map((raw: Record<string, unknown>, index: number): StudentImportPreviewRow => {
+    const sourceRowNumber = sourceRowByOrdinal[index] ?? Number(raw.row_number);
+    const localErrors = localByOrdinal[index] ?? [];
     const serverErrors = Array.isArray(raw.error_codes) ? raw.error_codes.map(String) : [];
     const warnings = Array.isArray(raw.warning_codes) ? raw.warning_codes.map(String) : [];
     const errorCodes = [...new Set([...localErrors, ...serverErrors])];
     const serverStatus = String(raw.validation_status) as StudentImportStatus;
-    const status: StudentImportStatus = errorCodes.length > 0 && serverStatus !== "duplicate"
-      ? "error"
-      : serverStatus;
+    const status: StudentImportStatus = localErrors.length > 0 ? "error" : serverStatus;
     return {
-      rowNumber,
+      rowNumber: sourceRowNumber,
       status,
       errorCodes,
       warningCodes: warnings,
@@ -578,44 +570,21 @@ export async function downloadStudentImportTemplate(
     [
       locale === "ar" ? "أحمد" : "Ahmed",
       locale === "ar" ? "بن علي" : "Benali",
-      "2015-05-10",
-      "male",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "primary",
-      "5",
+      "2015-05-10", "male", "", "", "", "", "", "primary", "5",
       locale === "ar" ? "محمد بن علي" : "Mohamed Benali",
-      "father",
-      "0550000000",
-      "",
-      "",
-      exampleBranch,
-      exampleClass,
-      new Date().toISOString().slice(0, 10),
-      "no",
-      "no",
-      "no",
-      "no",
+      "father", "0550000000", "", "", exampleBranch, exampleClass,
+      new Date().toISOString().slice(0, 10), "no", "no", "no", "no",
     ],
   ]);
   exampleSheet["!cols"] = studentSheet["!cols"];
   xlsx.utils.book_append_sheet(workbook, exampleSheet, "EXAMPLE");
 
-  const branchById = new Map(lookups.branches.map(branch => [branch.id, branch]));
   const lookupRows: unknown[][] = [["branch_code", "branch_name", "class_code", "class_name"]];
   for (const branch of lookups.branches) {
     const branchClasses = lookups.classes.filter(item => item.branchId === branch.id);
     if (branchClasses.length === 0) lookupRows.push([branch.code, branch.name, "", ""]);
     for (const classItem of branchClasses) {
       lookupRows.push([branch.code, branch.name, classItem.code, classItem.name]);
-    }
-  }
-  for (const classItem of lookups.classes) {
-    if (!branchById.has(classItem.branchId)) {
-      lookupRows.push(["", "", classItem.code, classItem.name]);
     }
   }
   const lookupSheet = xlsx.utils.aoa_to_sheet(lookupRows);
@@ -628,7 +597,7 @@ export async function downloadStudentImportTemplate(
         ["1", "اكتب البيانات في ورقة STUDENTS فقط ولا تغيّر أسماء الأعمدة."],
         ["2", "التواريخ بصيغة YYYY-MM-DD مثل 2026-09-01."],
         ["3", "gender: male أو female. ويمكن للمنصة فهم ذكر/أنثى عند الرفع."],
-        ["4", "education_level: primary / middle / secondary / university."],
+        ["4", "education_level: primary / middle / secondary / university، وعند تحديدها يجب تحديد education_year."],
         ["5", "guardian_relation: father / mother / brother / sister / uncle / aunt / grandfather / grandmother / other."],
         ["6", "استخدم branch_code وclass_code كما يظهران في ورقة LOOKUPS. class_code اختياري."],
         ["7", "حقول المستندات تقبل yes/no أو نعم/لا."],
@@ -640,7 +609,7 @@ export async function downloadStudentImportTemplate(
         ["1", "Enter data only in STUDENTS and keep the column names unchanged."],
         ["2", "Use YYYY-MM-DD dates, for example 2026-09-01."],
         ["3", "gender: male or female."],
-        ["4", "education_level: primary / middle / secondary / university."],
+        ["4", "education_level: primary / middle / secondary / university. education_year is required when a level is set."],
         ["5", "guardian_relation: father / mother / brother / sister / uncle / aunt / grandfather / grandmother / other."],
         ["6", "Use branch_code and class_code from LOOKUPS. class_code is optional."],
         ["7", "Document fields accept yes/no."],
@@ -651,9 +620,7 @@ export async function downloadStudentImportTemplate(
   instructionSheet["!cols"] = [{ wch: 8 }, { wch: 90 }];
   xlsx.utils.book_append_sheet(workbook, instructionSheet, "INSTRUCTIONS");
 
-  xlsx.writeFile(workbook, "QuranOS_students_import_template.xlsx", {
-    compression: true,
-  });
+  xlsx.writeFile(workbook, "QuranOS_students_import_template.xlsx", { compression: true });
 }
 
 export async function downloadStudentImportIssues(
@@ -716,6 +683,7 @@ export function translateStudentImportIssue(code: string, locale: AppLocale): st
     previous_school_too_long: "اسم المؤسسة السابقة طويل جدًا",
     education_level_invalid: "المرحلة الدراسية غير صالحة",
     education_year_invalid: "السنة الدراسية غير صالحة للمرحلة",
+    education_year_required: "السنة الدراسية مطلوبة عند تحديد المرحلة",
     education_year_without_level: "حدد المرحلة قبل السنة الدراسية",
     guardian_name_invalid: "اسم ولي الأمر مفقود أو غير صالح",
     guardian_relation_invalid: "صلة القرابة غير صالحة",
@@ -743,6 +711,7 @@ export function translateStudentImportIssue(code: string, locale: AppLocale): st
     previous_school_too_long: "Previous school is too long",
     education_level_invalid: "Education level is invalid",
     education_year_invalid: "Education year is invalid for the selected level",
+    education_year_required: "Education year is required when a level is selected",
     education_year_without_level: "Select an education level before the year",
     guardian_name_invalid: "Guardian name is missing or invalid",
     guardian_relation_invalid: "Guardian relation is invalid",
