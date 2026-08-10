@@ -13,7 +13,7 @@ test("branch manager gets a usable scoped default route", () => {
   );
 });
 
-test("branch manager sees scoped modules, own notifications, and personal settings without admin-only school pages", () => {
+test("branch manager sees scoped modules, receipts, own notifications, and personal settings without admin-only school pages", () => {
   const navigation = getAppNavigation({
     isSchoolAdmin: false,
     activeRoleCodes: ["branch_manager"],
@@ -27,6 +27,7 @@ test("branch manager sees scoped modules, own notifications, and personal settin
     "memorization",
     "academic-reports",
     "finance",
+    "receipts",
     "notifications",
     "members",
     "settings",

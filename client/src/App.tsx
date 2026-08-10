@@ -5,6 +5,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
+import StaffRoute from "./components/StaffRoute";
 import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
@@ -40,6 +41,7 @@ const StudentCharges = lazy(() => import("./pages/StudentCharges"));
 const Payments = lazy(() => import("./pages/Payments"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const FinancialReports = lazy(() => import("./pages/FinancialReports"));
+const Receipts = lazy(() => import("./pages/Receipts"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
@@ -233,31 +235,40 @@ function Router() {
           <ProtectedRoute><Shell><AddTeacherForm /></Shell></ProtectedRoute>
         </Route>
         <Route path="/guardians">
-          <ProtectedRoute>
+          <StaffRoute>
             <Shell>
               <Suspense fallback={<ParentPageFallback />}>
                 <Guardians />
               </Suspense>
             </Shell>
-          </ProtectedRoute>
+          </StaffRoute>
         </Route>
         <Route path="/notifications">
-          <ProtectedRoute>
+          <StaffRoute>
             <Shell>
               <Suspense fallback={<NotificationsPageFallback />}>
                 <Notifications />
               </Suspense>
             </Shell>
-          </ProtectedRoute>
+          </StaffRoute>
         </Route>
         <Route path="/settings">
-          <ProtectedRoute>
+          <StaffRoute>
             <Shell>
               <Suspense fallback={<SettingsPageFallback />}>
                 <Settings />
               </Suspense>
             </Shell>
-          </ProtectedRoute>
+          </StaffRoute>
+        </Route>
+        <Route path="/receipts">
+          <StaffRoute>
+            <Shell>
+              <Suspense fallback={<FinancePageFallback />}>
+                <Receipts />
+              </Suspense>
+            </Shell>
+          </StaffRoute>
         </Route>
         <Route path="/finance">
           <FinanceRoute><Shell><FinanceDashboard /></Shell></FinanceRoute>
