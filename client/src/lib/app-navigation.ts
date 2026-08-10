@@ -8,6 +8,7 @@ import {
   DollarSign,
   GraduationCap,
   Home,
+  ReceiptText,
   Settings,
   UserRoundCheck,
   Users,
@@ -32,6 +33,7 @@ export type AppNavigationItem = {
     | "memorization"
     | "academic-reports"
     | "finance"
+    | "receipts"
     | "guardians"
     | "notifications"
     | "members"
@@ -62,6 +64,8 @@ export function getAppNavigation({
     isSchoolAdmin ||
     hasRole(roles, "finance_officer") ||
     hasRole(roles, "branch_manager");
+  const canUseReceipts =
+    canUseFinance || hasRole(roles, "registrar");
   const canUseMembers = isSchoolAdmin || canViewMembers;
   const canUseGuardians = isSchoolAdmin || hasRole(roles, "registrar");
   const canUseNotifications = isSchoolAdmin || roles.size > 0;
@@ -137,6 +141,17 @@ export function getAppNavigation({
             path: "/finance",
             group: "management" as const,
             icon: DollarSign,
+          },
+        ]
+      : []),
+    ...(canUseReceipts
+      ? [
+          {
+            id: "receipts" as const,
+            label: translate(locale, "nav.receipts"),
+            path: "/receipts",
+            group: "management" as const,
+            icon: ReceiptText,
           },
         ]
       : []),
