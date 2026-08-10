@@ -6,6 +6,7 @@ on:
       - develop/v2
     paths:
       - "supabase/025_guardian_directory_notification_center.sql"
+      - "supabase/026_notification_center_module_categories.sql"
       - "client/src/lib/guardians.ts"
       - "client/src/lib/notifications.ts"
       - "client/src/pages/Guardians.tsx"
@@ -33,7 +34,7 @@ jobs:
       - name: Verify Docker
         run: docker info
 
-      - name: Validate Migration 025 on PostgreSQL 17
+      - name: Validate Migrations 025-026 on PostgreSQL 17
         run: bash tests/run-guardian-notification-center-migration-test.sh
 
       - name: Validate client safety and routing contracts
