@@ -21,7 +21,7 @@
     "test:demo-mode:migration": "bash tests/run-demo-mode-student-profile-migration-test.sh",
     "test:guardian-push:migration": "bash tests/run-guardian-push-foundation-migration-test.sh",
     "test:guardian-absence:migration": "bash tests/run-guardian-absence-notifications-migration-test.sh",
-    "test:guardian-notifications:function": "deno test --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.test.ts"
+    "test:guardian-notifications:function": "deno test --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.test.ts && deno check --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.ts supabase/functions/dispatch-guardian-notifications/services.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
