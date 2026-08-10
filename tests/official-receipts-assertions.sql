@@ -24,15 +24,23 @@ $$;
 
 -- Finance manager issues the payment receipt. Repeating the operation must
 -- return the same immutable ledger row and must not consume a new sequence.
-select public.issue_payment_receipt('72000000-0000-4000-8000-000000000001') as payment_receipt_id \gset
-select public.issue_payment_receipt('72000000-0000-4000-8000-000000000001') as payment_receipt_id_again \gset
+select set_config(
+  'test.payment_receipt_id',
+  public.issue_payment_receipt('72000000-0000-4000-8000-000000000001')::text,
+  false
+);
+select set_config(
+  'test.payment_receipt_id_again',
+  public.issue_payment_receipt('72000000-0000-4000-8000-000000000001')::text,
+  false
+);
 
 reset role;
 
 do $$
 declare
-  first_id uuid := :'payment_receipt_id';
-  second_id uuid := :'payment_receipt_id_again';
+  first_id uuid := current_setting('test.payment_receipt_id')::uuid;
+  second_id uuid := current_setting('test.payment_receipt_id_again')::uuid;
   row_count integer;
   receipt_row record;
 begin
@@ -67,14 +75,22 @@ $$;
 -- next school-wide number and repeated issuance must return the same row.
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002', false);
-select public.issue_registration_receipt('50000000-0000-4000-8000-000000000001') as registration_receipt_id \gset
-select public.issue_registration_receipt('50000000-0000-4000-8000-000000000001') as registration_receipt_id_again \gset
+select set_config(
+  'test.registration_receipt_id',
+  public.issue_registration_receipt('50000000-0000-4000-8000-000000000001')::text,
+  false
+);
+select set_config(
+  'test.registration_receipt_id_again',
+  public.issue_registration_receipt('50000000-0000-4000-8000-000000000001')::text,
+  false
+);
 reset role;
 
 do $$
 declare
-  first_id uuid := :'registration_receipt_id';
-  second_id uuid := :'registration_receipt_id_again';
+  first_id uuid := current_setting('test.registration_receipt_id')::uuid;
+  second_id uuid := current_setting('test.registration_receipt_id_again')::uuid;
   receipt_row record;
 begin
   if first_id is null or first_id <> second_id then
@@ -109,8 +125,6 @@ do $$
 begin
   begin
     perform public.issue_payment_receipt('72000000-0000-4000-8000-000000000001');
-    -- Existing receipts are intentionally readable only through the read RPC;
-    -- issuance authorization must still fail closed before returning an ID.
     raise exception 'teacher unexpectedly issued payment receipt';
   exception
     when insufficient_privilege then null;
@@ -155,11 +169,14 @@ end;
 $$;
 reset role;
 
-if (select last_sequence from public.official_receipt_counters
-    where school_id = '10000000-0000-4000-8000-000000000001') <> 2 then
-  \echo 'Demo issuance changed the official sequence unexpectedly'
-  \quit 1
-endif
+do $$
+begin
+  if (select last_sequence from public.official_receipt_counters
+      where school_id = '10000000-0000-4000-8000-000000000001') <> 2 then
+    raise exception 'Demo issuance changed the official sequence unexpectedly';
+  end if;
+end;
+$$;
 
 -- Reversing the payment must preserve the original receipt row/number and mark
 -- it reversed for audit rather than deleting or replacing it.
@@ -191,7 +208,9 @@ declare
   result_count integer;
 begin
   select count(*) into result_count
-  from public.get_official_receipt(:'payment_receipt_id'::uuid);
+  from public.get_official_receipt(
+    current_setting('test.payment_receipt_id')::uuid
+  );
   if result_count <> 1 then
     raise exception 'finance could not read its authorized receipt';
   end if;
