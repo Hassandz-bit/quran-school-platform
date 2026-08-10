@@ -28,6 +28,7 @@ test("registration RPC is authenticated, guardian-scoped, and transfers a shared
   assert.match(migration, /relationship\.status = 'active'/i);
   assert.match(migration, /on conflict \(endpoint\) do update/i);
   assert.match(migration, /guardian_profile_id = excluded\.guardian_profile_id/i);
+  assert.match(migration, /create or replace function public\.has_my_guardian_push_subscription/i);
   assert.match(
     migration,
     /grant execute on function public\.register_my_guardian_push_subscription\(text, text, text, text\)\s+to authenticated/i
@@ -47,6 +48,8 @@ test("guardian push permission is requested only from the explicit enable functi
   assert.match(helper, /pushManager\.subscribe\(\{/);
   assert.match(helper, /userVisibleOnly: true/);
   assert.match(helper, /register_my_guardian_push_subscription/);
+  assert.match(helper, /has_my_guardian_push_subscription/);
+  assert.match(helper, /isSubscriptionOwnedByCurrentGuardian/);
   assert.doesNotMatch(helper, /from\("guardian_push_subscriptions"\)/);
   assert.match(parentHome, /onClick=\{\(\) => void handleEnablePush\(\)\}/);
   assert.match(parentHome, /تفعيل تنبيهات الغياب/);
