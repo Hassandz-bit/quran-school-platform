@@ -94,6 +94,9 @@ jobs:
       - name: Validate official receipts migration
         run: pnpm test:official-receipts:migration
 
+      - name: Validate student bulk import migration
+        run: pnpm test:student-bulk-import:migration
+
       - name: Validate teacher invitation Edge Function
         run: pnpm test:teacher-invitations:function
 
