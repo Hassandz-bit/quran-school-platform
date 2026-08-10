@@ -5,6 +5,7 @@ import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const migration = read("supabase/028_student_bulk_import.sql");
+const hardening = read("supabase/029_student_bulk_import_preview_authorization.sql");
 const importLib = read("client/src/lib/student-import.ts");
 const importPage = read("client/src/pages/StudentImport.tsx");
 const studentsRoute = read("client/src/components/StudentsRoute.tsx");
@@ -30,8 +31,17 @@ test("preview and commit are separate, bounded, and revalidate exact branch perm
   assert.match(migration, /has_branch_permission\(target_school_id, branch_id_value, 'students\.manage'\)/i);
   assert.match(migration, /student_import_manage_denied/i);
   assert.match(migration, /student_import_validate_one\(target_school_id, item\.row_data\)/i);
+  assert.match(hardening, /student_import_preview_denied/i);
+  assert.match(hardening, /has_branch_permission\([\s\S]*?'students\.manage'/i);
   assert.match(importPage, /معاينة قبل الاعتماد/);
   assert.match(importPage, /window\.confirm\(copy\.commitConfirm\)/);
+});
+
+test("same-school import commits are serialized before duplicate checks", () => {
+  assert.match(hardening, /create or replace function public\.serialize_student_import_batch_insert/i);
+  assert.match(hardening, /from public\.schools as school[\s\S]*for update/i);
+  assert.match(hardening, /before insert on public\.student_import_batches/i);
+  assert.match(hardening, /revoke all on function public\.serialize_student_import_batch_insert\(\)[\s\S]*authenticated/i);
 });
 
 test("duplicate detection covers existing records and duplicates inside the file", () => {
@@ -55,14 +65,14 @@ test("import audit stores identifiers and counts, not raw spreadsheet PII", () =
 });
 
 test("rollback is time bounded and refuses students with downstream records", () => {
-  assert.match(migration, /interval '24 hours'/i);
-  assert.match(migration, /from public\.student_guardians/i);
-  assert.match(migration, /from public\.attendance_records/i);
-  assert.match(migration, /from public\.memorization_records/i);
-  assert.match(migration, /from public\.student_charges/i);
-  assert.match(migration, /from public\.student_discounts/i);
-  assert.match(migration, /from public\.official_receipts/i);
-  assert.match(migration, /rollback_partial/i);
+  assert.match(hardening, /interval '24 hours'/i);
+  assert.match(hardening, /from public\.student_guardians/i);
+  assert.match(hardening, /from public\.attendance_records/i);
+  assert.match(hardening, /from public\.memorization_records/i);
+  assert.match(hardening, /from public\.student_charges/i);
+  assert.match(hardening, /from public\.student_discounts/i);
+  assert.match(hardening, /from public\.official_receipts/i);
+  assert.match(hardening, /rollback_partial/i);
   assert.match(importPage, /تراجع آمن/);
 });
 
