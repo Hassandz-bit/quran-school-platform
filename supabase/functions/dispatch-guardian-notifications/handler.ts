@@ -41,11 +41,13 @@ export type GuardianNotificationDependencies = {
     request: Request,
     scope: GuardianNotificationScope
   ) => Promise<boolean>;
+  authorizeCron: (request: Request) => Promise<boolean>;
   requeueStale: () => Promise<void>;
   claimDeliveries: (
     scope: GuardianNotificationScope,
     limit: number
   ) => Promise<GuardianPushDelivery[]>;
+  claimDueDeliveries: (limit: number) => Promise<GuardianPushDelivery[]>;
   sendPush: (
     delivery: GuardianPushDelivery,
     payload: GuardianPushPayload
@@ -86,8 +88,15 @@ function parseScope(value: unknown): GuardianNotificationScope | null {
   ) {
     return null;
   }
-
   return scope as GuardianNotificationScope;
+}
+
+function isRetrySweep(value: unknown): boolean {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      (value as Record<string, unknown>).mode === "retry_sweep"
+  );
 }
 
 function bounded(value: string, max: number): string {
@@ -139,6 +148,34 @@ function jsonResponse(body: unknown, status: number): Response {
   });
 }
 
+async function dispatchClaimed(
+  dependencies: GuardianNotificationDependencies,
+  deliveries: GuardianPushDelivery[]
+): Promise<Response> {
+  let delivered = 0;
+  let retried = 0;
+  let invalid = 0;
+  let failed = 0;
+
+  for (const delivery of deliveries) {
+    const result = await dependencies.sendPush(
+      delivery,
+      buildGuardianPushPayload(delivery)
+    );
+    await dependencies.finishDelivery(delivery.deliveryId, result);
+
+    if (result.outcome === "delivered") delivered += 1;
+    else if (result.outcome === "retry") retried += 1;
+    else if (result.outcome === "invalid_subscription") invalid += 1;
+    else failed += 1;
+  }
+
+  return jsonResponse(
+    { ok: true, claimed: deliveries.length, delivered, retried, invalid, failed },
+    200
+  );
+}
+
 export function createGuardianNotificationHandler(
   dependencies: GuardianNotificationDependencies
 ): (request: Request) => Promise<Response> {
@@ -157,51 +194,32 @@ export function createGuardianNotificationHandler(
       return jsonResponse({ error: "invalid_json" }, 400);
     }
 
-    const scope = parseScope(body);
-    if (!scope) {
-      return jsonResponse({ error: "invalid_scope" }, 400);
-    }
-
     try {
+      await dependencies.requeueStale();
+
+      if (isRetrySweep(body)) {
+        if (!(await dependencies.authorizeCron(request))) {
+          return jsonResponse({ error: "not_authorized" }, 403);
+        }
+        return await dispatchClaimed(
+          dependencies,
+          await dependencies.claimDueDeliveries(50)
+        );
+      }
+
+      const scope = parseScope(body);
+      if (!scope) return jsonResponse({ error: "invalid_scope" }, 400);
       if (!(await dependencies.authorizeScope(request, scope))) {
         return jsonResponse({ error: "not_authorized" }, 403);
       }
 
-      await dependencies.requeueStale();
-      const deliveries = await dependencies.claimDeliveries(scope, 25);
-
-      let delivered = 0;
-      let retried = 0;
-      let invalid = 0;
-      let failed = 0;
-
-      for (const delivery of deliveries) {
-        const result = await dependencies.sendPush(
-          delivery,
-          buildGuardianPushPayload(delivery)
-        );
-        await dependencies.finishDelivery(delivery.deliveryId, result);
-
-        if (result.outcome === "delivered") delivered += 1;
-        else if (result.outcome === "retry") retried += 1;
-        else if (result.outcome === "invalid_subscription") invalid += 1;
-        else failed += 1;
-      }
-
-      return jsonResponse(
-        {
-          ok: true,
-          claimed: deliveries.length,
-          delivered,
-          retried,
-          invalid,
-          failed,
-        },
-        200
+      return await dispatchClaimed(
+        dependencies,
+        await dependencies.claimDeliveries(scope, 25)
       );
     } catch {
-      // Never expose push endpoints, subscription keys, database details, or
-      // provider errors to the attendance client.
+      // Never expose endpoints, subscription keys, database details, secrets,
+      // or provider errors to either attendance clients or Cron callers.
       return jsonResponse({ error: "notification_dispatch_failed" }, 500);
     }
   };
