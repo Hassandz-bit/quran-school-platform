@@ -1,8 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
-import { BookOpenCheck, Building2, RefreshCw, School, UsersRound } from "lucide-react";
+import {
+  BellOff,
+  BellRing,
+  BookOpenCheck,
+  Building2,
+  RefreshCw,
+  School,
+  UsersRound,
+} from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { listMyGuardianStudents, type ParentStudent } from "@/lib/parent-portal";
+import {
+  disableGuardianPush,
+  enableGuardianPush,
+  getGuardianPushStatus,
+  type GuardianPushStatus,
+} from "@/lib/guardian-push";
 
 function relationshipLabel(value: string): string {
   return (
@@ -16,10 +30,50 @@ function relationshipLabel(value: string): string {
   );
 }
 
+function pushStatusCopy(status: GuardianPushStatus | "checking") {
+  if (status === "enabled") {
+    return {
+      title: "تنبيهات الغياب مفعّلة على هذا الجهاز",
+      description:
+        "سيصبح هذا الجهاز جاهزًا لاستقبال تنبيهات الحضور عند تفعيل الإرسال من المدرسة.",
+    };
+  }
+  if (status === "denied") {
+    return {
+      title: "الإشعارات محظورة في المتصفح",
+      description:
+        "يمكنك السماح بإشعارات QuranOS من إعدادات الموقع في المتصفح ثم المحاولة مجددًا.",
+    };
+  }
+  if (status === "unsupported") {
+    return {
+      title: "هذا المتصفح لا يدعم Push",
+      description:
+        "استخدم تطبيق QuranOS المثبّت أو متصفحًا حديثًا يدعم إشعارات الويب.",
+    };
+  }
+  if (status === "checking") {
+    return {
+      title: "جارٍ فحص جاهزية الإشعارات",
+      description: "لن يطلب QuranOS إذن الإشعارات إلا عندما تضغط زر التفعيل بنفسك.",
+    };
+  }
+  return {
+    title: "تنبيهات غياب الأبناء",
+    description:
+      "فعّل الإشعارات على هذا الجهاز حتى يصبح جاهزًا لتنبيهك عند اعتماد غياب أحد الأبناء.",
+  };
+}
+
 export default function ParentHome() {
   const [, setLocation] = useLocation();
   const [students, setStudents] = useState<ParentStudent[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [pushStatus, setPushStatus] = useState<GuardianPushStatus | "checking">(
+    "checking"
+  );
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState("");
 
   const load = useCallback(async () => {
     setState("loading");
@@ -35,6 +89,48 @@ export default function ParentHome() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (state !== "ready" || students.length === 0) return;
+
+    let cancelled = false;
+    setPushStatus("checking");
+    void getGuardianPushStatus()
+      .then(status => {
+        if (!cancelled) setPushStatus(status);
+      })
+      .catch(() => {
+        if (!cancelled) setPushStatus("available");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state, students.length]);
+
+  const handleEnablePush = async () => {
+    setPushBusy(true);
+    setPushError("");
+    try {
+      setPushStatus(await enableGuardianPush());
+    } catch {
+      setPushError("تعذر تفعيل الإشعارات على هذا الجهاز حاليًا. حاول مرة أخرى.");
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setPushBusy(true);
+    setPushError("");
+    try {
+      setPushStatus(await disableGuardianPush());
+    } catch {
+      setPushError("تعذر إيقاف الإشعارات على هذا الجهاز حاليًا. حاول مرة أخرى.");
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   if (state === "loading") {
     return (
@@ -56,6 +152,8 @@ export default function ParentHome() {
     );
   }
 
+  const pushCopy = pushStatusCopy(pushStatus);
+
   return (
     <div className="space-y-6">
       <header>
@@ -75,6 +173,58 @@ export default function ParentHome() {
           <p className="text-2xl font-bold text-[#173B2D]">{students.length}</p>
         </div>
       </div>
+
+      {students.length > 0 && (
+        <section className="rounded-2xl border border-[#D8E5DB] bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#FFF5DB] text-[#8A6A2E]">
+                {pushStatus === "denied" || pushStatus === "unsupported" ? (
+                  <BellOff size={21} />
+                ) : (
+                  <BellRing size={21} />
+                )}
+              </span>
+              <div className="min-w-0">
+                <h2 className="font-bold text-[#173B2D]">{pushCopy.title}</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-[#607368]">
+                  {pushCopy.description}
+                </p>
+                {pushError && (
+                  <p className="mt-2 text-sm font-medium text-red-700" role="alert">
+                    {pushError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {pushStatus === "available" && (
+              <Button
+                type="button"
+                disabled={pushBusy}
+                onClick={() => void handleEnablePush()}
+                className="shrink-0 gap-2 bg-[#0B4738] text-white hover:bg-[#08382d]"
+              >
+                <BellRing size={17} />
+                {pushBusy ? "جارٍ التفعيل..." : "تفعيل تنبيهات الغياب"}
+              </Button>
+            )}
+
+            {pushStatus === "enabled" && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pushBusy}
+                onClick={() => void handleDisablePush()}
+                className="shrink-0 gap-2 border-[#C8D8CE] text-[#244E3B]"
+              >
+                <BellOff size={17} />
+                {pushBusy ? "جارٍ الإيقاف..." : "إيقافها على هذا الجهاز"}
+              </Button>
+            )}
+          </div>
+        </section>
+      )}
 
       {students.length === 0 ? (
         <section className="rounded-2xl border border-dashed border-[#C8D8CE] bg-white p-8 text-center">

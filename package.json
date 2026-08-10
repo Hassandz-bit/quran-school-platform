@@ -18,7 +18,8 @@
     "test:guardian-invitations:migration": "bash tests/run-guardian-invitations-migration-test.sh",
     "test:guardian-parent-academic:migration": "bash tests/run-guardian-parent-academic-migration-test.sh",
     "test:guardian-parent-finance:migration": "bash tests/run-guardian-parent-finance-migration-test.sh",
-    "test:demo-mode:migration": "bash tests/run-demo-mode-student-profile-migration-test.sh"
+    "test:demo-mode:migration": "bash tests/run-demo-mode-student-profile-migration-test.sh",
+    "test:guardian-push:migration": "bash tests/run-guardian-push-foundation-migration-test.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

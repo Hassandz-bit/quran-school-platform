@@ -63,3 +63,78 @@ self.addEventListener("fetch", event => {
     );
   }
 });
+
+function boundedPushText(value, fallback, maxLength) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, maxLength)
+    : fallback;
+}
+
+function safeParentNotificationUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return "/parent";
+
+  try {
+    const url = new URL(value, self.location.origin);
+    if (url.origin !== self.location.origin) return "/parent";
+    if (!url.pathname.startsWith("/parent")) return "/parent";
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return "/parent";
+  }
+}
+
+self.addEventListener("push", event => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = {};
+  }
+
+  const title = boundedPushText(payload.title, "تنبيه حضور", 80);
+  const body = boundedPushText(
+    payload.body,
+    "لديك تحديث جديد بخصوص حضور أحد الأبناء.",
+    240
+  );
+  const url = safeParentNotificationUrl(payload.url);
+  const tag = boundedPushText(payload.tag, "guardian-attendance", 120);
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/pwa-icon-192.svg",
+      tag,
+      data: { url },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const targetPath = safeParentNotificationUrl(event.notification.data?.url);
+  const targetUrl = new URL(targetPath, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then(async clientList => {
+        for (const client of clientList) {
+          const clientUrl = new URL(client.url);
+          if (clientUrl.origin !== self.location.origin) continue;
+
+          if ("navigate" in client) {
+            await client.navigate(targetUrl);
+          }
+          if ("focus" in client) {
+            return client.focus();
+          }
+        }
+
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
+        }
+        return undefined;
+      })
+  );
+});

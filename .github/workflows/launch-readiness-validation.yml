@@ -85,6 +85,9 @@ jobs:
       - name: Validate demo mode and student profile migration
         run: pnpm test:demo-mode:migration
 
+      - name: Validate guardian push foundation migration
+        run: pnpm test:guardian-push:migration
+
       - name: Validate teacher invitation Edge Function
         run: pnpm test:teacher-invitations:function
 
