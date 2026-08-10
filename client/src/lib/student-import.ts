@@ -453,24 +453,26 @@ export async function previewStudentImport(
 
   const localByOrdinal = parsedRows.map(item => item.localErrors);
   const sourceRowByOrdinal = parsedRows.map(item => item.row.row_number);
-  const rows = (data ?? []).map((raw: Record<string, unknown>, index: number): StudentImportPreviewRow => {
-    const sourceRowNumber = sourceRowByOrdinal[index] ?? Number(raw.row_number);
-    const localErrors = localByOrdinal[index] ?? [];
-    const serverErrors = Array.isArray(raw.error_codes) ? raw.error_codes.map(String) : [];
-    const warnings = Array.isArray(raw.warning_codes) ? raw.warning_codes.map(String) : [];
-    const errorCodes = [...new Set([...localErrors, ...serverErrors])];
-    const serverStatus = String(raw.validation_status) as StudentImportStatus;
-    const status: StudentImportStatus = localErrors.length > 0 ? "error" : serverStatus;
-    return {
-      rowNumber: sourceRowNumber,
-      status,
-      errorCodes,
-      warningCodes: warnings,
-      existingStudentId: raw.existing_student_id ? String(raw.existing_student_id) : null,
-      resolvedBranchId: raw.resolved_branch_id ? String(raw.resolved_branch_id) : null,
-      resolvedClassId: raw.resolved_class_id ? String(raw.resolved_class_id) : null,
-    };
-  });
+  const rows: StudentImportPreviewRow[] = (data ?? []).map(
+    (raw: Record<string, unknown>, index: number): StudentImportPreviewRow => {
+      const sourceRowNumber = sourceRowByOrdinal[index] ?? Number(raw.row_number);
+      const localErrors = localByOrdinal[index] ?? [];
+      const serverErrors = Array.isArray(raw.error_codes) ? raw.error_codes.map(String) : [];
+      const warnings = Array.isArray(raw.warning_codes) ? raw.warning_codes.map(String) : [];
+      const errorCodes = [...new Set([...localErrors, ...serverErrors])];
+      const serverStatus = String(raw.validation_status) as StudentImportStatus;
+      const status: StudentImportStatus = localErrors.length > 0 ? "error" : serverStatus;
+      return {
+        rowNumber: sourceRowNumber,
+        status,
+        errorCodes,
+        warningCodes: warnings,
+        existingStudentId: raw.existing_student_id ? String(raw.existing_student_id) : null,
+        resolvedBranchId: raw.resolved_branch_id ? String(raw.resolved_branch_id) : null,
+        resolvedClassId: raw.resolved_class_id ? String(raw.resolved_class_id) : null,
+      };
+    }
+  );
 
   return {
     rows,
