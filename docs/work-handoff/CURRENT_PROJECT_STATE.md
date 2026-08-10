@@ -1,20 +1,23 @@
 # حالة المشروع الحالية
 
-آخر **functional baseline** موثق قبل تحديث التوثيق الحالي:
+آخر **functional baseline** مؤكد في 2026-08-10:
 
-- `main` الوظيفي: `95158f58e53ab208cadc656f772bb5a90accf8bb` بعد دمج PR #54.
-- PR #54 أكمل routing/navigation لدور `branch_manager` بما يطابق صلاحياته الفعلية في Production، واجتاز Launch Readiness Gate وVercel.
-- Production migrations مطبقة حتى `020_guardian_parent_finance_reads`؛ لا تُعد تطبيق 015–020.
-- `invite-teacher` و`invite-guardian` منشورتان في Production بحالة ACTIVE و`verify_jwt=true`.
+- `main`: `bfe2e9f9d7b6febac88ebd71a76cd6ead613e3fd` بعد Squash Merge لـPR #56.
+- PR #56 أضاف Demo Mode آمن لمدير المدرسة وملف طالب أغنى (education stage/year + private photo) ونجح Launch Readiness على الرأس النهائي.
+- Production migrations مطبقة حتى 022؛ لا تُعد تطبيق 015–022.
+- migrations الأخيرة: 020 Parent Finance، 021 Demo Mode/Student Profile، 022 Student Profile Column Privileges.
+- `invite-teacher` و`invite-guardian` في Production بحالة ACTIVE و`verify_jwt=true`؛ لا يوجد سبب حالي لإعادة نشرهما.
 - Parent Portal core مكتمل: invitation/activation + children + attendance + memorization + finance.
-- Guardian authorization يستخدم Model B+ عبر `student_guardians` وليس `school_membership` أو legacy `guardian` role.
-- Launch hardening PRs #48–#54 مدمجة، بما فيها Launch Readiness Validation وعزل Vitest عن Supabase Production.
-- Vercel Production عند آخر فحص READY، ولم تظهر Runtime Errors مجمعة خلال آخر 7 أيام.
-- رابط الويب ما يزال على نطاق Vercel؛ custom web domain قرار branding وليس blocker تقنيًا للحالة الحالية.
-- المنصة **ليست معلنة كإطلاق نهائي بعد**؛ المتبقي controlled E2E + Auth/redirect operational checks + branch protection + launch decision منفصل.
+- Guardian authorization يعتمد Model B+ عبر `student_guardians` وليس `school_membership` أو legacy `guardian` role.
+- Student360 يعرض بيانات الطالب الأكاديمية والمالية، ويشمل الآن الصورة الخاصة والمرحلة/السنة الدراسية.
+- Academic Reports منفصلة عن Finance ومقيدة بصلاحيات القراءة الأكاديمية.
+- Launch Readiness Gate على الرأس النهائي لـPR #56 نجح بالكامل.
+- Vercel Production للنشر الحالي ناجح، وفحص Runtime Errors لآخر 24 ساعة في Day 4 لم يُظهر أخطاء مجمعة.
+- فحص Production permissions للأدوار الأساسية طابق العقود المتوقعة لـSchool Admin / Teacher / Academic Supervisor / Finance Officer / Registrar.
+- لم يظهر في Day 4 Launch Blocker حقيقي مثبت.
+- لم يُنشأ خلال الفحص أي Auth user أو دعوة أو Demo data، ولم تُطبق Migration أو يُعاد نشر Edge Function أو تُعدل بيانات Production.
+- المنصة **لم يُتخذ بعد قرار إطلاقها النهائي**؛ المتبقي controlled operational E2E عند الحاجة + Auth/env/redirect review + branch protection + launch decision منفصل.
 
-مهم: تحديثات التوثيق نفسها تغيّر SHA لـ`main` بعد هذا baseline؛ عند الاستئناف اجلب `main` الفعلي أولًا ولا تعتمد على SHA محفوظ كأنه دائم.
-
-المصدر التشغيلي الكامل:
+المصدر التشغيلي الكامل والأحدث:
 
 `docs/work-handoff/LAUNCH_HANDOFF_2026-08-10.md`
