@@ -162,6 +162,7 @@ export default function StudentBulkImport() {
       first_name_invalid: "الاسم غير صالح",
       last_name_invalid: "اللقب غير صالح",
       birth_date_invalid: "تاريخ الميلاد غير صالح",
+      start_date_invalid: "تاريخ التسجيل غير صالح",
       gender_invalid: "الجنس غير صالح",
       guardian_name_invalid: "اسم الولي غير صالح",
       guardian_relation_invalid: "صلة الولي غير صالحة",
