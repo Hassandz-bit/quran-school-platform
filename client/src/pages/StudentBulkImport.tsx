@@ -147,7 +147,7 @@ export default function StudentBulkImport() {
   })[status];
 
   const issueLabel = (issue: string) => {
-    if (locale !== "ar") return issue.replaceAll("_", " ");
+    if (locale !== "ar") return issue.split("_").join(" ");
     const labels: Record<string, string> = {
       branch_not_found: "رمز الفرع غير موجود",
       branch_permission_denied: "لا توجد صلاحية على الفرع",
