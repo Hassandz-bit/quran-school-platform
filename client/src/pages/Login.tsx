@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   PWA_INSTALL_AVAILABLE_EVENT,
   canPromptPwaInstall,
@@ -13,13 +14,13 @@ import { useLocation } from "wouter";
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [isLoading, setIsLoading] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [canInstall, setCanInstall] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [, setLocation] = useLocation();
   const { signInWithPassword } = useAuth();
+  const { locale: language, direction, setLocale } = useLocale();
 
   useEffect(() => {
     const refreshInstallState = () => {
@@ -46,14 +47,20 @@ const Login: React.FC = () => {
 
       if (error) {
         setErrorMessage(
-          "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور."
+          language === "ar"
+            ? "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور."
+            : "Could not sign in. Check your email and password."
         );
         return;
       }
 
       setLocation("/post-login");
     } catch {
-      setErrorMessage("تعذر تسجيل الدخول حاليًا. حاول مرة أخرى لاحقًا.");
+      setErrorMessage(
+        language === "ar"
+          ? "تعذر تسجيل الدخول حاليًا. حاول مرة أخرى لاحقًا."
+          : "Could not sign in right now. Please try again later."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -103,10 +110,9 @@ const Login: React.FC = () => {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      dir={language === "ar" ? "rtl" : "ltr"}
+      dir={direction}
       style={{ backgroundColor: "#0B4738" }}
     >
-      {/* Islamic Geometric Pattern Background */}
       <div className="absolute inset-0 opacity-[0.08]">
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -148,10 +154,10 @@ const Login: React.FC = () => {
         </svg>
       </div>
 
-      {/* Language Switcher */}
-      <div className="absolute top-6 left-6 z-10 flex gap-2">
+      <div className="absolute top-6 start-6 z-10 flex gap-2">
         <button
-          onClick={() => setLanguage("ar")}
+          type="button"
+          onClick={() => setLocale("ar")}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             language === "ar"
               ? "bg-[#C8A26A] text-[#0B4738] shadow-md"
@@ -161,7 +167,8 @@ const Login: React.FC = () => {
           العربية
         </button>
         <button
-          onClick={() => setLanguage("en")}
+          type="button"
+          onClick={() => setLocale("en")}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             language === "en"
               ? "bg-[#C8A26A] text-[#0B4738] shadow-md"
@@ -172,10 +179,8 @@ const Login: React.FC = () => {
         </button>
       </div>
 
-      {/* Login Card */}
       <div className="relative z-20 w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          {/* Logo & Header */}
           <div className="text-center mb-8">
             <div
               className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 shadow-lg"
@@ -193,9 +198,7 @@ const Login: React.FC = () => {
             <p className="text-gray-500 text-sm">{t.subtitle}</p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t.email}
@@ -210,7 +213,6 @@ const Login: React.FC = () => {
               />
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t.password}
@@ -225,7 +227,6 @@ const Login: React.FC = () => {
               />
             </div>
 
-            {/* Forgot Password */}
             <div className="flex justify-end">
               <button
                 type="button"
@@ -245,7 +246,6 @@ const Login: React.FC = () => {
               </p>
             )}
 
-            {/* Login Button */}
             <Button
               type="submit"
               disabled={isLoading}

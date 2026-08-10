@@ -19,7 +19,9 @@ import {
   captureTeacherInviteSession,
 } from "./lib/invite-session";
 import { AuthProvider } from "./contexts/AuthContext";
+import { LocaleProvider, useLocale } from "./contexts/LocaleContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import type { TranslationKey } from "./lib/locale";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import StudentsList from "./pages/StudentsList";
@@ -43,6 +45,7 @@ const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
 const Guardians = lazy(() => import("./pages/Guardians"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const Settings = lazy(() => import("./pages/Settings"));
 const Student360 = lazy(() => import("./pages/Student360"));
 const AcademicReports = lazy(() => import("./pages/AcademicReports"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
@@ -55,54 +58,59 @@ const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
 );
 
-function ModuleFallback({ label }: { label: string }) {
+function ModuleFallback({ labelKey }: { labelKey: TranslationKey }) {
+  const { direction, t } = useLocale();
   return (
     <main
       className="flex min-h-screen items-center justify-center bg-[#F7F8F3] p-4 text-[#173B2D]"
-      dir="rtl"
+      dir={direction}
     >
       <div className="flex items-center gap-3" role="status">
         <span className="size-5 animate-spin rounded-full border-2 border-[#17663B]/30 border-t-[#17663B]" />
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-sm font-medium">{t(labelKey)}</span>
       </div>
     </main>
   );
 }
 
 function FinancePageFallback() {
-  return <ModuleFallback label="جارٍ تحميل الوحدة المالية..." />;
+  return <ModuleFallback labelKey="fallback.finance" />;
 }
 
 function AttendancePageFallback() {
-  return <ModuleFallback label="جارٍ تحميل وحدة الحضور..." />;
+  return <ModuleFallback labelKey="fallback.attendance" />;
 }
 
 function MemorizationPageFallback() {
-  return <ModuleFallback label="جارٍ تحميل وحدة متابعة الحفظ..." />;
+  return <ModuleFallback labelKey="fallback.memorization" />;
 }
 
 function Student360PageFallback() {
-  return <ModuleFallback label="جارٍ تحميل ملف الطالب..." />;
+  return <ModuleFallback labelKey="fallback.student" />;
 }
 
 function AcademicReportsPageFallback() {
-  return <ModuleFallback label="جارٍ تحميل التقارير التعليمية..." />;
+  return <ModuleFallback labelKey="fallback.academicReports" />;
 }
 
 function MembersPageFallback() {
-  return <ModuleFallback label="جارٍ تحميل دليل أعضاء المدرسة..." />;
+  return <ModuleFallback labelKey="fallback.members" />;
 }
 
 function AcceptInvitePageFallback() {
-  return <ModuleFallback label="جارٍ تحميل صفحة قبول الدعوة..." />;
+  return <ModuleFallback labelKey="fallback.invite" />;
 }
 
 function ParentPageFallback() {
-  return <ModuleFallback label="جارٍ تحميل بوابة ولي الأمر..." />;
+  return <ModuleFallback labelKey="fallback.parent" />;
 }
 
 function NotificationsPageFallback() {
-  return <ModuleFallback label="جارٍ تحميل مركز الإشعارات..." />;
+  return <ModuleFallback labelKey="fallback.notifications" />;
+}
+
+function SettingsPageFallback() {
+  return <ModuleFallback labelKey="fallback.settings" />;
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -139,6 +147,15 @@ function Router() {
             <ParentShell>
               <Suspense fallback={<NotificationsPageFallback />}>
                 <Notifications />
+              </Suspense>
+            </ParentShell>
+          </ParentRoute>
+        </Route>
+        <Route path="/parent/settings">
+          <ParentRoute>
+            <ParentShell>
+              <Suspense fallback={<SettingsPageFallback />}>
+                <Settings />
               </Suspense>
             </ParentShell>
           </ParentRoute>
@@ -223,6 +240,15 @@ function Router() {
             </Shell>
           </ProtectedRoute>
         </Route>
+        <Route path="/settings">
+          <ProtectedRoute>
+            <Shell>
+              <Suspense fallback={<SettingsPageFallback />}>
+                <Settings />
+              </Suspense>
+            </Shell>
+          </ProtectedRoute>
+        </Route>
         <Route path="/finance">
           <FinanceRoute><Shell><FinanceDashboard /></Shell></FinanceRoute>
         </Route>
@@ -288,12 +314,14 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <ThemeProvider defaultTheme="light">
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </ThemeProvider>
+        <LocaleProvider>
+          <ThemeProvider defaultTheme="light">
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </ThemeProvider>
+        </LocaleProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

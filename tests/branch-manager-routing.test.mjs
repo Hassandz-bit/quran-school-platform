@@ -13,7 +13,7 @@ test("branch manager gets a usable scoped default route", () => {
   );
 });
 
-test("branch manager sees scoped modules and own notifications without admin-only school pages", () => {
+test("branch manager sees scoped modules, own notifications, and personal settings without admin-only school pages", () => {
   const navigation = getAppNavigation({
     isSchoolAdmin: false,
     activeRoleCodes: ["branch_manager"],
@@ -29,9 +29,28 @@ test("branch manager sees scoped modules and own notifications without admin-onl
     "finance",
     "notifications",
     "members",
+    "settings",
   ]);
 
   for (const adminOnly of ["dashboard", "students", "teachers", "classes", "guardians"]) {
     assert.equal(ids.includes(adminOnly), false);
   }
+});
+
+test("navigation labels switch to English without changing authorization", () => {
+  const navigation = getAppNavigation({
+    isSchoolAdmin: false,
+    activeRoleCodes: ["teacher"],
+    locale: "en",
+  });
+
+  assert.deepEqual(
+    navigation.map(item => [item.id, item.label]),
+    [
+      ["attendance", "Attendance"],
+      ["memorization", "Memorization"],
+      ["notifications", "Notifications"],
+      ["settings", "Settings"],
+    ]
+  );
 });

@@ -8,15 +8,18 @@ import {
   DollarSign,
   GraduationCap,
   Home,
+  Settings,
   UserRoundCheck,
   Users,
 } from "lucide-react";
+import { translate, type AppLocale } from "@/lib/locale";
 
 export type AppNavigationInput = {
   isSchoolAdmin: boolean;
   activeRoleCodes: readonly string[];
   canViewMembers?: boolean;
   canViewAcademicReports?: boolean;
+  locale?: AppLocale;
 };
 
 export type AppNavigationItem = {
@@ -31,7 +34,8 @@ export type AppNavigationItem = {
     | "finance"
     | "guardians"
     | "notifications"
-    | "members";
+    | "members"
+    | "settings";
   label: string;
   path: string;
   group: "school" | "learning" | "management";
@@ -45,6 +49,7 @@ export function getAppNavigation({
   activeRoleCodes,
   canViewMembers = false,
   canViewAcademicReports = false,
+  locale = "ar",
 }: AppNavigationInput): AppNavigationItem[] {
   const roles = new Set(activeRoleCodes);
   const canManageSchool = isSchoolAdmin;
@@ -60,34 +65,35 @@ export function getAppNavigation({
   const canUseMembers = isSchoolAdmin || canViewMembers;
   const canUseGuardians = isSchoolAdmin || hasRole(roles, "registrar");
   const canUseNotifications = isSchoolAdmin || roles.size > 0;
+  const canUseSettings = isSchoolAdmin || roles.size > 0;
 
   return [
     ...(canManageSchool
       ? [
           {
             id: "dashboard" as const,
-            label: "الرئيسية",
+            label: translate(locale, "nav.dashboard"),
             path: "/dashboard",
             group: "school" as const,
             icon: Home,
           },
           {
             id: "students" as const,
-            label: "الطلاب",
+            label: translate(locale, "nav.students"),
             path: "/students",
             group: "school" as const,
             icon: Users,
           },
           {
             id: "teachers" as const,
-            label: "المعلمون",
+            label: translate(locale, "nav.teachers"),
             path: "/teachers",
             group: "school" as const,
             icon: GraduationCap,
           },
           {
             id: "classes" as const,
-            label: "الحلقات",
+            label: translate(locale, "nav.classes"),
             path: "/classes",
             group: "school" as const,
             icon: BookOpen,
@@ -98,14 +104,14 @@ export function getAppNavigation({
       ? [
           {
             id: "attendance" as const,
-            label: "الحضور",
+            label: translate(locale, "nav.attendance"),
             path: "/attendance",
             group: "learning" as const,
             icon: CalendarDays,
           },
           {
             id: "memorization" as const,
-            label: "الحفظ",
+            label: translate(locale, "nav.memorization"),
             path: "/memorization",
             group: "learning" as const,
             icon: BookOpenCheck,
@@ -116,7 +122,7 @@ export function getAppNavigation({
       ? [
           {
             id: "academic-reports" as const,
-            label: "التقارير التعليمية",
+            label: translate(locale, "nav.academicReports"),
             path: "/academic-reports",
             group: "learning" as const,
             icon: ChartNoAxesCombined,
@@ -127,7 +133,7 @@ export function getAppNavigation({
       ? [
           {
             id: "finance" as const,
-            label: "المالية",
+            label: translate(locale, "nav.finance"),
             path: "/finance",
             group: "management" as const,
             icon: DollarSign,
@@ -138,7 +144,7 @@ export function getAppNavigation({
       ? [
           {
             id: "guardians" as const,
-            label: "الأولياء",
+            label: translate(locale, "nav.guardians"),
             path: "/guardians",
             group: "management" as const,
             icon: UserRoundCheck,
@@ -149,7 +155,7 @@ export function getAppNavigation({
       ? [
           {
             id: "notifications" as const,
-            label: "الإشعارات",
+            label: translate(locale, "nav.notifications"),
             path: "/notifications",
             group: "management" as const,
             icon: Bell,
@@ -160,10 +166,21 @@ export function getAppNavigation({
       ? [
           {
             id: "members" as const,
-            label: "الأعضاء",
+            label: translate(locale, "nav.members"),
             path: "/members",
             group: "management" as const,
             icon: Users,
+          },
+        ]
+      : []),
+    ...(canUseSettings
+      ? [
+          {
+            id: "settings" as const,
+            label: translate(locale, "nav.settings"),
+            path: "/settings",
+            group: "management" as const,
+            icon: Settings,
           },
         ]
       : []),

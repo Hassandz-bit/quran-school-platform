@@ -4,6 +4,8 @@ import {
   LogOut,
   Menu,
   MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
   X,
@@ -17,6 +19,7 @@ import {
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import { fetchMembersAccess } from "@/lib/members";
 import {
   fetchAcademicReportsAccess,
@@ -29,12 +32,7 @@ import {
   type AppNavigationItem,
 } from "@/lib/app-navigation";
 import { cn } from "@/lib/utils";
-
-const GROUP_LABELS = {
-  school: "المدرسة",
-  learning: "التعليم",
-  management: "الإدارة",
-} as const;
+import type { TranslationKey } from "@/lib/locale";
 
 function isActive(path: string, itemPath: string) {
   return path === itemPath || (itemPath !== "/dashboard" && path.startsWith(`${itemPath}/`));
@@ -42,10 +40,12 @@ function isActive(path: string, itemPath: string) {
 
 function Brand({
   schoolName,
+  fallbackSchoolName,
   compact = false,
   variant = "dark",
 }: {
   schoolName?: string;
+  fallbackSchoolName: string;
   compact?: boolean;
   variant?: "dark" | "light";
 }) {
@@ -62,7 +62,7 @@ function Brand({
             QuranOS
           </span>
           <span className={cn("block truncate text-[11px]", isLight ? "text-[#4C6256]" : "text-white/70")}>
-            {schoolName ?? "المدرسة القرآنية"}
+            {schoolName ?? fallbackSchoolName}
           </span>
         </span>
       )}
@@ -75,16 +75,20 @@ function NavigationList({
   currentPath,
   onNavigate,
   compact = false,
+  groupLabels,
+  ariaLabel,
 }: {
   items: readonly AppNavigationItem[];
   currentPath: string;
   onNavigate: (path: string) => void;
   compact?: boolean;
+  groupLabels: Record<"school" | "learning" | "management", string>;
+  ariaLabel: string;
 }) {
   const groups = ["school", "learning", "management"] as const;
 
   return (
-    <nav className="space-y-5" aria-label="التنقل الرئيسي">
+    <nav className="space-y-5" aria-label={ariaLabel}>
       {groups.map(group => {
         const groupItems = items.filter(item => item.group === group);
         if (groupItems.length === 0) return null;
@@ -93,7 +97,7 @@ function NavigationList({
           <section key={group}>
             {!compact && (
               <p className="mb-2 px-3 text-[11px] font-bold tracking-wide text-white/45">
-                {GROUP_LABELS[group]}
+                {groupLabels[group]}
               </p>
             )}
             <div className="space-y-1">
@@ -107,7 +111,7 @@ function NavigationList({
                     onClick={() => onNavigate(item.path)}
                     title={compact ? item.label : undefined}
                     className={cn(
-                      "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-right text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
+                      "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-start text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
                       active
                         ? "bg-white text-[#173B2D] shadow-sm"
                         : "text-white/78 hover:bg-white/10 hover:text-white",
@@ -135,6 +139,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     isSchoolAdmin,
     signOut,
   } = useAuth();
+  const { locale, direction, t } = useLocale();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [canViewMembers, setCanViewMembers] = useState(false);
@@ -202,12 +207,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         activeRoleCodes,
         canViewMembers,
         canViewAcademicReports,
+        locale,
       }),
     [
       activeRoleCodes,
       canViewAcademicReports,
       canViewMembers,
       isSchoolAdmin,
+      locale,
     ]
   );
   const bottomNavigation = useMemo(
@@ -215,6 +222,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
     [navigation]
   );
   const currentPageLabel = getCurrentPageLabel(location, navigation);
+  const groupLabels = useMemo(
+    () => ({
+      school: t("group.school"),
+      learning: t("group.learning"),
+      management: t("group.management"),
+    }),
+    [t]
+  );
+  const fallbackSchoolName = t("brand.school");
+  const CollapseIcon = direction === "rtl" ? PanelRightClose : PanelLeftClose;
+  const ExpandIcon = direction === "rtl" ? PanelRightOpen : PanelLeftOpen;
+  const DrawerChevron = direction === "rtl" ? ChevronLeft : ChevronRight;
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -237,28 +256,29 @@ export default function AppShell({ children }: { children: ReactNode }) {
       if (error) throw error;
       setLocation("/login");
     } catch {
-      toast.error("تعذر تسجيل الخروج حاليًا. حاول مرة أخرى.");
+      toast.error(t("shell.signOutError"));
     }
   };
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#F7F8F3] text-[#173B2D]" dir="rtl">
+    <div className="min-h-screen overflow-x-clip bg-[#F7F8F3] text-[#173B2D]" dir={direction}>
       <aside
         className={cn(
-          "fixed inset-y-0 right-0 z-30 hidden flex-col bg-[#123B2C] px-3 py-5 shadow-[0_0_30px_rgba(18,59,44,0.14)] transition-[width] duration-200 md:flex",
+          "fixed inset-y-0 z-30 hidden flex-col bg-[#123B2C] px-3 py-5 shadow-[0_0_30px_rgba(18,59,44,0.14)] transition-[width] duration-200 md:flex",
+          direction === "rtl" ? "right-0" : "left-0",
           sidebarExpanded ? "w-64" : "w-20"
         )}
       >
         <div className="mb-7 flex items-center justify-between gap-2 px-1">
-          <Brand schoolName={school?.name} compact={!sidebarExpanded} />
+          <Brand schoolName={school?.name} fallbackSchoolName={fallbackSchoolName} compact={!sidebarExpanded} />
           {sidebarExpanded && (
             <button
               type="button"
               onClick={() => setSidebarExpanded(false)}
               className="grid size-9 place-items-center rounded-xl text-white/70 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              aria-label="طي القائمة الجانبية"
+              aria-label={t("shell.collapseSidebar")}
             >
-              <PanelRightClose size={18} aria-hidden="true" />
+              <CollapseIcon size={18} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -267,9 +287,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
             type="button"
             onClick={() => setSidebarExpanded(true)}
             className="mb-5 grid size-11 place-items-center self-center rounded-xl text-white/70 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            aria-label="توسيع القائمة الجانبية"
+            aria-label={t("shell.expandSidebar")}
           >
-            <PanelRightOpen size={18} aria-hidden="true" />
+            <ExpandIcon size={18} aria-hidden="true" />
           </button>
         )}
 
@@ -279,6 +299,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             currentPath={location}
             onNavigate={navigate}
             compact={!sidebarExpanded}
+            groupLabels={groupLabels}
+            ariaLabel={t("shell.mainNavigation")}
           />
         </div>
 
@@ -289,21 +311,28 @@ export default function AppShell({ children }: { children: ReactNode }) {
             "mt-4 flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-white/75 transition hover:bg-red-400/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
             !sidebarExpanded && "justify-center px-2"
           )}
-          title={!sidebarExpanded ? "تسجيل الخروج" : undefined}
+          title={!sidebarExpanded ? t("shell.signOut") : undefined}
         >
           <LogOut size={19} aria-hidden="true" />
-          {sidebarExpanded && <span>تسجيل الخروج</span>}
+          {sidebarExpanded && <span>{t("shell.signOut")}</span>}
         </button>
       </aside>
 
-      <div className={cn("min-w-0 transition-[margin] duration-200", sidebarExpanded ? "md:mr-64" : "md:mr-20")}>
+      <div
+        className={cn(
+          "min-w-0 transition-[margin] duration-200",
+          direction === "rtl"
+            ? sidebarExpanded ? "md:mr-64" : "md:mr-20"
+            : sidebarExpanded ? "md:ml-64" : "md:ml-20"
+        )}
+      >
         <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-3 border-b border-[#E2E9E3] bg-[#FDFEFA]/95 px-4 backdrop-blur md:px-7">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
               className="grid size-11 shrink-0 place-items-center rounded-xl text-[#244E3B] transition hover:bg-[#EAF3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A] md:hidden"
-              aria-label="فتح قائمة المزيد"
+              aria-label={t("shell.openMore")}
             >
               <Menu size={21} aria-hidden="true" />
             </button>
@@ -312,7 +341,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 {currentPageLabel}
               </p>
               <p className="truncate text-[11px] text-[#718377]">
-                {school?.name ?? "المدرسة القرآنية"}
+                {school?.name ?? fallbackSchoolName}
               </p>
             </div>
           </div>
@@ -328,7 +357,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       <nav
         className="fixed inset-x-0 bottom-0 z-30 border-t border-[#DFE8E0] bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(23,59,45,0.06)] backdrop-blur md:hidden"
-        aria-label="التنقل السفلي"
+        aria-label={t("shell.bottomNavigation")}
       >
         <div className="mx-auto flex max-w-lg items-end justify-around gap-1">
           {bottomNavigation.map(item => {
@@ -354,10 +383,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
             type="button"
             onClick={() => setDrawerOpen(true)}
             className="flex min-h-12 min-w-12 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-bold text-[#718377] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
-            aria-label="المزيد"
+            aria-label={t("shell.more")}
           >
             <MoreHorizontal size={21} aria-hidden="true" />
-            <span>المزيد</span>
+            <span>{t("shell.more")}</span>
           </button>
         </div>
       </nav>
@@ -368,19 +397,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
             type="button"
             className="absolute inset-0 w-full cursor-default bg-[#10261D]/45"
             onClick={() => setDrawerOpen(false)}
-            aria-label="إغلاق قائمة المزيد"
+            aria-label={t("shell.closeMore")}
           />
           <aside
-            className="absolute bottom-0 left-0 right-0 max-h-[84vh] overflow-y-auto rounded-t-[2rem] bg-[#FDFEFA] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl md:bottom-auto md:left-auto md:right-6 md:top-5 md:w-96 md:rounded-3xl"
-            aria-label="قائمة المزيد"
+            className={cn(
+              "absolute bottom-0 left-0 right-0 max-h-[84vh] overflow-y-auto rounded-t-[2rem] bg-[#FDFEFA] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl md:bottom-auto md:top-5 md:w-96 md:rounded-3xl",
+              direction === "rtl" ? "md:left-auto md:right-6" : "md:left-6 md:right-auto"
+            )}
+            aria-label={t("shell.more")}
           >
             <div className="mb-5 flex items-center justify-between">
-              <Brand schoolName={school?.name} variant="light" />
+              <Brand schoolName={school?.name} fallbackSchoolName={fallbackSchoolName} variant="light" />
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 className="grid size-11 place-items-center rounded-xl text-[#4C6256] transition hover:bg-[#EAF3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
-                aria-label="إغلاق القائمة"
+                aria-label={t("shell.closeMenu")}
               >
                 <X size={20} aria-hidden="true" />
               </button>
@@ -394,7 +426,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 return (
                   <section key={group}>
                     <h2 className="mb-2 px-1 text-xs font-bold text-[#718377]">
-                      {GROUP_LABELS[group]}
+                      {groupLabels[group]}
                     </h2>
                     <div className="grid gap-1">
                       {items.map(item => {
@@ -406,7 +438,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                             type="button"
                             onClick={() => navigate(item.path)}
                             className={cn(
-                              "flex min-h-12 items-center gap-3 rounded-xl px-3 text-right text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]",
+                              "flex min-h-12 items-center gap-3 rounded-xl px-3 text-start text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]",
                               active
                                 ? "bg-[#E9F4EC] text-[#17663B]"
                                 : "text-[#244E3B] hover:bg-[#F0F6F1]"
@@ -414,11 +446,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                           >
                             <Icon size={19} aria-hidden="true" />
                             <span>{item.label}</span>
-                            {active ? (
-                              <ChevronLeft className="mr-auto size-4" aria-hidden="true" />
-                            ) : (
-                              <ChevronRight className="mr-auto size-4 opacity-40" aria-hidden="true" />
-                            )}
+                            <DrawerChevron className="ms-auto size-4 opacity-60" aria-hidden="true" />
                           </button>
                         );
                       })}
@@ -433,7 +461,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               className="mt-6 flex min-h-12 w-full items-center gap-3 rounded-xl border border-red-100 px-3 text-sm font-bold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
             >
               <LogOut size={19} aria-hidden="true" />
-              تسجيل الخروج
+              {t("shell.signOut")}
             </button>
           </aside>
         </div>
