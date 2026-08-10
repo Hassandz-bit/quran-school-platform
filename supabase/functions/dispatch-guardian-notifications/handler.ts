@@ -212,7 +212,6 @@ export function createGuardianNotificationHandler(
         return jsonResponse({ error: "not_authorized" }, 403);
       }
 
-      await dependencies.requeueStale();
       return await dispatchClaimed(
         dependencies,
         await dependencies.claimDeliveries(scope, 25)
