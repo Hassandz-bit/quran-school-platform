@@ -6,6 +6,7 @@ import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StaffRoute from "./components/StaffRoute";
+import StudentsRoute from "./components/StudentsRoute";
 import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
@@ -42,6 +43,7 @@ const Payments = lazy(() => import("./pages/Payments"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Receipts = lazy(() => import("./pages/Receipts"));
+const StudentImport = lazy(() => import("./pages/StudentImport"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
@@ -88,39 +90,30 @@ function ModuleFallback({ labelKey }: { labelKey: TranslationKey }) {
 function FinancePageFallback() {
   return <ModuleFallback labelKey="fallback.finance" />;
 }
-
 function AttendancePageFallback() {
   return <ModuleFallback labelKey="fallback.attendance" />;
 }
-
 function MemorizationPageFallback() {
   return <ModuleFallback labelKey="fallback.memorization" />;
 }
-
 function Student360PageFallback() {
   return <ModuleFallback labelKey="fallback.student" />;
 }
-
 function AcademicReportsPageFallback() {
   return <ModuleFallback labelKey="fallback.academicReports" />;
 }
-
 function MembersPageFallback() {
   return <ModuleFallback labelKey="fallback.members" />;
 }
-
 function AcceptInvitePageFallback() {
   return <ModuleFallback labelKey="fallback.invite" />;
 }
-
 function ParentPageFallback() {
   return <ModuleFallback labelKey="fallback.parent" />;
 }
-
 function NotificationsPageFallback() {
   return <ModuleFallback labelKey="fallback.notifications" />;
 }
-
 function SettingsPageFallback() {
   return <ModuleFallback labelKey="fallback.settings" />;
 }
@@ -193,27 +186,36 @@ function Router() {
         <Route path="/dashboard">
           <ProtectedRoute><Shell><Dashboard /></Shell></ProtectedRoute>
         </Route>
+        <Route path="/students/import">
+          <StudentsRoute requireManage>
+            <Shell>
+              <Suspense fallback={<Student360PageFallback />}>
+                <StudentImport />
+              </Suspense>
+            </Shell>
+          </StudentsRoute>
+        </Route>
+        <Route path="/students/new">
+          <StudentsRoute requireManage><Shell><AddStudentForm /></Shell></StudentsRoute>
+        </Route>
         <Route path="/students/:studentId">
-          <ProtectedRoute>
+          <StudentsRoute>
             <Shell>
               <Suspense fallback={<Student360PageFallback />}>
                 <Student360 />
               </Suspense>
             </Shell>
-          </ProtectedRoute>
+          </StudentsRoute>
         </Route>
         <Route path="/students">
-          <ProtectedRoute>
+          <StudentsRoute>
             <Shell>
               <StudentsList />
               <Suspense fallback={null}>
                 <RosterAssignmentLauncher mode="student-class" />
               </Suspense>
             </Shell>
-          </ProtectedRoute>
-        </Route>
-        <Route path="/students/new">
-          <ProtectedRoute><Shell><AddStudentForm /></Shell></ProtectedRoute>
+          </StudentsRoute>
         </Route>
         <Route path="/classes">
           <ProtectedRoute>
