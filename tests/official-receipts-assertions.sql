@@ -179,10 +179,14 @@ end;
 $$;
 
 -- Reversing the payment must preserve the original receipt row/number and mark
--- it reversed for audit rather than deleting or replacing it.
+-- it reversed for audit rather than deleting or replacing it. Execute the
+-- reversal as the same finance role that is authorized to perform it in the app.
+set role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000005', false);
 update public.payments
 set status = 'reversed'
 where id = '72000000-0000-4000-8000-000000000001';
+reset role;
 
 do $$
 declare
