@@ -24,8 +24,15 @@ insert into public.classes (
   '60000000-0000-4000-8000-000000000002'
 );
 
-select set_config(
-  'test.student_import_rows',
+-- The fixture and assertions are intentionally executed by separate psql
+-- processes. Persist the JSON in this isolated test-only table, then the
+-- assertion session copies it into its own custom GUC.
+create table public.student_import_test_payload (
+  payload jsonb not null
+);
+
+insert into public.student_import_test_payload (payload)
+values (
   $json$[
     {
       "first_name":"Bulk",
@@ -152,6 +159,5 @@ select set_config(
       "medical_report_provided":false,
       "previous_certificate_provided":false
     }
-  ]$json$,
-  false
+  ]$json$::jsonb
 );
