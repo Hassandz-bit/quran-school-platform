@@ -1,5 +1,4 @@
 import ExcelJS from "npm:exceljs@4.4.0";
-import { Buffer } from "node:buffer";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.110.7";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -78,6 +77,10 @@ function normalizeRelation(value: unknown): string {
   return RELATION_ALIASES[text] ?? text;
 }
 
+function excelLoadInput(bytes: Uint8Array): Parameters<ExcelJS.Workbook["xlsx"]["load"]>[0] {
+  return bytes as unknown as Parameters<ExcelJS.Workbook["xlsx"]["load"]>[0];
+}
+
 export function decodeBase64(value: string): Uint8Array {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
@@ -95,14 +98,15 @@ export function encodeBase64(bytes: Uint8Array): string {
 }
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  const owned = Uint8Array.from(bytes);
+  const hash = await crypto.subtle.digest("SHA-256", owned.buffer as ArrayBuffer);
   return Array.from(new Uint8Array(hash)).map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function parseStudentWorkbook(bytes: Uint8Array) {
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_FILE_BYTES) throw new Error("student_import_file_size");
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(bytes));
+  await workbook.xlsx.load(excelLoadInput(bytes));
   const sheet = workbook.getWorksheet("Students") ?? workbook.worksheets[0];
   if (!sheet) throw new Error("student_import_sheet_missing");
 
