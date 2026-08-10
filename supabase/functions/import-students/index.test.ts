@@ -1,6 +1,5 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1.0.14";
 import ExcelJS from "npm:exceljs@4.4.0";
-import { Buffer } from "node:buffer";
 import { buildStudentTemplate, parseStudentWorkbook } from "./services.ts";
 
 async function workbookBytes(headers: string[], values: unknown[]) {
@@ -46,7 +45,7 @@ Deno.test("student import refuses missing required headers", async () => {
 Deno.test("generated template is a readable xlsx with required headers", async () => {
   const bytes = await buildStudentTemplate();
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(bytes));
+  await workbook.xlsx.load(bytes as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   const sheet = workbook.getWorksheet("Students");
   if (!sheet) throw new Error("Students sheet missing");
   const headers: string[] = [];
