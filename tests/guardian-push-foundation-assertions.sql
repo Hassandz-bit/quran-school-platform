@@ -33,6 +33,10 @@ begin
     'EXECUTE'
   ) or has_function_privilege(
     'anon',
+    'public.has_my_guardian_push_subscription(text)',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'anon',
     'public.delete_my_guardian_push_subscription(text)',
     'EXECUTE'
   ) then
@@ -42,6 +46,10 @@ begin
   if not has_function_privilege(
     'authenticated',
     'public.register_my_guardian_push_subscription(text,text,text,text)',
+    'EXECUTE'
+  ) or not has_function_privilege(
+    'authenticated',
+    'public.has_my_guardian_push_subscription(text)',
     'EXECUTE'
   ) or not has_function_privilege(
     'authenticated',
@@ -88,7 +96,7 @@ insert into public.student_guardians (
     now()
   );
 
--- Guardian One registers a browser endpoint.
+-- Guardian One registers a browser endpoint and sees only boolean ownership.
 set role authenticated;
 select set_config(
   'request.jwt.claim.sub',
@@ -101,6 +109,15 @@ select public.register_my_guardian_push_subscription(
   repeat('B', 24),
   'Guardian Test Browser'
 );
+do $$
+begin
+  if not public.has_my_guardian_push_subscription(
+    'https://push.example.test/subscription/device-one'
+  ) then
+    raise exception 'guardian one ownership status is false after registration';
+  end if;
+end;
+$$;
 reset role;
 
 DO $$
@@ -118,19 +135,38 @@ begin
 end;
 $$;
 
--- Guardian Two registering the same browser atomically transfers ownership.
+-- Guardian Two must see the shared browser as not owned before explicit opt-in,
+-- then registration atomically transfers ownership.
 set role authenticated;
 select set_config(
   'request.jwt.claim.sub',
   '60000000-0000-4000-8000-000000000007',
   false
 );
+do $$
+begin
+  if public.has_my_guardian_push_subscription(
+    'https://push.example.test/subscription/device-one'
+  ) then
+    raise exception 'guardian two incorrectly owns the endpoint before registration';
+  end if;
+end;
+$$;
 select public.register_my_guardian_push_subscription(
   'https://push.example.test/subscription/device-one',
   repeat('C', 64),
   repeat('D', 24),
   'Shared Guardian Test Browser'
 );
+do $$
+begin
+  if not public.has_my_guardian_push_subscription(
+    'https://push.example.test/subscription/device-one'
+  ) then
+    raise exception 'guardian two ownership status is false after transfer';
+  end if;
+end;
+$$;
 reset role;
 
 DO $$
@@ -191,6 +227,15 @@ select set_config(
 select public.delete_my_guardian_push_subscription(
   'https://push.example.test/subscription/device-one'
 );
+do $$
+begin
+  if public.has_my_guardian_push_subscription(
+    'https://push.example.test/subscription/device-one'
+  ) then
+    raise exception 'guardian two ownership remains true after deletion';
+  end if;
+end;
+$$;
 reset role;
 
 DO $$
