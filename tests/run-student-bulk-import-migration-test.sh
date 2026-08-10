@@ -26,6 +26,19 @@ if ! docker exec "$container_name" \
   exit 1
 fi
 
+emit_failure() {
+  local file="$1"
+  local output="$2"
+  local status="$3"
+  printf '%s\n' "$output"
+  if [ "$status" -ne 0 ]; then
+    local diagnostic
+    diagnostic=$(printf '%s\n' "$output" | tail -n 35 | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
+    echo "::error file=${file}::${diagnostic}"
+    exit "$status"
+  fi
+}
+
 run_sql() {
   local file="$1"
   local output
@@ -35,13 +48,22 @@ run_sql() {
     psql -v ON_ERROR_STOP=1 -U postgres -d quran_test < "$file" 2>&1)
   status=$?
   set -e
-  printf '%s\n' "$output"
-  if [ "$status" -ne 0 ]; then
-    local diagnostic
-    diagnostic=$(printf '%s\n' "$output" | tail -n 35 | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
-    echo "::error file=${file}::${diagnostic}"
-    exit "$status"
-  fi
+  emit_failure "$file" "$output" "$status"
+}
+
+run_student_import_assertions() {
+  local file="tests/student-bulk-import-assertions.sql"
+  local output
+  local status
+  set +e
+  output=$({
+    printf '%s\n' "select set_config('test.student_import_rows', (select payload::text from public.student_import_test_payload limit 1), false);"
+    cat "$file"
+  } | docker exec -i "$container_name" \
+    psql -v ON_ERROR_STOP=1 -U postgres -d quran_test 2>&1)
+  status=$?
+  set -e
+  emit_failure "$file" "$output" "$status"
 }
 
 run_sql tests/guardian-security-foundation-bootstrap.sql
@@ -89,9 +111,10 @@ for migration in \
   supabase/025_guardian_directory_notification_center.sql \
   supabase/026_notification_center_module_categories.sql \
   supabase/027_official_receipts.sql \
-  supabase/028_student_bulk_import.sql; do
+  supabase/028_student_bulk_import.sql \
+  supabase/029_student_bulk_import_preview_authorization.sql; do
   run_sql "$migration"
 done
 
 run_sql tests/student-bulk-import-fixture.sql
-run_sql tests/student-bulk-import-assertions.sql
+run_student_import_assertions
