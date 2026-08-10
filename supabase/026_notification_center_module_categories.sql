@@ -83,13 +83,59 @@ begin
     raise exception using errcode = '23514', message = 'notification recipient unavailable';
   end if;
 
-  if target_sender_profile_id is not null and not exists (
+  -- Fail closed across tenants. Staff recipients need an active membership in
+  -- the target school. Guardian-only recipients need an active guardian link;
+  -- when a student is the subject, the guardian must be linked to that exact
+  -- student rather than merely to some student in the same school.
+  if not exists (
     select 1
-    from public.profiles as sender
-    where sender.id = target_sender_profile_id
-      and sender.status = 'active'
+    from public.school_memberships as membership
+    where membership.school_id = target_school_id
+      and membership.profile_id = target_recipient_profile_id
+      and membership.status = 'active'
+  ) and not exists (
+    select 1
+    from public.student_guardians as relationship
+    where relationship.school_id = target_school_id
+      and relationship.guardian_profile_id = target_recipient_profile_id
+      and relationship.status = 'active'
+      and (
+        target_student_id is null
+        or relationship.student_id = target_student_id
+      )
   ) then
-    raise exception using errcode = '23514', message = 'notification sender unavailable';
+    raise exception using errcode = '23514', message = 'notification recipient scope mismatch';
+  end if;
+
+  if target_sender_profile_id is not null then
+    if not exists (
+      select 1
+      from public.profiles as sender
+      where sender.id = target_sender_profile_id
+        and sender.status = 'active'
+    ) then
+      raise exception using errcode = '23514', message = 'notification sender unavailable';
+    end if;
+
+    if not exists (
+      select 1
+      from public.school_memberships as membership
+      where membership.school_id = target_school_id
+        and membership.profile_id = target_sender_profile_id
+        and membership.status = 'active'
+    ) and not exists (
+      select 1
+      from public.student_guardians as relationship
+      where relationship.school_id = target_school_id
+        and relationship.guardian_profile_id = target_sender_profile_id
+        and relationship.status = 'active'
+        and (
+          target_student_id is null
+          or relationship.student_id = target_student_id
+        )
+    ) then
+      raise exception using errcode = '23514', message = 'notification sender scope mismatch';
+    end if;
   end if;
 
   if target_student_id is not null and not exists (
