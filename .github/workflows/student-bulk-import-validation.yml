@@ -12,6 +12,8 @@ on:
       - "client/src/App.tsx"
       - "supabase/028_student_bulk_import.sql"
       - "supabase/029_student_bulk_import_consistency.sql"
+      - "supabase/030_student_bulk_import_plpgsql_resolution.sql"
+      - "supabase/031_student_bulk_import_rollback_fk_order.sql"
       - "supabase/functions/import-students/**"
       - "supabase/config.toml"
       - "tests/student-bulk-import-*"
@@ -55,7 +57,7 @@ jobs:
 
       - name: Validate Excel import Edge Function
         run: |
-          deno test --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.test.ts
+          deno test --allow-env=READABLE_STREAM --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.test.ts
           deno check --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.ts supabase/functions/import-students/handler.ts supabase/functions/import-students/services.ts
 
       - name: Validate whitespace
