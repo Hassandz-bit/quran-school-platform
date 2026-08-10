@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+container_name="qsp-demo-mode-${RANDOM}-${RANDOM}"
+cleanup() {
+  docker rm -f "$container_name" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+docker run --name "$container_name" \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=quran_test \
+  -d postgres:17-alpine >/dev/null
+
+for _ in $(seq 1 60); do
+  if docker exec "$container_name" psql -U postgres -d quran_test -Atqc 'SELECT 1' >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+if ! docker exec "$container_name" psql -U postgres -d quran_test -Atqc 'SELECT 1' >/dev/null; then
+  echo "PostgreSQL database quran_test did not become ready." >&2
+  exit 1
+fi
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/guardian-security-foundation-bootstrap.sql
+
+base_files=(
+  supabase/001_initial_schema.sql
+  supabase/seed.sql
+  supabase/002_rls_policies.sql
+  supabase/004_students_module.sql
+  supabase/005_security_hardening.sql
+  supabase/006_teachers_module.sql
+  supabase/007_finance_module.sql
+  supabase/008_finance_payment_scope_index.sql
+  supabase/009_finance_student_directory.sql
+  supabase/010_student_charge_discount_details.sql
+  supabase/011_payments_manage_visibility.sql
+  supabase/012_expenses_visibility.sql
+  supabase/013_attendance_module.sql
+  supabase/014_memorization_module.sql
+  supabase/015_teacher_invitations.sql
+  supabase/016_memorization_class_teachers_rpc.sql
+)
+
+for base_file in "${base_files[@]}"; do
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test < "$base_file"
+done
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/guardian-security-foundation-fixture.sql
+
+for migration in \
+  supabase/017_guardian_security_foundation.sql \
+  supabase/018_guardian_invitations.sql \
+  supabase/019_guardian_parent_academic_reads.sql \
+  supabase/020_guardian_parent_finance_reads.sql; do
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test < "$migration"
+done
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/demo-mode-storage-bootstrap.sql
+
+# Apply twice to prove replay safety before Production is touched.
+for _ in 1 2; do
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+    < supabase/021_demo_mode_student_profile.sql
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+    < supabase/022_student_profile_column_privileges.sql
+done
+
+if ! docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/demo-mode-student-profile-assertions.sql; then
+  echo "Demo migration assertions failed. Diagnostic student education rows:" >&2
+  docker exec "$container_name" psql -U postgres -d quran_test -P pager=off -c "
+    select
+      s.first_name,
+      s.last_name,
+      s.education_level,
+      s.education_year,
+      s.birth_date,
+      extract(year from age(current_date, s.birth_date))::integer as age_years
+    from public.students s
+    join public.demo_seed_records r
+      on r.record_id = s.id
+     and r.entity_type = 'student'
+    join public.demo_seed_batches b
+      on b.id = r.batch_id
+     and b.school_id = r.school_id
+    where b.status = 'active'
+    order by s.created_at, s.id;
+  " >&2 || true
+  exit 1
+fi

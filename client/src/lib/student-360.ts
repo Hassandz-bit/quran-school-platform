@@ -14,7 +14,7 @@ import {
   type PaymentCharge,
   type PaymentRow,
 } from "./payments";
-import type { StudentStatus } from "./students";
+import type { EducationLevel, StudentStatus } from "./students";
 
 export type Student360Profile = {
   id: string;
@@ -22,6 +22,10 @@ export type Student360Profile = {
   classId: string | null;
   firstName: string;
   lastName: string;
+  educationLevel: EducationLevel | null;
+  educationYear: number | null;
+  photoPath: string | null;
+  photoUrl: string | null;
   startDate: string;
   status: StudentStatus;
   branchName: string | null;
@@ -59,6 +63,9 @@ type StudentRow = {
   class_id: string | null;
   first_name: string;
   last_name: string;
+  education_level: EducationLevel | null;
+  education_year: number | null;
+  photo_path: string | null;
   start_date: string;
   status: StudentStatus;
 };
@@ -80,6 +87,20 @@ type AttendanceRecordRow = {
 };
 
 const financePermissionCodes = ["finance.view", "finance.manage"] as const;
+
+async function fetchStudentPhotoUrl(
+  client: SupabaseClient,
+  photoPath: string | null
+): Promise<string | null> {
+  if (!photoPath) return null;
+
+  const { data, error } = await client.storage
+    .from("student-photos")
+    .createSignedUrl(photoPath, 3600);
+
+  if (error) return null;
+  return data?.signedUrl ?? null;
+}
 
 async function hasAnyFinanceAccess(
   client: SupabaseClient,
@@ -248,7 +269,7 @@ export async function fetchStudent360(
   const { data: student, error: studentError } = await client
     .from("students")
     .select(
-      "id, branch_id, class_id, first_name, last_name, start_date, status"
+      "id, branch_id, class_id, first_name, last_name, education_level, education_year, photo_path, start_date, status"
     )
     .eq("school_id", schoolId)
     .eq("id", studentId)
@@ -258,7 +279,7 @@ export async function fetchStudent360(
   if (!student) return null;
 
   const studentRow = student as StudentRow;
-  const [branchResult, classResult] = await Promise.all([
+  const [branchResult, classResult, photoUrl] = await Promise.all([
     client
       .from("branches")
       .select("id, name")
@@ -274,6 +295,7 @@ export async function fetchStudent360(
           .eq("id", studentRow.class_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    fetchStudentPhotoUrl(client, studentRow.photo_path),
   ]);
 
   if (branchResult.error) throw branchResult.error;
@@ -285,6 +307,10 @@ export async function fetchStudent360(
     classId: studentRow.class_id,
     firstName: studentRow.first_name,
     lastName: studentRow.last_name,
+    educationLevel: studentRow.education_level,
+    educationYear: studentRow.education_year,
+    photoPath: studentRow.photo_path,
+    photoUrl,
     startDate: studentRow.start_date,
     status: studentRow.status,
     branchName: (branchResult.data as LookupRow | null)?.name ?? null,

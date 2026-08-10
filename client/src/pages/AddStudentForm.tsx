@@ -1,17 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, ArrowLeft, Check, AlertTriangle } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  AlertTriangle,
+  ImagePlus,
+  X,
+} from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   addStudent,
   fetchBranches,
   fetchClasses,
+  formatEducation,
+  getEducationYearOptions,
   getStudentSaveErrorMessage,
+  uploadStudentPhoto,
+  validateStudentPhoto,
   type BranchOption,
   type ClassOption,
+  type EducationLevel,
   type GuardianRelation,
   type StudentGender,
 } from "@/lib/students";
@@ -29,7 +41,8 @@ interface FormData {
   email: string;
   address: string;
   previousSchool: string;
-  educationLevel: string;
+  educationLevel: EducationLevel | "";
+  educationYear: string;
   // Step 3: Guardian
   guardianName: string;
   guardianRelation: GuardianRelation | "";
@@ -60,6 +73,8 @@ const AddStudentForm: React.FC = () => {
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [branchLoadError, setBranchLoadError] = useState(false);
   const [classLoadError, setClassLoadError] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { school } = useAuth();
 
@@ -74,6 +89,7 @@ const AddStudentForm: React.FC = () => {
     address: "",
     previousSchool: "",
     educationLevel: "",
+    educationYear: "",
     guardianName: "",
     guardianRelation: "",
     guardianPhone: "",
@@ -88,11 +104,22 @@ const AddStudentForm: React.FC = () => {
     previousCertificate: false,
   });
 
+  const photoPreview = useMemo(
+    () => (photoFile ? URL.createObjectURL(photoFile) : null),
+    [photoFile]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
+
   const content = {
     ar: {
       title: "إضافة طالب جديد",
       steps: [
-        "البيانات الأساسية",
+        "البيانات الأساسية والصورة",
         "الاتصال والتعليم",
         "ولي الأمر",
         "الحلقة",
@@ -112,7 +139,6 @@ const AddStudentForm: React.FC = () => {
       leaveConfirm: "نعم، غادر",
       leaveCancel: "ابقَ هنا",
       optional: "اختياري",
-      // Step 1
       firstName: "الاسم الأول",
       lastName: "اسم العائلة",
       birthDate: "تاريخ الميلاد",
@@ -120,13 +146,24 @@ const AddStudentForm: React.FC = () => {
       male: "ذكر",
       female: "أنثى",
       nationalId: "رقم الهوية",
-      // Step 2
+      studentPhoto: "صورة الطالب",
+      photoHelp: "صورة خاصة غير عامة. JPG أو PNG أو WebP بحد أقصى 5MB.",
+      choosePhoto: "اختيار صورة",
+      removePhoto: "إزالة الصورة",
+      noPhoto: "غير مرفقة",
       phone: "رقم الهاتف",
       email: "البريد الإلكتروني",
       address: "العنوان",
-      previousSchool: "المدرسة السابقة",
-      educationLevel: "المستوى التعليمي",
-      // Step 3
+      previousSchool: "المؤسسة التعليمية / السابقة",
+      educationLevel: "المرحلة الدراسية",
+      educationYear: "السنة الدراسية",
+      primary: "ابتدائي",
+      middle: "متوسط",
+      secondary: "ثانوي",
+      university: "جامعي",
+      selectEducation: "غير محدد",
+      selectYear: "اختر السنة",
+      selectStageFirst: "اختر المرحلة أولًا",
       guardianName: "اسم ولي الأمر",
       guardianRelation: "صلة القرابة",
       guardianPhone: "هاتف ولي الأمر",
@@ -141,7 +178,6 @@ const AddStudentForm: React.FC = () => {
       grandfather: "جد",
       grandmother: "جدة",
       other: "أخرى",
-      // Step 4
       branch: "الفرع",
       className: "الحلقة",
       schedule: "توقيت الحلقة",
@@ -153,25 +189,24 @@ const AddStudentForm: React.FC = () => {
       branchLoadError: "تعذر تحميل الفروع النشطة.",
       classLoadError: "تعذر تحميل حلقات الفرع.",
       retry: "إعادة المحاولة",
-      // Step 5
       birthCertificate: "شهادة الميلاد",
-      photos: "صور شخصية",
+      photos: "صور شخصية ورقية / إضافية",
       medicalReport: "تقرير طبي",
       previousCertificate: "شهادة مدرسية سابقة",
-      // Step 6
       reviewTitle: "مراجعة البيانات",
       basicInfo: "البيانات الأساسية",
-      contactInfo: "معلومات الاتصال",
+      contactInfo: "معلومات الاتصال والتعليم",
       guardianInfo: "معلومات ولي الأمر",
       classInfo: "معلومات الحلقة",
       documentsInfo: "المستندات",
       provided: "مقدم",
       notProvided: "غير مقدم",
+      photoSavedStudent: "تم حفظ الطالب، لكن تعذر رفع الصورة.",
     },
     en: {
       title: "Add New Student",
       steps: [
-        "Basic Info",
+        "Basic Info & Photo",
         "Contact & Education",
         "Guardian",
         "Class",
@@ -198,11 +233,24 @@ const AddStudentForm: React.FC = () => {
       male: "Male",
       female: "Female",
       nationalId: "National ID",
+      studentPhoto: "Student Photo",
+      photoHelp: "Private photo, not public. JPG, PNG or WebP, maximum 5MB.",
+      choosePhoto: "Choose photo",
+      removePhoto: "Remove photo",
+      noPhoto: "Not attached",
       phone: "Phone",
       email: "Email",
       address: "Address",
-      previousSchool: "Previous School",
-      educationLevel: "Education Level",
+      previousSchool: "School / Previous School",
+      educationLevel: "Education Stage",
+      educationYear: "Education Year",
+      primary: "Primary",
+      middle: "Middle school",
+      secondary: "Secondary",
+      university: "University",
+      selectEducation: "Not specified",
+      selectYear: "Choose year",
+      selectStageFirst: "Choose stage first",
       guardianName: "Guardian Name",
       guardianRelation: "Relation",
       guardianPhone: "Guardian Phone",
@@ -229,22 +277,24 @@ const AddStudentForm: React.FC = () => {
       classLoadError: "Branch classes could not be loaded.",
       retry: "Try again",
       birthCertificate: "Birth Certificate",
-      photos: "Personal Photos",
+      photos: "Paper / Additional Photos",
       medicalReport: "Medical Report",
       previousCertificate: "Previous Certificate",
       reviewTitle: "Review Data",
       basicInfo: "Basic Information",
-      contactInfo: "Contact Information",
+      contactInfo: "Contact & Education",
       guardianInfo: "Guardian Information",
       classInfo: "Class Information",
       documentsInfo: "Documents",
       provided: "Provided",
       notProvided: "Not provided",
+      photoSavedStudent: "The student was saved, but the photo upload failed.",
     },
   };
 
   const t = content[language];
   const totalSteps = 6;
+  const educationYearOptions = getEducationYearOptions(formData.educationLevel);
 
   const loadBranches = async () => {
     if (!school?.id) {
@@ -310,7 +360,6 @@ const AddStudentForm: React.FC = () => {
     };
   }, [formData.branchId, school?.id]);
 
-  // Warn on page leave
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
@@ -323,11 +372,19 @@ const AddStudentForm: React.FC = () => {
   }, [isDirty]);
 
   const updateField = (field: keyof FormData, value: string | boolean) => {
-    setFormData(prev =>
-      field === "branchId"
-        ? { ...prev, branchId: value as string, classId: "" }
-        : { ...prev, [field]: value }
-    );
+    setFormData(prev => {
+      if (field === "branchId") {
+        return { ...prev, branchId: value as string, classId: "" };
+      }
+      if (field === "educationLevel") {
+        return {
+          ...prev,
+          educationLevel: value as EducationLevel | "",
+          educationYear: "",
+        };
+      }
+      return { ...prev, [field]: value };
+    });
     setIsDirty(true);
     if (errors[field]) {
       setErrors(prev => {
@@ -338,6 +395,19 @@ const AddStudentForm: React.FC = () => {
     }
   };
 
+  const selectPhoto = (file: File | null) => {
+    if (!file) return;
+    const validationError = validateStudentPhoto(file);
+    if (validationError) {
+      setPhotoFile(null);
+      setPhotoError(validationError);
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoError(null);
+    setIsDirty(true);
+  };
+
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     if (step === 1) {
@@ -345,7 +415,11 @@ const AddStudentForm: React.FC = () => {
       if (!formData.lastName.trim()) newErrors.lastName = t.required;
       if (!formData.birthDate) newErrors.birthDate = t.required;
       if (!formData.gender) newErrors.gender = t.required;
+      if (photoError) newErrors.photo = photoError;
     } else if (step === 2) {
+      if (formData.educationLevel && !formData.educationYear) {
+        newErrors.educationYear = t.required;
+      }
     } else if (step === 3) {
       if (!formData.guardianName.trim()) newErrors.guardianName = t.required;
       if (!formData.guardianRelation)
@@ -381,7 +455,7 @@ const AddStudentForm: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await addStudent(school.id, {
+      const studentId = await addStudent(school.id, {
         branchId: formData.branchId,
         classId: formData.classId,
         firstName: formData.firstName,
@@ -394,6 +468,7 @@ const AddStudentForm: React.FC = () => {
         address: formData.address,
         previousSchool: formData.previousSchool,
         educationLevel: formData.educationLevel,
+        educationYear: formData.educationYear,
         guardianName: formData.guardianName,
         guardianRelation: formData.guardianRelation,
         guardianPhone: formData.guardianPhone,
@@ -401,14 +476,27 @@ const AddStudentForm: React.FC = () => {
         guardianJob: formData.guardianJob,
         startDate: formData.startDate,
         birthCertificateProvided: formData.birthCertificate,
-        photosProvided: formData.photos,
+        photosProvided: formData.photos || Boolean(photoFile),
         medicalReportProvided: formData.medicalReport,
         previousCertificateProvided: formData.previousCertificate,
       });
 
+      if (photoFile) {
+        try {
+          await uploadStudentPhoto(school.id, studentId, photoFile);
+        } catch (error) {
+          setIsDirty(false);
+          toast.warning(
+            `${t.photoSavedStudent} ${getStudentSaveErrorMessage(error)}`
+          );
+          setLocation(`/students/${studentId}`);
+          return;
+        }
+      }
+
       setIsDirty(false);
       toast.success("تمت إضافة الطالب بنجاح.");
-      setLocation("/students");
+      setLocation(`/students/${studentId}`);
     } catch (error) {
       toast.error(getStudentSaveErrorMessage(error));
     } finally {
@@ -495,6 +583,12 @@ const AddStudentForm: React.FC = () => {
   const selectedClass = classes.find(
     classItem => classItem.id === formData.classId
   );
+  const educationOptions = [
+    { value: "primary", label: t.primary },
+    { value: "middle", label: t.middle },
+    { value: "secondary", label: t.secondary },
+    { value: "university", label: t.university },
+  ];
 
   const renderStep = () => {
     switch (currentStep) {
@@ -512,6 +606,57 @@ const AddStudentForm: React.FC = () => {
               { value: "female", label: t.female },
             ])}
             {renderField(t.nationalId, "nationalId", "text", undefined, false)}
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border border-gray-200 bg-white">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt={t.studentPhoto}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <ImagePlus className="h-8 w-8 text-gray-400" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#2C3E50]">
+                    {t.studentPhoto}
+                    <span className="text-gray-400 mr-2 text-xs">({t.optional})</span>
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">{t.photoHelp}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg bg-[#0B4738] px-3 py-2 text-sm font-medium text-white">
+                      <ImagePlus size={16} />
+                      {t.choosePhoto}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={event => selectPhoto(event.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                    {photoFile && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoError(null);
+                        }}
+                      >
+                        <X size={16} />
+                        {t.removePhoto}
+                      </Button>
+                    )}
+                  </div>
+                  {photoError && (
+                    <p className="mt-2 text-xs text-red-500">{photoError}</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         );
       case 2:
@@ -528,12 +673,24 @@ const AddStudentForm: React.FC = () => {
               undefined,
               false
             )}
-            {renderField(
+            {renderSelect(
               t.educationLevel,
               "educationLevel",
-              "text",
-              undefined,
-              false
+              educationOptions,
+              false,
+              false,
+              t.selectEducation
+            )}
+            {renderSelect(
+              t.educationYear,
+              "educationYear",
+              educationYearOptions.map(year => ({
+                value: String(year),
+                label: language === "ar" ? `السنة ${year}` : `Year ${year}`,
+              })),
+              Boolean(formData.educationLevel),
+              !formData.educationLevel,
+              formData.educationLevel ? t.selectYear : t.selectStageFirst
             )}
           </div>
         );
@@ -655,7 +812,6 @@ const AddStudentForm: React.FC = () => {
             <h3 className="text-lg font-bold text-[#2C3E50]">
               {t.reviewTitle}
             </h3>
-            {/* Basic Info */}
             <div className="p-4 bg-[#0B4738]/5 rounded-lg border border-[#0B4738]/10">
               <h4 className="font-semibold text-[#0B4738] mb-3 text-sm">
                 {t.basicInfo}
@@ -689,9 +845,14 @@ const AddStudentForm: React.FC = () => {
                         : "-"}
                   </span>
                 </div>
+                <div>
+                  <span className="text-gray-500">{t.studentPhoto}:</span>{" "}
+                  <span className="font-medium text-[#2C3E50]">
+                    {photoFile?.name || t.noPhoto}
+                  </span>
+                </div>
               </div>
             </div>
-            {/* Contact */}
             <div className="p-4 bg-[#C8A26A]/5 rounded-lg border border-[#C8A26A]/10">
               <h4 className="font-semibold text-[#C8A26A] mb-3 text-sm">
                 {t.contactInfo}
@@ -709,9 +870,18 @@ const AddStudentForm: React.FC = () => {
                     {formData.email || "-"}
                   </span>
                 </div>
+                <div className="col-span-2">
+                  <span className="text-gray-500">{t.educationLevel}:</span>{" "}
+                  <span className="font-medium text-[#2C3E50]">
+                    {formatEducation(
+                      formData.educationLevel || null,
+                      formData.educationYear ? Number(formData.educationYear) : null,
+                      language
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
-            {/* Guardian */}
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h4 className="font-semibold text-gray-700 mb-3 text-sm">
                 {t.guardianInfo}
@@ -731,7 +901,6 @@ const AddStudentForm: React.FC = () => {
                 </div>
               </div>
             </div>
-            {/* Class */}
             <div className="p-4 bg-[#0B4738]/5 rounded-lg border border-[#0B4738]/10">
               <h4 className="font-semibold text-[#0B4738] mb-3 text-sm">
                 {t.classInfo}
@@ -751,7 +920,6 @@ const AddStudentForm: React.FC = () => {
                 </div>
               </div>
             </div>
-            {/* Documents */}
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h4 className="font-semibold text-gray-700 mb-3 text-sm">
                 {t.documentsInfo}
@@ -773,12 +941,12 @@ const AddStudentForm: React.FC = () => {
                   {t.photos}:{" "}
                   <span
                     className={
-                      formData.photos
+                      formData.photos || photoFile
                         ? "text-[#0B4738] font-medium"
                         : "text-red-500"
                     }
                   >
-                    {formData.photos ? t.provided : t.notProvided}
+                    {formData.photos || photoFile ? t.provided : t.notProvided}
                   </span>
                 </div>
                 <div>
@@ -819,7 +987,6 @@ const AddStudentForm: React.FC = () => {
       className="min-h-screen bg-[#F8F9FA] p-4 md:p-8"
       dir={language === "ar" ? "rtl" : "ltr"}
     >
-      {/* Leave Warning Modal */}
       {showLeaveWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <Card className="p-6 max-w-sm w-full mx-4 shadow-2xl">
@@ -852,12 +1019,12 @@ const AddStudentForm: React.FC = () => {
       )}
 
       <div className="max-w-3xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={handleBack}
               className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+              aria-label={t.back}
             >
               <ArrowRight size={20} className="text-gray-600" />
             </button>
@@ -879,7 +1046,6 @@ const AddStudentForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Step Indicator */}
         <div className="flex items-center justify-center gap-1 md:gap-2">
           {Array.from({ length: totalSteps }, (_, i) => i + 1).map(step => (
             <React.Fragment key={step}>
@@ -903,7 +1069,6 @@ const AddStudentForm: React.FC = () => {
           ))}
         </div>
 
-        {/* Step Label */}
         <p className="text-center text-sm text-gray-500">
           {t.stepOf} {currentStep} {t.of} {totalSteps}:{" "}
           <span className="font-medium text-[#2C3E50]">
@@ -911,12 +1076,10 @@ const AddStudentForm: React.FC = () => {
           </span>
         </p>
 
-        {/* Form Content */}
         <Card className="p-6 md:p-8 border border-gray-100 shadow-sm">
           {renderStep()}
         </Card>
 
-        {/* Navigation Buttons */}
         <div className="flex items-center justify-between">
           <Button
             onClick={handlePrevious}

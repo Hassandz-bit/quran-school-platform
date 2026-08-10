@@ -24,7 +24,7 @@ jobs:
   release-gate:
     name: Full launch readiness gate
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 90
 
     steps:
       - name: Check out exact source
@@ -80,6 +80,9 @@ jobs:
 
       - name: Validate guardian parent finance migration
         run: pnpm test:guardian-parent-finance:migration
+
+      - name: Validate demo mode and student profile migration
+        run: pnpm test:demo-mode:migration
 
       - name: Validate teacher invitation Edge Function
         run: pnpm test:teacher-invitations:function

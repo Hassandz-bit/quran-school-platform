@@ -18,6 +18,7 @@ import {
   SectionHeader,
   StatCard,
 } from "@/components/ui/app-primitives";
+import DemoModeCard from "@/components/DemoModeCard";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchDashboardData,
@@ -173,6 +174,10 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      {isSchoolAdmin && school?.id && (
+        <DemoModeCard schoolId={school.id} onChanged={loadDashboard} />
+      )}
 
       {isLoading ? (
         <section

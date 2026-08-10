@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Clock3,
+  GraduationCap,
   RefreshCw,
   UserRound,
   XCircle,
@@ -20,7 +21,7 @@ import {
   getMemorizationSessionLabel,
   getSurahByNumber,
 } from "@/lib/memorization";
-import { translateStudentStatus } from "@/lib/students";
+import { formatEducation, translateStudentStatus } from "@/lib/students";
 import {
   EmptyState,
   PageHeader,
@@ -223,9 +224,17 @@ export default function Student360() {
 
       <section className="rounded-2xl border border-[#E5EDE7] bg-white p-5 shadow-[0_1px_2px_rgba(23,59,45,0.04)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#E8F3EC] text-[#17663B]">
-              <UserRound className="size-6" />
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#DCE9E0] bg-[#E8F3EC] text-[#17663B]">
+              {profile.photoUrl ? (
+                <img
+                  src={profile.photoUrl}
+                  alt={`صورة ${profile.firstName} ${profile.lastName}`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <UserRound className="size-8" />
+              )}
             </span>
             <div className="min-w-0">
               <h2 className="truncate text-xl font-extrabold text-[#173B2D]">
@@ -235,17 +244,29 @@ export default function Student360() {
                 {profile.branchName ?? "الفرع غير متاح"}
                 {profile.className ? ` · ${profile.className}` : " · بلا حلقة حالية"}
               </p>
+              {profile.educationLevel && (
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#EEF4FA] px-2.5 py-1 text-xs font-bold text-[#315F7D]">
+                  <GraduationCap className="size-3.5" />
+                  {formatEducation(profile.educationLevel, profile.educationYear)}
+                </p>
+              )}
             </div>
           </div>
           <span className="inline-flex w-fit rounded-full bg-[#E8F3EC] px-3 py-1 text-xs font-bold text-[#17663B]">
             {translateStudentStatus(profile.status)}
           </span>
         </div>
-        <dl className="mt-5 grid gap-3 border-t border-[#EEF3EF] pt-4 text-sm sm:grid-cols-3">
+        <dl className="mt-5 grid gap-3 border-t border-[#EEF3EF] pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-xs font-semibold text-[#718377]">تاريخ التسجيل</dt>
             <dd className="mt-1 font-medium text-[#244E3B]">
               {formatDate(profile.startDate)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[#718377]">المستوى التعليمي</dt>
+            <dd className="mt-1 font-medium text-[#244E3B]">
+              {formatEducation(profile.educationLevel, profile.educationYear)}
             </dd>
           </div>
           <div>
