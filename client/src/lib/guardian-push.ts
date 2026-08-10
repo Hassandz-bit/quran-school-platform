@@ -1,9 +1,11 @@
 import { getSupabaseClient } from "./supabase.ts";
 
-// Public VAPID key only. The matching private key must stay in the server-side
-// notification dispatcher and is intentionally not part of this PR/client.
-export const GUARDIAN_PUSH_PUBLIC_VAPID_KEY =
-  "BF8BbeLrCMmzYnmxMtAS7MaZhRmDD0V4ICZ1a7l29znbK2vstzGUtew6zrY1gKh1eq9bcHLIL2LQ1r6Izl5vyYY";
+// Public VAPID key only. V2 environments must configure the public/private pair
+// together. The matching private key belongs only in the server-side Edge
+// Function secret store and must never be bundled into the client.
+export const GUARDIAN_PUSH_PUBLIC_VAPID_KEY = String(
+  import.meta.env.VITE_GUARDIAN_PUSH_PUBLIC_VAPID_KEY ?? ""
+).trim();
 
 export type GuardianPushStatus =
   | "unsupported"
@@ -18,12 +20,21 @@ export class GuardianPushError extends Error {
   }
 }
 
+function hasConfiguredVapidKey(): boolean {
+  return (
+    GUARDIAN_PUSH_PUBLIC_VAPID_KEY.length >= 80 &&
+    GUARDIAN_PUSH_PUBLIC_VAPID_KEY.length <= 120 &&
+    /^[A-Za-z0-9_-]+$/.test(GUARDIAN_PUSH_PUBLIC_VAPID_KEY)
+  );
+}
+
 function supportsGuardianPush(): boolean {
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&
-    "Notification" in window
+    "Notification" in window &&
+    hasConfiguredVapidKey()
   );
 }
 
