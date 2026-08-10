@@ -160,6 +160,45 @@ begin
 end;
 $$;
 
+-- Returns only a boolean for the caller's own endpoint. It deliberately does
+-- not expose endpoint rows, keys, other guardians, or subscription metadata.
+create or replace function public.has_my_guardian_push_subscription(
+  target_endpoint text
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  current_user_id uuid := (select auth.uid());
+  normalized_endpoint text := btrim(target_endpoint);
+begin
+  if current_user_id is null then
+    raise exception using
+      errcode = '42501',
+      message = 'authentication required';
+  end if;
+
+  if normalized_endpoint is null
+    or normalized_endpoint !~ '^https://'
+    or octet_length(normalized_endpoint) not between 16 and 4096
+  then
+    raise exception using
+      errcode = '22023',
+      message = 'invalid push endpoint';
+  end if;
+
+  return exists (
+    select 1
+    from public.guardian_push_subscriptions as subscription
+    where subscription.guardian_profile_id = current_user_id
+      and subscription.endpoint = normalized_endpoint
+  );
+end;
+$$;
+
 create or replace function public.delete_my_guardian_push_subscription(
   target_endpoint text
 )
@@ -200,6 +239,13 @@ from public;
 revoke execute on function public.register_my_guardian_push_subscription(text, text, text, text)
 from anon;
 grant execute on function public.register_my_guardian_push_subscription(text, text, text, text)
+to authenticated;
+
+revoke all on function public.has_my_guardian_push_subscription(text)
+from public;
+revoke execute on function public.has_my_guardian_push_subscription(text)
+from anon;
+grant execute on function public.has_my_guardian_push_subscription(text)
 to authenticated;
 
 revoke all on function public.delete_my_guardian_push_subscription(text)
