@@ -7,6 +7,9 @@ begin;
 create unique index if not exists payments_school_branch_student_id_unique_idx
   on public.payments (school_id, branch_id, student_id, id);
 
+create unique index if not exists student_charges_school_branch_student_id_unique_idx
+  on public.student_charges (school_id, branch_id, student_id, id);
+
 create table public.official_receipt_counters (
   school_id uuid primary key references public.schools(id) on delete cascade,
   last_sequence bigint not null default 0,
