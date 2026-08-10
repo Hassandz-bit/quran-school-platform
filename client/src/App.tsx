@@ -58,8 +58,18 @@ const RosterAssignmentLauncher = lazy(
   () => import("./components/RosterAssignmentLauncher")
 );
 
+const ARABIC_MODULE_FALLBACKS: Partial<Record<TranslationKey, string>> = {
+  "fallback.finance": "جارٍ تحميل الوحدة المالية...",
+  "fallback.attendance": "جارٍ تحميل وحدة الحضور...",
+  "fallback.memorization": "جارٍ تحميل وحدة متابعة الحفظ...",
+  "fallback.members": "جارٍ تحميل دليل أعضاء المدرسة...",
+};
+
 function ModuleFallback({ labelKey }: { labelKey: TranslationKey }) {
-  const { direction, t } = useLocale();
+  const { locale, direction, t } = useLocale();
+  const label =
+    locale === "ar" ? (ARABIC_MODULE_FALLBACKS[labelKey] ?? t(labelKey)) : t(labelKey);
+
   return (
     <main
       className="flex min-h-screen items-center justify-center bg-[#F7F8F3] p-4 text-[#173B2D]"
@@ -67,7 +77,7 @@ function ModuleFallback({ labelKey }: { labelKey: TranslationKey }) {
     >
       <div className="flex items-center gap-3" role="status">
         <span className="size-5 animate-spin rounded-full border-2 border-[#17663B]/30 border-t-[#17663B]" />
-        <span className="text-sm font-medium">{t(labelKey)}</span>
+        <span className="text-sm font-medium">{label}</span>
       </div>
     </main>
   );

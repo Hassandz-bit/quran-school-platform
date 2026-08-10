@@ -3,11 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [app, route, shell, navigation, helper, page, packageJson] = await Promise.all([
+const [app, route, shell, navigation, locale, helper, page, packageJson] = await Promise.all([
   read("client/src/App.tsx"),
   read("client/src/components/AcademicReportsRoute.tsx"),
   read("client/src/components/AppShell.tsx"),
   read("client/src/lib/app-navigation.ts"),
+  read("client/src/lib/locale.ts"),
   read("client/src/lib/academic-reports.ts"),
   read("client/src/pages/AcademicReports.tsx"),
   read("package.json"),
@@ -20,7 +21,8 @@ test("registers Academic Reports inside the permission-aware AppShell", () => {
     app,
     /path="\/academic-reports"[\s\S]{0,200}<ProtectedRoute>/
   );
-  assert.match(navigation, /label: "التقارير التعليمية"/);
+  assert.match(navigation, /label: translate\(locale, "nav\.academicReports"\)/);
+  assert.match(locale, /"nav\.academicReports": "التقارير التعليمية"/);
 });
 
 test("route and navigation share actual academic access semantics", () => {
