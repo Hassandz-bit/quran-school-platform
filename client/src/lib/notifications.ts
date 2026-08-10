@@ -4,6 +4,8 @@ import { getSupabaseClient } from "./supabase";
 export type NotificationBox = "inbox" | "sent";
 export type NotificationCategory =
   | "administration"
+  | "teachers"
+  | "students"
   | "learning"
   | "attendance"
   | "finance"
@@ -77,6 +79,8 @@ export async function markNotificationRead(
 
 export const notificationCategoryLabels: Record<NotificationCategory, string> = {
   administration: "الإدارة",
+  teachers: "المعلمون",
+  students: "الطلاب",
   learning: "التعليم والحفظ",
   attendance: "الحضور",
   finance: "المالية",
