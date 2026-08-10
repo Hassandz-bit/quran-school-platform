@@ -100,6 +100,12 @@ export default function StudentBulkImport() {
     setRows(rowData);
   };
 
+  const handleFileChange = (nextFile: File | null) => {
+    setFile(nextFile);
+    setBatch(null);
+    setRows([]);
+  };
+
   const handleTemplate = async () => {
     if (!school?.id) return;
     setBusy("template");
@@ -189,7 +195,8 @@ export default function StudentBulkImport() {
           <label className="block">
             <span className="mb-2 block text-sm font-semibold text-gray-700">{copy.choose}</span>
             <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={event => setFile(event.target.files?.[0] ?? null)}
+              disabled={busy !== null}
+              onChange={event => handleFileChange(event.target.files?.[0] ?? null)}
               className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm" />
           </label>
           <Button className="gap-2 bg-[#0B4738] text-white hover:bg-[#08382d]" disabled={!file || busy !== null} onClick={() => void handlePreview()}>

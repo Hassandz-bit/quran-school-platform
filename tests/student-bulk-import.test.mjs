@@ -16,6 +16,12 @@ test("student import route is permission-aware and preview is explicit", async (
   assert.match(page, /commitStudentImport/);
 });
 
+test("choosing a new workbook clears any stale preview before commit", async () => {
+  const page = await read("client/src/pages/StudentBulkImport.tsx");
+  assert.match(page, /const handleFileChange = \(nextFile: File \| null\)[\s\S]*?setFile\(nextFile\)[\s\S]*?setBatch\(null\)[\s\S]*?setRows\(\[\]\)/);
+  assert.match(page, /disabled=\{busy !== null\}[\s\S]*?onChange=\{event => handleFileChange\(event\.target\.files\?\.\[0\] \?\? null\)\}/);
+});
+
 test("browser import client never contains privileged Supabase credentials", async () => {
   const client = await read("client/src/lib/student-import.ts");
   assert.doesNotMatch(client, /SERVICE_ROLE|service_role|SUPABASE_SECRET_KEY/);
