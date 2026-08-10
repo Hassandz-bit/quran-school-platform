@@ -29,6 +29,15 @@ type LocaleContextValue = {
   t: (key: TranslationKey) => string;
 };
 
+const FALLBACK_LOCALE_CONTEXT: LocaleContextValue = {
+  locale: DEFAULT_LOCALE,
+  direction: getDirection(DEFAULT_LOCALE),
+  isSavingLocale: false,
+  setLocale: () => undefined,
+  saveLocale: async () => undefined,
+  t: key => translate(DEFAULT_LOCALE, key),
+};
+
 const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
 
 function getStoredLocale(): AppLocale {
@@ -120,9 +129,5 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 }
 
 export function useLocale(): LocaleContextValue {
-  const context = useContext(LocaleContext);
-  if (!context) {
-    throw new Error("useLocale must be used inside LocaleProvider.");
-  }
-  return context;
+  return useContext(LocaleContext) ?? FALLBACK_LOCALE_CONTEXT;
 }
