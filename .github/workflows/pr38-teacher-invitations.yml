@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - develop/v2
   workflow_dispatch:
 
 permissions:
