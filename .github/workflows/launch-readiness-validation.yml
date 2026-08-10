@@ -88,11 +88,17 @@ jobs:
       - name: Validate guardian push foundation migration
         run: pnpm test:guardian-push:migration
 
+      - name: Validate guardian absence notification migration
+        run: pnpm test:guardian-absence:migration
+
       - name: Validate teacher invitation Edge Function
         run: pnpm test:teacher-invitations:function
 
       - name: Validate guardian invitation Edge Function
         run: pnpm test:guardian-invitations:function
+
+      - name: Validate guardian notification dispatcher Edge Function
+        run: pnpm test:guardian-notifications:function
 
       - name: Final working-tree whitespace check
         run: git diff --check

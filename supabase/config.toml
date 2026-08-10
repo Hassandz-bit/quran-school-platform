@@ -5,3 +5,10 @@ verify_jwt = true
 
 [functions.invite-guardian]
 verify_jwt = true
+
+# This function has two authenticated entry paths: a signed-in attendance user
+# validated inside authorizeScope(), or the server-only Cron secret validated
+# inside authorizeCron(). Gateway JWT verification must therefore stay off for
+# this function only; requests without either credential fail closed in handler.
+[functions.dispatch-guardian-notifications]
+verify_jwt = false
