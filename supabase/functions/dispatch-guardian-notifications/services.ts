@@ -38,6 +38,15 @@ function bearerToken(request: Request): string | null {
   return match?.[1]?.trim() || null;
 }
 
+function constantTimeEquals(left: string, right: string): boolean {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
 type ClaimRow = {
   delivery_id: string;
   event_id: string;
@@ -97,6 +106,7 @@ export function createSupabaseGuardianNotificationDependencies(): GuardianNotifi
   const vapidSubject = requiredEnvironment("GUARDIAN_PUSH_VAPID_SUBJECT");
   const vapidPublicKey = requiredEnvironment("GUARDIAN_PUSH_PUBLIC_VAPID_KEY");
   const vapidPrivateKey = requiredEnvironment("GUARDIAN_PUSH_PRIVATE_VAPID_KEY");
+  const cronSecret = requiredEnvironment("GUARDIAN_NOTIFICATION_CRON_SECRET");
 
   const admin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -133,6 +143,11 @@ export function createSupabaseGuardianNotificationDependencies(): GuardianNotifi
     return !sessionError && session?.id === scope.sessionId;
   }
 
+  async function authorizeCron(request: Request): Promise<boolean> {
+    const supplied = request.headers.get("x-quranos-cron-secret")?.trim() ?? "";
+    return supplied.length >= 32 && constantTimeEquals(supplied, cronSecret);
+  }
+
   async function requeueStale(): Promise<void> {
     const { error } = await admin.rpc("requeue_stale_guardian_push_deliveries");
     if (error) throw error;
@@ -151,6 +166,14 @@ export function createSupabaseGuardianNotificationDependencies(): GuardianNotifi
     return ((data ?? []) as ClaimRow[]).map(mapClaim);
   }
 
+  async function claimDueDeliveries(limit: number): Promise<GuardianPushDelivery[]> {
+    const { data, error } = await admin.rpc("claim_due_guardian_push_deliveries", {
+      target_limit: limit,
+    });
+    if (error) throw error;
+    return ((data ?? []) as ClaimRow[]).map(mapClaim);
+  }
+
   async function sendPush(
     delivery: GuardianPushDelivery,
     payload: GuardianPushPayload
@@ -159,10 +182,7 @@ export function createSupabaseGuardianNotificationDependencies(): GuardianNotifi
       await sendNotification(
         {
           endpoint: delivery.endpoint,
-          keys: {
-            p256dh: delivery.p256dh,
-            auth: delivery.authKey,
-          },
+          keys: { p256dh: delivery.p256dh, auth: delivery.authKey },
         },
         JSON.stringify(payload),
         {
@@ -180,10 +200,7 @@ export function createSupabaseGuardianNotificationDependencies(): GuardianNotifi
     } catch (error) {
       const status = providerStatus(error);
       if (status === 404 || status === 410) {
-        return {
-          outcome: "invalid_subscription",
-          errorCode: `push_http_${status}`,
-        };
+        return { outcome: "invalid_subscription", errorCode: `push_http_${status}` };
       }
       if (status === 429 || (status !== null && status >= 500 && status <= 599)) {
         return {
@@ -215,8 +232,10 @@ export function createSupabaseGuardianNotificationDependencies(): GuardianNotifi
 
   return {
     authorizeScope,
+    authorizeCron,
     requeueStale,
     claimDeliveries,
+    claimDueDeliveries,
     sendPush,
     finishDelivery,
   };
