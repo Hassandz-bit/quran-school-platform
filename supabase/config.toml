@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.invite-guardian]
 verify_jwt = true
+
+[functions.dispatch-guardian-notifications]
+verify_jwt = true
