@@ -1,7 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  PWA_INSTALL_AVAILABLE_EVENT,
+  canPromptPwaInstall,
+  isPwaStandalone,
+  promptPwaInstall,
+} from "@/lib/pwa";
 import { useLocation } from "wouter";
 
 const Login: React.FC = () => {
@@ -9,9 +15,26 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState("");
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [isLoading, setIsLoading] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
+  const [canInstall, setCanInstall] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [, setLocation] = useLocation();
   const { signInWithPassword } = useAuth();
+
+  useEffect(() => {
+    const refreshInstallState = () => {
+      setCanInstall(canPromptPwaInstall() && !isPwaStandalone());
+    };
+
+    refreshInstallState();
+    window.addEventListener(PWA_INSTALL_AVAILABLE_EVENT, refreshInstallState);
+    window.addEventListener("appinstalled", refreshInstallState);
+
+    return () => {
+      window.removeEventListener(PWA_INSTALL_AVAILABLE_EVENT, refreshInstallState);
+      window.removeEventListener("appinstalled", refreshInstallState);
+    };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +59,18 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleInstall = async () => {
+    setIsInstalling(true);
+    try {
+      const outcome = await promptPwaInstall();
+      if (outcome === "accepted" || outcome === "unavailable") {
+        setCanInstall(false);
+      }
+    } finally {
+      setIsInstalling(false);
+    }
+  };
+
   const content = {
     ar: {
       title: "منصة المدرسة القرآنية الذكية",
@@ -45,6 +80,9 @@ const Login: React.FC = () => {
       forgotPassword: "نسيت كلمة المرور؟",
       login: "تسجيل الدخول",
       loading: "جارٍ تسجيل الدخول...",
+      install: "تثبيت QuranOS على الهاتف",
+      installing: "جارٍ فتح التثبيت...",
+      installHint: "يفتح كتطبيق مستقل من الشاشة الرئيسية.",
     },
     en: {
       title: "Smart Quran School Platform",
@@ -54,6 +92,9 @@ const Login: React.FC = () => {
       forgotPassword: "Forgot password?",
       login: "Sign In",
       loading: "Signing in...",
+      install: "Install QuranOS on this phone",
+      installing: "Opening installer...",
+      installHint: "Launch QuranOS as a standalone app from your home screen.",
     },
   };
 
@@ -240,6 +281,20 @@ const Login: React.FC = () => {
               )}
             </Button>
           </form>
+
+          {canInstall && (
+            <div className="mt-5 border-t border-gray-100 pt-5 text-center">
+              <button
+                type="button"
+                onClick={() => void handleInstall()}
+                disabled={isInstalling}
+                className="w-full rounded-xl border border-[#0B4738]/20 bg-[#F7F8F3] px-4 py-3 text-sm font-bold text-[#0B4738] transition hover:bg-[#EDF2EA] disabled:cursor-wait disabled:opacity-60"
+              >
+                {isInstalling ? t.installing : t.install}
+              </button>
+              <p className="mt-2 text-xs text-gray-500">{t.installHint}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
