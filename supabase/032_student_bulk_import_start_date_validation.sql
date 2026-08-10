@@ -52,9 +52,9 @@ security definer
 set search_path = ''
 as $$
 declare
-  batch_id uuid;
+  staged_batch_id uuid;
 begin
-  batch_id := public.stage_student_import_batch_unchecked(
+  staged_batch_id := public.stage_student_import_batch_unchecked(
     target_school_id,
     target_actor_id,
     target_file_name,
@@ -68,7 +68,7 @@ begin
         when 'start_date_invalid' = any(row.issues) then row.issues
         else array_append(row.issues, 'start_date_invalid')
       end
-  where row.batch_id = batch_id
+  where row.batch_id = staged_batch_id
     and row.row_status in ('ready', 'warning', 'error')
     and not public.student_import_optional_date_is_valid(row.payload->>'start_date');
 
@@ -77,9 +77,9 @@ begin
       warning_count = (select count(*) from public.student_import_rows r where r.batch_id = batch.id and r.row_status = 'warning'),
       duplicate_count = (select count(*) from public.student_import_rows r where r.batch_id = batch.id and r.row_status = 'duplicate'),
       error_count = (select count(*) from public.student_import_rows r where r.batch_id = batch.id and r.row_status = 'error')
-  where batch.id = batch_id;
+  where batch.id = staged_batch_id;
 
-  return batch_id;
+  return staged_batch_id;
 end;
 $$;
 
