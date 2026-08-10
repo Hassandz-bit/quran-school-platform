@@ -66,9 +66,13 @@ Deno.test("rejects requests outside the scoped authenticated dispatch contract",
   if (invalidResponse.status !== 400) throw new Error("invalid scope should fail");
 
   let claimed = false;
+  let requeued = false;
   const deniedHandler = createGuardianNotificationHandler(
     dependencies({
       authorizeScope: async () => false,
+      requeueStale: async () => {
+        requeued = true;
+      },
       claimDeliveries: async () => {
         claimed = true;
         return [];
@@ -78,13 +82,18 @@ Deno.test("rejects requests outside the scoped authenticated dispatch contract",
   const deniedResponse = await deniedHandler(request());
   if (deniedResponse.status !== 403) throw new Error("unauthorized scope should fail");
   if (claimed) throw new Error("unauthorized request reached service claim");
+  if (requeued) throw new Error("unauthorized request touched outbox maintenance");
 });
 
 Deno.test("cron retry sweep requires its independent server secret path", async () => {
   let globalClaimed = false;
+  let requeued = false;
   const denied = createGuardianNotificationHandler(
     dependencies({
       authorizeCron: async () => false,
+      requeueStale: async () => {
+        requeued = true;
+      },
       claimDueDeliveries: async () => {
         globalClaimed = true;
         return [];
@@ -94,10 +103,14 @@ Deno.test("cron retry sweep requires its independent server secret path", async 
   const deniedResponse = await denied(request({ mode: "retry_sweep" }));
   if (deniedResponse.status !== 403) throw new Error("cron without secret should fail");
   if (globalClaimed) throw new Error("unauthorized cron reached global claim");
+  if (requeued) throw new Error("unauthorized cron touched outbox maintenance");
 
   const allowed = createGuardianNotificationHandler(
     dependencies({
       authorizeCron: async () => true,
+      requeueStale: async () => {
+        requeued = true;
+      },
       claimDueDeliveries: async limit => {
         if (limit !== 50) throw new Error("cron claim limit mismatch");
         globalClaimed = true;
@@ -106,8 +119,8 @@ Deno.test("cron retry sweep requires its independent server secret path", async 
     })
   );
   const allowedResponse = await allowed(request({ mode: "retry_sweep" }));
-  if (allowedResponse.status !== 200 || !globalClaimed) {
-    throw new Error("authorized cron did not dispatch due work");
+  if (allowedResponse.status !== 200 || !globalClaimed || !requeued) {
+    throw new Error("authorized cron did not maintain and dispatch due work");
   }
 });
 
@@ -157,7 +170,9 @@ Deno.test("dispatches claimed work and persists each provider outcome", async ()
           ? { outcome: "delivered" }
           : { outcome: "retry", errorCode: "push_http_503", retryAfterSeconds: 120 };
       },
-      finishDelivery: async (id, result) => finished.push({ id, result }),
+      finishDelivery: async (id, result) => {
+        finished.push({ id, result });
+      },
     })
   );
 
