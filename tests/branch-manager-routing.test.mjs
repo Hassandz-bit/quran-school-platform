@@ -13,7 +13,7 @@ test("branch manager gets a usable scoped default route", () => {
   );
 });
 
-test("branch manager sees scoped learning and finance navigation without admin-only school pages", () => {
+test("branch manager sees scoped modules and own notifications without admin-only school pages", () => {
   const navigation = getAppNavigation({
     isSchoolAdmin: false,
     activeRoleCodes: ["branch_manager"],
@@ -27,10 +27,11 @@ test("branch manager sees scoped learning and finance navigation without admin-o
     "memorization",
     "academic-reports",
     "finance",
+    "notifications",
     "members",
   ]);
 
-  for (const adminOnly of ["dashboard", "students", "teachers", "classes"]) {
+  for (const adminOnly of ["dashboard", "students", "teachers", "classes", "guardians"]) {
     assert.equal(ids.includes(adminOnly), false);
   }
 });

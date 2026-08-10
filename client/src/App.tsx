@@ -41,6 +41,8 @@ const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
+const Guardians = lazy(() => import("./pages/Guardians"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 const Student360 = lazy(() => import("./pages/Student360"));
 const AcademicReports = lazy(() => import("./pages/AcademicReports"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
@@ -99,6 +101,10 @@ function ParentPageFallback() {
   return <ModuleFallback label="جارٍ تحميل بوابة ولي الأمر..." />;
 }
 
+function NotificationsPageFallback() {
+  return <ModuleFallback label="جارٍ تحميل مركز الإشعارات..." />;
+}
+
 function Shell({ children }: { children: ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
@@ -127,6 +133,15 @@ function Router() {
           <Suspense fallback={<AcceptInvitePageFallback />}>
             <AcceptGuardianInvite />
           </Suspense>
+        </Route>
+        <Route path="/parent/notifications">
+          <ParentRoute>
+            <ParentShell>
+              <Suspense fallback={<NotificationsPageFallback />}>
+                <Notifications />
+              </Suspense>
+            </ParentShell>
+          </ParentRoute>
         </Route>
         <Route path="/parent/students/:studentId">
           <ParentRoute>
@@ -189,6 +204,24 @@ function Router() {
         </Route>
         <Route path="/teachers/new">
           <ProtectedRoute><Shell><AddTeacherForm /></Shell></ProtectedRoute>
+        </Route>
+        <Route path="/guardians">
+          <ProtectedRoute>
+            <Shell>
+              <Suspense fallback={<ParentPageFallback />}>
+                <Guardians />
+              </Suspense>
+            </Shell>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/notifications">
+          <ProtectedRoute>
+            <Shell>
+              <Suspense fallback={<NotificationsPageFallback />}>
+                <Notifications />
+              </Suspense>
+            </Shell>
+          </ProtectedRoute>
         </Route>
         <Route path="/finance">
           <FinanceRoute><Shell><FinanceDashboard /></Shell></FinanceRoute>

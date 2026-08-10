@@ -1,13 +1,25 @@
-import { type ReactNode, useState } from "react";
-import { Home, LogOut, ShieldCheck } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { Bell, Home, LogOut, ShieldCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchUnreadNotificationCount } from "@/lib/notifications";
 
 export default function ParentShell({ children }: { children: ReactNode }) {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    void fetchUnreadNotificationCount().then(count => {
+      if (active) setUnreadCount(count);
+    });
+    return () => {
+      active = false;
+    };
+  }, [location]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -44,6 +56,21 @@ export default function ParentShell({ children }: { children: ReactNode }) {
             >
               <Home size={17} />
               <span className="hidden sm:inline">أبنائي</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setLocation("/parent/notifications")}
+              className="relative gap-2 text-[#0B4738]"
+              aria-label={unreadCount > 0 ? `الإشعارات، ${unreadCount} غير مقروء` : "الإشعارات"}
+            >
+              <Bell size={18} />
+              <span className="hidden sm:inline">الإشعارات</span>
+              {unreadCount > 0 && (
+                <span className="absolute -left-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-5 text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Button>
             <Button
               type="button"
