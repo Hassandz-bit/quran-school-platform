@@ -26,6 +26,26 @@ if ! docker exec "$container_name" \
   exit 1
 fi
 
+run_sql() {
+  local file="$1"
+  local output
+  local status
+
+  set +e
+  output=$(docker exec -i "$container_name" \
+    psql -v ON_ERROR_STOP=1 -U postgres -d quran_test < "$file" 2>&1)
+  status=$?
+  set -e
+
+  printf '%s\n' "$output"
+  if [ "$status" -ne 0 ]; then
+    local diagnostic
+    diagnostic=$(printf '%s\n' "$output" | tail -n 20 | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
+    echo "::error file=${file}::${diagnostic}"
+    exit "$status"
+  fi
+}
+
 # Supabase projects include this internal server-only role. Plain PostgreSQL
 # does not, so model it only inside this isolated fixture before Migration 024
 # verifies its service-only worker grants.
@@ -33,8 +53,7 @@ docker exec "$container_name" \
   psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   -c 'CREATE ROLE service_role NOLOGIN;' >/dev/null
 
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < tests/guardian-security-foundation-bootstrap.sql
+run_sql tests/guardian-security-foundation-bootstrap.sql
 
 base_files=(
   supabase/001_initial_schema.sql
@@ -56,21 +75,11 @@ base_files=(
 )
 
 for base_file in "${base_files[@]}"; do
-  docker exec -i "$container_name" \
-    psql -v ON_ERROR_STOP=1 -U postgres -d quran_test < "$base_file"
+  run_sql "$base_file"
 done
 
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < tests/guardian-security-foundation-fixture.sql
-
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < supabase/017_guardian_security_foundation.sql
-
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < supabase/023_guardian_push_foundation.sql
-
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < supabase/024_guardian_absence_notifications.sql
-
-docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < tests/guardian-absence-notifications-assertions.sql
+run_sql tests/guardian-security-foundation-fixture.sql
+run_sql supabase/017_guardian_security_foundation.sql
+run_sql supabase/023_guardian_push_foundation.sql
+run_sql supabase/024_guardian_absence_notifications.sql
+run_sql tests/guardian-absence-notifications-assertions.sql
