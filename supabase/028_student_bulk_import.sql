@@ -20,6 +20,7 @@ create table public.student_import_batches (
   rolled_back_at timestamptz,
   rolled_back_by uuid references public.profiles(id),
   updated_at timestamptz not null default now(),
+  constraint student_import_batches_id_school_unique unique (id, school_id),
   constraint student_import_batches_filename_check
     check (char_length(btrim(source_filename)) between 1 and 255),
   constraint student_import_batches_status_check
@@ -61,13 +62,10 @@ create table public.student_import_batch_students (
     foreign key (school_id, branch_id)
     references public.branches(school_id, id),
   constraint student_import_batch_students_row_check
-    check (row_number between 2 and 1000000),
+    check (row_number between 2 and 2001),
   constraint student_import_batch_students_student_unique
     unique (batch_id, student_id)
 );
-
-alter table public.student_import_batches
-  add constraint student_import_batches_id_school_unique unique (id, school_id);
 
 create index student_import_batches_school_created_idx
   on public.student_import_batches (school_id, created_at desc, id);
@@ -237,13 +235,15 @@ begin
 
   if education_level_value is null and education_year_value is not null then
     error_list := array_append(error_list, 'education_year_without_level');
-  elsif education_level_value = 'primary' and education_year_value is not null and education_year_value not between 1 and 5 then
+  elsif education_level_value is not null and education_year_value is null then
+    error_list := array_append(error_list, 'education_year_required');
+  elsif education_level_value = 'primary' and education_year_value not between 1 and 5 then
     error_list := array_append(error_list, 'education_year_invalid');
-  elsif education_level_value = 'middle' and education_year_value is not null and education_year_value not between 1 and 4 then
+  elsif education_level_value = 'middle' and education_year_value not between 1 and 4 then
     error_list := array_append(error_list, 'education_year_invalid');
-  elsif education_level_value = 'secondary' and education_year_value is not null and education_year_value not between 1 and 3 then
+  elsif education_level_value = 'secondary' and education_year_value not between 1 and 3 then
     error_list := array_append(error_list, 'education_year_invalid');
-  elsif education_level_value = 'university' and education_year_value is not null and education_year_value not between 1 and 10 then
+  elsif education_level_value = 'university' and education_year_value not between 1 and 10 then
     error_list := array_append(error_list, 'education_year_invalid');
   end if;
 
@@ -476,11 +476,7 @@ begin
     select value as row_data, ordinality
     from jsonb_array_elements(target_rows) with ordinality
   loop
-    if coalesce(item.row_data->>'row_number', '') ~ '^[0-9]{1,7}$' then
-      row_number_value := (item.row_data->>'row_number')::integer;
-    else
-      row_number_value := item.ordinality::integer + 1;
-    end if;
+    row_number_value := item.ordinality::integer + 1;
 
     select * into checked
     from public.student_import_validate_one(target_school_id, item.row_data);
@@ -554,7 +550,6 @@ declare
   seen_national_ids text[] := array[]::text[];
   seen_identity_keys text[] := array[]::text[];
   row_status text;
-  row_errors text[];
   imported_count integer := 0;
   warning_count integer := 0;
   duplicate_count integer := 0;
@@ -596,27 +591,20 @@ begin
     select value as row_data, ordinality
     from jsonb_array_elements(target_rows) with ordinality
   loop
-    if coalesce(item.row_data->>'row_number', '') ~ '^[0-9]{1,7}$' then
-      row_number_value := (item.row_data->>'row_number')::integer;
-    else
-      row_number_value := item.ordinality::integer + 1;
-    end if;
+    row_number_value := item.ordinality::integer + 1;
 
     select * into checked
     from public.student_import_validate_one(target_school_id, item.row_data);
 
     row_status := checked.validation_status;
-    row_errors := coalesce(checked.error_codes, array[]::text[]);
 
     if row_status <> 'error' then
       if checked.national_id_key is not null
          and checked.national_id_key = any(seen_national_ids) then
         row_status := 'duplicate';
-        row_errors := array_append(row_errors, 'duplicate_in_file');
       elsif checked.identity_key is not null
          and checked.identity_key = any(seen_identity_keys) then
         row_status := 'duplicate';
-        row_errors := array_append(row_errors, 'duplicate_in_file');
       end if;
 
       if checked.national_id_key is not null
