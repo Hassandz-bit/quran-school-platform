@@ -23,15 +23,15 @@ begin
     raise exception 'browser roles unexpectedly access guardian notification outbox';
   end if;
 
-  if has_function_privilege('anon', 'public.claim_guardian_push_deliveries(integer)', 'EXECUTE')
-    or has_function_privilege('authenticated', 'public.claim_guardian_push_deliveries(integer)', 'EXECUTE')
+  if has_function_privilege('anon', 'public.claim_guardian_push_deliveries(uuid,uuid,integer)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.claim_guardian_push_deliveries(uuid,uuid,integer)', 'EXECUTE')
     or has_function_privilege('anon', 'public.finish_guardian_push_delivery(uuid,text,text,integer)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.finish_guardian_push_delivery(uuid,text,text,integer)', 'EXECUTE')
   then
     raise exception 'browser roles unexpectedly execute guardian notification worker RPCs';
   end if;
 
-  if not has_function_privilege('service_role', 'public.claim_guardian_push_deliveries(integer)', 'EXECUTE')
+  if not has_function_privilege('service_role', 'public.claim_guardian_push_deliveries(uuid,uuid,integer)', 'EXECUTE')
     or not has_function_privilege('service_role', 'public.finish_guardian_push_delivery(uuid,text,text,integer)', 'EXECUTE')
   then
     raise exception 'service_role is missing guardian notification worker RPC access';
@@ -228,10 +228,14 @@ begin
 end;
 $$;
 
--- Service worker claims are atomic and expose routing keys only to service_role.
+-- Service worker claims are scoped, atomic, and expose routing keys only to service_role.
 set role service_role;
 create temporary table claimed_deliveries as
-select * from public.claim_guardian_push_deliveries(25);
+select * from public.claim_guardian_push_deliveries(
+  '10000000-0000-4000-8000-000000000001',
+  '90000000-0000-4000-8000-000000000099',
+  25
+);
 reset role;
 
 do $$
@@ -245,8 +249,9 @@ begin
     where endpoint <> 'https://push.example.test/subscription/absence-alert'
       or p256dh <> repeat('A', 64)
       or auth_key <> repeat('B', 24)
+      or student_id <> '50000000-0000-4000-8000-000000000001'
   ) then
-    raise exception 'worker claim returned unexpected subscription routing data';
+    raise exception 'worker claim returned unexpected scoped routing data';
   end if;
 end;
 $$;
@@ -288,7 +293,7 @@ begin
 end;
 $$;
 
--- A revoked guardian relationship must cancel pending/retry work before claim.
+-- A revoked guardian relationship must cancel retry work before the next claim.
 update public.student_guardians
 set status = 'revoked',
     revoked_by = '60000000-0000-4000-8000-000000000001',
@@ -297,7 +302,11 @@ set status = 'revoked',
 where id = '70000000-0000-4000-8000-000000000099';
 
 set role service_role;
-select * from public.claim_guardian_push_deliveries(25);
+select * from public.claim_guardian_push_deliveries(
+  '10000000-0000-4000-8000-000000000001',
+  '90000000-0000-4000-8000-000000000099',
+  25
+);
 reset role;
 
 do $$
