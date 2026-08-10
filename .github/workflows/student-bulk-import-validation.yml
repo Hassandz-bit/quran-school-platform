@@ -11,6 +11,7 @@ on:
       - "client/src/pages/StudentsList.tsx"
       - "client/src/App.tsx"
       - "supabase/028_student_bulk_import.sql"
+      - "supabase/029_student_bulk_import_preview_authorization.sql"
       - "tests/student-bulk-import*"
       - "tests/run-student-bulk-import-migration-test.sh"
       - "package.json"
