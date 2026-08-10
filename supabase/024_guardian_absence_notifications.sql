@@ -92,6 +92,9 @@ comment on table public.guardian_notification_deliveries is
 create index guardian_notification_events_school_created_idx
   on public.guardian_notification_events (school_id, created_at desc);
 
+create index guardian_notification_events_session_created_idx
+  on public.guardian_notification_events (attendance_session_id, created_at);
+
 create index guardian_notification_deliveries_pending_idx
   on public.guardian_notification_deliveries (status, next_attempt_at, created_at)
   where status in ('pending', 'retry');
@@ -248,10 +251,12 @@ create trigger attendance_records_guardian_notification
 after insert or update of status on public.attendance_records
 for each row execute function public.queue_guardian_attendance_notification();
 
--- Service-only claim RPC. It first cancels work whose guardian link was revoked
--- or whose subscription no longer belongs to that guardian, then atomically
--- claims due work with SKIP LOCKED for safe concurrent workers.
+-- Service-only claim RPC. A worker may claim only the exact school/session that
+-- an authorized attendance manager asked it to dispatch. It first cancels work
+-- whose guardian link was revoked or whose subscription changed ownership.
 create or replace function public.claim_guardian_push_deliveries(
+  target_school_id uuid,
+  target_session_id uuid,
   target_limit integer default 25
 )
 returns table (
@@ -259,6 +264,7 @@ returns table (
   event_id uuid,
   subscription_id uuid,
   guardian_profile_id uuid,
+  student_id uuid,
   endpoint text,
   p256dh text,
   auth_key text,
@@ -275,10 +281,27 @@ security definer
 set search_path = ''
 as $$
 begin
+  if target_school_id is null or target_session_id is null then
+    raise exception using
+      errcode = '22023',
+      message = 'notification delivery scope required';
+  end if;
+
   if target_limit is null or target_limit < 1 or target_limit > 100 then
     raise exception using
       errcode = '22023',
       message = 'invalid delivery claim limit';
+  end if;
+
+  if not exists (
+    select 1
+    from public.attendance_sessions as session
+    where session.id = target_session_id
+      and session.school_id = target_school_id
+  ) then
+    raise exception using
+      errcode = '22023',
+      message = 'invalid delivery session scope';
   end if;
 
   update public.guardian_notification_deliveries as delivery
@@ -286,6 +309,8 @@ begin
       last_error_code = 'guardian_or_subscription_inactive'
   from public.guardian_notification_events as event
   where event.id = delivery.event_id
+    and event.school_id = target_school_id
+    and event.attendance_session_id = target_session_id
     and delivery.status in ('pending', 'retry')
     and (
       delivery.subscription_id is null
@@ -314,7 +339,9 @@ begin
     join public.guardian_push_subscriptions as subscription
       on subscription.id = delivery.subscription_id
      and subscription.guardian_profile_id = delivery.guardian_profile_id
-    where delivery.status in ('pending', 'retry')
+    where event.school_id = target_school_id
+      and event.attendance_session_id = target_session_id
+      and delivery.status in ('pending', 'retry')
       and delivery.next_attempt_at <= now()
       and delivery.attempts < 5
       and exists (
@@ -343,6 +370,7 @@ begin
     event.id,
     subscription.id,
     claimed.guardian_profile_id,
+    event.student_id,
     subscription.endpoint,
     subscription.p256dh,
     subscription.auth_key,
@@ -464,11 +492,11 @@ begin
 end;
 $$;
 
-revoke all on function public.claim_guardian_push_deliveries(integer)
+revoke all on function public.claim_guardian_push_deliveries(uuid, uuid, integer)
 from public;
-revoke execute on function public.claim_guardian_push_deliveries(integer)
+revoke execute on function public.claim_guardian_push_deliveries(uuid, uuid, integer)
 from anon, authenticated;
-grant execute on function public.claim_guardian_push_deliveries(integer)
+grant execute on function public.claim_guardian_push_deliveries(uuid, uuid, integer)
 to service_role;
 
 revoke all on function public.finish_guardian_push_delivery(uuid, text, text, integer)
