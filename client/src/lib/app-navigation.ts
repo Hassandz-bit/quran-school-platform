@@ -12,7 +12,7 @@ import {
   UserRoundCheck,
   Users,
 } from "lucide-react";
-import { translate, type AppLocale } from "./locale";
+import { translate, type AppLocale } from "./locale.ts";
 
 export type AppNavigationInput = {
   isSchoolAdmin: boolean;
