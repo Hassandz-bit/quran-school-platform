@@ -211,7 +211,9 @@ export default function AcademicReports() {
   }
 
   if (loadState === "error" || !access) {
-    return <ModuleError label="صلاحيات التقارير التعليمية" />;
+    return (
+      <ModuleError label="صلاحيات التقارير التعليمية" />
+    );
   }
 
   return (
@@ -381,12 +383,7 @@ export default function AcademicReports() {
               value={String(data.overview.attendanceCount)}
               icon={CalendarDays}
               tone="green"
-              hint={
-                "حاضر " +
-                data.overview.presentCount +
-                " · غائب " +
-                data.overview.absentCount
-              }
+              hint={"حاضر " + data.overview.presentCount + " · غائب " + data.overview.absentCount}
             />
             <StatCard
               label="متابعات الحفظ"
@@ -414,62 +411,28 @@ export default function AcademicReports() {
             className="gap-4"
           >
             <TabsList className="h-auto max-w-full justify-start gap-1 overflow-x-auto bg-white p-2 print:hidden">
-              <TabsTrigger value="overview" className="min-h-10 shrink-0">
-                نظرة عامة
-              </TabsTrigger>
+              <TabsTrigger value="overview" className="min-h-10 shrink-0">نظرة عامة</TabsTrigger>
               {data.attendance.state !== "hidden" && (
-                <TabsTrigger value="attendance" className="min-h-10 shrink-0">
-                  الحضور
-                </TabsTrigger>
+                <TabsTrigger value="attendance" className="min-h-10 shrink-0">الحضور</TabsTrigger>
               )}
               {data.memorization.state !== "hidden" && (
-                <TabsTrigger value="memorization" className="min-h-10 shrink-0">
-                  الحفظ والمراجعة
-                </TabsTrigger>
+                <TabsTrigger value="memorization" className="min-h-10 shrink-0">الحفظ والمراجعة</TabsTrigger>
               )}
               {access.memorization.state === "ready" && (
-                <TabsTrigger value="analytics" className="min-h-10 shrink-0">
-                  تحليلات المتابعة
-                </TabsTrigger>
+                <TabsTrigger value="analytics" className="min-h-10 shrink-0">تحليلات المتابعة</TabsTrigger>
               )}
-              <TabsTrigger value="classes" className="min-h-10 shrink-0">
-                الحلقات
-              </TabsTrigger>
+              <TabsTrigger value="classes" className="min-h-10 shrink-0">الحلقات</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
               <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                  label="غائب"
-                  value={String(data.overview.absentCount)}
-                  icon={Users}
-                  tone="red"
-                />
-                <StatCard
-                  label="متأخر"
-                  value={String(data.overview.lateCount)}
-                  icon={CalendarDays}
-                  tone="amber"
-                />
-                <StatCard
-                  label="بعذر"
-                  value={String(data.overview.excusedCount)}
-                  icon={CalendarDays}
-                  tone="blue"
-                />
-                <StatCard
-                  label="الحلقات الظاهرة"
-                  value={String(data.classesSummary.length)}
-                  icon={GraduationCap}
-                  tone="green"
-                />
+                <StatCard label="غائب" value={String(data.overview.absentCount)} icon={Users} tone="red" />
+                <StatCard label="متأخر" value={String(data.overview.lateCount)} icon={CalendarDays} tone="amber" />
+                <StatCard label="بعذر" value={String(data.overview.excusedCount)} icon={CalendarDays} tone="blue" />
+                <StatCard label="الحلقات الظاهرة" value={String(data.classesSummary.length)} icon={GraduationCap} tone="green" />
               </section>
-              {data.attendance.state === "error" && (
-                <ModuleError label="تقرير الحضور" />
-              )}
-              {data.memorization.state === "error" && (
-                <ModuleError label="تقرير الحفظ والمراجعة" />
-              )}
+              {data.attendance.state === "error" && <ModuleError label="تقرير الحضور" />}
+              {data.memorization.state === "error" && <ModuleError label="تقرير الحفظ والمراجعة" />}
               {data.overview.attendanceCount === 0 &&
                 data.overview.memorizationCount === 0 && (
                   <EmptyState
@@ -489,10 +452,7 @@ export default function AcademicReports() {
                   <AttendanceDailyTable data={data} />
                 </div>
               ) : (
-                <EmptyState
-                  title="لا توجد سجلات حضور"
-                  description="لا توجد سجلات ضمن الفلاتر والفترة المحددة."
-                />
+                <EmptyState title="لا توجد سجلات حضور" description="لا توجد سجلات ضمن الفلاتر والفترة المحددة." />
               )}
             </TabsContent>
 
@@ -503,10 +463,7 @@ export default function AcademicReports() {
                 data.memorization.data.records.length > 0 ? (
                 <MemorizationTable data={data} />
               ) : (
-                <EmptyState
-                  title="لا توجد متابعات حفظ"
-                  description="لا توجد متابعات ضمن الفلاتر والفترة المحددة."
-                />
+                <EmptyState title="لا توجد متابعات حفظ" description="لا توجد متابعات ضمن الفلاتر والفترة المحددة." />
               )}
             </TabsContent>
 
@@ -539,73 +496,39 @@ function AttendanceStudentTable({ data }: { data: AcademicReportsData }) {
   if (data.attendance.state !== "ready") return null;
   return (
     <section className="rounded-2xl border border-[#E2EAE4] bg-white p-4">
-      <SectionHeader
-        title="ملخص حضور الطلاب"
-        description="عدادات مباشرة دون احتساب نسبة حضور جديدة."
-      />
+      <SectionHeader title="ملخص حضور الطلاب" description="عدادات مباشرة دون احتساب نسبة حضور جديدة." />
       <div className="grid gap-3 md:hidden">
         {data.attendance.data.students.map(row => (
-          <article
-            key={row.studentId}
-            className="rounded-xl border border-[#E5EDE7] p-4 text-sm"
-          >
+          <article key={row.studentId} className="rounded-xl border border-[#E5EDE7] p-4 text-sm">
             <StudentLink studentId={row.studentId} studentName={row.studentName} />
             <p className="mt-1 text-xs text-[#718377]">{row.className}</p>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-              <span>
-                حاضر <b>{row.present}</b>
-              </span>
-              <span>
-                غائب <b>{row.absent}</b>
-              </span>
-              <span>
-                متأخر <b>{row.late}</b>
-              </span>
-              <span>
-                بعذر <b>{row.excused}</b>
-              </span>
-              <span>
-                الإجمالي <b>{row.total}</b>
-              </span>
-              <span>
-                الأخير <b>{formatDate(row.latestDate)}</b>
-              </span>
+              <span>حاضر <b>{row.present}</b></span>
+              <span>غائب <b>{row.absent}</b></span>
+              <span>متأخر <b>{row.late}</b></span>
+              <span>بعذر <b>{row.excused}</b></span>
+              <span>الإجمالي <b>{row.total}</b></span>
+              <span>الأخير <b>{formatDate(row.latestDate)}</b></span>
             </div>
           </article>
         ))}
       </div>
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[760px] text-right text-sm">
-          <thead className="bg-[#F5F8F5] text-xs text-[#607368]">
-            <tr>
-              <th className="p-3">الطالب</th>
-              <th className="p-3">الحلقة</th>
-              <th className="p-3">حاضر</th>
-              <th className="p-3">غائب</th>
-              <th className="p-3">متأخر</th>
-              <th className="p-3">بعذر</th>
-              <th className="p-3">الإجمالي</th>
-              <th className="p-3">آخر سجل</th>
-            </tr>
-          </thead>
+          <thead className="bg-[#F5F8F5] text-xs text-[#607368]"><tr>
+            <th className="p-3">الطالب</th><th className="p-3">الحلقة</th>
+            <th className="p-3">حاضر</th><th className="p-3">غائب</th>
+            <th className="p-3">متأخر</th><th className="p-3">بعذر</th>
+            <th className="p-3">الإجمالي</th><th className="p-3">آخر سجل</th>
+          </tr></thead>
           <tbody className="divide-y divide-[#EDF2EE]">
-            {data.attendance.data.students.map(row => (
-              <tr key={row.studentId}>
-                <td className="p-3">
-                  <StudentLink
-                    studentId={row.studentId}
-                    studentName={row.studentName}
-                  />
-                </td>
-                <td className="p-3">{row.className}</td>
-                <td className="p-3">{row.present}</td>
-                <td className="p-3">{row.absent}</td>
-                <td className="p-3">{row.late}</td>
-                <td className="p-3">{row.excused}</td>
-                <td className="p-3">{row.total}</td>
-                <td className="p-3">{formatDate(row.latestDate)}</td>
-              </tr>
-            ))}
+            {data.attendance.data.students.map(row => <tr key={row.studentId}>
+              <td className="p-3"><StudentLink studentId={row.studentId} studentName={row.studentName} /></td>
+              <td className="p-3">{row.className}</td><td className="p-3">{row.present}</td>
+              <td className="p-3">{row.absent}</td><td className="p-3">{row.late}</td>
+              <td className="p-3">{row.excused}</td><td className="p-3">{row.total}</td>
+              <td className="p-3">{formatDate(row.latestDate)}</td>
+            </tr>)}
           </tbody>
         </table>
       </div>
@@ -617,53 +540,17 @@ function AttendanceDailyTable({ data }: { data: AcademicReportsData }) {
   if (data.attendance.state !== "ready") return null;
   return (
     <section className="rounded-2xl border border-[#E2EAE4] bg-white p-4">
-      <SectionHeader
-        title="السجلات اليومية"
-        description="سجلات الحضور حسب التاريخ والفلاتر الحالية."
-      />
+      <SectionHeader title="السجلات اليومية" description="سجلات الحضور حسب التاريخ والفلاتر الحالية." />
       <div className="grid gap-2 md:hidden">
-        {data.attendance.data.records.map(row => (
-          <article
-            key={row.id}
-            className="flex items-center justify-between gap-3 rounded-xl border p-3 text-sm"
-          >
-            <div>
-              <StudentLink studentId={row.studentId} studentName={row.studentName} />
-              <p className="text-xs text-[#718377]">
-                {row.className} · {formatDate(row.date)}
-              </p>
-            </div>
-            <b>{getAttendanceStatusLabel(row.status)}</b>
-          </article>
-        ))}
+        {data.attendance.data.records.map(row => <article key={row.id} className="flex items-center justify-between gap-3 rounded-xl border p-3 text-sm">
+          <div><StudentLink studentId={row.studentId} studentName={row.studentName} /><p className="text-xs text-[#718377]">{row.className} · {formatDate(row.date)}</p></div>
+          <b>{getAttendanceStatusLabel(row.status)}</b>
+        </article>)}
       </div>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full text-right text-sm">
-          <thead className="bg-[#F5F8F5] text-xs text-[#607368]">
-            <tr>
-              <th className="p-3">التاريخ</th>
-              <th className="p-3">الطالب</th>
-              <th className="p-3">الحالة</th>
-              <th className="p-3">الحلقة</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {data.attendance.data.records.map(row => (
-              <tr key={row.id}>
-                <td className="p-3">{formatDate(row.date)}</td>
-                <td className="p-3">
-                  <StudentLink
-                    studentId={row.studentId}
-                    studentName={row.studentName}
-                  />
-                </td>
-                <td className="p-3">{getAttendanceStatusLabel(row.status)}</td>
-                <td className="p-3">{row.className}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <div className="hidden overflow-x-auto md:block"><table className="w-full text-right text-sm">
+        <thead className="bg-[#F5F8F5] text-xs text-[#607368]"><tr><th className="p-3">التاريخ</th><th className="p-3">الطالب</th><th className="p-3">الحالة</th><th className="p-3">الحلقة</th></tr></thead>
+        <tbody className="divide-y">{data.attendance.data.records.map(row => <tr key={row.id}><td className="p-3">{formatDate(row.date)}</td><td className="p-3"><StudentLink studentId={row.studentId} studentName={row.studentName} /></td><td className="p-3">{getAttendanceStatusLabel(row.status)}</td><td className="p-3">{row.className}</td></tr>)}</tbody>
+      </table></div>
     </section>
   );
 }
@@ -672,134 +559,43 @@ function MemorizationTable({ data }: { data: AcademicReportsData }) {
   if (data.memorization.state !== "ready") return null;
   return (
     <section className="rounded-2xl border border-[#E2EAE4] bg-white p-4">
-      <SectionHeader
-        title="ملخص الحفظ والمراجعة"
-        description="آخر جلسة وقيم التقييم الموجودة دون متوسط مركب."
-      />
+      <SectionHeader title="ملخص الحفظ والمراجعة" description="آخر جلسة وقيم التقييم الموجودة دون متوسط مركب." />
       <div className="grid gap-3 md:hidden">
-        {data.memorization.data.students.map(row => (
-          <article key={row.studentId} className="rounded-xl border p-4 text-sm">
-            <StudentLink studentId={row.studentId} studentName={row.studentName} />
-            <p className="mt-1 text-xs text-[#718377]">{row.className}</p>
-            <p className="mt-3">
-              حفظ: <b>{row.memorizationCount}</b> · مراجعة: <b>{row.reviewCount}</b>
-            </p>
-            <p className="mt-1 text-xs">
-              آخر متابعة: {formatDate(row.latestDate)} ·{" "}
-              {row.latestSurahNumber
-                ? getSurahLabel(row.latestSurahNumber)
-                : "لا توجد بيانات"}{" "}
-              {row.latestAyahStart
-                ? "من " + row.latestAyahStart + " إلى " + row.latestAyahEnd
-                : ""}
-            </p>
-            <p className="mt-1 text-xs">
-              التقييم الأخير: {row.latestRating ?? "لا توجد بيانات"}
-            </p>
-          </article>
-        ))}
+        {data.memorization.data.students.map(row => <article key={row.studentId} className="rounded-xl border p-4 text-sm">
+          <StudentLink studentId={row.studentId} studentName={row.studentName} />
+          <p className="mt-1 text-xs text-[#718377]">{row.className}</p>
+          <p className="mt-3">حفظ: <b>{row.memorizationCount}</b> · مراجعة: <b>{row.reviewCount}</b></p>
+          <p className="mt-1 text-xs">آخر متابعة: {formatDate(row.latestDate)} · {row.latestSurahNumber ? getSurahLabel(row.latestSurahNumber) : "لا توجد بيانات"} {row.latestAyahStart ? "من " + row.latestAyahStart + " إلى " + row.latestAyahEnd : ""}</p>
+          <p className="mt-1 text-xs">التقييم الأخير: {row.latestRating ?? "لا توجد بيانات"}</p>
+        </article>)}
       </div>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[800px] text-right text-sm">
-          <thead className="bg-[#F5F8F5] text-xs text-[#607368]">
-            <tr>
-              <th className="p-3">الطالب</th>
-              <th className="p-3">الحلقة</th>
-              <th className="p-3">الحفظ</th>
-              <th className="p-3">المراجعة</th>
-              <th className="p-3">آخر متابعة</th>
-              <th className="p-3">آخر جلسة</th>
-              <th className="p-3">السورة والآيات</th>
-              <th className="p-3">التقييم</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {data.memorization.data.students.map(row => (
-              <tr key={row.studentId}>
-                <td className="p-3">
-                  <StudentLink
-                    studentId={row.studentId}
-                    studentName={row.studentName}
-                  />
-                </td>
-                <td className="p-3">{row.className}</td>
-                <td className="p-3">{row.memorizationCount}</td>
-                <td className="p-3">{row.reviewCount}</td>
-                <td className="p-3">{formatDate(row.latestDate)}</td>
-                <td className="p-3">
-                  {row.latestSessionType
-                    ? getMemorizationSessionTypeLabel(row.latestSessionType)
-                    : "لا توجد بيانات"}
-                </td>
-                <td className="p-3">
-                  {row.latestSurahNumber
-                    ? getSurahLabel(row.latestSurahNumber) +
-                      " · " +
-                      row.latestAyahStart +
-                      "–" +
-                      row.latestAyahEnd
-                    : "لا توجد بيانات"}
-                </td>
-                <td className="p-3">{row.latestRating ?? "لا توجد بيانات"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[800px] text-right text-sm">
+        <thead className="bg-[#F5F8F5] text-xs text-[#607368]"><tr><th className="p-3">الطالب</th><th className="p-3">الحلقة</th><th className="p-3">الحفظ</th><th className="p-3">المراجعة</th><th className="p-3">آخر متابعة</th><th className="p-3">آخر جلسة</th><th className="p-3">السورة والآيات</th><th className="p-3">التقييم</th></tr></thead>
+        <tbody className="divide-y">{data.memorization.data.students.map(row => <tr key={row.studentId}><td className="p-3"><StudentLink studentId={row.studentId} studentName={row.studentName} /></td><td className="p-3">{row.className}</td><td className="p-3">{row.memorizationCount}</td><td className="p-3">{row.reviewCount}</td><td className="p-3">{formatDate(row.latestDate)}</td><td className="p-3">{row.latestSessionType ? getMemorizationSessionTypeLabel(row.latestSessionType) : "لا توجد بيانات"}</td><td className="p-3">{row.latestSurahNumber ? getSurahLabel(row.latestSurahNumber) + " · " + row.latestAyahStart + "–" + row.latestAyahEnd : "لا توجد بيانات"}</td><td className="p-3">{row.latestRating ?? "لا توجد بيانات"}</td></tr>)}</tbody>
+      </table></div>
     </section>
   );
 }
 
 function ClassesSummary({ data }: { data: AcademicReportsData }) {
   if (data.classesSummary.length === 0) {
-    return (
-      <EmptyState
-        title="لا توجد حلقات متاحة"
-        description="لا توجد حلقات ضمن النطاق والفلاتر الحالية."
-      />
-    );
+    return <EmptyState title="لا توجد حلقات متاحة" description="لا توجد حلقات ضمن النطاق والفلاتر الحالية." />;
   }
   return (
     <section>
-      <SectionHeader
-        title="ملخص الحلقات"
-        description="تجميع مشتق من بيانات الفترة الحالية فقط."
-      />
+      <SectionHeader title="ملخص الحلقات" description="تجميع مشتق من بيانات الفترة الحالية فقط." />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {data.classesSummary.map(row => (
-          <article
-            key={row.classId}
-            className="rounded-2xl border border-[#E2EAE4] bg-white p-4"
-          >
-            <h3 className="font-bold">{row.className}</h3>
-            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <dt className="text-[#718377]">الطلاب</dt>
-                <dd className="font-bold">{row.studentCount}</dd>
-              </div>
-              <div>
-                <dt className="text-[#718377]">سجلات الحضور</dt>
-                <dd className="font-bold">{row.attendanceCount}</dd>
-              </div>
-              <div>
-                <dt className="text-[#718377]">الغياب</dt>
-                <dd className="font-bold">{row.absentCount}</dd>
-              </div>
-              <div>
-                <dt className="text-[#718377]">التأخر</dt>
-                <dd className="font-bold">{row.lateCount}</dd>
-              </div>
-              <div>
-                <dt className="text-[#718377]">متابعات الحفظ</dt>
-                <dd className="font-bold">{row.memorizationCount}</dd>
-              </div>
-              <div>
-                <dt className="text-[#718377]">آخر نشاط</dt>
-                <dd className="font-bold">{formatDate(row.latestActivity)}</dd>
-              </div>
-            </dl>
-          </article>
-        ))}
+        {data.classesSummary.map(row => <article key={row.classId} className="rounded-2xl border border-[#E2EAE4] bg-white p-4">
+          <h3 className="font-bold">{row.className}</h3>
+          <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div><dt className="text-[#718377]">الطلاب</dt><dd className="font-bold">{row.studentCount}</dd></div>
+            <div><dt className="text-[#718377]">سجلات الحضور</dt><dd className="font-bold">{row.attendanceCount}</dd></div>
+            <div><dt className="text-[#718377]">الغياب</dt><dd className="font-bold">{row.absentCount}</dd></div>
+            <div><dt className="text-[#718377]">التأخر</dt><dd className="font-bold">{row.lateCount}</dd></div>
+            <div><dt className="text-[#718377]">متابعات الحفظ</dt><dd className="font-bold">{row.memorizationCount}</dd></div>
+            <div><dt className="text-[#718377]">آخر نشاط</dt><dd className="font-bold">{formatDate(row.latestActivity)}</dd></div>
+          </dl>
+        </article>)}
       </div>
     </section>
   );
