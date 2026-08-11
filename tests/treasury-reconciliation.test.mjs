@@ -41,8 +41,11 @@ test("shows business, linked, unmatched, adjustments and account balances", () =
   assert.match(page, /dir="rtl"/);
 });
 
-test("registers the main treasury workspace in finance navigation and routing", () => {
+test("registers treasury and reconciliation in finance navigation and routing", () => {
   assert.match(app, /lazy\(\(\) => import\("\.\/pages\/Treasury"\)\)/);
+  assert.match(app, /lazy\(\(\) => import\("\.\/pages\/TreasuryReconciliation"\)\)/);
   assert.match(app, /path="\/finance\/treasury"/);
-  assert.match(nav, /"الخزينة", "\/finance\/treasury"/);
+  assert.match(app, /path="\/finance\/treasury\/reconciliation"/);
+  assert.match(nav, /label:\s*"الخزينة"[\s\S]*?path:\s*"\/finance\/treasury"/);
+  assert.match(nav, /label:\s*"المطابقة"[\s\S]*?path:\s*"\/finance\/treasury\/reconciliation"/);
 });

@@ -1,12 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchFinanceModuleAccess, type FinanceModuleAccess } from "@/lib/finance-navigation";
+import {
+  fetchFinanceModuleAccess,
+  type FinanceModuleAccess,
+} from "@/lib/finance-navigation";
 
-type Props = { currentPath: string; className?: string };
-const emptyAccess: FinanceModuleAccess = { canViewFinance: false, canManageFinance: false, canManageExpenses: false };
+type Props = {
+  currentPath: string;
+  className?: string;
+};
 
-export default function FinanceNavigation({ currentPath, className = "" }: Props) {
+const emptyAccess: FinanceModuleAccess = {
+  canViewFinance: false,
+  canManageFinance: false,
+  canManageExpenses: false,
+};
+
+export default function FinanceNavigation({
+  currentPath,
+  className = "",
+}: Props) {
   const [access, setAccess] = useState<FinanceModuleAccess>(emptyAccess);
   const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
@@ -14,33 +28,122 @@ export default function FinanceNavigation({ currentPath, className = "" }: Props
 
   useEffect(() => {
     let active = true;
-    if (!school?.id) { setLoading(false); return; }
+    if (!school?.id) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     void fetchFinanceModuleAccess(school.id)
-      .then(result => { if (active) setAccess(result); })
-      .catch(() => { if (active) setAccess(emptyAccess); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .then(result => {
+        if (active) setAccess(result);
+      })
+      .catch(() => {
+        if (active) setAccess(emptyAccess);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [school?.id]);
 
   const links = useMemo(() => {
-    const any = access.canViewFinance || access.canManageExpenses;
+    const hasAnyAccess =
+      access.canViewFinance || access.canManageExpenses;
+
     return [
-      ["الملخص", "/finance", any],
-      ["خطط الرسوم", "/finance/fee-plans", access.canManageFinance],
-      ["الاستحقاقات", "/finance/charges", access.canViewFinance],
-      ["الدفعات", "/finance/payments", access.canViewFinance],
-      ["الرواتب", "/finance/payroll", access.canViewFinance],
-      ["سجل الأجور", "/finance/payroll/history", access.canViewFinance],
-      ["المصروفات", "/finance/expenses", access.canManageExpenses],
-      ["الخزينة", "/finance/treasury", access.canViewFinance],
-      ["التقارير", "/finance/reports", any],
-    ].filter(([, , visible]) => visible) as Array<[string, string, boolean]>;
+      { label: "الملخص", path: "/finance", visible: hasAnyAccess },
+      {
+        label: "خطط الرسوم",
+        path: "/finance/fee-plans",
+        visible: access.canManageFinance,
+      },
+      {
+        label: "الاستحقاقات",
+        path: "/finance/charges",
+        visible: access.canViewFinance,
+      },
+      {
+        label: "الدفعات",
+        path: "/finance/payments",
+        visible: access.canViewFinance,
+      },
+      {
+        label: "الرواتب",
+        path: "/finance/payroll",
+        visible: access.canViewFinance,
+      },
+      {
+        label: "سجل الأجور",
+        path: "/finance/payroll/history",
+        visible: access.canViewFinance,
+      },
+      {
+        label: "المصروفات",
+        path: "/finance/expenses",
+        visible: access.canManageExpenses,
+      },
+      {
+        label: "الخزينة",
+        path: "/finance/treasury",
+        visible: access.canViewFinance,
+      },
+      {
+        label: "المطابقة",
+        path: "/finance/treasury/reconciliation",
+        visible: access.canViewFinance,
+      },
+      {
+        label: "التقارير",
+        path: "/finance/reports",
+        visible: hasAnyAccess,
+      },
+    ].filter(link => link.visible);
   }, [access]);
 
-  if (loading) return <div role="status" aria-label="جارٍ تحميل التنقل المالي" className={`flex gap-2 overflow-hidden px-4 py-3 print:hidden md:px-6 ${className}`}>{[0,1,2,3].map(i => <span key={i} className="h-8 w-24 shrink-0 animate-pulse rounded-full bg-gray-100" />)}</div>;
+  if (loading) {
+    return (
+      <div
+        role="status"
+        aria-label="جارٍ تحميل التنقل المالي"
+        className={`flex gap-2 overflow-hidden px-4 py-3 print:hidden md:px-6 ${className}`}
+      >
+        {[0, 1, 2, 3].map(item => (
+          <span
+            key={item}
+            className="h-8 w-24 shrink-0 animate-pulse rounded-full bg-gray-100"
+          />
+        ))}
+      </div>
+    );
+  }
 
-  return <nav aria-label="التنقل المالي" className={`flex gap-2 overflow-x-auto border-b border-gray-100 bg-white px-4 py-3 print:hidden md:px-6 ${className}`}>
-    {links.map(([label, path]) => <a key={path} href={path} onClick={event => { event.preventDefault(); setLocation(path); }} aria-current={currentPath === path ? "page" : undefined} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${currentPath === path ? "bg-[#0B4738] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{label}</a>)}
-  </nav>;
+  return (
+    <nav
+      aria-label="التنقل المالي"
+      className={`flex gap-2 overflow-x-auto border-b border-gray-100 bg-white px-4 py-3 print:hidden md:px-6 ${className}`}
+    >
+      {links.map(link => (
+        <a
+          key={link.path}
+          href={link.path}
+          onClick={event => {
+            event.preventDefault();
+            setLocation(link.path);
+          }}
+          aria-current={currentPath === link.path ? "page" : undefined}
+          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+            currentPath === link.path
+              ? "bg-[#0B4738] text-white"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
+        >
+          {link.label}
+        </a>
+      ))}
+    </nav>
+  );
 }
