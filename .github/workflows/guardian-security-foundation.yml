@@ -7,8 +7,6 @@ on:
       - "supabase/seed.sql"
       - "tests/guardian-security-foundation*"
       - "tests/run-guardian-security-foundation-migration-test.sh"
-      - "package.json"
-      - "pnpm-lock.yaml"
       - ".github/workflows/guardian-security-foundation.yml"
 
 permissions:

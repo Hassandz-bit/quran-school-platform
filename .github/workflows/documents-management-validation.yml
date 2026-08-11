@@ -20,9 +20,7 @@ on:
       - "tests/documents-navigation.test.mjs"
       - "tests/documents-subject-scope-assertions.sql"
       - "tests/run-documents-management-migration-test.sh"
-      - "package.json"
       - ".github/workflows/documents-management-validation.yml"
-      - ".github/workflows/launch-readiness-validation.yml"
 
 permissions:
   contents: read

@@ -8,6 +8,20 @@ on:
     branches:
       - main
       - develop/v2
+    paths:
+      - "supabase/015_teacher_invitations.sql"
+      - "supabase/016_memorization_class_teachers_rpc.sql"
+      - "supabase/config.toml"
+      - "supabase/functions/invite-teacher/**"
+      - "client/src/pages/Members.tsx"
+      - "client/src/pages/AcceptInvite.tsx"
+      - "client/src/lib/teacher-invitations.ts"
+      - "client/src/lib/invite-session.ts"
+      - "tests/teacher-invitations*"
+      - "tests/memorization-teacher-rpc*"
+      - "tests/run-teacher-invitations-migration-test.sh"
+      - "tests/run-memorization-teacher-rpc-migration-test.sh"
+      - ".github/workflows/pr38-teacher-invitations.yml"
   workflow_dispatch:
 
 permissions:

@@ -14,7 +14,6 @@ on:
       - "client/src/pages/Attendance.tsx"
       - "tests/guardian-absence-notifications*"
       - "tests/run-guardian-absence-notifications-migration-test.sh"
-      - "package.json"
       - ".github/workflows/guardian-absence-notifications-validation.yml"
 
 permissions:

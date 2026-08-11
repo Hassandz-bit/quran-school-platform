@@ -19,7 +19,6 @@ on:
       - "supabase/config.toml"
       - "tests/student-bulk-import-*"
       - "tests/run-student-bulk-import-migration-test.sh"
-      - "package.json"
       - ".github/workflows/student-bulk-import-validation.yml"
 
 permissions:

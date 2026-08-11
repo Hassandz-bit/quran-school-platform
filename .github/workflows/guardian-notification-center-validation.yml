@@ -16,7 +16,6 @@ on:
       - "client/src/App.tsx"
       - "tests/guardian-notification-center*"
       - ".github/workflows/guardian-notification-center-validation.yml"
-      - ".github/workflows/launch-readiness-validation.yml"
 
 permissions:
   contents: read

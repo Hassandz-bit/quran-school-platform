@@ -8,7 +8,6 @@ on:
       - "client/src/pages/ParentStudent.tsx"
       - "tests/guardian-parent-finance*"
       - "tests/run-guardian-parent-finance-migration-test.sh"
-      - "package.json"
       - ".github/workflows/guardian-parent-finance-validation.yml"
 
 permissions:
@@ -28,7 +27,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:guardian-parent-finance:migration
       - run: pnpm test:guardian-parent-finance:migration
       - run: pnpm test
       - run: pnpm check

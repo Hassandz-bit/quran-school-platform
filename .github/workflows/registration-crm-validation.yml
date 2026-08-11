@@ -19,9 +19,7 @@ on:
       - "tests/registration-waitlist*"
       - "tests/run-registration-crm-migration-test.sh"
       - "tests/branch-manager-routing.test.mjs"
-      - "package.json"
       - ".github/workflows/registration-crm-validation.yml"
-      - ".github/workflows/launch-readiness-validation.yml"
 
 permissions:
   contents: read
