@@ -1,0 +1,72 @@
+name: Documents Management Validation
+
+on:
+  pull_request:
+    branches:
+      - develop/v2
+    paths:
+      - "client/src/components/DocumentsRoute.tsx"
+      - "client/src/components/AppShell.tsx"
+      - "client/src/lib/documents.ts"
+      - "client/src/lib/app-navigation.ts"
+      - "client/src/lib/locale.ts"
+      - "client/src/pages/Documents.tsx"
+      - "client/src/App.tsx"
+      - "supabase/035_documents_management_foundation.sql"
+      - "supabase/036_documents_storage_integrity.sql"
+      - "supabase/037_documents_subject_scope_sync.sql"
+      - "supabase/038_documents_storage_policy_helpers.sql"
+      - "tests/documents-management*"
+      - "tests/documents-navigation.test.mjs"
+      - "tests/documents-subject-scope-assertions.sql"
+      - "tests/run-documents-management-migration-test.sh"
+      - "package.json"
+      - ".github/workflows/documents-management-validation.yml"
+      - ".github/workflows/launch-readiness-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documents-management-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      - name: Verify Docker
+        run: docker info
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Activate pnpm 10.4.1
+        run: corepack prepare pnpm@10.4.1 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate document security and navigation contracts
+        run: node --test tests/documents-management.test.mjs tests/documents-navigation.test.mjs
+
+      - name: Validate document migrations and Storage RLS
+        run: pnpm test:documents:migration
+
+      - name: Validate TypeScript
+        run: pnpm check
+
+      - name: Validate whitespace
+        run: git diff --check

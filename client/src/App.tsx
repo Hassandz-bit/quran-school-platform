@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import StaffRoute from "./components/StaffRoute";
 import StudentsRoute from "./components/StudentsRoute";
 import RegistrationRoute from "./components/RegistrationRoute";
+import DocumentsRoute from "./components/DocumentsRoute";
 import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
@@ -49,6 +50,7 @@ const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
 const Guardians = lazy(() => import("./pages/Guardians"));
 const Registrations = lazy(() => import("./pages/Registrations"));
+const Documents = lazy(() => import("./pages/Documents"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Student360 = lazy(() => import("./pages/Student360"));
@@ -70,6 +72,7 @@ const ARABIC_MODULE_FALLBACKS: Partial<Record<TranslationKey, string>> = {
   "fallback.memorization": "جارٍ تحميل وحدة متابعة الحفظ...",
   "fallback.members": "جارٍ تحميل دليل أعضاء المدرسة...",
   "fallback.registrations": "جارٍ تحميل متابعة التسجيل...",
+  "fallback.documents": "جارٍ تحميل مركز الوثائق...",
 };
 
 function ModuleFallback({ labelKey }: { labelKey: TranslationKey }) {
@@ -116,6 +119,10 @@ function MembersPageFallback() {
 
 function RegistrationPageFallback() {
   return <ModuleFallback labelKey="fallback.registrations" />;
+}
+
+function DocumentsPageFallback() {
+  return <ModuleFallback labelKey="fallback.documents" />;
 }
 
 function AcceptInvitePageFallback() {
@@ -260,6 +267,15 @@ function Router() {
               </Suspense>
             </Shell>
           </RegistrationRoute>
+        </Route>
+        <Route path="/documents">
+          <DocumentsRoute>
+            <Shell>
+              <Suspense fallback={<DocumentsPageFallback />}>
+                <Documents />
+              </Suspense>
+            </Shell>
+          </DocumentsRoute>
         </Route>
         <Route path="/guardians">
           <StaffRoute>
