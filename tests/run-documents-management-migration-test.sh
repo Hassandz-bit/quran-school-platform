@@ -58,7 +58,7 @@ for file in \
   supabase/031_student_bulk_import_rollback_fk_order.sql supabase/032_student_bulk_import_start_date_validation.sql \
   supabase/033_registration_crm_foundation.sql supabase/034_registration_crm_hardening.sql \
   supabase/035_documents_management_foundation.sql supabase/036_documents_storage_integrity.sql \
-  supabase/037_documents_subject_scope_sync.sql; do
+  supabase/037_documents_subject_scope_sync.sql supabase/038_documents_storage_policy_helpers.sql; do
   run_sql "$file"
 done
 run_sql tests/documents-management-assertions.sql
