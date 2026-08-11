@@ -100,6 +100,9 @@ jobs:
       - name: Validate registration CRM migration
         run: pnpm test:registration-crm:migration
 
+      - name: Validate document management migrations
+        run: pnpm test:documents:migration
+
       - name: Validate teacher invitation Edge Function
         run: pnpm test:teacher-invitations:function
 
