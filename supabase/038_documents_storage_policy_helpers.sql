@@ -19,6 +19,7 @@ as $$
       and document.subject_type = (storage.foldername(target_object_name))[2]
       and coalesce(document.student_id, document.registration_lead_id)::text = (storage.foldername(target_object_name))[3]
       and document.id::text = (storage.foldername(target_object_name))[4]
+      and document.object_path = target_object_name
       and (
         public.has_branch_permission(document.school_id, document.branch_id, 'documents.view')
         or public.has_branch_permission(document.school_id, document.branch_id, 'documents.manage')
