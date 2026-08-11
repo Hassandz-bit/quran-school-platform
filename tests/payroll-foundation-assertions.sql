@@ -93,6 +93,9 @@ select public.generate_payroll_period(
   null
 ) as branch_period_retry \gset
 
+-- Raw payroll tables are intentionally closed to authenticated browser roles.
+-- Internal state assertions temporarily return to the PostgreSQL test owner.
+reset role;
 do $$
 declare
   count_entries integer;
@@ -106,6 +109,7 @@ begin
   end if;
 end;
 $$;
+set role authenticated;
 
 do $$
 begin
@@ -134,11 +138,13 @@ begin
 end;
 $$;
 
+reset role;
 select id as branch_entry_id
 from public.payroll_entries
 where period_id = current_setting('test.branch_period_id')::uuid
 limit 1 \gset
 select set_config('test.branch_entry_id', :'branch_entry_id', false);
+set role authenticated;
 
 select public.adjust_payroll_entry(
   '10000000-0000-4000-8000-000000000001',
@@ -148,6 +154,7 @@ select public.adjust_payroll_entry(
   20
 );
 
+reset role;
 do $$
 declare
   net numeric;
@@ -157,6 +164,7 @@ begin
   if net <> 1030 then raise exception 'expected deterministic net 1030, got %', net; end if;
 end;
 $$;
+set role authenticated;
 
 select public.approve_payroll_period(
   '10000000-0000-4000-8000-000000000001',
@@ -191,17 +199,25 @@ select set_config('test.payment_id', :'payment_id', false);
 do $$
 declare
   paid numeric;
-  entry_status text;
-  entry_id uuid := current_setting('test.branch_entry_id')::uuid;
 begin
   select coalesce(sum(amount), 0) into paid
   from public.list_payroll_report_payments('10000000-0000-4000-8000-000000000001')
   where status = 'completed' and branch_id = '20000000-0000-4000-8000-000000000001';
   if paid <> 1030 then raise exception 'report expected one completed payroll outflow of 1030, got %', paid; end if;
+end;
+$$;
+
+reset role;
+do $$
+declare
+  entry_status text;
+  entry_id uuid := current_setting('test.branch_entry_id')::uuid;
+begin
   select status into entry_status from public.payroll_entries where id = entry_id;
   if entry_status <> 'paid' then raise exception 'entry was not marked paid'; end if;
 end;
 $$;
+set role authenticated;
 
 do $$
 declare
@@ -228,17 +244,25 @@ select public.reverse_payroll_payment(
 do $$
 declare
   paid numeric;
-  entry_status text;
-  entry_id uuid := current_setting('test.branch_entry_id')::uuid;
 begin
   select coalesce(sum(amount), 0) into paid
   from public.list_payroll_report_payments('10000000-0000-4000-8000-000000000001')
   where status = 'completed' and branch_id = '20000000-0000-4000-8000-000000000001';
   if paid <> 0 then raise exception 'reversed payroll remained in completed outflow'; end if;
+end;
+$$;
+
+reset role;
+do $$
+declare
+  entry_status text;
+  entry_id uuid := current_setting('test.branch_entry_id')::uuid;
+begin
   select status into entry_status from public.payroll_entries where id = entry_id;
   if entry_status <> 'approved' then raise exception 'reversed payroll did not reopen entry'; end if;
 end;
 $$;
+set role authenticated;
 
 select public.record_payroll_payment(
   '10000000-0000-4000-8000-000000000001',
@@ -280,10 +304,12 @@ select public.generate_payroll_period(
   null
 ) as school_period_id \gset
 
+reset role;
 select id as school_entry_id
 from public.payroll_entries
 where period_id = :'school_period_id'::uuid
 limit 1 \gset
+set role authenticated;
 
 select public.approve_payroll_period(
   '10000000-0000-4000-8000-000000000001', :'school_period_id'
