@@ -94,6 +94,9 @@ jobs:
       - name: Validate official receipts migration
         run: pnpm test:official-receipts:migration
 
+      - name: Validate student bulk import migrations
+        run: pnpm test:student-import:migration
+
       - name: Validate teacher invitation Edge Function
         run: pnpm test:teacher-invitations:function
 
@@ -102,6 +105,9 @@ jobs:
 
       - name: Validate guardian notification dispatcher Edge Function
         run: pnpm test:guardian-notifications:function
+
+      - name: Validate student import Edge Function
+        run: pnpm test:student-import:function
 
       - name: Final working-tree whitespace check
         run: git diff --check
