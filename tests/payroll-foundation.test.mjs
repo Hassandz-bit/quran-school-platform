@@ -36,7 +36,7 @@ test("keeps payroll raw tables closed and browser access RPC-only", () => {
   assert.match(hardening, /grant execute on function public\.list_payroll_history/);
   assert.doesNotMatch(client + historyClient, /\.from\("payroll_/);
   assert.match(client, /rpc\("get_payroll_workspace"/);
-  assert.match(client, /rpc\("record_payroll_payment"/);
+  assert.match(client, /rpc<string \| null>\(\s*"record_payroll_payment"/);
   assert.match(historyClient, /rpc\("list_payroll_history"/);
   assert.doesNotMatch(client + historyClient, /service_role/i);
 });
