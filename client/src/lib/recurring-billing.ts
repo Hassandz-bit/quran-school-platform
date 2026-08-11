@@ -40,20 +40,26 @@ export type RecurringGenerationPreview = {
   alreadyChargedCount: number;
   toCreateCount: number;
   studentsWithActiveDiscounts: number;
+  autoDiscountStudentCount: number;
+  autoDiscountConflictCount: number;
+  grossTotalAmount: number;
+  autoDiscountSavings: number;
   totalAmount: number;
-  discountPolicy: "explicit_review_required";
+  discountPolicy: "auto_social_sibling_after_preview";
 };
 
 export type RecurringGenerationResult = {
   createdCount: number;
   skippedCount: number;
+  autoDiscountedCount: number;
+  discountSavings: number;
   createdTotal: number;
   planId: string;
   periodStart: string;
   periodEnd: string;
   dueDate: string;
   scopeBranchId: string | null;
-  discountPolicy: "explicit_review_required";
+  discountPolicy: "auto_social_sibling_after_preview";
 };
 
 export type FinanceReminderPreview = {
@@ -110,20 +116,26 @@ type RawGenerationPreview = {
   already_charged_count: number;
   to_create_count: number;
   students_with_active_discounts: number;
+  auto_discount_student_count: number;
+  auto_discount_conflict_count: number;
+  gross_total_amount: number | string;
+  auto_discount_savings: number | string;
   total_amount: number | string;
-  discount_policy: "explicit_review_required";
+  discount_policy: "auto_social_sibling_after_preview";
 };
 
 type RawGenerationResult = {
   created_count: number;
   skipped_count: number;
+  auto_discounted_count: number;
+  discount_savings: number | string;
   created_total: number | string;
   plan_id: string;
   period_start: string;
   period_end: string;
   due_date: string;
   scope_branch_id: string | null;
-  discount_policy: "explicit_review_required";
+  discount_policy: "auto_social_sibling_after_preview";
 };
 
 type RawReminderPreview = {
@@ -279,6 +291,10 @@ export async function previewRecurringGeneration(
     alreadyChargedCount: raw.already_charged_count,
     toCreateCount: raw.to_create_count,
     studentsWithActiveDiscounts: raw.students_with_active_discounts,
+    autoDiscountStudentCount: raw.auto_discount_student_count,
+    autoDiscountConflictCount: raw.auto_discount_conflict_count,
+    grossTotalAmount: asNumber(raw.gross_total_amount),
+    autoDiscountSavings: asNumber(raw.auto_discount_savings),
     totalAmount: asNumber(raw.total_amount),
     discountPolicy: raw.discount_policy,
   };
@@ -305,6 +321,8 @@ export async function generateRecurringCharges(
   return {
     createdCount: raw.created_count,
     skippedCount: raw.skipped_count,
+    autoDiscountedCount: raw.auto_discounted_count,
+    discountSavings: asNumber(raw.discount_savings),
     createdTotal: asNumber(raw.created_total),
     planId: raw.plan_id,
     periodStart: raw.period_start,
@@ -376,6 +394,9 @@ export function recurringBillingErrorMessage(error: unknown): string {
       : "";
   if (message.includes("FINANCE_RECURRING_DUE_DAY_REQUIRED")) {
     return "خطة الرسوم الدورية تحتاج تحديد يوم الاستحقاق أولًا.";
+  }
+  if (message.includes("FINANCE_DISCOUNT_POLICY_CONFLICT")) {
+    return "يوجد طالب لديه أكثر من خصم دوري نشط أو خصم ثابت أكبر من قيمة الاشتراك. راجع سياسات الخصم أولًا.";
   }
   if (message.includes("FINANCE_MANAGE_REQUIRED")) {
     return "لا تملك صلاحية إدارة المالية في هذا النطاق.";

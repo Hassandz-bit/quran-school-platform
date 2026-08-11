@@ -50,7 +50,7 @@ begin
   if (p ->> 'to_create_count')::integer <> 1 then raise exception 'expected 1 new recurring charge: %', p; end if;
   if (p ->> 'students_with_active_discounts')::integer <> 1 then raise exception 'expected active discount warning: %', p; end if;
   if (p ->> 'total_amount')::numeric <> 1000 then raise exception 'expected preview total 1000: %', p; end if;
-  if p ->> 'discount_policy' <> 'explicit_review_required' then raise exception 'discount policy was not explicit-review only'; end if;
+  if p ->> 'discount_policy' <> 'auto_social_sibling_after_preview' then raise exception 'unexpected recurring discount policy'; end if;
 end;
 $$;
 

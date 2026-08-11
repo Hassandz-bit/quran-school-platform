@@ -80,3 +80,4 @@ run_sql tests/recurring-billing-reminders-fixture.sql
 run_sql supabase/045_recurring_billing_and_finance_reminders.sql
 run_sql supabase/046_recurring_billing_discount_scope_fix.sql
 run_sql tests/recurring-billing-reminders-assertions.sql
+run_sql tests/recurring-discount-policy-assertions.sql

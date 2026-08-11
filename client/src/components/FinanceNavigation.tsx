@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import RecurringBillingLauncher from "@/components/RecurringBillingLauncher";
+import StudentDiscountPolicyLauncher from "@/components/StudentDiscountPolicyLauncher";
 import {
   fetchFinanceModuleAccess,
   type FinanceModuleAccess,
@@ -52,8 +53,7 @@ export default function FinanceNavigation({
   }, [school?.id]);
 
   const links = useMemo(() => {
-    const hasAnyAccess =
-      access.canViewFinance || access.canManageExpenses;
+    const hasAnyAccess = access.canViewFinance || access.canManageExpenses;
 
     return [
       { label: "الملخص", path: "/finance", visible: hasAnyAccess },
@@ -102,6 +102,11 @@ export default function FinanceNavigation({
     );
   }
 
+  const showChargeManagement =
+    currentPath === "/finance/charges" &&
+    access.canManageFinance &&
+    Boolean(school?.id);
+
   return (
     <>
       <nav
@@ -127,9 +132,12 @@ export default function FinanceNavigation({
           </a>
         ))}
       </nav>
-      {currentPath === "/finance/charges" &&
-        access.canManageFinance &&
-        school?.id && <RecurringBillingLauncher schoolId={school.id} />}
+      {showChargeManagement && school?.id && (
+        <>
+          <StudentDiscountPolicyLauncher schoolId={school.id} />
+          <RecurringBillingLauncher schoolId={school.id} />
+        </>
+      )}
     </>
   );
 }
