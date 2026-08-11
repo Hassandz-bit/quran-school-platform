@@ -77,6 +77,20 @@ $$;
 insert into storage.objects (bucket_id, name)
 values ('school-documents', current_setting('test.student_path_1'));
 
+do $$
+declare
+  visible_count integer;
+begin
+  select count(*) into visible_count
+  from storage.objects
+  where bucket_id = 'school-documents'
+    and name = current_setting('test.student_path_1');
+  if visible_count <> 0 then
+    raise exception 'unfinalized document storage object unexpectedly readable';
+  end if;
+end;
+$$;
+
 select public.finalize_document_upload(
   current_setting('test.student_doc')::uuid,
   current_setting('test.student_path_1'),
@@ -137,6 +151,30 @@ do $$
 begin
   if current_setting('test.previous_path') <> current_setting('test.student_path_1') then
     raise exception 'unexpected previous path from replacement';
+  end if;
+end;
+$$;
+
+do $$
+declare
+  stale_visible_count integer;
+  current_visible_count integer;
+begin
+  select count(*) into stale_visible_count
+  from storage.objects
+  where bucket_id = 'school-documents'
+    and name = current_setting('test.student_path_1');
+
+  select count(*) into current_visible_count
+  from storage.objects
+  where bucket_id = 'school-documents'
+    and name = current_setting('test.student_path_2');
+
+  if stale_visible_count <> 0 then
+    raise exception 'replaced document storage object unexpectedly remained readable';
+  end if;
+  if current_visible_count <> 1 then
+    raise exception 'current replacement document storage object is not readable';
   end if;
 end;
 $$;
