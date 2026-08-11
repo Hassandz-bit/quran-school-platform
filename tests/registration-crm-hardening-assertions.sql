@@ -12,6 +12,7 @@ select public.create_registration_lead(
   'ولي ليان', '+213555000010', null,
   'phone', now() + interval '1 day', 'Lead for branch lifecycle hardening'
 ) as hardening_lead_id \gset
+select set_config('test.hardening_lead_id', :'hardening_lead_id', true);
 
 reset role;
 update public.branches
@@ -26,7 +27,7 @@ do $$
 begin
   begin
     perform public.update_registration_lead_pipeline(
-      :'hardening_lead_id'::uuid,
+      current_setting('test.hardening_lead_id')::uuid,
       'contacted',
       now() + interval '2 days',
       'This update must not be accepted while the branch is inactive.'
@@ -38,7 +39,7 @@ begin
 
   begin
     perform public.update_registration_lead_pipeline(
-      :'hardening_lead_id'::uuid,
+      current_setting('test.hardening_lead_id')::uuid,
       null,
       null,
       null
@@ -59,7 +60,7 @@ declare
 begin
   select status into stored_status
   from public.registration_leads
-  where id = :'hardening_lead_id'::uuid;
+  where id = current_setting('test.hardening_lead_id')::uuid;
 
   if stored_status <> 'new' then
     raise exception 'inactive-branch update changed lead status to %', stored_status;
@@ -67,7 +68,7 @@ begin
 
   select count(*) into event_count
   from public.registration_lead_events
-  where lead_id = :'hardening_lead_id'::uuid;
+  where lead_id = current_setting('test.hardening_lead_id')::uuid;
 
   if event_count <> 1 then
     raise exception 'inactive-branch update should not create an audit event, saw %', event_count;
