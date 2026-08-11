@@ -40,3 +40,6 @@ docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_te
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/payroll-foundation-assertions.sql
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/payroll-hardening-assertions.sql
