@@ -6,8 +6,10 @@ set branch_id = '20000000-0000-4000-8000-000000000001'
 where id = '62000000-0000-4000-8000-000000000005';
 
 -- Keep the A1 recurring-generation population deterministic: exactly student 1 + 2.
+-- Student lifecycle uses withdrawn (not a synthetic inactive state) for records
+-- intentionally excluded from active recurring billing.
 update public.students
-set status = 'inactive'
+set status = 'withdrawn'
 where school_id = '10000000-0000-4000-8000-000000000001'
   and branch_id = '20000000-0000-4000-8000-000000000001'
   and id not in (
