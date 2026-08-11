@@ -14,6 +14,7 @@ on:
       - "supabase/029_student_bulk_import_consistency.sql"
       - "supabase/030_student_bulk_import_plpgsql_resolution.sql"
       - "supabase/031_student_bulk_import_rollback_fk_order.sql"
+      - "supabase/032_student_bulk_import_start_date_validation.sql"
       - "supabase/functions/import-students/**"
       - "supabase/config.toml"
       - "tests/student-bulk-import-*"
