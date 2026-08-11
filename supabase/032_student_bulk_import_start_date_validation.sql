@@ -1,5 +1,5 @@
--- QuranOS V2 - validate optional student import start dates before preview/commit.
--- Keeps malformed registration dates row-scoped instead of allowing one value to abort a batch.
+-- QuranOS V2 - harden optional start-date validation and same-file duplicate handling.
+-- Keeps malformed registration dates row-scoped and ensures only eligible earlier rows reserve an identity in preview.
 begin;
 
 create or replace function public.student_import_optional_date_is_valid(target_value text)
@@ -62,6 +62,25 @@ begin
     target_rows
   );
 
+  -- Migration 028 marked same-file national-ID duplicates against any earlier row,
+  -- including rows that were already errors. Restore those null-target duplicates first;
+  -- true database duplicates retain duplicate_student_id and remain duplicates.
+  update public.student_import_rows row
+  set issues = array_remove(row.issues, 'duplicate_student'),
+      row_status = case
+        when array_remove(row.issues, 'duplicate_student') && array[
+          'branch_not_found','branch_permission_denied','class_not_found','first_name_invalid',
+          'last_name_invalid','birth_date_invalid','gender_invalid','guardian_name_invalid',
+          'guardian_relation_invalid','guardian_phone_invalid','start_date_invalid'
+        ] then 'error'
+        when 'class_unassigned' = any(array_remove(row.issues, 'duplicate_student')) then 'warning'
+        else 'ready'
+      end,
+      duplicate_student_id = null
+  where row.batch_id = staged_batch_id
+    and row.row_status = 'duplicate'
+    and row.duplicate_student_id is null;
+
   update public.student_import_rows row
   set row_status = 'error',
       issues = case
@@ -71,6 +90,39 @@ begin
   where row.batch_id = staged_batch_id
     and row.row_status in ('ready', 'warning', 'error')
     and not public.student_import_optional_date_is_valid(row.payload->>'start_date');
+
+  -- Only a prior row that is itself eligible for commit may reserve an identity.
+  -- Detect both national-ID and identity-tuple duplicates inside the workbook.
+  update public.student_import_rows candidate
+  set row_status = 'duplicate',
+      issues = case
+        when 'duplicate_student' = any(candidate.issues) then candidate.issues
+        else array_append(candidate.issues, 'duplicate_student')
+      end,
+      duplicate_student_id = null
+  where candidate.batch_id = staged_batch_id
+    and candidate.row_status in ('ready', 'warning')
+    and exists (
+      select 1
+      from public.student_import_rows prior
+      where prior.batch_id = candidate.batch_id
+        and prior.row_number < candidate.row_number
+        and prior.row_status in ('ready', 'warning')
+        and (
+          (
+            nullif(btrim(prior.payload->>'national_id'), '') is not null
+            and nullif(btrim(candidate.payload->>'national_id'), '') is not null
+            and btrim(prior.payload->>'national_id') = btrim(candidate.payload->>'national_id')
+          )
+          or (
+            lower(btrim(prior.payload->>'first_name')) = lower(btrim(candidate.payload->>'first_name'))
+            and lower(btrim(prior.payload->>'last_name')) = lower(btrim(candidate.payload->>'last_name'))
+            and btrim(prior.payload->>'birth_date') = btrim(candidate.payload->>'birth_date')
+            and regexp_replace(btrim(prior.payload->>'guardian_phone'), '\s+', '', 'g') =
+                regexp_replace(btrim(candidate.payload->>'guardian_phone'), '\s+', '', 'g')
+          )
+        )
+    );
 
   update public.student_import_batches batch
   set ready_count = (select count(*) from public.student_import_rows r where r.batch_id = batch.id and r.row_status = 'ready'),
@@ -117,6 +169,21 @@ begin
   if not found or batch_row.created_by <> actor_id or batch_row.status <> 'staged' then
     raise exception using errcode = '42501', message = 'student_import_commit_denied';
   end if;
+
+  -- Same-file duplicates have no existing student target yet. Re-open them before
+  -- commit so the original commit function can re-evaluate rows in order. If the
+  -- earlier canonical row succeeds, this row becomes a real DB duplicate; if that
+  -- row became invalid meanwhile, this row may still be created safely.
+  update public.student_import_rows row
+  set issues = array_remove(row.issues, 'duplicate_student'),
+      row_status = case
+        when 'class_unassigned' = any(array_remove(row.issues, 'duplicate_student')) then 'warning'
+        else 'ready'
+      end
+  where row.batch_id = target_batch_id
+    and row.row_status = 'duplicate'
+    and row.duplicate_student_id is null
+    and 'duplicate_student' = any(row.issues);
 
   update public.student_import_rows row
   set row_status = 'error',
