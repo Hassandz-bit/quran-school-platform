@@ -15,6 +15,7 @@ on:
       - "supabase/035_documents_management_foundation.sql"
       - "supabase/036_documents_storage_integrity.sql"
       - "supabase/037_documents_subject_scope_sync.sql"
+      - "supabase/038_documents_storage_policy_helpers.sql"
       - "tests/documents-management*"
       - "tests/documents-navigation.test.mjs"
       - "tests/documents-subject-scope-assertions.sql"
