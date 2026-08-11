@@ -5,6 +5,7 @@ import {
   BookOpenCheck,
   ChartNoAxesCombined,
   CalendarDays,
+  ClipboardList,
   DollarSign,
   GraduationCap,
   Home,
@@ -34,6 +35,7 @@ export type AppNavigationItem = {
     | "academic-reports"
     | "finance"
     | "receipts"
+    | "registrations"
     | "guardians"
     | "notifications"
     | "members"
@@ -66,6 +68,8 @@ export function getAppNavigation({
     hasRole(roles, "branch_manager");
   const canUseReceipts =
     canUseFinance || hasRole(roles, "registrar");
+  const canUseRegistrations =
+    isSchoolAdmin || hasRole(roles, "registrar") || hasRole(roles, "branch_manager");
   const canUseMembers = isSchoolAdmin || canViewMembers;
   const canUseGuardians = isSchoolAdmin || hasRole(roles, "registrar");
   const canUseNotifications = isSchoolAdmin || roles.size > 0;
@@ -155,6 +159,17 @@ export function getAppNavigation({
           },
         ]
       : []),
+    ...(canUseRegistrations
+      ? [
+          {
+            id: "registrations" as const,
+            label: translate(locale, "nav.registrations"),
+            path: "/registrations",
+            group: "management" as const,
+            icon: ClipboardList,
+          },
+        ]
+      : []),
     ...(canUseGuardians
       ? [
           {
@@ -211,6 +226,7 @@ export function getBottomNavigation(
     "students",
     "memorization",
     "notifications",
+    "registrations",
     "academic-reports",
     "finance",
     "guardians",
