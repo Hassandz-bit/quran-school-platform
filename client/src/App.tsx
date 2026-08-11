@@ -7,6 +7,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StaffRoute from "./components/StaffRoute";
 import StudentsRoute from "./components/StudentsRoute";
+import RegistrationRoute from "./components/RegistrationRoute";
 import FinanceRoute from "./components/FinanceRoute";
 import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
@@ -47,6 +48,7 @@ const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
 const Guardians = lazy(() => import("./pages/Guardians"));
+const Registrations = lazy(() => import("./pages/Registrations"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Student360 = lazy(() => import("./pages/Student360"));
@@ -67,6 +69,7 @@ const ARABIC_MODULE_FALLBACKS: Partial<Record<TranslationKey, string>> = {
   "fallback.attendance": "جارٍ تحميل وحدة الحضور...",
   "fallback.memorization": "جارٍ تحميل وحدة متابعة الحفظ...",
   "fallback.members": "جارٍ تحميل دليل أعضاء المدرسة...",
+  "fallback.registrations": "جارٍ تحميل متابعة التسجيل...",
 };
 
 function ModuleFallback({ labelKey }: { labelKey: TranslationKey }) {
@@ -109,6 +112,10 @@ function AcademicReportsPageFallback() {
 
 function MembersPageFallback() {
   return <ModuleFallback labelKey="fallback.members" />;
+}
+
+function RegistrationPageFallback() {
+  return <ModuleFallback labelKey="fallback.registrations" />;
 }
 
 function AcceptInvitePageFallback() {
@@ -244,6 +251,15 @@ function Router() {
         </Route>
         <Route path="/teachers/new">
           <ProtectedRoute><Shell><AddTeacherForm /></Shell></ProtectedRoute>
+        </Route>
+        <Route path="/registrations">
+          <RegistrationRoute>
+            <Shell>
+              <Suspense fallback={<RegistrationPageFallback />}>
+                <Registrations />
+              </Suspense>
+            </Shell>
+          </RegistrationRoute>
         </Route>
         <Route path="/guardians">
           <StaffRoute>

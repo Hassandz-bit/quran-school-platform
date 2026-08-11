@@ -1,0 +1,66 @@
+name: Registration CRM Validation
+
+on:
+  pull_request:
+    branches:
+      - develop/v2
+    paths:
+      - "client/src/components/AppShell.tsx"
+      - "client/src/components/RegistrationRoute.tsx"
+      - "client/src/lib/registration-crm.ts"
+      - "client/src/pages/Registrations.tsx"
+      - "client/src/App.tsx"
+      - "client/src/lib/app-navigation.ts"
+      - "client/src/lib/locale.ts"
+      - "supabase/033_registration_crm_foundation.sql"
+      - "supabase/034_registration_crm_hardening.sql"
+      - "tests/registration-crm*"
+      - "tests/run-registration-crm-migration-test.sh"
+      - "tests/branch-manager-routing.test.mjs"
+      - "package.json"
+      - ".github/workflows/registration-crm-validation.yml"
+      - ".github/workflows/launch-readiness-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: registration-crm-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.4.1 --activate
+          pnpm install --frozen-lockfile
+
+      - name: Verify Docker
+        run: docker info
+
+      - name: Validate static CRM contracts
+        run: node --test tests/registration-crm.test.mjs tests/branch-manager-routing.test.mjs
+
+      - name: Validate registration CRM migration
+        run: bash tests/run-registration-crm-migration-test.sh
+
+      - name: Validate TypeScript
+        run: pnpm check
+
+      - name: Validate whitespace
+        run: git diff --check

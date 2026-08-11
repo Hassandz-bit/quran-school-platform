@@ -23,6 +23,7 @@
     "test:guardian-absence:migration": "bash tests/run-guardian-absence-notifications-migration-test.sh",
     "test:official-receipts:migration": "bash tests/run-official-receipts-migration-test.sh",
     "test:student-import:migration": "bash tests/run-student-bulk-import-migration-test.sh",
+    "test:registration-crm:migration": "bash tests/run-registration-crm-migration-test.sh",
     "test:student-import:function": "deno test --allow-env --allow-sys=umask --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.test.ts && deno check --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.ts supabase/functions/import-students/handler.ts supabase/functions/import-students/services.ts",
     "test:guardian-notifications:function": "deno test --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.test.ts && deno check --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.ts supabase/functions/dispatch-guardian-notifications/services.ts"
   },
