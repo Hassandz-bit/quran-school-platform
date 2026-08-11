@@ -497,13 +497,23 @@ as $$
 declare
   current_row public.payroll_entries%rowtype;
   updated_row public.payroll_entries%rowtype;
+  locked_period_id uuid;
   period_status text;
 begin
   if (select auth.uid()) is null then raise exception using errcode = '42501', message = 'PAYROLL_AUTH_REQUIRED'; end if;
-  select e, p.status into current_row, period_status
+  select e.period_id into locked_period_id
   from public.payroll_entries e
-  join public.payroll_periods p on p.id = e.period_id and p.school_id = e.school_id
-  where e.school_id = target_school_id and e.id = target_entry_id for update of e;
+  where e.school_id = target_school_id and e.id = target_entry_id;
+  if not found then return false; end if;
+  select p.status into period_status
+  from public.payroll_periods p
+  where p.school_id = target_school_id and p.id = locked_period_id
+  for update;
+  if not found then return false; end if;
+  select * into current_row
+  from public.payroll_entries e
+  where e.school_id = target_school_id and e.id = target_entry_id and e.period_id = locked_period_id
+  for update;
   if not found then return false; end if;
   if not public.payroll_can_manage_scope(current_row.school_id, current_row.branch_id) then return false; end if;
   if period_status <> 'draft' or current_row.status <> 'draft' then
@@ -559,13 +569,23 @@ as $$
 declare
   current_row public.payroll_entries%rowtype;
   updated_row public.payroll_entries%rowtype;
+  locked_period_id uuid;
   period_status text;
 begin
   if (select auth.uid()) is null then raise exception using errcode = '42501', message = 'PAYROLL_AUTH_REQUIRED'; end if;
-  select e, p.status into current_row, period_status
+  select e.period_id into locked_period_id
   from public.payroll_entries e
-  join public.payroll_periods p on p.id = e.period_id and p.school_id = e.school_id
-  where e.school_id = target_school_id and e.id = target_entry_id for update of e;
+  where e.school_id = target_school_id and e.id = target_entry_id;
+  if not found then return false; end if;
+  select p.status into period_status
+  from public.payroll_periods p
+  where p.school_id = target_school_id and p.id = locked_period_id
+  for update;
+  if not found then return false; end if;
+  select * into current_row
+  from public.payroll_entries e
+  where e.school_id = target_school_id and e.id = target_entry_id and e.period_id = locked_period_id
+  for update;
   if not found then return false; end if;
   if not public.payroll_can_manage_scope(current_row.school_id, current_row.branch_id) then return false; end if;
   if period_status not in ('draft', 'approved') or current_row.status not in ('draft', 'approved') then
@@ -595,15 +615,25 @@ language plpgsql security definer set search_path = ''
 as $$
 declare
   entry_row public.payroll_entries%rowtype;
+  locked_period_id uuid;
   period_status text;
   period_month date;
   payment_id uuid;
 begin
   if (select auth.uid()) is null then raise exception using errcode = '42501', message = 'PAYROLL_AUTH_REQUIRED'; end if;
-  select e, p.status, p.period_month into entry_row, period_status, period_month
+  select e.period_id into locked_period_id
   from public.payroll_entries e
-  join public.payroll_periods p on p.id = e.period_id and p.school_id = e.school_id
-  where e.school_id = target_school_id and e.id = target_entry_id for update of e;
+  where e.school_id = target_school_id and e.id = target_entry_id;
+  if not found then return null; end if;
+  select p.status, p.period_month into period_status, period_month
+  from public.payroll_periods p
+  where p.school_id = target_school_id and p.id = locked_period_id
+  for update;
+  if not found then return null; end if;
+  select * into entry_row
+  from public.payroll_entries e
+  where e.school_id = target_school_id and e.id = target_entry_id and e.period_id = locked_period_id
+  for update;
   if not found then return null; end if;
   if not public.payroll_can_manage_scope(entry_row.school_id, entry_row.branch_id) then return null; end if;
   if period_status <> 'approved' or entry_row.status <> 'approved' then
@@ -642,16 +672,27 @@ as $$
 declare
   payment_row public.payroll_payments%rowtype;
   entry_row public.payroll_entries%rowtype;
+  locked_period_id uuid;
   period_status text;
 begin
   if (select auth.uid()) is null then raise exception using errcode = '42501', message = 'PAYROLL_AUTH_REQUIRED'; end if;
   select * into payment_row from public.payroll_payments
   where school_id = target_school_id and id = target_payment_id for update;
   if not found then return false; end if;
-  select e, p.status into entry_row, period_status
+  select e.period_id into locked_period_id
   from public.payroll_entries e
-  join public.payroll_periods p on p.id = e.period_id and p.school_id = e.school_id
-  where e.id = payment_row.payroll_entry_id;
+  where e.school_id = target_school_id and e.id = payment_row.payroll_entry_id;
+  if not found then return false; end if;
+  select p.status into period_status
+  from public.payroll_periods p
+  where p.school_id = target_school_id and p.id = locked_period_id
+  for update;
+  if not found then return false; end if;
+  select * into entry_row
+  from public.payroll_entries e
+  where e.school_id = target_school_id and e.id = payment_row.payroll_entry_id and e.period_id = locked_period_id
+  for update;
+  if not found then return false; end if;
   if not public.payroll_can_manage_scope(payment_row.school_id, payment_row.branch_id) then return false; end if;
   if period_status <> 'approved' or payment_row.status <> 'completed' or entry_row.status <> 'paid' then
     raise exception using errcode = '55000', message = 'PAYROLL_PAYMENT_NOT_REVERSIBLE';
