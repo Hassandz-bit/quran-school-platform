@@ -77,6 +77,11 @@ export default function FinanceNavigation({
         visible: access.canViewFinance,
       },
       {
+        label: "سجل الأجور",
+        path: "/finance/payroll/history",
+        visible: access.canViewFinance,
+      },
+      {
         label: "المصروفات",
         path: "/finance/expenses",
         visible: access.canManageExpenses,
