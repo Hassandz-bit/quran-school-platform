@@ -70,6 +70,9 @@ jobs:
       - name: Validate memorization teacher RPC migration
         run: pnpm test:memorization-teacher-rpc:migration
 
+      - name: Validate memorization follow-up migration
+        run: pnpm test:memorization-follow-up:migration
+
       - name: Validate guardian security foundation migration
         run: pnpm test:guardian-security:migration
 

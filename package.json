@@ -13,6 +13,7 @@
     "test:teacher-invitations:function": "deno test --config supabase/functions/invite-teacher/deno.json supabase/functions/invite-teacher/index.test.ts",
     "test:teacher-invitations:migration": "bash tests/run-teacher-invitations-migration-test.sh",
     "test:memorization-teacher-rpc:migration": "bash tests/run-memorization-teacher-rpc-migration-test.sh",
+    "test:memorization-follow-up:migration": "bash tests/run-memorization-follow-up-migration-test.sh",
     "test:guardian-security:migration": "bash tests/run-guardian-security-foundation-migration-test.sh",
     "test:guardian-invitations:function": "deno test --config supabase/functions/invite-guardian/deno.json supabase/functions/invite-guardian/index.test.ts",
     "test:guardian-invitations:migration": "bash tests/run-guardian-invitations-migration-test.sh",
