@@ -52,6 +52,7 @@ test("document files stay in private bounded Storage with immutable current byte
   assert.match(storagePolicyHelpers, /security definer/i);
   assert.match(storagePolicyHelpers, /can_read_document_storage_object/i);
   assert.match(storagePolicyHelpers, /can_manage_document_storage_object/i);
+  assert.match(storagePolicyHelpers, /document\.object_path = target_object_name/i);
   assert.match(storagePolicyHelpers, /create policy "school documents scoped read"[\s\S]*can_read_document_storage_object\(name\)/i);
   assert.match(storagePolicyHelpers, /create policy "school documents scoped insert"[\s\S]*can_manage_document_storage_object\(name, false\)/i);
   assert.match(storagePolicyHelpers, /create policy "school documents scoped delete"[\s\S]*can_manage_document_storage_object\(name, true\)/i);
