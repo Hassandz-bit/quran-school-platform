@@ -36,4 +36,7 @@ docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_te
   < supabase/043_payroll_foundation.sql
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < supabase/044_payroll_hardening_and_history.sql
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/payroll-foundation-assertions.sql
