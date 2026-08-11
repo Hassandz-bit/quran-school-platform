@@ -5,9 +5,11 @@ import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const migration = read("supabase/033_registration_crm_foundation.sql");
+const hardeningMigration = read("supabase/034_registration_crm_hardening.sql");
 const crmLib = read("client/src/lib/registration-crm.ts");
 const crmPage = read("client/src/pages/Registrations.tsx");
 const crmRoute = read("client/src/components/RegistrationRoute.tsx");
+const appShell = read("client/src/components/AppShell.tsx");
 const app = read("client/src/App.tsx");
 const navigation = read("client/src/lib/app-navigation.ts");
 const locale = read("client/src/lib/locale.ts");
@@ -32,6 +34,17 @@ test("registration CRM authorization is exact and branch scoped", () => {
   assert.doesNotMatch(migration, /\('teacher', 'registrations\.(?:view|manage)'\)/i);
   assert.match(crmRoute, /fetchRegistrationCrmAccess/);
   assert.match(crmRoute, /result\.canView/);
+  assert.match(appShell, /fetchRegistrationCrmAccess/);
+  assert.match(appShell, /canViewRegistrations/);
+  assert.match(navigation, /canViewRegistrations = false/);
+  assert.match(navigation, /const canUseRegistrations = canViewRegistrations/);
+});
+
+test("registration CRM blocks pipeline mutation after branch deactivation", () => {
+  assert.match(hardeningMigration, /branch\.status = 'active'/i);
+  assert.match(hardeningMigration, /target_status is null/i);
+  assert.match(hardeningMigration, /registration_crm_unauthorized/);
+  assert.match(hardeningMigration, /registration_crm_invalid_input/);
 });
 
 test("registration CRM is pipeline-only and cannot delete or auto-create students", () => {
