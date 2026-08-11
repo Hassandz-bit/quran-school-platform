@@ -7,6 +7,7 @@ export type RegistrationLeadStatus =
   | "qualified"
   | "visit_scheduled"
   | "awaiting_documents"
+  | "waitlisted"
   | "accepted"
   | "lost";
 
@@ -17,6 +18,15 @@ export type RegistrationLeadSource =
   | "social"
   | "referral"
   | "campaign"
+  | "other";
+
+export type RegistrationWaitlistReason =
+  | "capacity_full"
+  | "class_full"
+  | "schedule_mismatch"
+  | "age_group_full"
+  | "documents_pending"
+  | "assessment_pending"
   | "other";
 
 export type RegistrationCrmAccess = {
@@ -45,6 +55,11 @@ export type RegistrationLead = {
   guardianEmail: string | null;
   source: RegistrationLeadSource;
   status: RegistrationLeadStatus;
+  waitlistedAt: string | null;
+  waitlistPriority: 1 | 2 | 3 | null;
+  waitlistReason: RegistrationWaitlistReason | null;
+  desiredLevel: string | null;
+  waitlistRank: number | null;
   nextFollowUpAt: string | null;
   notes: string | null;
   createdByName: string;
@@ -69,12 +84,24 @@ export type CreateRegistrationLeadInput = {
 
 export type UpdateRegistrationLeadInput = {
   leadId: string;
-  status: RegistrationLeadStatus;
+  status: Exclude<RegistrationLeadStatus, "waitlisted">;
+  nextFollowUpAt?: string | null;
+  notes?: string | null;
+};
+
+export type SetRegistrationLeadWaitlistInput = {
+  leadId: string;
+  priority: 1 | 2 | 3;
+  reason: RegistrationWaitlistReason;
+  desiredLevel?: string | null;
   nextFollowUpAt?: string | null;
   notes?: string | null;
 };
 
 function mapLead(row: Record<string, unknown>): RegistrationLead {
+  const priority = Number(row.waitlist_priority);
+  const rank = Number(row.waitlist_rank);
+
   return {
     leadId: String(row.lead_id),
     branchId: String(row.branch_id),
@@ -89,6 +116,11 @@ function mapLead(row: Record<string, unknown>): RegistrationLead {
     guardianEmail: row.guardian_email ? String(row.guardian_email) : null,
     source: row.source as RegistrationLeadSource,
     status: row.lead_status as RegistrationLeadStatus,
+    waitlistedAt: row.waitlisted_at ? String(row.waitlisted_at) : null,
+    waitlistPriority: priority === 1 || priority === 2 || priority === 3 ? priority : null,
+    waitlistReason: row.waitlist_reason ? row.waitlist_reason as RegistrationWaitlistReason : null,
+    desiredLevel: row.desired_level ? String(row.desired_level) : null,
+    waitlistRank: Number.isFinite(rank) && rank > 0 ? rank : null,
     nextFollowUpAt: row.next_follow_up_at ? String(row.next_follow_up_at) : null,
     notes: row.notes ? String(row.notes) : null,
     createdByName: String(row.created_by_name),
@@ -177,4 +209,20 @@ export async function updateRegistrationLeadPipeline(
   });
   if (error) throw error;
   if (data !== true) throw new Error("registration_crm_update_failed");
+}
+
+export async function setRegistrationLeadWaitlist(
+  input: SetRegistrationLeadWaitlistInput,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<void> {
+  const { data, error } = await client.rpc("set_registration_lead_waitlist", {
+    target_lead_id: input.leadId,
+    target_priority: input.priority,
+    target_reason: input.reason,
+    target_desired_level: input.desiredLevel || null,
+    target_next_follow_up_at: input.nextFollowUpAt || null,
+    target_notes: input.notes || null,
+  });
+  if (error) throw error;
+  if (data !== true) throw new Error("registration_waitlist_update_failed");
 }
