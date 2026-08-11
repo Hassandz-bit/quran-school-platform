@@ -25,6 +25,7 @@ import {
   fetchAcademicReportsAccess,
   hasAnyAcademicReportsAccess,
 } from "@/lib/academic-reports";
+import { fetchRegistrationCrmAccess } from "@/lib/registration-crm";
 import {
   getAppNavigation,
   getBottomNavigation,
@@ -144,6 +145,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [canViewMembers, setCanViewMembers] = useState(false);
   const [canViewAcademicReports, setCanViewAcademicReports] = useState(false);
+  const [canViewRegistrations, setCanViewRegistrations] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -200,6 +202,29 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [school?.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!school?.id) {
+      setCanViewRegistrations(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void fetchRegistrationCrmAccess(school.id)
+      .then(access => {
+        if (!cancelled) setCanViewRegistrations(access.canView);
+      })
+      .catch(() => {
+        if (!cancelled) setCanViewRegistrations(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [school?.id]);
+
   const navigation = useMemo(
     () =>
       getAppNavigation({
@@ -207,12 +232,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         activeRoleCodes,
         canViewMembers,
         canViewAcademicReports,
+        canViewRegistrations,
         locale,
       }),
     [
       activeRoleCodes,
       canViewAcademicReports,
       canViewMembers,
+      canViewRegistrations,
       isSchoolAdmin,
       locale,
     ]
