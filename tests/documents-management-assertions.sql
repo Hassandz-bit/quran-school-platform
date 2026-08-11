@@ -2,15 +2,12 @@
 
 begin;
 
--- Supabase Storage grants its authenticated API role table privileges while
--- RLS remains authoritative. Reproduce that runtime shape in this test DB.
 grant usage on schema storage to authenticated;
 grant select, insert, update, delete on storage.objects to authenticated;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', true);
 
--- Create one pre-enrollment lead so documents cover both subject types.
 select public.create_registration_lead(
   '10000000-0000-4000-8000-000000000001',
   '20000000-0000-4000-8000-000000000001',
@@ -20,7 +17,6 @@ select public.create_registration_lead(
 ) as lead_a1 \gset
 select set_config('test.lead_a1', :'lead_a1', true);
 
--- Admin A creates a birth-certificate slot for Student A1.
 select public.create_document_slot(
   '10000000-0000-4000-8000-000000000001',
   'student',
@@ -42,7 +38,6 @@ select set_config(
   true
 );
 
--- Metadata cannot claim a phantom object.
 do $$
 begin
   begin
@@ -64,7 +59,6 @@ begin
 end;
 $$;
 
--- A path with the wrong subject is rejected by Storage RLS.
 do $$
 begin
   begin
@@ -94,7 +88,6 @@ select public.finalize_document_upload(
   'Received from guardian'
 );
 
--- Backward-compatible student provided flag is synchronized.
 do $$
 begin
   if not exists (
@@ -114,24 +107,17 @@ select public.update_document_status(
   'Verified against original'
 );
 
--- Current bytes cannot be deleted while metadata points to them.
 do $$
 begin
-  begin
-    delete from storage.objects
-    where bucket_id = 'school-documents'
-      and name = current_setting('test.student_path_1');
-    if found then
-      raise exception 'current document storage delete unexpectedly succeeded';
-    end if;
-  exception
-    when insufficient_privilege then null;
-  end;
+  delete from storage.objects
+  where bucket_id = 'school-documents'
+    and name = current_setting('test.student_path_1');
+  if found then
+    raise exception 'current document storage delete unexpectedly succeeded';
+  end if;
 end;
 $$;
 
--- Replacement uses a fresh immutable path. The old path becomes removable only
--- after metadata points at the new object.
 insert into storage.objects (bucket_id, name)
 values ('school-documents', current_setting('test.student_path_2'));
 
@@ -145,17 +131,20 @@ select public.finalize_document_upload(
   null,
   'Replacement copy'
 ) as previous_path \gset
+select set_config('test.previous_path', :'previous_path', true);
 
-\if :'previous_path' != :'student_path_1'
-  \echo 'unexpected previous path from replacement'
-  \quit 1
-\endif
+do $$
+begin
+  if current_setting('test.previous_path') <> current_setting('test.student_path_1') then
+    raise exception 'unexpected previous path from replacement';
+  end if;
+end;
+$$;
 
 delete from storage.objects
 where bucket_id = 'school-documents'
   and name = current_setting('test.student_path_1');
 
--- Create a slot for the registration lead and upload an image.
 select public.create_document_slot(
   '10000000-0000-4000-8000-000000000001',
   'registration_lead',
@@ -183,7 +172,6 @@ select public.finalize_document_upload(
   null
 );
 
--- Browser roles cannot bypass RPCs to read metadata/audit tables directly.
 do $$
 begin
   begin
@@ -199,7 +187,6 @@ begin
 end;
 $$;
 
--- Registrar A is branch A1-scoped: A1 subjects/documents are visible, A2 is not.
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002', true);
 do $$
 declare
@@ -239,7 +226,6 @@ begin
 end;
 $$;
 
--- Teacher receives no document permission by default.
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000003', true);
 do $$
 declare
@@ -260,7 +246,6 @@ begin
 end;
 $$;
 
--- School B admin cannot read School A documents.
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000008', true);
 do $$
 declare
@@ -276,7 +261,6 @@ $$;
 
 reset role;
 
--- Audit and storage configuration are server-private but verifiable here.
 do $$
 declare
   student_event_count integer;
