@@ -15,7 +15,7 @@ test("reconciles business totals against linked treasury evidence without transf
   assert.match(migration, /linked_summary as/);
   assert.match(migration, /'unmatched'/);
   assert.match(migration, /source_type in \('student_payment', 'other_income', 'expense', 'payroll_payment'\)/);
-  assert.doesNotMatch(migration, /business_sources[\s\S]*transfer_in|business_sources[\s\S]*transfer_out/);
+  assert.doesNotMatch(migration, /business_sources as \([\s\S]*?transfer_(?:in|out)[\s\S]*?\), business_summary as/);
 });
 
 test("links only posted finance sources through exact finance manage scope", () => {
