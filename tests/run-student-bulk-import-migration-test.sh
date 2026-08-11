@@ -59,6 +59,7 @@ for file in \
   run_sql "$file"
 done
 run_sql tests/student-bulk-import-fixture.sql
+run_sql tests/student-bulk-import-staging-auth.sql
 run_sql tests/student-bulk-import-same-file-duplicates.sql
 run_sql tests/student-bulk-import-assertions.sql
 run_sql tests/student-bulk-import-start-date-assertions.sql
