@@ -7,6 +7,7 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"
 const migration = read("supabase/035_documents_management_foundation.sql");
 const storageHardening = read("supabase/036_documents_storage_integrity.sql");
 const scopeHardening = read("supabase/037_documents_subject_scope_sync.sql");
+const storagePolicyHelpers = read("supabase/038_documents_storage_policy_helpers.sql");
 const client = read("client/src/lib/documents.ts");
 const page = read("client/src/pages/Documents.tsx");
 const route = read("client/src/components/DocumentsRoute.tsx");
@@ -46,11 +47,15 @@ test("document files stay in private bounded Storage with immutable current byte
   assert.match(migration, /image\/jpeg/);
   assert.match(migration, /image\/png/);
   assert.match(migration, /image\/webp/);
-  assert.match(migration, /create policy "school documents scoped read"/i);
-  assert.match(migration, /create policy "school documents scoped insert"/i);
   assert.match(storageHardening, /document_storage_object_missing/);
   assert.match(storageHardening, /drop policy if exists "school documents scoped update"/i);
-  assert.match(storageHardening, /document\.object_path is distinct from name/i);
+  assert.match(storagePolicyHelpers, /security definer/i);
+  assert.match(storagePolicyHelpers, /can_read_document_storage_object/i);
+  assert.match(storagePolicyHelpers, /can_manage_document_storage_object/i);
+  assert.match(storagePolicyHelpers, /create policy "school documents scoped read"[\s\S]*can_read_document_storage_object\(name\)/i);
+  assert.match(storagePolicyHelpers, /create policy "school documents scoped insert"[\s\S]*can_manage_document_storage_object\(name, false\)/i);
+  assert.match(storagePolicyHelpers, /create policy "school documents scoped delete"[\s\S]*can_manage_document_storage_object\(name, true\)/i);
+  assert.doesNotMatch(storagePolicyHelpers, /create policy "school documents scoped update"/i);
   assert.match(client, /upsert: false/);
   assert.match(client, /\.download\(objectPath\)/);
   assert.doesNotMatch(client, /getPublicUrl|createSignedUrl/);
