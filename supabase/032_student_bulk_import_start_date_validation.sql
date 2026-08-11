@@ -1,5 +1,6 @@
--- QuranOS V2 - harden optional start-date validation and same-file duplicate handling.
--- Keeps malformed registration dates row-scoped and ensures only eligible earlier rows reserve an identity in preview.
+-- QuranOS V2 - harden staging authorization, optional start-date validation, and same-file duplicate handling.
+-- Rejects revoked actors before persistence, keeps malformed registration dates row-scoped,
+-- and ensures only eligible earlier rows reserve an identity in preview.
 begin;
 
 create or replace function public.student_import_optional_date_is_valid(target_value text)
@@ -54,6 +55,24 @@ as $$
 declare
   staged_batch_id uuid;
 begin
+  -- The Edge Function authorizes before parsing, but membership may be revoked
+  -- during that work. Recheck the tenant boundary immediately before persistence.
+  if not exists (
+    select 1
+    from public.profiles profile
+    join public.school_memberships membership
+      on membership.profile_id = profile.id
+     and membership.school_id = target_school_id
+     and membership.status = 'active'
+    join public.schools school
+      on school.id = membership.school_id
+     and school.status = 'active'
+    where profile.id = target_actor_id
+      and profile.status = 'active'
+  ) then
+    raise exception using errcode = '42501', message = 'student_import_actor_unavailable';
+  end if;
+
   staged_batch_id := public.stage_student_import_batch_unchecked(
     target_school_id,
     target_actor_id,
