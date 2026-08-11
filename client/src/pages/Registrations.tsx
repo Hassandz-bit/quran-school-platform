@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, ClipboardList, Phone, Plus, RefreshCw, Search, UserRoundCheck } from "lucide-react";
+import { CalendarClock, ClipboardList, ListOrdered, Phone, Plus, RefreshCw, Search, UserRoundCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
@@ -28,12 +28,14 @@ import {
   fetchRegistrationCrmAccess,
   listRegistrationCrmBranches,
   listRegistrationLeads,
+  setRegistrationLeadWaitlist,
   updateRegistrationLeadPipeline,
   type RegistrationCrmAccess,
   type RegistrationCrmBranch,
   type RegistrationLead,
   type RegistrationLeadSource,
   type RegistrationLeadStatus,
+  type RegistrationWaitlistReason,
 } from "@/lib/registration-crm";
 
 const STATUS_VALUES: RegistrationLeadStatus[] = [
@@ -42,6 +44,7 @@ const STATUS_VALUES: RegistrationLeadStatus[] = [
   "qualified",
   "visit_scheduled",
   "awaiting_documents",
+  "waitlisted",
   "accepted",
   "lost",
 ];
@@ -53,6 +56,16 @@ const SOURCE_VALUES: RegistrationLeadSource[] = [
   "social",
   "referral",
   "campaign",
+  "other",
+];
+
+const WAITLIST_REASON_VALUES: RegistrationWaitlistReason[] = [
+  "capacity_full",
+  "class_full",
+  "schedule_mismatch",
+  "age_group_full",
+  "documents_pending",
+  "assessment_pending",
   "other",
 ];
 
@@ -102,6 +115,9 @@ export default function Registrations() {
   const [editStatus, setEditStatus] = useState<RegistrationLeadStatus>("new");
   const [editFollowUpAt, setEditFollowUpAt] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editWaitlistPriority, setEditWaitlistPriority] = useState<1 | 2 | 3>(2);
+  const [editWaitlistReason, setEditWaitlistReason] = useState<RegistrationWaitlistReason>("capacity_full");
+  const [editDesiredLevel, setEditDesiredLevel] = useState("");
 
   const statusLabel = useCallback((value: RegistrationLeadStatus) => {
     const labels: Record<RegistrationLeadStatus, [string, string]> = {
@@ -110,6 +126,7 @@ export default function Registrations() {
       qualified: ["مؤهل", "Qualified"],
       visit_scheduled: ["زيارة مجدولة", "Visit scheduled"],
       awaiting_documents: ["بانتظار الوثائق", "Awaiting documents"],
+      waitlisted: ["قائمة الانتظار", "Waitlisted"],
       accepted: ["مقبول", "Accepted"],
       lost: ["غير متابع", "Lost"],
     };
@@ -125,6 +142,28 @@ export default function Registrations() {
       referral: ["إحالة", "Referral"],
       campaign: ["حملة", "Campaign"],
       other: ["أخرى", "Other"],
+    };
+    return labels[value][ar ? 0 : 1];
+  }, [ar]);
+
+  const waitlistReasonLabel = useCallback((value: RegistrationWaitlistReason) => {
+    const labels: Record<RegistrationWaitlistReason, [string, string]> = {
+      capacity_full: ["اكتمال الطاقة الاستيعابية", "Overall capacity full"],
+      class_full: ["الحلقة أو الفوج مكتمل", "Requested class full"],
+      schedule_mismatch: ["عدم توافق التوقيت", "Schedule mismatch"],
+      age_group_full: ["فئة العمر مكتملة", "Age group full"],
+      documents_pending: ["وثائق ناقصة", "Documents pending"],
+      assessment_pending: ["بانتظار التقييم", "Assessment pending"],
+      other: ["سبب آخر", "Other"],
+    };
+    return labels[value][ar ? 0 : 1];
+  }, [ar]);
+
+  const priorityLabel = useCallback((value: 1 | 2 | 3) => {
+    const labels: Record<1 | 2 | 3, [string, string]> = {
+      1: ["عالية", "High"],
+      2: ["عادية", "Normal"],
+      3: ["منخفضة", "Low"],
     };
     return labels[value][ar ? 0 : 1];
   }, [ar]);
@@ -161,12 +200,13 @@ export default function Registrations() {
   const copy = ar
     ? {
         title: "طلبات التسجيل",
-        subtitle: "متابعة المهتمين بالتسجيل قبل إنشاء ملف الطالب النهائي.",
+        subtitle: "متابعة المهتمين بالتسجيل وقائمة الانتظار قبل إنشاء ملف الطالب النهائي.",
         refresh: "تحديث",
         add: "طلب جديد",
         total: "إجمالي الطلبات",
         new: "طلبات جديدة",
         due: "متابعات مستحقة",
+        waitlist: "قائمة الانتظار",
         accepted: "مقبولة",
         search: "بحث باسم الطالب أو الولي أو الهاتف...",
         allStatuses: "كل الحالات",
@@ -180,7 +220,7 @@ export default function Registrations() {
         noFollowUp: "غير محددة",
         edit: "تحديث المتابعة",
         createTitle: "إضافة طلب تسجيل",
-        createDescription: "سجّل بيانات التواصل الأولية فقط. إنشاء الطالب يتم لاحقًا في مسار مستقل.",
+        createDescription: "سجّل بيانات التواصل الأولية فقط. إنشاء الطالب يتم بعد القبول في مسار مستقل.",
         firstName: "الاسم",
         lastName: "اللقب",
         birthDate: "تاريخ الميلاد (اختياري)",
@@ -202,15 +242,21 @@ export default function Registrations() {
         updated: "تم تحديث مسار الطلب.",
         saveError: "تعذر حفظ طلب التسجيل حاليًا.",
         loadError: "تعذر تحميل CRM التسجيل. أعد المحاولة.",
+        priority: "الأولوية",
+        waitlistReason: "سبب الانتظار",
+        desiredLevel: "المستوى أو الحلقة المطلوبة (اختياري)",
+        waitlistPosition: "ترتيب الانتظار",
+        waitlistedAt: "دخل القائمة",
       }
     : {
         title: "Registration CRM",
-        subtitle: "Track prospective registrations before a final student record is created.",
+        subtitle: "Track prospective registrations and the admission waitlist before a student record is created.",
         refresh: "Refresh",
         add: "New lead",
         total: "Total leads",
         new: "New leads",
         due: "Follow-ups due",
+        waitlist: "Waitlist",
         accepted: "Accepted",
         search: "Search student, guardian, or phone...",
         allStatuses: "All statuses",
@@ -224,7 +270,7 @@ export default function Registrations() {
         noFollowUp: "Not set",
         edit: "Update follow-up",
         createTitle: "Add registration lead",
-        createDescription: "Capture initial contact only. Student creation remains a separate workflow.",
+        createDescription: "Capture initial contact only. Student creation happens later after admission.",
         firstName: "First name",
         lastName: "Last name",
         birthDate: "Birth date (optional)",
@@ -246,11 +292,16 @@ export default function Registrations() {
         updated: "Lead pipeline updated.",
         saveError: "The registration lead could not be saved.",
         loadError: "Registration CRM could not be loaded. Try again.",
+        priority: "Priority",
+        waitlistReason: "Waitlist reason",
+        desiredLevel: "Requested level or class (optional)",
+        waitlistPosition: "Waitlist position",
+        waitlistedAt: "Waitlisted on",
       };
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
-    return leads.filter(lead => {
+    const matches = leads.filter(lead => {
       if (statusFilter !== "all" && lead.status !== statusFilter) return false;
       if (!needle) return true;
       return [
@@ -260,8 +311,14 @@ export default function Registrations() {
         lead.guardianPhone,
         lead.guardianEmail ?? "",
         lead.branchName,
+        lead.desiredLevel ?? "",
       ].some(value => value.toLocaleLowerCase(locale).includes(needle));
     });
+
+    if (statusFilter !== "waitlisted") return matches;
+    return [...matches].sort((left, right) =>
+      (left.waitlistRank ?? Number.MAX_SAFE_INTEGER) - (right.waitlistRank ?? Number.MAX_SAFE_INTEGER)
+    );
   }, [leads, locale, query, statusFilter]);
 
   const now = Date.now();
@@ -271,6 +328,7 @@ export default function Registrations() {
     return Number.isFinite(due) && due <= now;
   }).length;
   const newCount = leads.filter(lead => lead.status === "new").length;
+  const waitlistCount = leads.filter(lead => lead.status === "waitlisted").length;
   const acceptedCount = leads.filter(lead => lead.status === "accepted").length;
   const manageableBranches = branches.filter(branch => branch.canManage);
 
@@ -330,18 +388,32 @@ export default function Registrations() {
     setEditStatus(lead.status);
     setEditFollowUpAt(toLocalDateTime(lead.nextFollowUpAt));
     setEditNotes(lead.notes ?? "");
+    setEditWaitlistPriority(lead.waitlistPriority ?? 2);
+    setEditWaitlistReason(lead.waitlistReason ?? "capacity_full");
+    setEditDesiredLevel(lead.desiredLevel ?? "");
   };
 
   const submitEdit = async () => {
     if (!editLead) return;
     setSubmitting(true);
     try {
-      await updateRegistrationLeadPipeline({
-        leadId: editLead.leadId,
-        status: editStatus,
-        nextFollowUpAt: toIso(editFollowUpAt),
-        notes: editNotes || null,
-      });
+      if (editStatus === "waitlisted") {
+        await setRegistrationLeadWaitlist({
+          leadId: editLead.leadId,
+          priority: editWaitlistPriority,
+          reason: editWaitlistReason,
+          desiredLevel: editDesiredLevel || null,
+          nextFollowUpAt: toIso(editFollowUpAt),
+          notes: editNotes || null,
+        });
+      } else {
+        await updateRegistrationLeadPipeline({
+          leadId: editLead.leadId,
+          status: editStatus,
+          nextFollowUpAt: toIso(editFollowUpAt),
+          notes: editNotes || null,
+        });
+      }
       toast.success(copy.updated);
       setEditLead(null);
       await load();
@@ -400,10 +472,11 @@ export default function Registrations() {
         </Card>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">{copy.total}</div><div className="mt-1 text-2xl font-bold">{leads.length}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">{copy.new}</div><div className="mt-1 text-2xl font-bold text-sky-700">{newCount}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">{copy.due}</div><div className="mt-1 text-2xl font-bold text-amber-700">{dueCount}</div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">{copy.waitlist}</div><div className="mt-1 text-2xl font-bold">{waitlistCount}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">{copy.accepted}</div><div className="mt-1 text-2xl font-bold text-[#17663B]">{acceptedCount}</div></CardContent></Card>
       </div>
 
@@ -443,6 +516,15 @@ export default function Registrations() {
                     <span className="flex items-center gap-1" dir="ltr"><Phone className="size-4" />{lead.guardianPhone}</span>
                     <span>{copy.source}: {sourceLabel(lead.source)}</span>
                   </div>
+                  {lead.status === "waitlisted" && lead.waitlistPriority && lead.waitlistReason && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-[#694F18]">
+                      <span className="flex items-center gap-1"><ListOrdered className="size-4" />{copy.waitlistPosition}: #{lead.waitlistRank ?? "—"}</span>
+                      <span>{copy.priority}: {priorityLabel(lead.waitlistPriority)}</span>
+                      <span>{copy.waitlistReason}: {waitlistReasonLabel(lead.waitlistReason)}</span>
+                      {lead.desiredLevel && <span>{copy.desiredLevel.replace(" (اختياري)", "").replace(" (optional)", "")}: {lead.desiredLevel}</span>}
+                      <span>{copy.waitlistedAt}: {formatDateTime(lead.waitlistedAt)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <CalendarClock className="size-4" /> {copy.followUp}: {formatDateTime(lead.nextFollowUpAt)}
                   </div>
@@ -490,13 +572,37 @@ export default function Registrations() {
       </Dialog>
 
       <Dialog open={Boolean(editLead)} onOpenChange={open => { if (!open) setEditLead(null); }}>
-        <DialogContent dir={direction} className="sm:max-w-lg">
+        <DialogContent dir={direction} className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader className={ar ? "text-right" : "text-left"}>
             <DialogTitle>{copy.editTitle}</DialogTitle>
             <DialogDescription>{editLead ? `${editLead.prospectFirstName} ${editLead.prospectLastName} — ${editLead.branchName}` : ""}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2"><Label>{copy.status}</Label><Select value={editStatus} onValueChange={value => setEditStatus(value as RegistrationLeadStatus)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUS_VALUES.map(value => <SelectItem key={value} value={value}>{statusLabel(value)}</SelectItem>)}</SelectContent></Select></div>
+            {editStatus === "waitlisted" && (
+              <div className="grid gap-4 rounded-xl border bg-amber-50/50 p-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{copy.priority}</Label>
+                  <Select value={String(editWaitlistPriority)} onValueChange={value => setEditWaitlistPriority(Number(value) as 1 | 2 | 3)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3].map(value => <SelectItem key={value} value={String(value)}>{priorityLabel(value as 1 | 2 | 3)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{copy.waitlistReason}</Label>
+                  <Select value={editWaitlistReason} onValueChange={value => setEditWaitlistReason(value as RegistrationWaitlistReason)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{WAITLIST_REASON_VALUES.map(value => <SelectItem key={value} value={value}>{waitlistReasonLabel(value)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="crm-edit-desired-level">{copy.desiredLevel}</Label>
+                  <Input id="crm-edit-desired-level" value={editDesiredLevel} onChange={event => setEditDesiredLevel(event.target.value)} maxLength={150} />
+                </div>
+              </div>
+            )}
             <div className="space-y-2"><Label htmlFor="crm-edit-follow-up">{copy.followUp}</Label><Input id="crm-edit-follow-up" type="datetime-local" value={editFollowUpAt} onChange={event => setEditFollowUpAt(event.target.value)} /></div>
             <div className="space-y-2"><Label htmlFor="crm-edit-notes">{copy.notes}</Label><textarea id="crm-edit-notes" value={editNotes} onChange={event => setEditNotes(event.target.value)} maxLength={2000} rows={5} className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring" /></div>
           </div>

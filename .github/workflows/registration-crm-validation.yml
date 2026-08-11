@@ -14,7 +14,9 @@ on:
       - "client/src/lib/locale.ts"
       - "supabase/033_registration_crm_foundation.sql"
       - "supabase/034_registration_crm_hardening.sql"
+      - "supabase/039_registration_waitlist_foundation.sql"
       - "tests/registration-crm*"
+      - "tests/registration-waitlist*"
       - "tests/run-registration-crm-migration-test.sh"
       - "tests/branch-manager-routing.test.mjs"
       - "package.json"
@@ -54,7 +56,7 @@ jobs:
         run: docker info
 
       - name: Validate static CRM contracts
-        run: node --test tests/registration-crm.test.mjs tests/branch-manager-routing.test.mjs
+        run: node --test tests/registration-crm.test.mjs tests/registration-waitlist.test.mjs tests/branch-manager-routing.test.mjs
 
       - name: Validate registration CRM migration
         run: bash tests/run-registration-crm-migration-test.sh

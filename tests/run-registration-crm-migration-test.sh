@@ -56,8 +56,11 @@ for file in \
   supabase/027_official_receipts.sql supabase/028_student_bulk_import.sql \
   supabase/029_student_bulk_import_consistency.sql supabase/030_student_bulk_import_plpgsql_resolution.sql \
   supabase/031_student_bulk_import_rollback_fk_order.sql supabase/032_student_bulk_import_start_date_validation.sql \
-  supabase/033_registration_crm_foundation.sql supabase/034_registration_crm_hardening.sql; do
+  supabase/033_registration_crm_foundation.sql supabase/034_registration_crm_hardening.sql \
+  supabase/039_registration_waitlist_foundation.sql; do
   run_sql "$file"
 done
 run_sql tests/registration-crm-assertions.sql
 run_sql tests/registration-crm-hardening-assertions.sql
+run_sql tests/registration-waitlist-assertions.sql
+run_sql tests/registration-waitlist-query-assertions.sql
