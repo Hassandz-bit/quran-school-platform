@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ClipboardList,
   DollarSign,
+  FileText,
   GraduationCap,
   Home,
   ReceiptText,
@@ -22,6 +23,7 @@ export type AppNavigationInput = {
   canViewMembers?: boolean;
   canViewAcademicReports?: boolean;
   canViewRegistrations?: boolean;
+  canViewDocuments?: boolean;
   locale?: AppLocale;
 };
 
@@ -37,6 +39,7 @@ export type AppNavigationItem = {
     | "finance"
     | "receipts"
     | "registrations"
+    | "documents"
     | "guardians"
     | "notifications"
     | "members"
@@ -55,6 +58,7 @@ export function getAppNavigation({
   canViewMembers = false,
   canViewAcademicReports = false,
   canViewRegistrations = false,
+  canViewDocuments = false,
   locale = "ar",
 }: AppNavigationInput): AppNavigationItem[] {
   const roles = new Set(activeRoleCodes);
@@ -71,6 +75,7 @@ export function getAppNavigation({
   const canUseReceipts =
     canUseFinance || hasRole(roles, "registrar");
   const canUseRegistrations = canViewRegistrations;
+  const canUseDocuments = canViewDocuments;
   const canUseMembers = isSchoolAdmin || canViewMembers;
   const canUseGuardians = isSchoolAdmin || hasRole(roles, "registrar");
   const canUseNotifications = isSchoolAdmin || roles.size > 0;
@@ -171,6 +176,17 @@ export function getAppNavigation({
           },
         ]
       : []),
+    ...(canUseDocuments
+      ? [
+          {
+            id: "documents" as const,
+            label: translate(locale, "nav.documents"),
+            path: "/documents",
+            group: "management" as const,
+            icon: FileText,
+          },
+        ]
+      : []),
     ...(canUseGuardians
       ? [
           {
@@ -228,6 +244,7 @@ export function getBottomNavigation(
     "memorization",
     "notifications",
     "registrations",
+    "documents",
     "academic-reports",
     "finance",
     "guardians",
