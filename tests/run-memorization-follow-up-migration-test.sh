@@ -36,7 +36,13 @@ docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_te
   < supabase/041_memorization_follow_up_scope_hardening.sql
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < supabase/042_memorization_follow_up_analytics.sql
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/memorization-follow-up-assertions.sql
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/memorization-follow-up-transfer-assertions.sql
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/memorization-analytics-assertions.sql
