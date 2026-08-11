@@ -5,7 +5,8 @@ import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const migration = read("supabase/035_documents_management_foundation.sql");
-const hardening = read("supabase/036_documents_storage_integrity.sql");
+const storageHardening = read("supabase/036_documents_storage_integrity.sql");
+const scopeHardening = read("supabase/037_documents_subject_scope_sync.sql");
 const client = read("client/src/lib/documents.ts");
 const page = read("client/src/pages/Documents.tsx");
 const route = read("client/src/components/DocumentsRoute.tsx");
@@ -47,9 +48,9 @@ test("document files stay in private bounded Storage with immutable current byte
   assert.match(migration, /image\/webp/);
   assert.match(migration, /create policy "school documents scoped read"/i);
   assert.match(migration, /create policy "school documents scoped insert"/i);
-  assert.match(hardening, /document_storage_object_missing/);
-  assert.match(hardening, /drop policy if exists "school documents scoped update"/i);
-  assert.match(hardening, /document\.object_path is distinct from name/i);
+  assert.match(storageHardening, /document_storage_object_missing/);
+  assert.match(storageHardening, /drop policy if exists "school documents scoped update"/i);
+  assert.match(storageHardening, /document\.object_path is distinct from name/i);
   assert.match(client, /upsert: false/);
   assert.match(client, /\.download\(objectPath\)/);
   assert.doesNotMatch(client, /getPublicUrl|createSignedUrl/);
@@ -63,6 +64,15 @@ test("students and registration leads share one scoped document foundation", () 
   assert.match(migration, /validate_document_subject_scope/);
   assert.match(migration, /birth_certificate_provided/);
   assert.match(migration, /medical_report_provided/);
+});
+
+test("document scope follows student transfers and custom other slots remain distinct", () => {
+  assert.match(scopeHardening, /create trigger students_sync_document_branch/i);
+  assert.match(scopeHardening, /after update of school_id, branch_id on public\.students/i);
+  assert.match(scopeHardening, /update public\.document_records[\s\S]*set branch_id = new\.branch_id/i);
+  assert.match(scopeHardening, /document_records_student_other_label_idx/i);
+  assert.match(scopeHardening, /lower\(btrim\(custom_label\)\)/i);
+  assert.match(scopeHardening, /target_category <> 'other'[\s\S]*lower\(btrim\(document\.custom_label\)\)/i);
 });
 
 test("document route, UI and navigation are bilingual", () => {
