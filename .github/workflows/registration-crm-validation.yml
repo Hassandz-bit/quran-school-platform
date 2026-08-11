@@ -5,6 +5,7 @@ on:
     branches:
       - develop/v2
     paths:
+      - "client/src/components/AppShell.tsx"
       - "client/src/components/RegistrationRoute.tsx"
       - "client/src/lib/registration-crm.ts"
       - "client/src/pages/Registrations.tsx"
@@ -12,8 +13,10 @@ on:
       - "client/src/lib/app-navigation.ts"
       - "client/src/lib/locale.ts"
       - "supabase/033_registration_crm_foundation.sql"
+      - "supabase/034_registration_crm_hardening.sql"
       - "tests/registration-crm*"
       - "tests/run-registration-crm-migration-test.sh"
+      - "tests/branch-manager-routing.test.mjs"
       - "package.json"
       - ".github/workflows/registration-crm-validation.yml"
       - ".github/workflows/launch-readiness-validation.yml"
@@ -45,7 +48,7 @@ jobs:
         run: docker info
 
       - name: Validate static CRM contracts
-        run: node --test tests/registration-crm.test.mjs
+        run: node --test tests/registration-crm.test.mjs tests/branch-manager-routing.test.mjs
 
       - name: Validate registration CRM migration
         run: bash tests/run-registration-crm-migration-test.sh
