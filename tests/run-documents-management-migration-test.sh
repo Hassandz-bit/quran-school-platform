@@ -62,3 +62,4 @@ for file in \
   run_sql "$file"
 done
 run_sql tests/documents-management-assertions.sql
+run_sql tests/documents-subject-scope-assertions.sql
