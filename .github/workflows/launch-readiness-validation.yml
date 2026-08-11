@@ -97,6 +97,9 @@ jobs:
       - name: Validate student bulk import migrations
         run: pnpm test:student-import:migration
 
+      - name: Validate registration CRM migration
+        run: pnpm test:registration-crm:migration
+
       - name: Validate teacher invitation Edge Function
         run: pnpm test:teacher-invitations:function
 
