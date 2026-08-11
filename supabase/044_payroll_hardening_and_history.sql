@@ -1,6 +1,7 @@
 -- Quran School SaaS - payroll hardening and history
 -- V2 review migration only. Do not apply to Production manually.
--- Prevents overlapping staff compensation across scopes and exposes bounded RPC-only history.
+-- Prevents overlapping staff compensation across scopes, hardens period generation,
+-- and exposes bounded RPC-only history.
 
 begin;
 
@@ -112,6 +113,169 @@ begin
 end;
 $$;
 
+-- Migration 043 originally used the local variable name period_id, which is
+-- ambiguous with payroll_entries.period_id inside ON CONFLICT inference.
+-- Replace the function before any browser/runtime use with an unambiguous local.
+create or replace function public.generate_payroll_period(
+  target_school_id uuid,
+  target_branch_id uuid,
+  target_period_month date,
+  target_notes text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  generated_period_id uuid;
+  existing_status text;
+  month_end date;
+begin
+  if (select auth.uid()) is null then
+    raise exception using errcode = '42501', message = 'PAYROLL_AUTH_REQUIRED';
+  end if;
+  if target_period_month is null
+    or target_period_month <> date_trunc('month', target_period_month)::date then
+    raise exception using errcode = '22023', message = 'PAYROLL_PERIOD_MONTH_INVALID';
+  end if;
+  if not public.payroll_can_manage_scope(target_school_id, target_branch_id) then
+    raise exception using errcode = '42501', message = 'PAYROLL_MANAGE_REQUIRED';
+  end if;
+
+  if target_branch_id is null then
+    select p.id, p.status into generated_period_id, existing_status
+    from public.payroll_periods p
+    where p.school_id = target_school_id
+      and p.branch_id is null
+      and p.period_month = target_period_month;
+  else
+    select p.id, p.status into generated_period_id, existing_status
+    from public.payroll_periods p
+    where p.school_id = target_school_id
+      and p.branch_id = target_branch_id
+      and p.period_month = target_period_month;
+  end if;
+
+  if generated_period_id is null then
+    insert into public.payroll_periods (
+      school_id, branch_id, period_month, notes, created_by
+    ) values (
+      target_school_id,
+      target_branch_id,
+      target_period_month,
+      nullif(btrim(target_notes), ''),
+      (select auth.uid())
+    )
+    returning id, status into generated_period_id, existing_status;
+  elsif existing_status <> 'draft' then
+    return generated_period_id;
+  end if;
+
+  month_end := (target_period_month + interval '1 month - 1 day')::date;
+
+  insert into public.payroll_entries (
+    school_id,
+    branch_id,
+    period_id,
+    compensation_profile_id,
+    payee_kind,
+    teacher_id,
+    membership_id,
+    payee_name_snapshot,
+    payee_role_snapshot,
+    base_amount,
+    created_by
+  )
+  select
+    p.school_id,
+    p.branch_id,
+    generated_period_id,
+    p.id,
+    p.payee_kind,
+    p.teacher_id,
+    p.membership_id,
+    case
+      when p.payee_kind = 'teacher'
+        then btrim(concat_ws(' ', t.first_name, t.last_name))
+      else btrim(pr.full_name)
+    end,
+    case
+      when p.payee_kind = 'teacher' then 'معلم'
+      else coalesce((
+        select string_agg(distinct r.name_ar, '، ' order by r.name_ar)
+        from public.membership_roles mr
+        join public.roles r
+          on r.school_id = mr.school_id
+         and r.id = mr.role_id
+         and r.status = 'active'
+        where mr.school_id = p.school_id
+          and mr.membership_id = p.membership_id
+          and (
+            (p.branch_id is null and mr.branch_id is null)
+            or (
+              p.branch_id is not null
+              and (mr.branch_id is null or mr.branch_id = p.branch_id)
+            )
+          )
+      ), 'إداري/موظف')
+    end,
+    p.base_amount,
+    (select auth.uid())
+  from public.payroll_compensation_profiles p
+  left join public.teachers t
+    on p.payee_kind = 'teacher'
+   and t.school_id = p.school_id
+   and t.id = p.teacher_id
+  left join public.school_memberships sm
+    on p.payee_kind = 'member'
+   and sm.school_id = p.school_id
+   and sm.id = p.membership_id
+  left join public.profiles pr
+    on pr.id = sm.profile_id
+  where p.school_id = target_school_id
+    and p.branch_id is not distinct from target_branch_id
+    and p.status = 'active'
+    and p.effective_from <= month_end
+    and (p.effective_to is null or p.effective_to >= target_period_month)
+    and (
+      (p.payee_kind = 'teacher' and t.status in ('active', 'on_leave'))
+      or (
+        p.payee_kind = 'member'
+        and sm.status = 'active'
+        and pr.status = 'active'
+      )
+    )
+  on conflict (period_id, compensation_profile_id) do nothing;
+
+  insert into public.payroll_audit_events (
+    school_id,
+    entity_type,
+    entity_id,
+    operation,
+    new_values,
+    actor_profile_id
+  ) values (
+    target_school_id,
+    'period',
+    generated_period_id,
+    'generate',
+    jsonb_build_object(
+      'period_month', target_period_month,
+      'branch_id', target_branch_id,
+      'entry_count', (
+        select count(*)
+        from public.payroll_entries e
+        where e.period_id = generated_period_id
+      )
+    ),
+    (select auth.uid())
+  );
+
+  return generated_period_id;
+end;
+$$;
+
 create or replace function public.list_payroll_history(
   target_school_id uuid,
   target_branch_id uuid default null,
@@ -210,10 +374,15 @@ end;
 $$;
 
 revoke all on function public.validate_payroll_compensation_profile() from public;
+revoke all on function public.generate_payroll_period(uuid, uuid, date, text) from public;
 revoke all on function public.list_payroll_history(uuid, uuid, text, uuid, integer) from public;
+revoke execute on function public.generate_payroll_period(uuid, uuid, date, text) from anon;
 revoke execute on function public.list_payroll_history(uuid, uuid, text, uuid, integer) from anon;
+grant execute on function public.generate_payroll_period(uuid, uuid, date, text) to authenticated;
 grant execute on function public.list_payroll_history(uuid, uuid, text, uuid, integer) to authenticated;
 
+comment on function public.generate_payroll_period(uuid, uuid, date, text) is
+  'Creates or reuses a monthly payroll period and snapshots active compensation without PL/pgSQL column-name ambiguity.';
 comment on function public.list_payroll_history(uuid, uuid, text, uuid, integer) is
   'Bounded payroll history scoped by existing finance view/manage permissions. Includes latest completed or reversed payment evidence and never grants payees implicit access.';
 
