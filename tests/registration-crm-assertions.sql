@@ -13,6 +13,7 @@ select public.create_registration_lead(
   'محمد بن سالم', '+213555000001', 'guardian-a@example.test',
   'walk_in', now() + interval '2 days', 'طلب زيارة أولية'
 ) as lead_a1 \gset
+select set_config('test.lead_a1', :'lead_a1', true);
 
 select public.create_registration_lead(
   '10000000-0000-4000-8000-000000000001',
@@ -21,6 +22,7 @@ select public.create_registration_lead(
   'خالد ولي', '+213555000002', null,
   'referral', null, null
 ) as lead_a2 \gset
+select set_config('test.lead_a2', :'lead_a2', true);
 
 -- Direct table access stays closed even to an authorized school admin.
 do $$
@@ -71,7 +73,7 @@ end;
 $$;
 
 select public.update_registration_lead_pipeline(
-  :'lead_a1'::uuid,
+  current_setting('test.lead_a1')::uuid,
   'contacted',
   now() + interval '1 day',
   'تم الاتصال بولي الأمر وتحديد متابعة.'
@@ -95,7 +97,7 @@ begin
 
   begin
     perform public.update_registration_lead_pipeline(
-      :'lead_a2'::uuid, 'qualified', null, null
+      current_setting('test.lead_a2')::uuid, 'qualified', null, null
     );
     raise exception 'registrar cross-branch update unexpectedly succeeded';
   exception
@@ -148,6 +150,7 @@ select public.create_registration_lead(
   'Guardian B', '+213555000003', 'b@example.test',
   'website', null, 'School B lead'
 ) as lead_b1 \gset
+select set_config('test.lead_b1', :'lead_b1', true);
 
 do $$
 declare
@@ -176,12 +179,10 @@ declare
   a1_event_count integer;
   a2_event_count integer;
   b1_event_count integer;
-  a1_status text;
 begin
-  select count(*), max(new_status)
-  into a1_event_count, a1_status
+  select count(*) into a1_event_count
   from public.registration_lead_events
-  where lead_id = :'lead_a1'::uuid;
+  where lead_id = current_setting('test.lead_a1')::uuid;
 
   if a1_event_count <> 2 then
     raise exception 'A1 lead should have two audit events, saw %', a1_event_count;
@@ -189,7 +190,7 @@ begin
 
   if not exists (
     select 1 from public.registration_lead_events
-    where lead_id = :'lead_a1'::uuid
+    where lead_id = current_setting('test.lead_a1')::uuid
       and event_type = 'pipeline_updated'
       and previous_status = 'new'
       and new_status = 'contacted'
@@ -199,14 +200,14 @@ begin
 
   select count(*) into a2_event_count
   from public.registration_lead_events
-  where lead_id = :'lead_a2'::uuid;
+  where lead_id = current_setting('test.lead_a2')::uuid;
   if a2_event_count <> 1 then
     raise exception 'A2 lead should have one creation audit event';
   end if;
 
   select count(*) into b1_event_count
   from public.registration_lead_events
-  where lead_id = :'lead_b1'::uuid;
+  where lead_id = current_setting('test.lead_b1')::uuid;
   if b1_event_count <> 1 then
     raise exception 'B1 lead should have one creation audit event';
   end if;
