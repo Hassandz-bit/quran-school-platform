@@ -19,16 +19,16 @@ insert into public.student_charges (
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000005', false);
 insert into public.payments (
-  id, school_id, branch_id, student_id, charge_id, amount, payment_method,
+  school_id, branch_id, student_id, charge_id, amount, payment_method,
   payment_date, reference_number
 ) values (
-  '78000000-0000-4000-8000-000000000001',
   '10000000-0000-4000-8000-000000000001',
   '20000000-0000-4000-8000-000000000001',
   '50000000-0000-4000-8000-000000000001',
   '77000000-0000-4000-8000-000000000001',
   250, 'cash', '2026-08-15', 'UNLINKED-001'
-);
+) returning id as reconciliation_payment_id \gset
+select set_config('test.reconciliation_payment_id', :'reconciliation_payment_id', false);
 
 select public.get_treasury_reconciliation(
   '10000000-0000-4000-8000-000000000001', 50
@@ -57,7 +57,7 @@ $$;
 select public.link_treasury_business_source(
   '10000000-0000-4000-8000-000000000001',
   'student_payment',
-  '78000000-0000-4000-8000-000000000001',
+  :'reconciliation_payment_id',
   (select id from public.list_treasury_link_accounts(
     '10000000-0000-4000-8000-000000000001',
     '20000000-0000-4000-8000-000000000001'
@@ -101,7 +101,7 @@ begin
   select count(*) into movement_count
   from public.treasury_movements
   where source_type = 'student_payment'
-    and source_id = '78000000-0000-4000-8000-000000000001'
+    and source_id = current_setting('test.reconciliation_payment_id')::uuid
     and status = 'posted';
   if movement_count <> 1 then raise exception 'expected exactly one posted linked payment movement'; end if;
 end;
@@ -113,7 +113,7 @@ select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000005
 update public.payments
 set status = 'reversed'
 where school_id = '10000000-0000-4000-8000-000000000001'
-  and id = '78000000-0000-4000-8000-000000000001';
+  and id = current_setting('test.reconciliation_payment_id')::uuid;
 
 select public.get_treasury_reconciliation(
   '10000000-0000-4000-8000-000000000001', 50
@@ -144,7 +144,7 @@ begin
   select status into movement_status
   from public.treasury_movements
   where source_type = 'student_payment'
-    and source_id = '78000000-0000-4000-8000-000000000001'
+    and source_id = current_setting('test.reconciliation_payment_id')::uuid
   order by created_at desc limit 1;
   if movement_status <> 'reversed' then raise exception 'linked movement was not retained as reversed'; end if;
 end;
