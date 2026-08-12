@@ -56,6 +56,8 @@ run_sql supabase/047_treasury_and_other_income_foundation.sql
 run_sql supabase/048_treasury_workspace_and_reporting.sql
 run_sql supabase/049_treasury_bootstrap_scope_hardening.sql
 run_sql supabase/050_treasury_reconciliation_and_source_linking.sql
+run_sql supabase/051_treasury_reconciliation_scope_hardening.sql
 run_sql tests/treasury-other-income-fixture.sql
 run_sql tests/treasury-other-income-assertions.sql
 run_sql tests/treasury-reconciliation-assertions.sql
+run_sql tests/treasury-hidden-central-account-assertions.sql
