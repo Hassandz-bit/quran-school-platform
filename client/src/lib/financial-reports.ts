@@ -61,6 +61,17 @@ export type ReportExpense = {
   status: "recorded" | "cancelled";
 };
 
+export type ReportPayrollPayment = {
+  id: string;
+  branch_id: string | null;
+  payroll_entry_id: string;
+  amount: number | string;
+  payment_method: ReportPaymentMethod;
+  payment_date: string;
+  reference_number: string | null;
+  status: "completed" | "reversed";
+};
+
 export type FinancialReportAccess = {
   canViewFinance: boolean;
   canViewExpenses: boolean;
@@ -74,6 +85,7 @@ export type FinancialReportPageData = {
   charges: ReportCharge[];
   payments: ReportPayment[];
   expenses: ReportExpense[];
+  payrollPayments: ReportPayrollPayment[];
   access: FinancialReportAccess;
 };
 
@@ -98,6 +110,7 @@ export type BranchSummary = {
   due: number;
   collected: number;
   expenses: number;
+  payroll: number;
   net: number;
 };
 
@@ -106,6 +119,7 @@ export type MonthSummary = {
   due: number;
   collected: number;
   expenses: number;
+  payroll: number;
   net: number;
 };
 
@@ -120,10 +134,13 @@ export type FinancialReports = {
   payments: ReportPayment[];
   overdue: OverdueRow[];
   expenses: ReportExpense[];
+  payrollPayments: ReportPayrollPayment[];
   dueTotal: number;
   collectedTotal: number;
   overdueTotal: number;
   expenseTotal: number;
+  payrollTotal: number;
+  outflowTotal: number;
   netFlow: number;
   byBranch: BranchSummary[];
   byMonth: MonthSummary[];
@@ -179,41 +196,37 @@ export function buildFinancialReports(
     charge =>
       inDateRange(charge.due_date, filters.dateFrom, filters.dateTo) &&
       matchesBranch(charge.branch_id, filters.branch) &&
-      (filters.chargeStatus === "all" ||
-        charge.status === filters.chargeStatus)
+      (filters.chargeStatus === "all" || charge.status === filters.chargeStatus)
   );
   const payments = data.payments.filter(
     payment =>
       inDateRange(payment.payment_date, filters.dateFrom, filters.dateTo) &&
       matchesBranch(payment.branch_id, filters.branch) &&
-      (filters.paymentMethod === "all" ||
-        payment.payment_method === filters.paymentMethod)
+      (filters.paymentMethod === "all" || payment.payment_method === filters.paymentMethod)
   );
   const expenses = data.expenses.filter(
     expense =>
       inDateRange(expense.expense_date, filters.dateFrom, filters.dateTo) &&
       matchesBranch(expense.branch_id, filters.branch) &&
-      (filters.paymentMethod === "all" ||
-        expense.payment_method === filters.paymentMethod) &&
-      (filters.expenseCategory === "all" ||
-        expense.category === filters.expenseCategory)
+      (filters.paymentMethod === "all" || expense.payment_method === filters.paymentMethod) &&
+      (filters.expenseCategory === "all" || expense.category === filters.expenseCategory)
+  );
+  const payrollPayments = data.payrollPayments.filter(
+    payment =>
+      inDateRange(payment.payment_date, filters.dateFrom, filters.dateTo) &&
+      matchesBranch(payment.branch_id, filters.branch) &&
+      (filters.paymentMethod === "all" || payment.payment_method === filters.paymentMethod)
   );
 
-  const completedPayments = payments.filter(
-    payment => payment.status === "completed"
-  );
-  const recordedExpenses = expenses.filter(
-    expense => expense.status === "recorded"
-  );
+  const completedPayments = payments.filter(payment => payment.status === "completed");
+  const recordedExpenses = expenses.filter(expense => expense.status === "recorded");
+  const completedPayrollPayments = payrollPayments.filter(payment => payment.status === "completed");
   const allCompletedByCharge = new Map<string, number>();
   data.payments.forEach(payment => {
     if (payment.status !== "completed") return;
     allCompletedByCharge.set(
       payment.charge_id,
-      roundCurrency(
-        (allCompletedByCharge.get(payment.charge_id) ?? 0) +
-          toAmount(payment.amount)
-      )
+      roundCurrency((allCompletedByCharge.get(payment.charge_id) ?? 0) + toAmount(payment.amount))
     );
   });
 
@@ -228,10 +241,7 @@ export function buildFinancialReports(
       return {
         charge,
         paid,
-        outstanding: Math.max(
-          roundCurrency(toAmount(charge.net_amount) - paid),
-          0
-        ),
+        outstanding: Math.max(roundCurrency(toAmount(charge.net_amount) - paid), 0),
       };
     })
     .filter(row => row.outstanding > 0);
@@ -240,10 +250,10 @@ export function buildFinancialReports(
   const collectedTotal = sum(completedPayments, row => toAmount(row.amount));
   const overdueTotal = sum(overdue, row => row.outstanding);
   const expenseTotal = sum(recordedExpenses, row => toAmount(row.amount));
+  const payrollTotal = sum(completedPayrollPayments, row => toAmount(row.amount));
+  const outflowTotal = roundCurrency(expenseTotal + payrollTotal);
 
-  const branchNames = new Map(
-    data.branches.map(branch => [branch.id, branch.name])
-  );
+  const branchNames = new Map(data.branches.map(branch => [branch.id, branch.name]));
   const branchMap = new Map<string, BranchSummary>();
   const ensureBranch = (branchId: string | null): BranchSummary => {
     const key = branchId ?? "school";
@@ -251,13 +261,11 @@ export function buildFinancialReports(
     if (existing) return existing;
     const created: BranchSummary = {
       key,
-      label:
-        branchId === null
-          ? "مستوى المدرسة"
-          : (branchNames.get(branchId) ?? "فرع غير متاح"),
+      label: branchId === null ? "مستوى المدرسة" : (branchNames.get(branchId) ?? "فرع غير متاح"),
       due: 0,
       collected: 0,
       expenses: 0,
+      payroll: 0,
       net: 0,
     };
     branchMap.set(key, created);
@@ -272,13 +280,17 @@ export function buildFinancialReports(
   recordedExpenses.forEach(expense => {
     ensureBranch(expense.branch_id).expenses += toAmount(expense.amount);
   });
+  completedPayrollPayments.forEach(payment => {
+    ensureBranch(payment.branch_id).payroll += toAmount(payment.amount);
+  });
   const byBranch = [...branchMap.values()]
     .map(item => ({
       ...item,
       due: roundCurrency(item.due),
       collected: roundCurrency(item.collected),
       expenses: roundCurrency(item.expenses),
-      net: roundCurrency(item.collected - item.expenses),
+      payroll: roundCurrency(item.payroll),
+      net: roundCurrency(item.collected - item.expenses - item.payroll),
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "ar"));
 
@@ -286,23 +298,21 @@ export function buildFinancialReports(
   const ensureMonth = (month: string): MonthSummary => {
     const existing = monthMap.get(month);
     if (existing) return existing;
-    const created = { month, due: 0, collected: 0, expenses: 0, net: 0 };
+    const created: MonthSummary = { month, due: 0, collected: 0, expenses: 0, payroll: 0, net: 0 };
     monthMap.set(month, created);
     return created;
   };
   charges.forEach(charge => {
-    ensureMonth(monthKey(charge.due_date)).due +=
-      countedChargeAmount(charge);
+    ensureMonth(monthKey(charge.due_date)).due += countedChargeAmount(charge);
   });
   completedPayments.forEach(payment => {
-    ensureMonth(monthKey(payment.payment_date)).collected += toAmount(
-      payment.amount
-    );
+    ensureMonth(monthKey(payment.payment_date)).collected += toAmount(payment.amount);
   });
   recordedExpenses.forEach(expense => {
-    ensureMonth(monthKey(expense.expense_date)).expenses += toAmount(
-      expense.amount
-    );
+    ensureMonth(monthKey(expense.expense_date)).expenses += toAmount(expense.amount);
+  });
+  completedPayrollPayments.forEach(payment => {
+    ensureMonth(monthKey(payment.payment_date)).payroll += toAmount(payment.amount);
   });
   const byMonth = [...monthMap.values()]
     .map(item => ({
@@ -310,7 +320,8 @@ export function buildFinancialReports(
       due: roundCurrency(item.due),
       collected: roundCurrency(item.collected),
       expenses: roundCurrency(item.expenses),
-      net: roundCurrency(item.collected - item.expenses),
+      payroll: roundCurrency(item.payroll),
+      net: roundCurrency(item.collected - item.expenses - item.payroll),
     }))
     .sort((a, b) => a.month.localeCompare(b.month));
 
@@ -322,11 +333,7 @@ export function buildFinancialReports(
     const map = new Map<string, AmountSummary>();
     rows.forEach(row => {
       const itemKey = key(row);
-      const item = map.get(itemKey) ?? {
-        key: itemKey,
-        count: 0,
-        amount: 0,
-      };
+      const item = map.get(itemKey) ?? { key: itemKey, count: 0, amount: 0 };
       item.count += 1;
       item.amount += amount(row);
       map.set(itemKey, item);
@@ -341,18 +348,17 @@ export function buildFinancialReports(
     payments,
     overdue,
     expenses,
+    payrollPayments,
     dueTotal,
     collectedTotal,
     overdueTotal,
     expenseTotal,
-    netFlow: roundCurrency(collectedTotal - expenseTotal),
+    payrollTotal,
+    outflowTotal,
+    netFlow: roundCurrency(collectedTotal - outflowTotal),
     byBranch,
     byMonth,
-    byChargeStatus: summarize(
-      charges,
-      charge => charge.status,
-      countedChargeAmount
-    ),
+    byChargeStatus: summarize(charges, charge => charge.status, countedChargeAmount),
     byPaymentMethod: summarize(
       completedPayments,
       payment => payment.payment_method,
@@ -407,41 +413,21 @@ export async function fetchFinancialReportData(
   if (branchError) throw branchError;
   const branches = (branchData ?? []) as ReportBranch[];
 
-  const [schoolView, schoolManage, schoolExpenses, branchAccess] =
-    await Promise.all([
-      hasSchoolPermission(client, schoolId, "finance.view"),
-      hasSchoolPermission(client, schoolId, "finance.manage"),
-      hasSchoolPermission(client, schoolId, "finance.expenses"),
-      Promise.all(
-        branches.map(async branch => {
-          const [view, manage, expenses] = await Promise.all([
-            hasBranchPermission(
-              client,
-              schoolId,
-              branch.id,
-              "finance.view"
-            ),
-            hasBranchPermission(
-              client,
-              schoolId,
-              branch.id,
-              "finance.manage"
-            ),
-            hasBranchPermission(
-              client,
-              schoolId,
-              branch.id,
-              "finance.expenses"
-            ),
-          ]);
-          return {
-            branchId: branch.id,
-            finance: view || manage,
-            expenses,
-          };
-        })
-      ),
-    ]);
+  const [schoolView, schoolManage, schoolExpenses, branchAccess] = await Promise.all([
+    hasSchoolPermission(client, schoolId, "finance.view"),
+    hasSchoolPermission(client, schoolId, "finance.manage"),
+    hasSchoolPermission(client, schoolId, "finance.expenses"),
+    Promise.all(
+      branches.map(async branch => {
+        const [view, manage, expenses] = await Promise.all([
+          hasBranchPermission(client, schoolId, branch.id, "finance.view"),
+          hasBranchPermission(client, schoolId, branch.id, "finance.manage"),
+          hasBranchPermission(client, schoolId, branch.id, "finance.expenses"),
+        ]);
+        return { branchId: branch.id, finance: view || manage, expenses };
+      })
+    ),
+  ]);
 
   const financeBranchIds = branchAccess
     .filter(item => schoolView || schoolManage || item.finance)
@@ -450,10 +436,8 @@ export async function fetchFinancialReportData(
     .filter(item => schoolExpenses || item.expenses)
     .map(item => item.branchId);
   const access: FinancialReportAccess = {
-    canViewFinance:
-      schoolView || schoolManage || financeBranchIds.length > 0,
-    canViewExpenses:
-      schoolExpenses || expenseBranchIds.length > 0,
+    canViewFinance: schoolView || schoolManage || financeBranchIds.length > 0,
+    canViewExpenses: schoolExpenses || expenseBranchIds.length > 0,
     financeBranchIds,
     expenseBranchIds,
     canViewExpensesSchoolWide: schoolExpenses,
@@ -464,10 +448,11 @@ export async function fetchFinancialReportData(
 
   let charges: ReportCharge[] = [];
   let payments: ReportPayment[] = [];
+  let payrollPayments: ReportPayrollPayment[] = [];
   let expenses: ReportExpense[] = [];
 
   if (access.canViewFinance) {
-    const [chargeResult, paymentResult] = await Promise.all([
+    const [chargeResult, paymentResult, payrollResult] = await Promise.all([
       client
         .from("student_charges")
         .select("id, branch_id, description, net_amount, due_date, status")
@@ -475,30 +460,24 @@ export async function fetchFinancialReportData(
         .order("due_date", { ascending: false }),
       client
         .from("payments")
-        .select(
-          "id, branch_id, charge_id, amount, payment_method, payment_date, reference_number, status"
-        )
+        .select("id, branch_id, charge_id, amount, payment_method, payment_date, reference_number, status")
         .eq("school_id", schoolId)
         .order("payment_date", { ascending: false }),
+      client.rpc("list_payroll_report_payments", { target_school_id: schoolId }),
     ]);
-    if (chargeResult.error || paymentResult.error) {
+    if (chargeResult.error || paymentResult.error || payrollResult.error) {
       throw new Error("financial_reports_load_failed");
     }
     const allowed = new Set(financeBranchIds);
-    charges = ((chargeResult.data ?? []) as ReportCharge[]).filter(row =>
-      allowed.has(row.branch_id)
-    );
-    payments = ((paymentResult.data ?? []) as ReportPayment[]).filter(row =>
-      allowed.has(row.branch_id)
-    );
+    charges = ((chargeResult.data ?? []) as ReportCharge[]).filter(row => allowed.has(row.branch_id));
+    payments = ((paymentResult.data ?? []) as ReportPayment[]).filter(row => allowed.has(row.branch_id));
+    payrollPayments = (payrollResult.data ?? []) as ReportPayrollPayment[];
   }
 
   if (access.canViewExpenses) {
     const expenseResult = await client
       .from("expenses")
-      .select(
-        "id, branch_id, category, description, amount, expense_date, payment_method, reference_number, status"
-      )
+      .select("id, branch_id, category, description, amount, expense_date, payment_method, reference_number, status")
       .eq("school_id", schoolId)
       .order("expense_date", { ascending: false });
     if (expenseResult.error) {
@@ -506,13 +485,11 @@ export async function fetchFinancialReportData(
     }
     const allowed = new Set(expenseBranchIds);
     expenses = ((expenseResult.data ?? []) as ReportExpense[]).filter(row =>
-      row.branch_id === null
-        ? schoolExpenses
-        : allowed.has(row.branch_id)
+      row.branch_id === null ? schoolExpenses : allowed.has(row.branch_id)
     );
   }
 
-  return { branches, charges, payments, expenses, access };
+  return { branches, charges, payments, expenses, payrollPayments, access };
 }
 
 const escapeCsv = (value: string | number): string => {
@@ -521,18 +498,11 @@ const escapeCsv = (value: string | number): string => {
 };
 
 export function buildFinancialReportCsv(
-  report:
-    | "charges"
-    | "payments"
-    | "overdue"
-    | "expenses"
-    | "cashflow",
+  report: "charges" | "payments" | "overdue" | "expenses" | "cashflow",
   data: FinancialReports,
   branches: ReportBranch[]
 ): string {
-  const branchNames = new Map(
-    branches.map(branch => [branch.id, branch.name])
-  );
+  const branchNames = new Map(branches.map(branch => [branch.id, branch.name]));
   const rows: Array<Array<string | number>> = [];
 
   if (report === "charges") {
@@ -559,14 +529,7 @@ export function buildFinancialReportCsv(
       ])
     );
   } else if (report === "overdue") {
-    rows.push([
-      "الوصف",
-      "الفرع",
-      "تاريخ الاستحقاق",
-      "صافي الاستحقاق",
-      "المسدد",
-      "المتأخر",
-    ]);
+    rows.push(["الوصف", "الفرع", "تاريخ الاستحقاق", "صافي الاستحقاق", "المسدد", "المتأخر"]);
     data.overdue.forEach(row =>
       rows.push([
         row.charge.description,
@@ -582,9 +545,7 @@ export function buildFinancialReportCsv(
     data.expenses.forEach(row =>
       rows.push([
         row.description,
-        row.branch_id === null
-          ? "مستوى المدرسة"
-          : (branchNames.get(row.branch_id) ?? ""),
+        row.branch_id === null ? "مستوى المدرسة" : (branchNames.get(row.branch_id) ?? ""),
         row.expense_date,
         row.category,
         row.status,
@@ -594,11 +555,11 @@ export function buildFinancialReportCsv(
   } else {
     rows.push(["البيان", "المبلغ"]);
     rows.push(["التحصيلات المكتملة", data.collectedTotal]);
-    rows.push(["المصروفات المسجلة", data.expenseTotal]);
+    rows.push(["المصروفات التشغيلية المسجلة", data.expenseTotal]);
+    rows.push(["الرواتب المدفوعة", data.payrollTotal]);
+    rows.push(["إجمالي التدفقات الخارجة", data.outflowTotal]);
     rows.push(["صافي التدفق", data.netFlow]);
   }
 
-  return `\uFEFF${rows
-    .map(row => row.map(escapeCsv).join(","))
-    .join("\r\n")}`;
+  return `\uFEFF${rows.map(row => row.map(escapeCsv).join(",")).join("\r\n")}`;
 }
