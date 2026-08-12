@@ -188,10 +188,10 @@ select public.reverse_treasury_transfer('10000000-0000-4000-8000-000000000001', 
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000005', false);
 select public.reverse_other_income('10000000-0000-4000-8000-000000000001', :'other_income_id', 'إلغاء التبرع الاختباري');
 update public.payments
-set status = 'reversed', reversed_by = auth.uid(), reversed_at = now(), reversal_reason = 'إلغاء دفعة اختبارية'
+set status = 'reversed'
 where id = :'payment_id' and school_id = '10000000-0000-4000-8000-000000000001';
 update public.expenses
-set status = 'cancelled', cancelled_by = auth.uid(), cancelled_at = now()
+set status = 'cancelled'
 where id = :'expense_id' and school_id = '10000000-0000-4000-8000-000000000001';
 select public.reverse_payroll_payment(
   '10000000-0000-4000-8000-000000000001', :'payroll_payment_id', 'إلغاء راتب اختباري'

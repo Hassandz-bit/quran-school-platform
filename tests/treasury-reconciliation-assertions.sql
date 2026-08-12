@@ -111,7 +111,7 @@ $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000005', false);
 update public.payments
-set status = 'reversed', reversed_by = auth.uid(), reversed_at = now(), reversal_reason = 'Reconciliation runtime reversal'
+set status = 'reversed'
 where school_id = '10000000-0000-4000-8000-000000000001'
   and id = '78000000-0000-4000-8000-000000000001';
 
