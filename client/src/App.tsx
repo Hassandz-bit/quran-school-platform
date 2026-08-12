@@ -48,6 +48,8 @@ const Treasury = lazy(() => import("./pages/Treasury"));
 const TreasuryReconciliation = lazy(() => import("./pages/TreasuryReconciliation"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const FinancialReports = lazy(() => import("./pages/FinancialReports"));
+const FinancialPeriodClose = lazy(() => import("./pages/FinancialPeriodClose"));
+const FinancialStatements = lazy(() => import("./pages/FinancialStatements"));
 const Receipts = lazy(() => import("./pages/Receipts"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
@@ -343,6 +345,12 @@ function Router() {
         </Route>
         <Route path="/finance/expenses">
           <FinanceRoute><Shell><Expenses /></Shell></FinanceRoute>
+        </Route>
+        <Route path="/finance/period-close">
+          <FinanceRoute><Shell><FinancialPeriodClose /></Shell></FinanceRoute>
+        </Route>
+        <Route path="/finance/statements">
+          <FinanceRoute><Shell><FinancialStatements /></Shell></FinanceRoute>
         </Route>
         <Route path="/finance/reports">
           <FinanceRoute><Shell><FinancialReports /></Shell></FinanceRoute>

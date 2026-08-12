@@ -61,3 +61,6 @@ run_sql tests/treasury-other-income-fixture.sql
 run_sql tests/treasury-other-income-assertions.sql
 run_sql tests/treasury-reconciliation-assertions.sql
 run_sql tests/treasury-hidden-central-account-assertions.sql
+run_sql supabase/052_financial_period_close_and_account_reconciliation.sql
+run_sql supabase/053_financial_statements.sql
+run_sql tests/financial-period-close-assertions.sql
