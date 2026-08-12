@@ -76,7 +76,7 @@ export async function fetchFinancialStatement(
   };
 }
 
-const csvCell = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 export function buildFinancialStatementCsv(statement: FinancialStatement) {
   const rows: Array<Array<string | number>> = [
     ["القائمة المالية", statement.periodMonth, "حتى", statement.periodEnd],
