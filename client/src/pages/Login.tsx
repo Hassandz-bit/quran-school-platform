@@ -80,8 +80,8 @@ const Login: React.FC = () => {
 
   const content = {
     ar: {
-      title: "منصة المدرسة القرآنية الذكية",
-      subtitle: "نحو تعليم قرآني أكثر تنظيمًا وأثرًا",
+      descriptor: "منظومة إدارة المدارس القرآنية",
+      tagline: "تنظيم • تعليم • متابعة • إتقان",
       email: "البريد الإلكتروني",
       password: "كلمة المرور",
       forgotPassword: "نسيت كلمة المرور؟",
@@ -92,8 +92,8 @@ const Login: React.FC = () => {
       installHint: "يفتح كتطبيق مستقل من الشاشة الرئيسية.",
     },
     en: {
-      title: "Smart Quran School Platform",
-      subtitle: "Towards more organized and impactful Quranic education",
+      descriptor: "Quran School Management System",
+      tagline: "Organize • Teach • Follow up • Excel",
       email: "Email Address",
       password: "Password",
       forgotPassword: "Forgot password?",
@@ -111,7 +111,7 @@ const Login: React.FC = () => {
     <div
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
       dir={direction}
-      style={{ backgroundColor: "#0B4738" }}
+      style={{ backgroundColor: "#0F5132" }}
     >
       <div className="absolute inset-0 opacity-[0.08]">
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -160,7 +160,7 @@ const Login: React.FC = () => {
           onClick={() => setLocale("ar")}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             language === "ar"
-              ? "bg-[#C8A26A] text-[#0B4738] shadow-md"
+              ? "bg-[#DAAF37] text-[#0F5132] shadow-md"
               : "bg-white/15 text-white hover:bg-white/25"
           }`}
         >
@@ -171,7 +171,7 @@ const Login: React.FC = () => {
           onClick={() => setLocale("en")}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             language === "en"
-              ? "bg-[#C8A26A] text-[#0B4738] shadow-md"
+              ? "bg-[#DAAF37] text-[#0F5132] shadow-md"
               : "bg-white/15 text-white hover:bg-white/25"
           }`}
         >
@@ -180,22 +180,21 @@ const Login: React.FC = () => {
       </div>
 
       <div className="relative z-20 w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="text-center mb-8">
-            <div
-              className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 shadow-lg"
-              style={{
-                background: "linear-gradient(135deg, #0B4738, #1a6b54)",
-              }}
+        <div className="rounded-2xl bg-white p-8 shadow-2xl">
+          <div className="mb-8 text-center">
+            <img
+              src="/pwa-icon-192.svg"
+              alt="QuranOS"
+              className="mx-auto mb-4 size-24 rounded-[1.4rem] object-cover shadow-lg ring-1 ring-black/5"
+            />
+            <h1
+              className="mb-1 text-3xl font-extrabold tracking-tight text-[#0F5132] font-heading"
+              dir="ltr"
             >
-              <span className="text-3xl font-bold text-[#C8A26A] font-heading">
-                ق
-              </span>
-            </div>
-            <h1 className="text-2xl font-bold text-[#2C3E50] mb-2 font-heading">
-              {t.title}
+              Quran<span className="text-[#DAAF37]">OS</span>
             </h1>
-            <p className="text-gray-500 text-sm">{t.subtitle}</p>
+            <p className="text-sm font-bold text-[#294C3B]">{t.descriptor}</p>
+            <p className="mt-2 text-xs font-semibold text-[#B28820]">{t.tagline}</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -231,7 +230,7 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setLocation("/forgot-password")}
-                className="text-sm text-[#0B4738] hover:text-[#C8A26A] transition-colors font-medium"
+                className="text-sm text-[#0F5132] hover:text-[#B28820] transition-colors font-medium"
               >
                 {t.forgotPassword}
               </button>
@@ -250,7 +249,7 @@ const Login: React.FC = () => {
               type="submit"
               disabled={isLoading}
               className="w-full h-12 text-base font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.97]"
-              style={{ backgroundColor: "#0B4738", color: "white" }}
+              style={{ backgroundColor: "#0F5132", color: "white" }}
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
@@ -288,7 +287,7 @@ const Login: React.FC = () => {
                 type="button"
                 onClick={() => void handleInstall()}
                 disabled={isInstalling}
-                className="w-full rounded-xl border border-[#0B4738]/20 bg-[#F7F8F3] px-4 py-3 text-sm font-bold text-[#0B4738] transition hover:bg-[#EDF2EA] disabled:cursor-wait disabled:opacity-60"
+                className="w-full rounded-xl border border-[#0F5132]/20 bg-[#F7F5EF] px-4 py-3 text-sm font-bold text-[#0F5132] transition hover:bg-[#F1EDE2] disabled:cursor-wait disabled:opacity-60"
               >
                 {isInstalling ? t.installing : t.install}
               </button>

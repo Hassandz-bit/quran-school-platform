@@ -55,13 +55,22 @@ function Brand({
 
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#D7B56D] text-base font-extrabold text-[#123B2C] shadow-sm">
-        ق
-      </span>
+      <img
+        src="/pwa-icon-192.svg"
+        alt=""
+        aria-hidden="true"
+        className="size-10 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-black/5"
+      />
       {!compact && (
         <span className="min-w-0">
-          <span className={cn("block text-sm font-extrabold", isLight ? "text-[#173B2D]" : "text-white")}>
-            QuranOS
+          <span
+            className={cn(
+              "block text-sm font-extrabold",
+              isLight ? "text-[#0F5132]" : "text-white"
+            )}
+            dir="ltr"
+          >
+            Quran<span className="text-[#DAAF37]">OS</span>
           </span>
           <span className={cn("block truncate text-[11px]", isLight ? "text-[#4C6256]" : "text-white/70")}>
             {schoolName ?? fallbackSchoolName}
@@ -315,10 +324,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#F7F8F3] text-[#173B2D]" dir={direction}>
+    <div className="min-h-screen overflow-x-clip bg-[#F7F5EF] text-[#173B2D]" dir={direction}>
       <aside
         className={cn(
-          "fixed inset-y-0 z-30 hidden flex-col bg-[#123B2C] px-3 py-5 shadow-[0_0_30px_rgba(18,59,44,0.14)] transition-[width] duration-200 md:flex",
+          "fixed inset-y-0 z-30 hidden flex-col bg-[#0F5132] px-3 py-5 shadow-[0_0_30px_rgba(15,81,50,0.14)] transition-[width] duration-200 md:flex",
           direction === "rtl" ? "right-0" : "left-0",
           sidebarExpanded ? "w-64" : "w-20"
         )}
@@ -399,8 +408,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </p>
             </div>
           </div>
-          <span className="hidden rounded-full bg-[#EAF3EC] px-3 py-1 text-xs font-semibold text-[#2F6E46] sm:inline">
-            QuranOS
+          <span className="hidden rounded-full bg-[#F3E8C6] px-3 py-1 text-xs font-extrabold text-[#0F5132] sm:inline" dir="ltr">
+            Quran<span className="text-[#B28820]">OS</span>
           </span>
         </header>
 

@@ -5,7 +5,7 @@ export const DEFAULT_LOCALE: AppLocale = "ar";
 export const LOCALE_STORAGE_KEY = "quranos-locale";
 
 const AR_MESSAGES = {
-  "brand.school": "المدرسة القرآنية",
+  "brand.school": "منظومة إدارة المدارس القرآنية",
   "group.school": "المدرسة",
   "group.learning": "التعليم",
   "group.management": "الإدارة",
@@ -68,7 +68,7 @@ const AR_MESSAGES = {
 export type TranslationKey = keyof typeof AR_MESSAGES;
 
 const EN_MESSAGES: Record<TranslationKey, string> = {
-  "brand.school": "Quran School",
+  "brand.school": "Quran School Management System",
   "group.school": "School",
   "group.learning": "Learning",
   "group.management": "Management",
