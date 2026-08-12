@@ -98,6 +98,16 @@ export default function FinanceNavigation({
         visible: access.canViewFinance,
       },
       {
+        label: "إقفال الفترة",
+        path: "/finance/period-close",
+        visible: access.canManageFinance,
+      },
+      {
+        label: "القوائم المالية",
+        path: "/finance/statements",
+        visible: hasAnyAccess,
+      },
+      {
         label: "التقارير",
         path: "/finance/reports",
         visible: hasAnyAccess,

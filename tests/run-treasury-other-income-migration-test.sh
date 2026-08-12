@@ -50,8 +50,22 @@ base_files=(
 )
 for file in "${base_files[@]}"; do run_sql "$file"; done
 run_sql tests/guardian-security-foundation-fixture.sql
+
+# Recurring billing (045/046) is now merged before treasury in develop/v2 and
+# depends on the existing guardian notification foundation. Apply those schema
+# dependencies here so the period-close runner exercises the real integrated
+# finance ordering instead of the older stacked-branch ordering.
+run_sql supabase/017_guardian_security_foundation.sql
+run_sql supabase/018_guardian_invitations.sql
+run_sql supabase/023_guardian_push_foundation.sql
+run_sql supabase/024_guardian_absence_notifications.sql
+run_sql supabase/025_guardian_directory_notification_center.sql
+run_sql supabase/026_notification_center_module_categories.sql
+
 run_sql supabase/043_payroll_foundation.sql
 run_sql supabase/044_payroll_hardening_and_history.sql
+run_sql supabase/045_recurring_billing_and_finance_reminders.sql
+run_sql supabase/046_recurring_billing_discount_scope_fix.sql
 run_sql supabase/047_treasury_and_other_income_foundation.sql
 run_sql supabase/048_treasury_workspace_and_reporting.sql
 run_sql supabase/049_treasury_bootstrap_scope_hardening.sql
@@ -61,3 +75,7 @@ run_sql tests/treasury-other-income-fixture.sql
 run_sql tests/treasury-other-income-assertions.sql
 run_sql tests/treasury-reconciliation-assertions.sql
 run_sql tests/treasury-hidden-central-account-assertions.sql
+run_sql supabase/052_financial_period_close_and_account_reconciliation.sql
+run_sql supabase/053_financial_statements.sql
+run_sql supabase/054_financial_close_acceptance_hardening.sql
+run_sql tests/financial-period-close-assertions.sql
