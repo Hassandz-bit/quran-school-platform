@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "bash tests/run-finance-pg17-vercel-validation.sh && pnpm build",
   "rewrites": [
     {
       "source": "/(.*)",
