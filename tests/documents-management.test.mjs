@@ -8,6 +8,7 @@ const migration = read("supabase/035_documents_management_foundation.sql");
 const storageHardening = read("supabase/036_documents_storage_integrity.sql");
 const scopeHardening = read("supabase/037_documents_subject_scope_sync.sql");
 const storagePolicyHelpers = read("supabase/038_documents_storage_policy_helpers.sql");
+const triggerExecuteHardening = read("supabase/055_documents_trigger_function_execute_hardening.sql");
 const client = read("client/src/lib/documents.ts");
 const page = read("client/src/pages/Documents.tsx");
 const route = read("client/src/components/DocumentsRoute.tsx");
@@ -60,6 +61,20 @@ test("document files stay in private bounded Storage with immutable current byte
   assert.match(client, /upsert: false/);
   assert.match(client, /\.download\(objectPath\)/);
   assert.doesNotMatch(client, /getPublicUrl|createSignedUrl/);
+});
+
+test("document trigger helpers are not browser-executable", () => {
+  for (const signature of [
+    "validate_document_subject_scope",
+    "validate_document_storage_object",
+    "sync_student_document_branch",
+  ]) {
+    assert.match(
+      triggerExecuteHardening,
+      new RegExp(`revoke all on function public\\.${signature}\\(\\)[\\s\\S]*from public, anon, authenticated`, "i"),
+    );
+  }
+  assert.doesNotMatch(triggerExecuteHardening, /grant\s+execute/i);
 });
 
 test("students and registration leads share one scoped document foundation", () => {
