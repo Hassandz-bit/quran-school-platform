@@ -30,15 +30,18 @@ insert into public.payments (
 ) returning id as central_link_payment_id \gset
 select set_config('test.central_link_payment_id', :'central_link_payment_id', false);
 
--- School admin links the branch source to BANK_MAIN. Branch finance must not gain
--- bank details, but must still see the source as reconciled rather than unmatched.
+-- School admin links the branch source to BANK_MAIN through the same account-list
+-- RPC available to finance UI. Branch finance must not gain bank details, but must
+-- still see the source as reconciled rather than unmatched.
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', false);
 select public.link_treasury_business_source(
   '10000000-0000-4000-8000-000000000001',
   'student_payment',
   :'central_link_payment_id',
-  (select id from public.treasury_accounts
-   where school_id = '10000000-0000-4000-8000-000000000001' and code = 'BANK_MAIN')
+  (select id from public.list_treasury_link_accounts(
+    '10000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001'
+  ) where code = 'BANK_MAIN')
 ) as linked_ok \gset
 select set_config('test.central_linked_ok', :'linked_ok', false);
 
