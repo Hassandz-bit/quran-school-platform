@@ -88,6 +88,16 @@ export default function FinanceNavigation({
         visible: access.canManageExpenses,
       },
       {
+        label: "الخزينة",
+        path: "/finance/treasury",
+        visible: access.canViewFinance,
+      },
+      {
+        label: "المطابقة",
+        path: "/finance/treasury/reconciliation",
+        visible: access.canViewFinance,
+      },
+      {
         label: "التقارير",
         path: "/finance/reports",
         visible: hasAnyAccess,

@@ -44,6 +44,8 @@ const StudentCharges = lazy(() => import("./pages/StudentCharges"));
 const Payments = lazy(() => import("./pages/Payments"));
 const Payroll = lazy(() => import("./pages/Payroll"));
 const PayrollHistory = lazy(() => import("./pages/PayrollHistory"));
+const Treasury = lazy(() => import("./pages/Treasury"));
+const TreasuryReconciliation = lazy(() => import("./pages/TreasuryReconciliation"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 const Receipts = lazy(() => import("./pages/Receipts"));
@@ -332,6 +334,12 @@ function Router() {
         </Route>
         <Route path="/finance/payroll">
           <FinanceRoute><Shell><Payroll /></Shell></FinanceRoute>
+        </Route>
+        <Route path="/finance/treasury/reconciliation">
+          <FinanceRoute><Shell><TreasuryReconciliation /></Shell></FinanceRoute>
+        </Route>
+        <Route path="/finance/treasury">
+          <FinanceRoute><Shell><Treasury /></Shell></FinanceRoute>
         </Route>
         <Route path="/finance/expenses">
           <FinanceRoute><Shell><Expenses /></Shell></FinanceRoute>

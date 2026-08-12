@@ -79,6 +79,9 @@ jobs:
       - name: Validate recurring billing and finance reminders
         run: pnpm test:recurring-billing:migration
 
+      - name: Validate treasury and reconciliation migrations
+        run: bash tests/run-treasury-other-income-migration-test.sh
+
       - name: Validate guardian security foundation migration
         run: pnpm test:guardian-security:migration
 
