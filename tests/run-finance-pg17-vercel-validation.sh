@@ -3,22 +3,36 @@ set -euo pipefail
 
 package_dir="/tmp/qsp-pg17-package-${RANDOM}-${RANDOM}"
 data_dir="/tmp/qsp-pg17-data-${RANDOM}-${RANDOM}"
+log_file="/tmp/qsp-pg17-${RANDOM}-${RANDOM}.log"
 port=$((55432 + RANDOM % 500))
 pg_bin=""
+pg_os_user="qsp_pg_validation"
+run_as_pg=()
+created_os_user=false
 
 cleanup() {
   if [[ -n "$pg_bin" && -x "$pg_bin/pg_ctl" && -f "$data_dir/PG_VERSION" ]]; then
-    "$pg_bin/pg_ctl" -D "$data_dir" -m fast -w stop >/dev/null 2>&1 || true
+    "${run_as_pg[@]}" "$pg_bin/pg_ctl" -D "$data_dir" -m fast -w stop >/dev/null 2>&1 || true
   fi
-  rm -rf "$data_dir" "$package_dir"
+  rm -rf "$data_dir" "$package_dir" "$log_file"
+  if [[ "$created_os_user" == "true" ]]; then
+    userdel "$pg_os_user" >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
 
 echo "Validation host: $(uname -a)"
 echo "Validation uid: $(id -u)"
 if [[ "$(id -u)" == "0" ]]; then
-  echo "PostgreSQL refuses to run as root; this validation host is unsuitable." >&2
-  exit 2
+  if ! command -v useradd >/dev/null || ! command -v runuser >/dev/null; then
+    echo "Root validation host lacks useradd/runuser required by PostgreSQL." >&2
+    exit 2
+  fi
+  useradd --system --user-group --home-dir "/tmp/${pg_os_user}" --create-home --shell /bin/bash "$pg_os_user"
+  created_os_user=true
+  run_as_pg=(runuser -u "$pg_os_user" --)
+else
+  run_as_pg=()
 fi
 
 mkdir -p "$package_dir"
@@ -46,15 +60,16 @@ if [[ "$version_output" != *"17.9"* ]]; then
 fi
 
 rm -rf "$data_dir"
-"$pg_bin/initdb" \
+"${run_as_pg[@]}" "$pg_bin/initdb" \
   -D "$data_dir" \
   -U postgres \
   -A trust \
   --no-locale \
   --encoding=UTF8
 
-"$pg_bin/pg_ctl" \
+"${run_as_pg[@]}" "$pg_bin/pg_ctl" \
   -D "$data_dir" \
+  -l "$log_file" \
   -o "-p $port -h 127.0.0.1" \
   -w start
 
@@ -73,6 +88,8 @@ run_sql() {
   if [[ "$status" -ne 0 ]]; then
     echo "FAILED SQL FILE: $file" >&2
     printf '%s\n' "$output" | tail -n 50 >&2
+    echo "PostgreSQL server log:" >&2
+    tail -n 50 "$log_file" >&2 || true
     exit "$status"
   fi
 }
