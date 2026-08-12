@@ -1,3 +1,5 @@
+import { corsHeaders } from "npm:@supabase/supabase-js@2.110.7/cors";
+
 export type GuardianNotificationScope = {
   schoolId: string;
   branchId: string;
@@ -60,6 +62,10 @@ export type GuardianNotificationDependencies = {
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const JSON_HEADERS = {
+  ...corsHeaders,
+  "content-type": "application/json; charset=utf-8",
+};
 
 function isJsonRequest(request: Request): boolean {
   const type = request.headers.get("content-type")?.split(";", 1)[0]?.trim();
@@ -144,7 +150,7 @@ export function buildGuardianPushPayload(
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: JSON_HEADERS,
   });
 }
 
@@ -180,6 +186,9 @@ export function createGuardianNotificationHandler(
   dependencies: GuardianNotificationDependencies
 ): (request: Request) => Promise<Response> {
   return async request => {
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
     if (request.method !== "POST") {
       return jsonResponse({ error: "method_not_allowed" }, 405);
     }

@@ -1,5 +1,6 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1.0.14";
 import ExcelJS from "npm:exceljs@4.4.0";
+import { handleStudentImport } from "./handler.ts";
 import {
   buildStudentTemplate,
   MAX_FILE_BASE64_CHARS,
@@ -16,6 +17,26 @@ async function workbookBytes(headers: string[], values: unknown[]) {
   const buffer = await workbook.xlsx.writeBuffer();
   return new Uint8Array(buffer);
 }
+
+Deno.test("student import answers browser CORS preflight without authentication", async () => {
+  const response = await handleStudentImport(new Request(
+    "https://example.test/functions/v1/import-students",
+    {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://app.example.test",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "authorization, apikey, content-type, x-client-info",
+      },
+    },
+  ));
+  assertEquals(response.status, 204);
+  assertEquals(response.headers.get("access-control-allow-origin"), "*");
+  const allowedHeaders = response.headers.get("access-control-allow-headers")?.toLowerCase() ?? "";
+  for (const header of ["authorization", "apikey", "content-type", "x-client-info"]) {
+    if (!allowedHeaders.includes(header)) throw new Error(`CORS preflight is missing ${header}`);
+  }
+});
 
 Deno.test("student import parses English workbook and normalizes values", async () => {
   const bytes = await workbookBytes(

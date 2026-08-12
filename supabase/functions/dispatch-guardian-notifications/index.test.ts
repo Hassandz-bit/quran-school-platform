@@ -57,6 +57,41 @@ function dependencies(
   };
 }
 
+Deno.test("browser CORS preflight bypasses auth and delivery work", async () => {
+  let authorized = false;
+  let claimed = false;
+  const handler = createGuardianNotificationHandler(dependencies({
+    authorizeScope: async () => {
+      authorized = true;
+      return true;
+    },
+    claimDeliveries: async () => {
+      claimed = true;
+      return [];
+    },
+  }));
+  const response = await handler(new Request(
+    "https://example.test/functions/v1/dispatch-guardian-notifications",
+    {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://app.example.test",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "authorization, apikey, content-type, x-client-info",
+      },
+    },
+  ));
+  if (response.status !== 204) throw new Error("CORS preflight should succeed");
+  if (response.headers.get("access-control-allow-origin") !== "*") {
+    throw new Error("CORS preflight did not allow browser origin");
+  }
+  const allowedHeaders = response.headers.get("access-control-allow-headers")?.toLowerCase() ?? "";
+  for (const header of ["authorization", "apikey", "content-type", "x-client-info"]) {
+    if (!allowedHeaders.includes(header)) throw new Error(`CORS preflight is missing ${header}`);
+  }
+  if (authorized || claimed) throw new Error("CORS preflight reached protected dispatch work");
+});
+
 Deno.test("rejects requests outside the scoped authenticated dispatch contract", async () => {
   const handler = createGuardianNotificationHandler(dependencies());
   const methodResponse = await handler(new Request("https://example.test", { method: "GET" }));
