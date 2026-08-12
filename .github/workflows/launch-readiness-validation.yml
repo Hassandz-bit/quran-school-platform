@@ -76,6 +76,9 @@ jobs:
       - name: Validate payroll migration
         run: pnpm test:payroll:migration
 
+      - name: Validate recurring billing and finance reminders
+        run: pnpm test:recurring-billing:migration
+
       - name: Validate guardian security foundation migration
         run: pnpm test:guardian-security:migration
 
