@@ -14,6 +14,7 @@
     "test:teacher-invitations:migration": "bash tests/run-teacher-invitations-migration-test.sh",
     "test:memorization-teacher-rpc:migration": "bash tests/run-memorization-teacher-rpc-migration-test.sh",
     "test:memorization-follow-up:migration": "bash tests/run-memorization-follow-up-migration-test.sh",
+    "test:payroll:migration": "bash tests/run-payroll-foundation-migration-test.sh",
     "test:recurring-billing:migration": "bash tests/run-recurring-billing-reminders-migration-test.sh",
     "test:guardian-security:migration": "bash tests/run-guardian-security-foundation-migration-test.sh",
     "test:guardian-invitations:function": "deno test --config supabase/functions/invite-guardian/deno.json supabase/functions/invite-guardian/index.test.ts",

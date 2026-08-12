@@ -73,6 +73,9 @@ jobs:
       - name: Validate memorization follow-up migration
         run: pnpm test:memorization-follow-up:migration
 
+      - name: Validate payroll migration
+        run: pnpm test:payroll:migration
+
       - name: Validate recurring billing and finance reminders
         run: pnpm test:recurring-billing:migration
 
