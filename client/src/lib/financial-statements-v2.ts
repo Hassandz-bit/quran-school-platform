@@ -5,6 +5,7 @@ export type StatementBreakdown = { category: string; amount: number };
 export type FinancialStatement = {
   periodMonth: string;
   periodEnd: string;
+  generatedAt: string;
   periodStatus: "open" | "closing" | "closed" | null;
   scopeComplete: boolean;
   targetBranchId: string | null;
@@ -29,6 +30,7 @@ export type FinancialStatement = {
   };
   branches: Array<{ branchId: string; branchName: string; accruals: number; collections: number; otherIncome: number; expenses: number; payrollAccrued: number; payrollPaid: number }>;
   categories: { charges: StatementBreakdown[]; otherIncome: StatementBreakdown[]; expenses: StatementBreakdown[] };
+  paymentMethods: StatementBreakdown[];
   accounts: Array<{ accountId: string; accountName: string; code: string; accountType: string; branchId: string | null; openingBalance: number; openingEntries: number; inflows: number; outflows: number; transfersIn: number; transfersOut: number; closingBalance: number }>;
 };
 
@@ -41,16 +43,25 @@ export async function fetchFinancialStatement(
   branchId: string | null = null,
   client: SupabaseClient = getSupabaseClient(),
 ): Promise<FinancialStatement> {
-  const { data, error } = await client.rpc("get_financial_statement", {
-    target_school_id: schoolId,
-    target_period_month: periodMonth,
-    target_branch_id: branchId,
-  });
-  if (error) throw error;
-  const raw = data as any;
+  const [statementResult, paymentMethodsResult] = await Promise.all([
+    client.rpc("get_financial_statement", {
+      target_school_id: schoolId,
+      target_period_month: periodMonth,
+      target_branch_id: branchId,
+    }),
+    client.rpc("list_financial_statement_payment_methods", {
+      target_school_id: schoolId,
+      target_period_month: periodMonth,
+      target_branch_id: branchId,
+    }),
+  ]);
+  if (statementResult.error) throw statementResult.error;
+  if (paymentMethodsResult.error) throw paymentMethodsResult.error;
+  const raw = statementResult.data as any;
   return {
     periodMonth: raw.period_month,
     periodEnd: raw.period_end,
+    generatedAt: new Date().toISOString(),
     periodStatus: raw.period_status ?? null,
     scopeComplete: raw.scope_complete === true,
     targetBranchId: raw.target_branch_id ?? null,
@@ -68,6 +79,7 @@ export async function fetchFinancialStatement(
       expenses: n(row.expenses), payrollAccrued: n(row.payroll_accrued), payrollPaid: n(row.payroll_paid),
     })),
     categories: { charges: mapBreakdown(raw.categories?.charges), otherIncome: mapBreakdown(raw.categories?.other_income), expenses: mapBreakdown(raw.categories?.expenses) },
+    paymentMethods: mapBreakdown((paymentMethodsResult.data as any[] | null)?.map(row => ({ category: row.payment_method, amount: row.amount })) ?? []),
     accounts: (raw.accounts ?? []).map((row: any) => ({
       accountId: row.account_id, accountName: row.account_name, code: row.code, accountType: row.account_type, branchId: row.branch_id ?? null,
       openingBalance: n(row.opening_balance), openingEntries: n(row.opening_entries), inflows: n(row.inflows), outflows: n(row.outflows),
@@ -80,6 +92,7 @@ const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}
 export function buildFinancialStatementCsv(statement: FinancialStatement) {
   const rows: Array<Array<string | number>> = [
     ["القائمة المالية", statement.periodMonth, "حتى", statement.periodEnd],
+    ["تاريخ إنشاء التقرير", statement.generatedAt],
     ["الحالة", statement.periodStatus ?? "غير منشأة"],
     [], ["المؤشر", "القيمة (دج)"],
     ["الاستحقاقات", statement.accruals], ["المتبقي المستحق", statement.outstanding], ["المتأخر", statement.overdue],
@@ -87,6 +100,8 @@ export function buildFinancialStatementCsv(statement: FinancialStatement) {
     ["الرواتب المستحقة", statement.payroll.accrued], ["الرواتب المدفوعة خلال الفترة", statement.payroll.paidInPeriod], ["الرواتب غير المدفوعة عند نهاية الفترة", statement.payroll.unpaidAtEnd],
     ["نتيجة التشغيل", statement.operatingResult], ["رصيد الخزينة الافتتاحي", statement.cash.openingBalance], ["قيود الأرصدة الافتتاحية داخل الفترة", statement.cash.openingBalanceEntries],
     ["التدفقات النقدية الداخلة", statement.cash.inflows], ["التدفقات النقدية الخارجة", statement.cash.outflows], ["صافي النقد", statement.cash.netCash], ["رصيد الخزينة الختامي", statement.cash.closingBalance],
+    [], ["التحصيلات حسب وسيلة الدفع", "القيمة (دج)"],
+    ...statement.paymentMethods.map(row => [row.category, row.amount]),
     [], ["حسب الفرع", "استحقاقات", "تحصيلات", "إيرادات أخرى", "مصروفات", "رواتب مستحقة", "رواتب مدفوعة"],
     ...statement.branches.map(row => [row.branchName, row.accruals, row.collections, row.otherIncome, row.expenses, row.payrollAccrued, row.payrollPaid]),
     [], ["الحساب", "الرمز", "الافتتاحي", "قيود افتتاحية", "تدفقات داخلة", "تدفقات خارجة", "تحويلات داخلة", "تحويلات خارجة", "الختامي"],

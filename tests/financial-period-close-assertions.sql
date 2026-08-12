@@ -23,6 +23,23 @@ begin
 end;
 $$;
 
+-- Reconciliation evidence must be dated at the exact period end so the entered
+-- cash count / statement date matches the system balance used for close.
+do $$
+begin
+  begin
+    perform public.record_treasury_period_reconciliation(
+      '10000000-0000-4000-8000-000000000001',current_setting('test.financial_period_id')::uuid,
+      (select id from public.list_treasury_link_accounts('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001') where code='CASH_A1'),
+      1000,'2026-08-30',null,'تاريخ خاطئ متعمد'
+    );
+    raise exception 'non-period-end reconciliation date was accepted';
+  exception when invalid_parameter_value then
+    if sqlerrm <> 'TREASURY_RECONCILIATION_DATE_INVALID' then raise; end if;
+  end;
+end;
+$$;
+
 -- Explicit audited reopen enables correction, then the correction is reversed
 -- before closing resumes so the expected cash count remains 1000.
 select public.reopen_financial_period('10000000-0000-4000-8000-000000000001',:'financial_period_id','تصحيح مدقق قبل الإقفال النهائي');
@@ -37,12 +54,12 @@ select public.start_financial_period_closing('10000000-0000-4000-8000-0000000000
 select public.record_treasury_period_reconciliation(
   '10000000-0000-4000-8000-000000000001',:'financial_period_id',
   (select id from public.list_treasury_link_accounts('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001') where code='CASH_A1'),
-  1000,null,'عد نقدي مطابق'
+  1000,'2026-08-31',null,'عد نقدي مطابق'
 );
 select public.record_treasury_period_reconciliation(
   '10000000-0000-4000-8000-000000000001',:'financial_period_id',
   (select id from public.list_treasury_link_accounts('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001') where code='BANK_MAIN'),
-  5000,'BANK-STMT-AUG-2026','كشف بنك أغسطس'
+  5000,'2026-08-31','BANK-STMT-AUG-2026','كشف بنك أغسطس'
 );
 select public.close_financial_period('10000000-0000-4000-8000-000000000001',:'financial_period_id');
 
@@ -74,7 +91,7 @@ select public.start_financial_period_closing('10000000-0000-4000-8000-0000000000
 select public.record_treasury_period_reconciliation(
   '10000000-0000-4000-8000-000000000001',:'financial_period_id',
   (select id from public.list_treasury_link_accounts('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001') where code='CASH_A1'),
-  999,null,'فرق متعمد لاختبار المنع'
+  999,'2026-08-31',null,'فرق متعمد لاختبار المنع'
 );
 do $$
 begin
@@ -91,7 +108,7 @@ select public.start_financial_period_closing('10000000-0000-4000-8000-0000000000
 select public.record_treasury_period_reconciliation(
   '10000000-0000-4000-8000-000000000001',:'financial_period_id',
   (select id from public.list_treasury_link_accounts('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001') where code='CASH_A1'),
-  1000,null,'العد المصحح النهائي'
+  1000,'2026-08-31',null,'العد المصحح النهائي'
 );
 select public.close_financial_period('10000000-0000-4000-8000-000000000001',:'financial_period_id');
 
@@ -110,17 +127,19 @@ $$;
 select public.get_financial_statement('10000000-0000-4000-8000-000000000001','2026-08-01',null) as statement \gset
 select set_config('test.statement',:'statement',false);
 do $$
-declare p jsonb:=current_setting('test.statement')::jsonb;
+declare p jsonb:=current_setting('test.statement')::jsonb; method_count integer;
 begin
   if p->>'period_status' <> 'closed' then raise exception 'statement did not report closed period: %',p; end if;
   if (p->'cash'->>'closing_balance')::numeric <> 6000 then raise exception 'treasury closing balance should be 6000: %',p->'cash'; end if;
   if (p->'cash'->>'opening_balance_entries')::numeric <> 6000 then raise exception 'opening balance entries should be 6000: %',p->'cash'; end if;
   if jsonb_array_length(p->'accounts') <> 2 then raise exception 'statement account breakdown missing: %',p->'accounts'; end if;
   if (p->'payroll'->>'unpaid_at_end')::numeric < 0 then raise exception 'invalid unpaid payroll'; end if;
+  select count(*) into method_count from public.list_financial_statement_payment_methods('10000000-0000-4000-8000-000000000001','2026-08-01',null);
+  if method_count < 0 then raise exception 'invalid payment-method breakdown count'; end if;
 end;
 $$;
 
--- Cross-tenant reads are rejected.
+-- Cross-tenant reads and payment-method breakdowns are rejected.
 select set_config('request.jwt.claim.sub','60000000-0000-4000-8000-000000000008',false);
 do $$
 begin
@@ -130,15 +149,24 @@ begin
   exception when insufficient_privilege then
     if sqlerrm <> 'FINANCIAL_STATEMENT_VIEW_REQUIRED' then raise; end if;
   end;
+  begin
+    perform 1 from public.list_financial_statement_payment_methods('10000000-0000-4000-8000-000000000001','2026-08-01',null);
+    raise exception 'cross-tenant payment-method breakdown succeeded';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'FINANCIAL_STATEMENT_VIEW_REQUIRED' then raise; end if;
+  end;
 end;
 $$;
 
 reset role;
 do $$
-declare rec_count integer; event_count integer;
+declare rec_count integer; event_count integer; bad_evidence_dates integer;
 begin
   select count(*) into rec_count from public.treasury_account_reconciliations where period_id=current_setting('test.financial_period_id')::uuid;
   if rec_count < 4 then raise exception 'reconciliation attempts were overwritten, count=%',rec_count; end if;
+  select count(*) into bad_evidence_dates from public.treasury_account_reconciliations
+  where period_id=current_setting('test.financial_period_id')::uuid and evidence_date <> '2026-08-31';
+  if bad_evidence_dates <> 0 then raise exception 'reconciliation evidence date was not retained correctly'; end if;
   select count(*) into event_count from public.financial_period_events where period_id=current_setting('test.financial_period_id')::uuid and action='reopen';
   if event_count < 3 then raise exception 'reopen audit trail incomplete, count=%',event_count; end if;
 end;

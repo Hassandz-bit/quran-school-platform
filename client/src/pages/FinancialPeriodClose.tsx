@@ -22,6 +22,10 @@ import {
 const statusLabel: Record<FinancialPeriodStatus, string> = { open: "مفتوحة", closing: "قيد الإقفال", closed: "مغلقة" };
 const actionLabel = { create: "إنشاء الفترة", start_closing: "بدء الإقفال", close: "إغلاق الفترة", reopen: "إعادة فتح" } as const;
 const currentMonth = () => new Date().toISOString().slice(0, 7);
+const monthEnd = (value: string) => {
+  const [year, month] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+};
 
 export default function FinancialPeriodClose() {
   const { school } = useAuth();
@@ -52,6 +56,8 @@ export default function FinancialPeriodClose() {
     if (actualText === null) return;
     const actual = Number(actualText.replace(",", "."));
     if (!Number.isFinite(actual)) { toast.error("أدخل رصيدًا رقميًا صحيحًا."); return; }
+    const evidenceDate = window.prompt("تاريخ العد النقدي أو كشف الحساب (YYYY-MM-DD):", monthEnd(month))?.trim();
+    if (!evidenceDate) { toast.error("تاريخ العد أو كشف الحساب مطلوب."); return; }
     let reference: string | null = null;
     if (account.accountType !== "cash") {
       reference = window.prompt(account.accountType === "bank" ? "مرجع كشف البنك:" : "مرجع كشف الحساب البريدي:");
@@ -59,7 +65,7 @@ export default function FinancialPeriodClose() {
     }
     const notes = window.prompt("ملاحظة المطابقة (اختيارية):")?.trim() || null;
     void run(
-      () => recordTreasuryPeriodReconciliation(school.id, workspace.period!.id, account.id, actual, reference?.trim() || null, notes),
+      () => recordTreasuryPeriodReconciliation(school.id, workspace.period!.id, account.id, actual, evidenceDate, reference?.trim() || null, notes),
       "تم حفظ مطابقة جديدة دون الكتابة فوق السجل السابق.",
     );
   };
@@ -88,10 +94,10 @@ export default function FinancialPeriodClose() {
         </Card>
 
         <section>
-          <div className="mb-3"><h2 className="font-bold text-[#173B2D]">مطابقة حسابات الخزينة</h2><p className="text-xs text-gray-500">الصندوق يطابق العد النقدي، والحساب البنكي/البريدي يطابق كشف الحساب.</p></div>
+          <div className="mb-3"><h2 className="font-bold text-[#173B2D]">مطابقة حسابات الخزينة</h2><p className="text-xs text-gray-500">الصندوق يطابق العد النقدي، والحساب البنكي/البريدي يطابق كشف الحساب المؤرخ بنهاية الفترة.</p></div>
           {loading ? <Card className="flex min-h-40 items-center justify-center"><RefreshCw className="animate-spin text-[#17663B]" /></Card> : !workspace?.accounts.length ? <Card className="p-8 text-center text-sm text-gray-500">لا توجد حسابات خزينة ظاهرة ضمن صلاحياتك.</Card> : <div className="grid gap-4 lg:grid-cols-2">{workspace.accounts.map(account => {
             const rec = account.latestReconciliation;
-            return <Card key={account.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="font-bold">{account.name}</h3><p className="text-xs text-gray-500">{account.code} · {account.accountType === "cash" ? "صندوق نقدي" : account.accountType === "bank" ? "حساب بنكي" : "حساب بريدي"}</p></div><span className={`rounded-full px-2 py-1 text-xs ${rec && rec.difference === 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{rec ? (rec.difference === 0 ? "مطابق" : "يوجد فرق") : "غير مطابق"}</span></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">رصيد النظام بنهاية الفترة</p><p className="mt-1 font-bold">{formatDzd(account.systemBalance)}</p></div><div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">آخر رصيد فعلي</p><p className="mt-1 font-bold">{rec ? formatDzd(rec.actualBalance) : "—"}</p></div></div>{rec && <div className="mt-3 text-xs text-gray-500"><span>الفرق: <b className={rec.difference === 0 ? "text-emerald-700" : "text-red-700"}>{formatDzd(rec.difference)}</b></span><span className="mx-2">·</span><span>{new Date(rec.reconciledAt).toLocaleString("ar-DZ")}</span>{rec.evidenceReference && <p className="mt-1">المرجع: {rec.evidenceReference}</p>}</div>}{period && period.status !== "closed" && account.canManage && <Button className="mt-4 print:hidden" size="sm" variant="outline" disabled={busy} onClick={() => reconcile(account)}>تسجيل مطابقة جديدة</Button>}</Card>;
+            return <Card key={account.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="font-bold">{account.name}</h3><p className="text-xs text-gray-500">{account.code} · {account.accountType === "cash" ? "صندوق نقدي" : account.accountType === "bank" ? "حساب بنكي" : "حساب بريدي"}</p></div><span className={`rounded-full px-2 py-1 text-xs ${rec && rec.difference === 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{rec ? (rec.difference === 0 ? "مطابق" : "يوجد فرق") : "غير مطابق"}</span></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">رصيد النظام بنهاية الفترة</p><p className="mt-1 font-bold">{formatDzd(account.systemBalance)}</p></div><div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">آخر رصيد فعلي</p><p className="mt-1 font-bold">{rec ? formatDzd(rec.actualBalance) : "—"}</p></div></div>{rec && <div className="mt-3 text-xs text-gray-500"><span>الفرق: <b className={rec.difference === 0 ? "text-emerald-700" : "text-red-700"}>{formatDzd(rec.difference)}</b></span><span className="mx-2">·</span><span>سُجلت {new Date(rec.reconciledAt).toLocaleString("ar-DZ")}</span>{rec.evidenceReference && <p className="mt-1">المرجع: {rec.evidenceReference}</p>}</div>}{period && period.status !== "closed" && account.canManage && <Button className="mt-4 print:hidden" size="sm" variant="outline" disabled={busy} onClick={() => reconcile(account)}>تسجيل مطابقة جديدة</Button>}</Card>;
           })}</div>}
         </section>
 

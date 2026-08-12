@@ -154,6 +154,7 @@ export async function recordTreasuryPeriodReconciliation(
   periodId: string,
   accountId: string,
   actualBalance: number,
+  evidenceDate: string,
   evidenceReference: string | null,
   notes: string | null,
   client: SupabaseClient = getSupabaseClient(),
@@ -163,6 +164,7 @@ export async function recordTreasuryPeriodReconciliation(
     target_period_id: periodId,
     target_account_id: accountId,
     target_actual_balance: actualBalance,
+    target_evidence_date: evidenceDate,
     target_evidence_reference: evidenceReference,
     target_notes: notes,
   });
@@ -182,6 +184,7 @@ export function financialPeriodErrorMessage(error: unknown) {
     FINANCIAL_PERIOD_UNMATCHED_TREASURY_EVIDENCE: "توجد عمليات مالية في الفترة بلا دليل خزينة مربوط. عالجها من شاشة المطابقة أولًا.",
     FINANCIAL_PERIOD_REOPEN_REASON_REQUIRED: "سبب إعادة الفتح مطلوب ويجب أن يكون واضحًا.",
     FINANCIAL_PERIOD_MANAGE_REQUIRED: "إدارة إقفال الفترة تتطلب finance.manage على مستوى المدرسة.",
+    TREASURY_RECONCILIATION_DATE_INVALID: "تاريخ العد أو كشف الحساب يجب أن يكون آخر يوم من الفترة المالية.",
     TREASURY_RECONCILIATION_REFERENCE_REQUIRED: "مرجع كشف الحساب مطلوب للحساب البنكي أو البريدي.",
   };
   return (Object.entries(labels).find(([code]) => message.includes(code))?.[1] ?? message)
