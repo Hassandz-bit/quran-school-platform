@@ -62,6 +62,19 @@ test("migration keeps staging private and rechecks authorization on commit", asy
   assert.match(migration, /duplicate_detected_at_commit/);
 });
 
+test("PLpgSQL ambiguity fix is compatible with hosted Supabase", async () => {
+  const migration = await read("supabase/030_student_bulk_import_plpgsql_resolution.sql");
+  assert.match(migration, /#variable_conflict use_variable/);
+  assert.match(migration, /procedure\.prosrc/);
+  assert.match(migration, /create or replace function public\.stage_student_import_batch/);
+  assert.match(migration, /create or replace function public\.commit_student_import_batch/);
+  assert.doesNotMatch(
+    migration,
+    /alter\s+function[\s\S]{0,180}?set\s+plpgsql\.variable_conflict\s*=\s*'use_variable'/i,
+  );
+  assert.match(migration, /student_import_hosted_incompatible_variable_conflict_guc/);
+});
+
 test("import ledger reads require active school membership", async () => {
   const hardening = await read("supabase/031_student_bulk_import_rollback_fk_order.sql");
   assert.match(hardening, /get_student_import_batch[\s\S]*?is_active_school_member\(batch\.school_id\)/);
