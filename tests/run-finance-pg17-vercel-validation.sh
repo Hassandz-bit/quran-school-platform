@@ -6,6 +6,7 @@ data_dir="/tmp/qsp-pg17-data-${RANDOM}-${RANDOM}"
 log_file="/tmp/qsp-pg17-${RANDOM}-${RANDOM}.log"
 port=$((55432 + RANDOM % 500))
 pg_bin=""
+psql_bin=""
 pg_os_user="qsp_pg_validation"
 run_as_pg=()
 created_os_user=false
@@ -44,18 +45,30 @@ npm install \
   @embedded-postgres/linux-x64@17.9.0-beta.17
 
 pg_bin="$package_dir/node_modules/@embedded-postgres/linux-x64/native/bin"
-for binary in initdb postgres pg_ctl psql; do
+for binary in initdb postgres pg_ctl; do
   if [[ ! -x "$pg_bin/$binary" ]]; then
-    echo "Missing PostgreSQL binary: $pg_bin/$binary" >&2
-    find "$package_dir/node_modules/@embedded-postgres/linux-x64" -maxdepth 4 -type f -print >&2 || true
+    echo "Missing PostgreSQL server binary: $pg_bin/$binary" >&2
     exit 3
   fi
 done
 
+if command -v psql >/dev/null 2>&1; then
+  psql_bin=$(command -v psql)
+elif command -v apt-get >/dev/null 2>&1; then
+  echo "Installing PostgreSQL client for psql meta-command compatibility..."
+  apt-get update -qq
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends postgresql-client
+  psql_bin=$(command -v psql)
+else
+  echo "No psql client and no supported package manager are available." >&2
+  exit 5
+fi
+
 version_output=$("$pg_bin/postgres" --version)
-echo "$version_output"
+echo "Server runtime: $version_output"
+echo "Client runtime: $($psql_bin --version)"
 if [[ "$version_output" != *"17.9"* ]]; then
-  echo "Expected PostgreSQL 17.9 runtime." >&2
+  echo "Expected PostgreSQL 17.9 server runtime." >&2
   exit 4
 fi
 
@@ -73,7 +86,7 @@ rm -rf "$data_dir"
   -o "-p $port -h 127.0.0.1" \
   -w start
 
-psql=("$pg_bin/psql" -h 127.0.0.1 -p "$port" -U postgres)
+psql=("$psql_bin" -h 127.0.0.1 -p "$port" -U postgres)
 "${psql[@]}" -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE quran_test;'
 "${psql[@]}" -d quran_test -Atqc 'SELECT version();'
 
