@@ -46,12 +46,13 @@ select public.record_treasury_period_reconciliation(
 );
 select public.close_financial_period('10000000-0000-4000-8000-000000000001',:'financial_period_id');
 
--- Closed month blocks a new August expense.
+-- Closed month blocks a new August expense through the same column contract used
+-- by the browser; created_by is database-owned/defaulted and is not client input.
 do $$
 begin
   begin
-    insert into public.expenses (school_id,branch_id,category,description,amount,expense_date,payment_method,created_by)
-    values ('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','supplies','Blocked closed expense',20,'2026-08-22','cash','60000000-0000-4000-8000-000000000001');
+    insert into public.expenses (school_id,branch_id,category,description,amount,expense_date,payment_method)
+    values ('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','supplies','Blocked closed expense',20,'2026-08-22','cash');
     raise exception 'closed period accepted expense';
   exception when object_not_in_prerequisite_state then
     if sqlerrm <> 'FINANCIAL_PERIOD_LOCKED' then raise; end if;
