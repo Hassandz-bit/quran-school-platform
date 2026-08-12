@@ -73,6 +73,9 @@ jobs:
       - name: Validate memorization follow-up migration
         run: pnpm test:memorization-follow-up:migration
 
+      - name: Validate payroll migration
+        run: pnpm test:payroll:migration
+
       - name: Validate guardian security foundation migration
         run: pnpm test:guardian-security:migration
 
