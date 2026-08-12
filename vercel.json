@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm dlx deno@2.9.4 test --allow-env --allow-sys=umask --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.test.ts && pnpm dlx deno@2.9.4 check --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.ts supabase/functions/import-students/handler.ts supabase/functions/import-students/services.ts && pnpm dlx deno@2.9.4 test --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.test.ts && pnpm dlx deno@2.9.4 check --config supabase/functions/dispatch-guardian-notifications/deno.json supabase/functions/dispatch-guardian-notifications/index.ts supabase/functions/dispatch-guardian-notifications/services.ts && pnpm build",
   "rewrites": [
     {
       "source": "/(.*)",
