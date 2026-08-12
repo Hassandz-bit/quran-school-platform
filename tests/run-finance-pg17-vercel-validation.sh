@@ -1,23 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-package_dir="/tmp/qsp-pg17-package-${RANDOM}-${RANDOM}"
+pg_root="/tmp/qsp-pg17-full-${RANDOM}-${RANDOM}"
 data_dir="/tmp/qsp-pg17-data-${RANDOM}-${RANDOM}"
+archive="/tmp/postgresql-17.9.0-x86_64-unknown-linux-gnu-${RANDOM}.tar.gz"
 log_file="/tmp/qsp-pg17-${RANDOM}-${RANDOM}.log"
 port=$((55432 + RANDOM % 500))
 pg_bin=""
-psql_bin=""
 pg_os_user="qsp_pg_validation"
-run_as_pg=()
 created_os_user=false
 
 cleanup() {
   if [[ -n "$pg_bin" && -x "$pg_bin/pg_ctl" && -f "$data_dir/PG_VERSION" ]]; then
-    "${run_as_pg[@]}" "$pg_bin/pg_ctl" -D "$data_dir" -m fast -w stop >/dev/null 2>&1 || true
+    as_pg "$pg_bin/pg_ctl" -D "$data_dir" -m fast -w stop >/dev/null 2>&1 || true
   fi
-  rm -rf "$data_dir" "$package_dir" "$log_file"
+  rm -rf "$data_dir" "$pg_root" "$archive" "$log_file"
   if [[ "$created_os_user" == "true" ]]; then
     userdel "$pg_os_user" >/dev/null 2>&1 || true
+  fi
+}
+
+as_pg() {
+  if [[ "$created_os_user" == "true" ]]; then
+    runuser -u "$pg_os_user" -- env "LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}" "$@"
+  else
+    "$@"
   fi
 }
 trap cleanup EXIT
@@ -31,62 +38,60 @@ if [[ "$(id -u)" == "0" ]]; then
   fi
   useradd --system --user-group --home-dir "/tmp/${pg_os_user}" --create-home --shell /bin/bash "$pg_os_user"
   created_os_user=true
-  run_as_pg=(runuser -u "$pg_os_user" --)
-else
-  run_as_pg=()
 fi
 
-mkdir -p "$package_dir"
-npm install \
-  --prefix "$package_dir" \
-  --no-save \
-  --no-audit \
-  --no-fund \
-  @embedded-postgres/linux-x64@17.9.0-beta.17
+mkdir -p "$pg_root"
+asset_url="https://github.com/theseus-rs/postgresql-binaries/releases/download/17.9.0/postgresql-17.9.0-x86_64-unknown-linux-gnu.tar.gz"
+expected_sha256="463422cb007fd15bb37819b1d3562392dd81bba385205fbd0eef4891cb1d18b5"
+echo "Downloading pinned PostgreSQL 17.9.0 x86_64 Linux release..."
+curl --fail --location --silent --show-error "$asset_url" --output "$archive"
+printf '%s  %s\n' "$expected_sha256" "$archive" | sha256sum --check --status
 
-pg_bin="$package_dir/node_modules/@embedded-postgres/linux-x64/native/bin"
-for binary in initdb postgres pg_ctl; do
-  if [[ ! -x "$pg_bin/$binary" ]]; then
-    echo "Missing PostgreSQL server binary: $pg_bin/$binary" >&2
-    exit 3
-  fi
-done
-
-if command -v psql >/dev/null 2>&1; then
-  psql_bin=$(command -v psql)
-elif command -v apt-get >/dev/null 2>&1; then
-  echo "Installing PostgreSQL client for psql meta-command compatibility..."
-  apt-get update -qq
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends postgresql-client
-  psql_bin=$(command -v psql)
-else
-  echo "No psql client and no supported package manager are available." >&2
-  exit 5
+tar -xzf "$archive" -C "$pg_root"
+pg_server=$(find "$pg_root" -type f -name postgres -perm -u+x | head -n 1)
+psql_path=$(find "$pg_root" -type f -name psql -perm -u+x | head -n 1)
+initdb_path=$(find "$pg_root" -type f -name initdb -perm -u+x | head -n 1)
+pg_ctl_path=$(find "$pg_root" -type f -name pg_ctl -perm -u+x | head -n 1)
+if [[ -z "$pg_server" || -z "$psql_path" || -z "$initdb_path" || -z "$pg_ctl_path" ]]; then
+  echo "Pinned archive is missing required PostgreSQL binaries." >&2
+  find "$pg_root" -maxdepth 4 -type f | sort >&2
+  exit 3
+fi
+pg_bin=$(dirname "$pg_server")
+if [[ "$(dirname "$psql_path")" != "$pg_bin" || "$(dirname "$initdb_path")" != "$pg_bin" || "$(dirname "$pg_ctl_path")" != "$pg_bin" ]]; then
+  echo "PostgreSQL binaries were not extracted into one bin directory." >&2
+  exit 3
 fi
 
-version_output=$("$pg_bin/postgres" --version)
-echo "Server runtime: $version_output"
-echo "Client runtime: $($psql_bin --version)"
-if [[ "$version_output" != *"17.9"* ]]; then
-  echo "Expected PostgreSQL 17.9 server runtime." >&2
+lib_dir=$(find "$pg_root" -type f \( -name 'libpq.so' -o -name 'libpq.so.*' \) -printf '%h\n' | head -n 1 || true)
+if [[ -n "$lib_dir" ]]; then
+  export LD_LIBRARY_PATH="$lib_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
+server_version=$("$pg_bin/postgres" --version)
+client_version=$("$pg_bin/psql" --version)
+echo "Server runtime: $server_version"
+echo "Client runtime: $client_version"
+if [[ "$server_version" != *"17.9"* || "$client_version" != *"17.9"* ]]; then
+  echo "Expected PostgreSQL 17.9 server and psql client." >&2
   exit 4
 fi
 
 rm -rf "$data_dir"
-"${run_as_pg[@]}" "$pg_bin/initdb" \
+as_pg "$pg_bin/initdb" \
   -D "$data_dir" \
   -U postgres \
   -A trust \
   --no-locale \
   --encoding=UTF8
 
-"${run_as_pg[@]}" "$pg_bin/pg_ctl" \
+as_pg "$pg_bin/pg_ctl" \
   -D "$data_dir" \
   -l "$log_file" \
   -o "-p $port -h 127.0.0.1" \
   -w start
 
-psql=("$psql_bin" -h 127.0.0.1 -p "$port" -U postgres)
+psql=("$pg_bin/psql" -h 127.0.0.1 -p "$port" -U postgres)
 "${psql[@]}" -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE quran_test;'
 "${psql[@]}" -d quran_test -Atqc 'SELECT version();'
 
