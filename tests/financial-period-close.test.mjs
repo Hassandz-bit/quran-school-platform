@@ -3,9 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [periodMigration, statementMigration, app, nav] = await Promise.all([
+const [periodMigration, statementMigration, statementClient, periodPage, statementPage, app, nav] = await Promise.all([
   read("supabase/052_financial_period_close_and_account_reconciliation.sql"),
   read("supabase/053_financial_statements.sql"),
+  read("client/src/lib/financial-statements-v2.ts"),
+  read("client/src/pages/FinancialPeriodClose.tsx"),
+  read("client/src/pages/FinancialStatements.tsx"),
   read("client/src/App.tsx"),
   read("client/src/components/FinanceNavigation.tsx"),
 ]);
@@ -26,6 +29,17 @@ test("financial statements use business rows for P&L and treasury only for cash"
   assert.match(statementMigration, /internal_transfers/);
   assert.match(statementMigration, /operating_result/);
   assert.match(statementMigration, /scope_complete/);
+});
+
+test("formal statement browser access stays RPC-only and exports Arabic UTF-8 CSV", () => {
+  assert.match(statementClient, /rpc\("get_financial_statement"/);
+  assert.doesNotMatch(statementClient + statementPage, /\.from\(/);
+  assert.match(statementClient, /"\\uFEFF"/);
+  assert.match(statementClient, /"\\r\\n"/);
+  assert.match(periodPage, /dir="rtl"/);
+  assert.match(statementPage, /dir="rtl"/);
+  assert.match(statementPage, /window\.print\(\)/);
+  assert.match(statementPage, /text\/csv;charset=utf-8/);
 });
 
 test("finance routing exposes period close and formal statements", () => {
