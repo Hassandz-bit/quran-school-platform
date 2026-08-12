@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import RecurringBillingLauncher from "@/components/RecurringBillingLauncher";
+import StudentDiscountPolicyLauncher from "@/components/StudentDiscountPolicyLauncher";
 import {
   fetchFinanceModuleAccess,
   type FinanceModuleAccess,
@@ -51,8 +53,7 @@ export default function FinanceNavigation({
   }, [school?.id]);
 
   const links = useMemo(() => {
-    const hasAnyAccess =
-      access.canViewFinance || access.canManageExpenses;
+    const hasAnyAccess = access.canViewFinance || access.canManageExpenses;
 
     return [
       { label: "الملخص", path: "/finance", visible: hasAnyAccess },
@@ -131,29 +132,42 @@ export default function FinanceNavigation({
     );
   }
 
+  const showChargeManagement =
+    currentPath === "/finance/charges" &&
+    access.canManageFinance &&
+    Boolean(school?.id);
+
   return (
-    <nav
-      aria-label="التنقل المالي"
-      className={`flex gap-2 overflow-x-auto border-b border-gray-100 bg-white px-4 py-3 print:hidden md:px-6 ${className}`}
-    >
-      {links.map(link => (
-        <a
-          key={link.path}
-          href={link.path}
-          onClick={event => {
-            event.preventDefault();
-            setLocation(link.path);
-          }}
-          aria-current={currentPath === link.path ? "page" : undefined}
-          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-            currentPath === link.path
-              ? "bg-[#0B4738] text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-        >
-          {link.label}
-        </a>
-      ))}
-    </nav>
+    <>
+      <nav
+        aria-label="التنقل المالي"
+        className={`flex gap-2 overflow-x-auto border-b border-gray-100 bg-white px-4 py-3 print:hidden md:px-6 ${className}`}
+      >
+        {links.map(link => (
+          <a
+            key={link.path}
+            href={link.path}
+            onClick={event => {
+              event.preventDefault();
+              setLocation(link.path);
+            }}
+            aria-current={currentPath === link.path ? "page" : undefined}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              currentPath === link.path
+                ? "bg-[#0B4738] text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {link.label}
+          </a>
+        ))}
+      </nav>
+      {showChargeManagement && school?.id && (
+        <>
+          <StudentDiscountPolicyLauncher schoolId={school.id} />
+          <RecurringBillingLauncher schoolId={school.id} />
+        </>
+      )}
+    </>
   );
 }
