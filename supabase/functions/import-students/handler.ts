@@ -1,3 +1,4 @@
+import { corsHeaders } from "npm:@supabase/supabase-js@2.110.7/cors";
 import {
   authorizeImporter,
   buildStudentTemplate,
@@ -10,7 +11,10 @@ import {
   stageImport,
 } from "./services.ts";
 
-const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
+const JSON_HEADERS = {
+  ...corsHeaders,
+  "content-type": "application/json; charset=utf-8",
+};
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function json(status: number, body: Record<string, unknown>) {
@@ -24,6 +28,9 @@ function getBearer(request: Request) {
 }
 
 export async function handleStudentImport(request: Request): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
   if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) {
