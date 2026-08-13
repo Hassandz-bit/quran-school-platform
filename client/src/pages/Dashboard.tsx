@@ -35,6 +35,16 @@ const roleLabels: Record<string, string> = {
   registrar: "مسؤول التسجيل",
 };
 
+const DASHBOARD_DATE_FORMATTER = new Intl.DateTimeFormat(
+  "ar-DZ-u-nu-latn",
+  {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }
+);
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { school, profile, activeRoleCodes, isSchoolAdmin } = useAuth();
@@ -75,12 +85,7 @@ export default function Dashboard() {
   const userRole = isSchoolAdmin
     ? "مدير المدرسة"
     : activeRoleCodes.map(role => roleLabels[role]).find(Boolean) ?? "عضو المدرسة";
-  const formattedDate = new Intl.DateTimeFormat("ar-DZ-u-nu-latn", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
+  const formattedDate = DASHBOARD_DATE_FORMATTER.format(new Date());
 
   const quickActions = [
     ...(canUseLearning
@@ -166,7 +171,15 @@ export default function Dashboard() {
               <h2 className="mt-2 truncate text-xl font-extrabold sm:text-2xl">
                 {school?.name ?? "المدرسة القرآنية"}
               </h2>
-              <p className="mt-2 text-sm text-white/75">{formattedDate}</p>
+              <p
+                className="mt-2 text-sm text-white/75"
+                lang="ar-DZ-u-nu-latn"
+                dir="rtl"
+                translate="no"
+                data-translation-lock="true"
+              >
+                {formattedDate}
+              </p>
             </div>
             <span className="w-fit rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
               أهلاً بك في QuranOS

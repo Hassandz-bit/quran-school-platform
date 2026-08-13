@@ -96,3 +96,22 @@ test("Arabic display formatting uses Algerian month names and Latin digits", () 
   }
   assert.deepEqual(offenders, []);
 });
+
+
+test("date filters use Latin digits while the dashboard date stays Arabic", () => {
+  const dashboard = readFileSync(join(ROOT, "client/src/pages/Dashboard.tsx"), "utf8");
+  const bridge = readFileSync(
+    join(ROOT, "client/src/components/LegacyPageTranslation.tsx"),
+    "utf8"
+  );
+  const css = readFileSync(join(ROOT, "client/src/index.css"), "utf8");
+
+  assert.match(dashboard, /DASHBOARD_DATE_FORMATTER/);
+  assert.match(dashboard, /lang="ar-DZ-u-nu-latn"/);
+  assert.match(dashboard, /data-translation-lock="true"/);
+  assert.match(bridge, /LATIN_DATE_CONTROL_TYPES/);
+  assert.match(bridge, /input\.lang = "en-CA"/);
+  assert.match(bridge, /input\.dir = "ltr"/);
+  assert.match(css, /input\[type="date"\]/);
+  assert.match(css, /font-variant-numeric: tabular-nums/);
+});
