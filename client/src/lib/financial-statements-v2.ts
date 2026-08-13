@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase.ts";
+import { getActiveCurrency } from "./currency.ts";
 
 export type StatementBreakdown = { category: string; amount: number };
 export type FinancialStatement = {
@@ -90,17 +91,18 @@ export async function fetchFinancialStatement(
 
 const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 export function buildFinancialStatementCsv(statement: FinancialStatement) {
+  const currency = getActiveCurrency();
   const rows: Array<Array<string | number>> = [
     ["القائمة المالية", statement.periodMonth, "حتى", statement.periodEnd],
     ["تاريخ إنشاء التقرير", statement.generatedAt],
     ["الحالة", statement.periodStatus ?? "غير منشأة"],
-    [], ["المؤشر", "القيمة (دج)"],
+    [], ["المؤشر", `القيمة (${currency})`],
     ["الاستحقاقات", statement.accruals], ["المتبقي المستحق", statement.outstanding], ["المتأخر", statement.overdue],
     ["التحصيلات", statement.collections], ["الإيرادات الأخرى", statement.otherIncome], ["المصروفات", statement.expenses],
     ["الرواتب المستحقة", statement.payroll.accrued], ["الرواتب المدفوعة خلال الفترة", statement.payroll.paidInPeriod], ["الرواتب غير المدفوعة عند نهاية الفترة", statement.payroll.unpaidAtEnd],
     ["نتيجة التشغيل", statement.operatingResult], ["رصيد الخزينة الافتتاحي", statement.cash.openingBalance], ["قيود الأرصدة الافتتاحية داخل الفترة", statement.cash.openingBalanceEntries],
     ["التدفقات النقدية الداخلة", statement.cash.inflows], ["التدفقات النقدية الخارجة", statement.cash.outflows], ["صافي النقد", statement.cash.netCash], ["رصيد الخزينة الختامي", statement.cash.closingBalance],
-    [], ["التحصيلات حسب وسيلة الدفع", "القيمة (دج)"],
+    [], ["التحصيلات حسب وسيلة الدفع", `القيمة (${currency})`],
     ...statement.paymentMethods.map(row => [row.category, row.amount]),
     [], ["حسب الفرع", "استحقاقات", "تحصيلات", "إيرادات أخرى", "مصروفات", "رواتب مستحقة", "رواتب مدفوعة"],
     ...statement.branches.map(row => [row.branchName, row.accruals, row.collections, row.otherIncome, row.expenses, row.payrollAccrued, row.payrollPaid]),
@@ -108,7 +110,7 @@ export function buildFinancialStatementCsv(statement: FinancialStatement) {
     ...statement.accounts.map(row => [row.accountName, row.code, row.openingBalance, row.openingEntries, row.inflows, row.outflows, row.transfersIn, row.transfersOut, row.closingBalance]),
   ];
   for (const [title, values] of [["الاستحقاقات حسب التصنيف", statement.categories.charges], ["الإيرادات الأخرى حسب التصنيف", statement.categories.otherIncome], ["المصروفات حسب التصنيف", statement.categories.expenses]] as const) {
-    rows.push([], [title, "القيمة (دج)"], ...values.map(row => [row.category, row.amount]));
+    rows.push([], [title, `القيمة (${currency})`], ...values.map(row => [row.category, row.amount]));
   }
   return "\uFEFF" + rows.map(row => row.map(csvCell).join(",")).join("\r\n");
 }

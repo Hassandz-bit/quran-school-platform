@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase.ts";
+import { formatCurrency } from "./currency.ts";
+
+export { formatCurrency } from "./currency.ts";
 
 type StudentChargeRow = {
   id: string;
@@ -216,11 +219,7 @@ export async function fetchFinanceDashboard(
   );
 }
 
+/** @deprecated Kept as a compatibility alias while finance pages migrate. */
 export function formatDzd(amount: number): string {
-  return new Intl.NumberFormat("ar-DZ", {
-    style: "currency",
-    currency: "DZD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  return formatCurrency(amount);
 }

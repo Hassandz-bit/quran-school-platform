@@ -1007,7 +1007,7 @@ export default function StudentCharges() {
               </label>
 
               <label className="space-y-1.5 text-sm">
-                <span className="font-medium">المبلغ الأصلي (دج)</span>
+                <span className="font-medium">المبلغ الأصلي</span>
                 <Input
                   inputMode="decimal"
                   value={formValues.originalAmount}
@@ -1063,7 +1063,7 @@ export default function StudentCharges() {
                 <label className="space-y-1.5 text-sm">
                   <span className="font-medium">
                     {formValues.discountType === "fixed"
-                      ? "قيمة الخصم (دج)"
+                      ? "قيمة الخصم"
                       : "نسبة الخصم (%)"}
                   </span>
                   <Input

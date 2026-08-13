@@ -12,6 +12,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import LegacyPageTranslation from "@/components/LegacyPageTranslation";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
+  DEFAULT_CURRENCY,
+  configureCurrencyFormatting,
+  normalizeCurrency,
+  type CurrencyCode,
+} from "@/lib/currency";
+import {
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
   getDirection,
@@ -27,6 +33,10 @@ type LocaleContextValue = {
   direction: AppDirection;
   isSavingLocale: boolean;
   setLocale: (locale: AppLocale) => void;
+  currency: CurrencyCode;
+  canChangeCurrency: boolean;
+  isSavingCurrency: boolean;
+  setCurrency: (currency: CurrencyCode) => Promise<boolean>;
   t: (key: TranslationKey) => string;
 };
 
@@ -35,6 +45,10 @@ const FALLBACK_LOCALE_CONTEXT: LocaleContextValue = {
   direction: getDirection(DEFAULT_LOCALE),
   isSavingLocale: false,
   setLocale: () => undefined,
+  currency: DEFAULT_CURRENCY,
+  canChangeCurrency: false,
+  isSavingCurrency: false,
+  setCurrency: async () => false,
   t: key => translate(DEFAULT_LOCALE, key),
 };
 
@@ -66,9 +80,19 @@ function persistLocalLocale(locale: AppLocale) {
 }
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const { profile, user } = useAuth();
+  const {
+    profile,
+    user,
+    school,
+    isSchoolAdmin,
+    reloadAuthorization,
+  } = useAuth();
   const [locale, setLocaleState] = useState<AppLocale>(getStoredLocale);
   const [isSavingLocale, setIsSavingLocale] = useState(false);
+  const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
+    normalizeCurrency(school?.currency_code)
+  );
+  const [isSavingCurrency, setIsSavingCurrency] = useState(false);
   const loginChoiceRef = useRef(hasStoredLocale());
 
   const applyLocale = useCallback((nextLocale: AppLocale) => {
@@ -109,6 +133,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   }, [applyLocale, locale, profile?.locale, user]);
 
   useEffect(() => {
+    setCurrencyState(normalizeCurrency(school?.currency_code));
+  }, [school?.currency_code]);
+
+  useEffect(() => {
     const direction = getDirection(locale);
     document.documentElement.lang = locale;
     document.documentElement.dir = direction;
@@ -123,15 +151,55 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     [applyLocale]
   );
 
+  const setCurrency = useCallback(
+    async (nextCurrency: CurrencyCode): Promise<boolean> => {
+      if (!school?.id || !isSchoolAdmin) return false;
+      const normalized = normalizeCurrency(nextCurrency);
+      const previous = currency;
+      setCurrencyState(normalized);
+      setIsSavingCurrency(true);
+      try {
+        const { error } = await getSupabaseClient()
+          .from("schools")
+          .update({ currency_code: normalized })
+          .eq("id", school.id)
+          .eq("status", "active");
+        if (error) throw error;
+        await reloadAuthorization();
+        return true;
+      } catch {
+        setCurrencyState(previous);
+        return false;
+      } finally {
+        setIsSavingCurrency(false);
+      }
+    },
+    [currency, isSchoolAdmin, reloadAuthorization, school?.id]
+  );
+
+  configureCurrencyFormatting(currency, locale);
+
   const value = useMemo<LocaleContextValue>(
     () => ({
       locale,
       direction: getDirection(locale),
       isSavingLocale,
       setLocale,
+      currency,
+      canChangeCurrency: isSchoolAdmin,
+      isSavingCurrency,
+      setCurrency,
       t: (key: TranslationKey) => translate(locale, key),
     }),
-    [isSavingLocale, locale, setLocale]
+    [
+      currency,
+      isSavingCurrency,
+      isSavingLocale,
+      isSchoolAdmin,
+      locale,
+      setCurrency,
+      setLocale,
+    ]
   );
 
   return (

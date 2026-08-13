@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { Bell, Home, LogOut, ShieldCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import PreferencesDialog from "@/components/PreferencesDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { fetchUnreadNotificationCount } from "@/lib/notifications";
@@ -9,7 +10,7 @@ import { fetchUnreadNotificationCount } from "@/lib/notifications";
 export default function ParentShell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { signOut } = useAuth();
-  const { direction, t } = useLocale();
+  const { direction, currency, t } = useLocale();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -83,6 +84,7 @@ export default function ParentShell({ children }: { children: ReactNode }) {
                 </span>
               )}
             </Button>
+            <PreferencesDialog />
             <Button
               type="button"
               variant="outline"
@@ -102,7 +104,7 @@ export default function ParentShell({ children }: { children: ReactNode }) {
         <span>{t("parent.safety")}</span>
       </div>
 
-      <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7">{children}</main>
+      <main key={currency} className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7">{children}</main>
     </div>
   );
 }

@@ -59,6 +59,12 @@ const LEGACY_EXACT_ENGLISH: Record<string, string> = {
   "التاريخ": "Date",
   "الوصف": "Description",
   "المبلغ": "Amount",
+  "المبلغ بالعملة المحددة": "Amount in the configured currency",
+  "المبلغ الأصلي": "Original amount",
+  "قيمة الخصم": "Discount value",
+  "مبلغ ثابت": "Fixed amount",
+  "جميع المبالغ بالعملة المحددة. نطاق الخطة لا يمكن تغييره بعد الإنشاء.": "All amounts use the configured currency. The plan scope cannot be changed after creation.",
+  "خصم قابل للتحديد بالنسبة أو بمبلغ ثابت للتلميذ المحتاج أو للأسرة التي لديها أكثر من ابن.": "A percentage or fixed-amount discount for a student in need or a family with multiple children.",
   "المتبقي": "Remaining",
   "المدفوع": "Paid",
   "الصافي": "Net",
@@ -292,6 +298,30 @@ const PHRASE_ENGLISH: Array<[string, string]> = [
   ["تم", "Done"],
 ];
 
+const DYNAMIC_ENGLISH: Array<[
+  RegExp,
+  (match: RegExpMatchArray) => string,
+]> = [
+  [/^تم مسح بيانات العرض التجريبية \((\d+) طالب\)\.$/u, match => `Demo data cleared (${match[1]} students).`],
+  [/^تم إرسال الإشعار إلى (\d+) مستلمًا\.$/u, match => `Notification sent to ${match[1]} recipients.`],
+  [/^تم إنشاء (\d+) استحقاقًا دوريًا\.$/u, match => `${match[1]} recurring charges created.`],
+  [/^تم إنشاء (\d+) تذكيرًا جديدًا\.$/u, match => `${match[1]} new reminders created.`],
+  [/^يوم الاستحقاق: (\d+)$/u, match => `Due day: ${match[1]}`],
+  [/^السنة (\d+)$/u, match => `Year ${match[1]}`],
+  [/^تم حفظ حضور (\d+) طالب بنجاح\.$/u, match => `Attendance saved for ${match[1]} students.`],
+  [/^مرحبًا، (.+)$/u, match => `Welcome, ${match[1]}`],
+  [/^هل تريد إلغاء المصروف «(.+)»؟ سيبقى القيد محفوظًا في السجل ولا يمكن استعادته من الواجهة\.$/u, match => `Cancel the expense “${match[1]}”? The entry will remain in history and cannot be restored from the interface.`],
+  [/^(\d+) استحقاق$/u, match => `${match[1]} charges`],
+  [/^(\d+) دفعة$/u, match => `${match[1]} payments`],
+  [/^(\d+) مصروف$/u, match => `${match[1]} expenses`],
+  [/^الرصيد الفعلي للحساب «(.+)» بالعملة المحددة:$/u, match => `Actual balance for “${match[1]}” in the configured currency:`],
+  [/^صورة بديلة لـ(.+)$/u, match => `Alternative photo of ${match[1]}`],
+  [/^صورة (.+)$/u, match => `Photo of ${match[1]}`],
+  [/^جارٍ فتح (.+)\.\.\.$/u, match => `Opening ${translateVisibleText(match[1], "en")}...`],
+  [/^تم ربط (.+) بحساب (.+)\.$/u, match => `${match[1]} linked to account ${match[2]}.`],
+  [/^هل تريد إلغاء استحقاق (.+)؟ سيبقى محفوظًا في السجل\.$/u, match => `Cancel the charge for ${match[1]}? It will remain in history.`],
+];
+
 const ARABIC_RE = /[\u0600-\u06ff]/;
 
 function escapeRegExp(value: string): string {
@@ -303,6 +333,10 @@ export function translateVisibleText(value: string, locale: AppLocale): string {
   const leading = value.match(/^\s*/)?.[0] ?? "";
   const trailing = value.match(/\s*$/)?.[0] ?? "";
   const core = value.trim();
+  for (const [pattern, render] of DYNAMIC_ENGLISH) {
+    const match = core.match(pattern);
+    if (match) return `${leading}${render(match)}${trailing}`;
+  }
   const exact = EXACT_ENGLISH[core];
   if (exact) return `${leading}${exact}${trailing}`;
 

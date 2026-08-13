@@ -142,7 +142,7 @@ export default function StudentDiscountPolicyLauncher({ schoolId }: Props) {
           <div>
             <p className="text-sm font-bold text-[#173B2D]">خصومات الحالات الاجتماعية والإخوة</p>
             <p className="mt-0.5 text-xs text-[#7C715E]">
-              خصم قابل للتحديد بالنسبة أو بالدينار للتلميذ المحتاج أو للأسرة التي لديها أكثر من ابن.
+              خصم قابل للتحديد بالنسبة أو بمبلغ ثابت للتلميذ المحتاج أو للأسرة التي لديها أكثر من ابن.
             </p>
           </div>
           <Button type="button" variant="outline" className="gap-2 bg-white" onClick={() => setOpen(true)}>
@@ -214,7 +214,7 @@ export default function StudentDiscountPolicyLauncher({ schoolId }: Props) {
                         طريقة الخصم
                         <select className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm" value={valueType} onChange={event => setValueType(event.target.value as StudentDiscountValueType)}>
                           <option value="percentage">نسبة مئوية</option>
-                          <option value="fixed">مبلغ ثابت بالدينار</option>
+                          <option value="fixed">مبلغ ثابت</option>
                         </select>
                       </label>
                       <label className="text-xs font-bold text-gray-700">

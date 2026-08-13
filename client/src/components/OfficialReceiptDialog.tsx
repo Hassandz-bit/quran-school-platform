@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLocale } from "@/contexts/LocaleContext";
-import { formatDzd } from "@/lib/finance";
+import { formatCurrency } from "@/lib/finance";
 import { amountToWords, type OfficialReceipt } from "@/lib/receipts";
 
 const paymentMethodLabels = {
@@ -197,8 +197,8 @@ export default function OfficialReceiptDialog({
             <div><dt className="text-xs font-semibold text-gray-500">{copy.description}</dt><dd className="mt-1 font-semibold">{description}</dd></div>
             {receipt.receiptType === "payment" && (
               <>
-                <div><dt className="text-xs font-semibold text-gray-500">{copy.amount}</dt><dd className="mt-1 text-lg font-black text-[#0B4738]">{receipt.amount === null ? copy.noValue : formatDzd(receipt.amount)}</dd></div>
-                <div className="sm:col-span-2"><dt className="text-xs font-semibold text-gray-500">{copy.amountWords}</dt><dd className="mt-1 font-semibold leading-7">{receipt.amount === null ? copy.noValue : amountToWords(receipt.amount, locale)}</dd></div>
+                <div><dt className="text-xs font-semibold text-gray-500">{copy.amount}</dt><dd className="mt-1 text-lg font-black text-[#0B4738]">{receipt.amount === null ? copy.noValue : formatCurrency(receipt.amount, receipt.currency)}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-xs font-semibold text-gray-500">{copy.amountWords}</dt><dd className="mt-1 font-semibold leading-7">{receipt.amount === null ? copy.noValue : amountToWords(receipt.amount, locale, receipt.currency)}</dd></div>
                 <div><dt className="text-xs font-semibold text-gray-500">{copy.method}</dt><dd className="mt-1 font-semibold">{paymentMethod}</dd></div>
                 <div><dt className="text-xs font-semibold text-gray-500">{copy.paymentDate}</dt><dd className="mt-1 font-semibold">{formatDate(receipt.paymentDate)}</dd></div>
                 <div><dt className="text-xs font-semibold text-gray-500">{copy.reference}</dt><dd className="mt-1 font-mono text-sm">{receipt.paymentReference ?? copy.noValue}</dd></div>

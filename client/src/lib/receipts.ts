@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase.ts";
 import type { AppLocale } from "./locale.ts";
+import { DEFAULT_CURRENCY, normalizeCurrency, type CurrencyCode } from "./currency.ts";
 
 export type OfficialReceiptType = "payment" | "registration";
 export type OfficialReceiptStatus = "issued" | "reversed";
@@ -24,7 +25,7 @@ export type OfficialReceipt = {
   chargeType: string | null;
   description: string | null;
   amount: number | null;
-  currency: "DZD";
+  currency: CurrencyCode;
   paymentMethod: string | null;
   paymentDate: string | null;
   paymentReference: string | null;
@@ -91,7 +92,7 @@ const mapReceipt = (row: Record<string, unknown>): OfficialReceipt => ({
   chargeType: row.charge_type ? String(row.charge_type) : null,
   description: row.description ? String(row.description) : null,
   amount: asNumber(row.amount),
-  currency: "DZD",
+  currency: normalizeCurrency(row.currency),
   paymentMethod: row.payment_method ? String(row.payment_method) : null,
   paymentDate: row.payment_date ? String(row.payment_date) : null,
   paymentReference: row.payment_reference ? String(row.payment_reference) : null,
@@ -347,10 +348,28 @@ function integerToEnglishWords(value: number): string {
   return parts.join(" ");
 }
 
-export function amountToWords(amount: number, locale: AppLocale): string {
+export function amountToWords(
+  amount: number,
+  locale: AppLocale,
+  currency: CurrencyCode = DEFAULT_CURRENCY
+): string {
   const normalized = Math.max(0, Math.round(amount * 100) / 100);
   const dinars = Math.floor(normalized);
   const centimes = Math.round((normalized - dinars) * 100);
+
+  if (currency !== "DZD") {
+    const currencyName = new Intl.DisplayNames(
+      [locale === "ar" ? "ar-DZ" : "en"],
+      { type: "currency" }
+    ).of(currency) ?? currency;
+    const integerWords = locale === "ar"
+      ? integerToArabicWords(dinars)
+      : integerToEnglishWords(dinars);
+    const fraction = centimes === 0
+      ? ""
+      : ` ${centimes.toString().padStart(2, "0")}/100`;
+    return `${integerWords} ${currencyName}${fraction}`;
+  }
 
   if (locale === "en") {
     const dinarWords = `${integerToEnglishWords(dinars)} Algerian dinar${dinars === 1 ? "" : "s"}`;

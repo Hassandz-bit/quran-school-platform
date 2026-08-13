@@ -21,6 +21,7 @@ import {
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import PreferencesDialog from "@/components/PreferencesDialog";
 import { useLocale } from "@/contexts/LocaleContext";
 import { fetchMembersAccess } from "@/lib/members";
 import {
@@ -172,7 +173,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     isSchoolAdmin,
     signOut,
   } = useAuth();
-  const { locale, direction, t } = useLocale();
+  const { locale, direction, currency, t } = useLocale();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [canViewMembers, setCanViewMembers] = useState(false);
@@ -455,13 +456,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </p>
             </div>
           </div>
-          <span className="hidden rounded-full bg-[#F3E8C6] px-3 py-1 text-xs font-extrabold text-[#0F5132] sm:inline" dir="ltr">
-            Quran<span className="text-[#B28820]">OS</span>
-          </span>
+          <div className="flex items-center gap-1">
+            <PreferencesDialog />
+            <span className="hidden rounded-full bg-[#F3E8C6] px-3 py-1 text-xs font-extrabold text-[#0F5132] sm:inline" dir="ltr">
+              Quran<span className="text-[#B28820]">OS</span>
+            </span>
+          </div>
         </header>
 
         <main className="min-w-0 px-4 py-5 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:pb-8">
-          <div className="quranos-page-root mx-auto w-full max-w-7xl">{children}</div>
+          <div key={currency} className="quranos-page-root mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
 
