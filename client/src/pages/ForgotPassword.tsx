@@ -1,19 +1,34 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 
+const RECOVERY_COOLDOWN_SECONDS = 60;
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [, setLocation] = useLocation();
   const { resetPasswordForEmail } = useAuth();
 
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+
+    const timer = window.setTimeout(() => {
+      setCooldownSeconds(seconds => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [cooldownSeconds]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (cooldownSeconds > 0) return;
+
     setIsLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -25,6 +40,14 @@ export default function ForgotPassword() {
       );
 
       if (error) {
+        if (error.code === "over_email_send_rate_limit" || error.status === 429) {
+          setSuccessMessage(
+            "تم إرسال رابط الاستعادة بالفعل. انتظر دقيقة قبل طلب رابط جديد، وافحص البريد الوارد ومجلد الرسائل غير المرغوب فيها (Spam)."
+          );
+          setCooldownSeconds(RECOVERY_COOLDOWN_SECONDS);
+          return;
+        }
+
         setErrorMessage(
           "تعذر إرسال رابط الاستعادة حاليًا. تحقق من البريد وحاول مرة أخرى."
         );
@@ -32,8 +55,9 @@ export default function ForgotPassword() {
       }
 
       setSuccessMessage(
-        "إذا كان البريد مرتبطًا بحساب، فسيصلك رابط لتغيير كلمة المرور."
+        "تم إرسال رابط الاستعادة. افحص البريد الوارد ومجلد الرسائل غير المرغوب فيها (Spam)، ثم افتح أحدث رسالة فقط."
       );
+      setCooldownSeconds(RECOVERY_COOLDOWN_SECONDS);
     } catch {
       setErrorMessage(
         "تعذر إرسال رابط الاستعادة حاليًا. حاول مرة أخرى لاحقًا."
@@ -96,10 +120,14 @@ export default function ForgotPassword() {
 
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || cooldownSeconds > 0}
             className="h-12 w-full rounded-xl bg-[#0B4738] text-base font-semibold text-white"
           >
-            {isLoading ? "جارٍ الإرسال..." : "إرسال رابط الاستعادة"}
+            {isLoading
+              ? "جارٍ الإرسال..."
+              : cooldownSeconds > 0
+                ? `يمكن إعادة الإرسال بعد ${cooldownSeconds} ثانية`
+                : "إرسال رابط الاستعادة"}
           </Button>
 
           <button
