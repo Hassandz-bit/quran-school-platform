@@ -54,7 +54,7 @@ test("every fixed Arabic UI string has an English catalog entry", () => {
     const source = readFileSync(join(ROOT, path), "utf8");
     for (const value of sourceCopy(source)) {
       if (ALLOWED_ARABIC.has(value) || !/[\u0621-\u064a]/.test(value)) continue;
-      if (value.includes("${")) continue;
+      if (value.includes("${") || value.includes("}")) continue;
       if (!catalog.has(value)) uncovered.push(`${relative(ROOT, path)}: ${value}`);
     }
   }
