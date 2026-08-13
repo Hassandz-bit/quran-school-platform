@@ -1,9 +1,10 @@
 import type { AppLocale } from "./locale";
+import { EXACT_UI_ENGLISH } from "./ui-copy-en";
 
 // Centralized visible-copy bridge for legacy pages. New components should use
 // LocaleContext directly; this map keeps every existing operational page in
 // sync with the login language while those pages are migrated incrementally.
-const EXACT_ENGLISH: Record<string, string> = {
+const LEGACY_EXACT_ENGLISH: Record<string, string> = {
   "الكل": "All",
   "الجميع": "Everyone",
   "الرئيسية": "Home",
@@ -210,6 +211,11 @@ const EXACT_ENGLISH: Record<string, string> = {
   "الوارد": "Inbox",
   "المرسل": "Sent",
   "مركز الإشعارات": "Notification center",
+};
+
+const EXACT_ENGLISH: Record<string, string> = {
+  ...LEGACY_EXACT_ENGLISH,
+  ...EXACT_UI_ENGLISH,
 };
 
 const PHRASE_ENGLISH: Array<[string, string]> = [
