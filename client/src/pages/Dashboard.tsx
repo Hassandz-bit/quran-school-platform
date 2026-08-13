@@ -75,7 +75,7 @@ export default function Dashboard() {
   const userRole = isSchoolAdmin
     ? "مدير المدرسة"
     : activeRoleCodes.map(role => roleLabels[role]).find(Boolean) ?? "عضو المدرسة";
-  const formattedDate = new Intl.DateTimeFormat("ar-DZ", {
+  const formattedDate = new Intl.DateTimeFormat("ar-DZ-u-nu-latn", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -214,13 +214,13 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:max-w-2xl">
               <StatCard
                 label="إجمالي الطلاب"
-                value={dashboardData.totalStudents.toLocaleString("ar-DZ")}
+                value={dashboardData.totalStudents.toLocaleString("ar-DZ-u-nu-latn")}
                 icon={Users}
                 tone="green"
               />
               <StatCard
                 label="الحلقات النشطة"
-                value={dashboardData.activeClassesCount.toLocaleString("ar-DZ")}
+                value={dashboardData.activeClassesCount.toLocaleString("ar-DZ-u-nu-latn")}
                 icon={BookOpen}
                 tone="blue"
               />

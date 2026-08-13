@@ -428,7 +428,7 @@ export default function Registrations() {
     if (!value) return copy.noFollowUp;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return copy.noFollowUp;
-    return new Intl.DateTimeFormat(ar ? "ar-DZ" : "en-GB", {
+    return new Intl.DateTimeFormat(ar ? "ar-DZ-u-nu-latn" : "en-GB", {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(date);

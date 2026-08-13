@@ -81,7 +81,7 @@ function createDraft(props: Props): FollowUpDraft {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("ar-DZ", { dateStyle: "medium" }).format(
+  return new Intl.DateTimeFormat("ar-DZ-u-nu-latn", { dateStyle: "medium" }).format(
     new Date(`${value}T12:00:00`)
   );
 }

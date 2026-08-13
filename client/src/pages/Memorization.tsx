@@ -125,7 +125,7 @@ function LoadingCard({ label }: { label: string }) {
 }
 
 function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("ar-DZ", {
+  return new Intl.DateTimeFormat("ar-DZ-u-nu-latn", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
