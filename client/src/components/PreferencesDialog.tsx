@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useLocale } from "@/contexts/LocaleContext";
 import {
-  SUPPORTED_CURRENCIES,
+  CURRENCY_GROUPS,
   getCurrencyDisplayName,
   type CurrencyCode,
 } from "@/lib/currency";
@@ -96,10 +96,14 @@ export default function PreferencesDialog() {
             onChange={event => void handleCurrencyChange(event.target.value as CurrencyCode)}
             className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:cursor-not-allowed disabled:bg-gray-100"
           >
-            {SUPPORTED_CURRENCIES.map(code => (
-              <option key={code} value={code}>
-                {code} — {getCurrencyDisplayName(code, locale)}
-              </option>
+            {CURRENCY_GROUPS.map(group => (
+              <optgroup key={group.id} label={group.label[locale]}>
+                {group.currencies.map(code => (
+                  <option key={code} value={code}>
+                    {code} — {getCurrencyDisplayName(code, locale)}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           {!canChangeCurrency && (

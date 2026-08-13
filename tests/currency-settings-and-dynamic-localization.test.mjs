@@ -21,6 +21,28 @@ test("currency formatter keeps Latin digits and supports the configured currency
   assert.match(source, /style: "currency"/);
 });
 
+test("currency catalog covers Islamic countries, Europe, and the Americas", () => {
+  const source = read("client/src/lib/currency.ts");
+  const migration = read("supabase/065_expand_supported_currencies.sql");
+  const quotedCodes = [...source.matchAll(/"([A-Z]{3})"/g)].map(match => match[1]);
+  const codes = [...new Set(quotedCodes)];
+  const migrationCodes = [
+    ...new Set(
+      [...migration.matchAll(/'([A-Z]{3})'/g)].map(match => match[1])
+    ),
+  ];
+
+  assert.equal(codes.length, 101);
+  assert.deepEqual(migrationCodes, codes);
+  assert.match(source, /id: "islamic"/);
+  assert.match(source, /id: "europe"/);
+  assert.match(source, /id: "americas"/);
+  for (const code of ["DZD", "SAR", "AED", "EUR", "GBP", "USD", "CAD", "BRL"]) {
+    assert.ok(codes.includes(code), `missing ${code} from the client catalog`);
+    assert.match(migration, new RegExp(`'${code}'`));
+  }
+});
+
 test("preferences expose language globally and restrict school currency edits", () => {
   const dialog = read("client/src/components/PreferencesDialog.tsx");
   assert.match(dialog, /setLocale\("ar"\)/);
