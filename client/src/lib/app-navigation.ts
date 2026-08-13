@@ -1,20 +1,30 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Bell,
+  BriefcaseBusiness,
   BookOpen,
   BookOpenCheck,
   ChartNoAxesCombined,
   CalendarDays,
+  ClipboardList,
   DollarSign,
+  FileText,
   GraduationCap,
   Home,
+  ReceiptText,
+  UserRoundCheck,
   Users,
 } from "lucide-react";
+import { translate, type AppLocale } from "./locale.ts";
 
 export type AppNavigationInput = {
   isSchoolAdmin: boolean;
   activeRoleCodes: readonly string[];
   canViewMembers?: boolean;
   canViewAcademicReports?: boolean;
+  canViewRegistrations?: boolean;
+  canViewDocuments?: boolean;
+  locale?: AppLocale;
 };
 
 export type AppNavigationItem = {
@@ -27,6 +37,12 @@ export type AppNavigationItem = {
     | "memorization"
     | "academic-reports"
     | "finance"
+    | "staff-payroll"
+    | "receipts"
+    | "registrations"
+    | "documents"
+    | "guardians"
+    | "notifications"
     | "members";
   label: string;
   path: string;
@@ -41,6 +57,9 @@ export function getAppNavigation({
   activeRoleCodes,
   canViewMembers = false,
   canViewAcademicReports = false,
+  canViewRegistrations = false,
+  canViewDocuments = false,
+  locale = "ar",
 }: AppNavigationInput): AppNavigationItem[] {
   const roles = new Set(activeRoleCodes);
   const canManageSchool = isSchoolAdmin;
@@ -53,35 +72,41 @@ export function getAppNavigation({
     isSchoolAdmin ||
     hasRole(roles, "finance_officer") ||
     hasRole(roles, "branch_manager");
+  const canUseReceipts =
+    canUseFinance || hasRole(roles, "registrar");
+  const canUseRegistrations = canViewRegistrations;
+  const canUseDocuments = canViewDocuments;
   const canUseMembers = isSchoolAdmin || canViewMembers;
+  const canUseGuardians = isSchoolAdmin || hasRole(roles, "registrar");
+  const canUseNotifications = isSchoolAdmin || roles.size > 0;
 
   return [
     ...(canManageSchool
       ? [
           {
             id: "dashboard" as const,
-            label: "الرئيسية",
+            label: translate(locale, "nav.dashboard"),
             path: "/dashboard",
             group: "school" as const,
             icon: Home,
           },
           {
             id: "students" as const,
-            label: "الطلاب",
+            label: translate(locale, "nav.students"),
             path: "/students",
             group: "school" as const,
             icon: Users,
           },
           {
             id: "teachers" as const,
-            label: "المعلمون",
+            label: translate(locale, "nav.teachers"),
             path: "/teachers",
             group: "school" as const,
             icon: GraduationCap,
           },
           {
             id: "classes" as const,
-            label: "الحلقات",
+            label: translate(locale, "nav.classes"),
             path: "/classes",
             group: "school" as const,
             icon: BookOpen,
@@ -92,14 +117,14 @@ export function getAppNavigation({
       ? [
           {
             id: "attendance" as const,
-            label: "الحضور",
+            label: translate(locale, "nav.attendance"),
             path: "/attendance",
             group: "learning" as const,
             icon: CalendarDays,
           },
           {
             id: "memorization" as const,
-            label: "الحفظ",
+            label: translate(locale, "nav.memorization"),
             path: "/memorization",
             group: "learning" as const,
             icon: BookOpenCheck,
@@ -110,7 +135,7 @@ export function getAppNavigation({
       ? [
           {
             id: "academic-reports" as const,
-            label: "التقارير التعليمية",
+            label: translate(locale, "nav.academicReports"),
             path: "/academic-reports",
             group: "learning" as const,
             icon: ChartNoAxesCombined,
@@ -120,11 +145,73 @@ export function getAppNavigation({
     ...(canUseFinance
       ? [
           {
+            id: "staff-payroll" as const,
+            label: translate(locale, "nav.staffPayroll"),
+            path: "/staff",
+            group: "management" as const,
+            icon: BriefcaseBusiness,
+          },
+          {
             id: "finance" as const,
-            label: "المالية",
+            label: translate(locale, "nav.finance"),
             path: "/finance",
             group: "management" as const,
             icon: DollarSign,
+          },
+        ]
+      : []),
+    ...(canUseReceipts
+      ? [
+          {
+            id: "receipts" as const,
+            label: translate(locale, "nav.receipts"),
+            path: "/receipts",
+            group: "management" as const,
+            icon: ReceiptText,
+          },
+        ]
+      : []),
+    ...(canUseRegistrations
+      ? [
+          {
+            id: "registrations" as const,
+            label: translate(locale, "nav.registrations"),
+            path: "/registrations",
+            group: "management" as const,
+            icon: ClipboardList,
+          },
+        ]
+      : []),
+    ...(canUseDocuments
+      ? [
+          {
+            id: "documents" as const,
+            label: translate(locale, "nav.documents"),
+            path: "/documents",
+            group: "management" as const,
+            icon: FileText,
+          },
+        ]
+      : []),
+    ...(canUseGuardians
+      ? [
+          {
+            id: "guardians" as const,
+            label: translate(locale, "nav.guardians"),
+            path: "/guardians",
+            group: "management" as const,
+            icon: UserRoundCheck,
+          },
+        ]
+      : []),
+    ...(canUseNotifications
+      ? [
+          {
+            id: "notifications" as const,
+            label: translate(locale, "nav.notifications"),
+            path: "/notifications",
+            group: "management" as const,
+            icon: Bell,
           },
         ]
       : []),
@@ -132,7 +219,7 @@ export function getAppNavigation({
       ? [
           {
             id: "members" as const,
-            label: "الأعضاء",
+            label: translate(locale, "nav.members"),
             path: "/members",
             group: "management" as const,
             icon: Users,
@@ -150,8 +237,12 @@ export function getBottomNavigation(
     "attendance",
     "students",
     "memorization",
+    "notifications",
+    "registrations",
+    "documents",
     "academic-reports",
     "finance",
+    "guardians",
     "members",
   ] as const;
 

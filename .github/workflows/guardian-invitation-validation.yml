@@ -12,8 +12,6 @@ on:
       - "client/src/pages/AcceptGuardianInvite.tsx"
       - "tests/guardian-invitations*"
       - "tests/run-guardian-invitations-migration-test.sh"
-      - "package.json"
-      - "pnpm-lock.yaml"
       - ".github/workflows/guardian-invitation-validation.yml"
 
 permissions:
@@ -36,7 +34,6 @@ jobs:
         with:
           deno-version: v2.x
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:guardian-invitations:migration
       - run: pnpm test:guardian-invitations:migration
       - run: pnpm test:guardian-invitations:function
       - run: pnpm test:teacher-invitations:migration

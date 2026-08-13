@@ -22,6 +22,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { MemorizationFocusNotes } from "@/components/MemorizationFocusNotes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -874,13 +875,13 @@ export default function Memorization() {
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
                     <span className="text-sm font-semibold text-[#2C3E50]">
-                      الملاحظات
+                      ملاحظة عامة للجلسة
                     </span>
                     <Textarea
                       value={draft.notes}
                       maxLength={1000}
                       rows={3}
-                      placeholder="ملاحظات الأداء والتصحيح — اختياري"
+                      placeholder="ملخص عام اختياري — ويمكن إدراج عدة ملاحظات مفصلة في سجل الملاحظات أسفل النموذج"
                       onChange={event => updateDraft({ notes: event.target.value })}
                       className="resize-none"
                     />
@@ -923,6 +924,27 @@ export default function Memorization() {
                 {saveSuccess}
               </div>
             )}
+
+            <MemorizationFocusNotes
+              schoolId={school?.id ?? ""}
+              branchId={branchId}
+              classId={classId}
+              studentId={selectedStudentId}
+              studentName={selectedStudent?.fullName ?? ""}
+              canManage={canManageSelectedClass}
+              teachers={workspace.teachers}
+              defaultTeacherId={
+                teacherRestrictedToOwnRecords
+                  ? (currentTeacherId ?? "")
+                  : draft.teacherId || workspace.teachers[0]?.id || ""
+              }
+              teacherSelectionLocked={teacherRestrictedToOwnRecords}
+              sourceRecordId={draft.recordId}
+              observedOn={recordDate}
+              suggestedSurahNumber={draft.surahNumber}
+              suggestedAyahStart={draft.ayahStart}
+              suggestedAyahEnd={draft.ayahEnd}
+            />
 
             <section aria-label="السجل السابق" className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">

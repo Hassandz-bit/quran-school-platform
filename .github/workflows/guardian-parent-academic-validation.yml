@@ -13,7 +13,6 @@ on:
       - "client/src/pages/PostLoginRedirect.tsx"
       - "tests/guardian-parent-academic*"
       - "tests/run-guardian-parent-academic-migration-test.sh"
-      - "package.json"
       - ".github/workflows/guardian-parent-academic-validation.yml"
 
 permissions:
@@ -33,7 +32,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:guardian-parent-academic:migration
       - run: pnpm test:guardian-parent-academic:migration
       - run: pnpm test
       - run: pnpm check

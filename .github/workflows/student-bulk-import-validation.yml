@@ -1,0 +1,64 @@
+name: Student Bulk Import Validation
+
+on:
+  pull_request:
+    branches:
+      - develop/v2
+    paths:
+      - "client/src/components/StudentsRoute.tsx"
+      - "client/src/pages/StudentsList.tsx"
+      - "client/src/pages/StudentBulkImport.tsx"
+      - "client/src/lib/student-import.ts"
+      - "client/src/App.tsx"
+      - "supabase/028_student_bulk_import.sql"
+      - "supabase/029_student_bulk_import_consistency.sql"
+      - "supabase/030_student_bulk_import_plpgsql_resolution.sql"
+      - "supabase/031_student_bulk_import_rollback_fk_order.sql"
+      - "supabase/032_student_bulk_import_start_date_validation.sql"
+      - "supabase/functions/import-students/**"
+      - "supabase/config.toml"
+      - "tests/student-bulk-import-*"
+      - "tests/run-student-bulk-import-migration-test.sh"
+      - ".github/workflows/student-bulk-import-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: student-import-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verify Docker
+        run: docker info
+
+      - name: Validate student import migrations
+        run: bash tests/run-student-bulk-import-migration-test.sh
+
+      - name: Validate Excel import Edge Function
+        run: |
+          deno test --allow-env --allow-sys=umask --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.test.ts
+          deno check --config supabase/functions/import-students/deno.json supabase/functions/import-students/index.ts supabase/functions/import-students/handler.ts supabase/functions/import-students/services.ts
+
+      - name: Validate whitespace
+        run: git diff --check

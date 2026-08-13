@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - develop/v2
     paths:
       - "client/**"
       - "supabase/**"
@@ -69,6 +70,18 @@ jobs:
       - name: Validate memorization teacher RPC migration
         run: pnpm test:memorization-teacher-rpc:migration
 
+      - name: Validate memorization follow-up migration
+        run: pnpm test:memorization-follow-up:migration
+
+      - name: Validate payroll migration
+        run: pnpm test:payroll:migration
+
+      - name: Validate recurring billing and finance reminders
+        run: pnpm test:recurring-billing:migration
+
+      - name: Validate treasury and reconciliation migrations
+        run: bash tests/run-treasury-other-income-migration-test.sh
+
       - name: Validate guardian security foundation migration
         run: pnpm test:guardian-security:migration
 
@@ -84,11 +97,35 @@ jobs:
       - name: Validate demo mode and student profile migration
         run: pnpm test:demo-mode:migration
 
+      - name: Validate guardian push foundation migration
+        run: pnpm test:guardian-push:migration
+
+      - name: Validate guardian absence notification migration
+        run: pnpm test:guardian-absence:migration
+
+      - name: Validate official receipts migration
+        run: pnpm test:official-receipts:migration
+
+      - name: Validate student bulk import migrations
+        run: pnpm test:student-import:migration
+
+      - name: Validate registration CRM migration
+        run: pnpm test:registration-crm:migration
+
+      - name: Validate document management migrations
+        run: pnpm test:documents:migration
+
       - name: Validate teacher invitation Edge Function
         run: pnpm test:teacher-invitations:function
 
       - name: Validate guardian invitation Edge Function
         run: pnpm test:guardian-invitations:function
+
+      - name: Validate guardian notification dispatcher Edge Function
+        run: pnpm test:guardian-notifications:function
+
+      - name: Validate student import Edge Function
+        run: pnpm test:student-import:function
 
       - name: Final working-tree whitespace check
         run: git diff --check

@@ -8,9 +8,11 @@ import {
   Search,
   RefreshCw,
   FileSearch,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchBranches,
   fetchClasses,
@@ -32,7 +34,7 @@ const statusOptions: StudentStatus[] = [
 ];
 
 const StudentsList: React.FC = () => {
-  const language = "ar" as const;
+  const { locale: language, direction } = useLocale();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
   const [filterClass, setFilterClass] = useState("all");
@@ -57,6 +59,7 @@ const StudentsList: React.FC = () => {
       logout: "تسجيل الخروج",
       comingSoon: "قريبًا",
       addStudent: "إضافة طالب",
+      importExcel: "استيراد Excel",
       search: "البحث بالاسم أو الهاتف أو البريد...",
       allBranches: "جميع الفروع",
       allClasses: "جميع الحلقات",
@@ -89,6 +92,7 @@ const StudentsList: React.FC = () => {
       logout: "Sign Out",
       comingSoon: "Coming soon",
       addStudent: "Add Student",
+      importExcel: "Import Excel",
       search: "Search by name, phone, or email...",
       allBranches: "All Branches",
       allClasses: "All Classes",
@@ -378,8 +382,16 @@ const StudentsList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
-      <div className="flex justify-end">
+    <div className="space-y-6" dir={direction}>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => setLocation("/students/import")}
+          className="flex items-center gap-2 rounded-xl border-[#0B4738]/30 text-[#0B4738]"
+        >
+          <FileSpreadsheet size={18} />
+          {t.importExcel}
+        </Button>
         <Button
           onClick={() => setLocation("/students/new")}
           className="flex items-center gap-2 rounded-xl bg-[#0B4738] text-white shadow-md transition-all hover:bg-[#08382d] hover:shadow-lg active:scale-[0.97]"
@@ -389,22 +401,22 @@ const StudentsList: React.FC = () => {
         </Button>
       </div>
 
-          {isLoading ? (
-            <Card className="p-10 text-center text-gray-500 border border-gray-100">
-              <RefreshCw className="mx-auto mb-3 animate-spin" size={24} />
-              {t.loading}
-            </Card>
-          ) : hasLoadError ? (
-            <Card className="p-10 text-center border border-red-100">
-              <p className="text-red-700 mb-4">{t.loadError}</p>
-              <Button variant="outline" onClick={() => void loadStudents()}>
-                <RefreshCw size={16} />
-                {t.retry}
-              </Button>
-            </Card>
-          ) : (
-            renderLoadedContent()
-          )}
+      {isLoading ? (
+        <Card className="p-10 text-center text-gray-500 border border-gray-100">
+          <RefreshCw className="mx-auto mb-3 animate-spin" size={24} />
+          {t.loading}
+        </Card>
+      ) : hasLoadError ? (
+        <Card className="p-10 text-center border border-red-100">
+          <p className="text-red-700 mb-4">{t.loadError}</p>
+          <Button variant="outline" onClick={() => void loadStudents()}>
+            <RefreshCw size={16} />
+            {t.retry}
+          </Button>
+        </Card>
+      ) : (
+        renderLoadedContent()
+      )}
     </div>
   );
 };

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import MemorizationAnalyticsPanel from "@/components/MemorizationAnalyticsPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AcademicReportsPermissionError,
@@ -36,7 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type LoadState = "loading" | "ready" | "forbidden" | "error";
-type ReportTab = "overview" | "attendance" | "memorization" | "classes";
+type ReportTab = "overview" | "attendance" | "memorization" | "analytics" | "classes";
 
 const arabicDateFormatter = new Intl.DateTimeFormat("ar-DZ", {
   dateStyle: "medium",
@@ -221,20 +222,22 @@ export default function AcademicReports() {
         <PageHeader
           eyebrow="مركز التقارير"
           title="التقارير التعليمية"
-          description="ملخصات قراءة فقط للحضور والحفظ والحلقات ضمن صلاحياتك الحالية."
+          description="ملخصات قراءة فقط للحضور والحفظ والحلقات وتحليلات أخطاء التسميع ضمن صلاحياتك الحالية."
           action={
             data && (
               <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={dataLoading}
-                  onClick={() => downloadCsv(csvKind, data)}
-                  className="gap-2"
-                >
-                  <Download size={16} />
-                  CSV
-                </Button>
+                {activeTab !== "analytics" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={dataLoading}
+                    onClick={() => downloadCsv(csvKind, data)}
+                    className="gap-2"
+                  >
+                    <Download size={16} />
+                    CSV
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -415,6 +418,9 @@ export default function AcademicReports() {
               {data.memorization.state !== "hidden" && (
                 <TabsTrigger value="memorization" className="min-h-10 shrink-0">الحفظ والمراجعة</TabsTrigger>
               )}
+              {access.memorization.state === "ready" && (
+                <TabsTrigger value="analytics" className="min-h-10 shrink-0">تحليلات المتابعة</TabsTrigger>
+              )}
               <TabsTrigger value="classes" className="min-h-10 shrink-0">الحلقات</TabsTrigger>
             </TabsList>
 
@@ -458,6 +464,21 @@ export default function AcademicReports() {
                 <MemorizationTable data={data} />
               ) : (
                 <EmptyState title="لا توجد متابعات حفظ" description="لا توجد متابعات ضمن الفلاتر والفترة المحددة." />
+              )}
+            </TabsContent>
+
+            <TabsContent value="analytics">
+              {access.memorization.state === "ready" && school?.id ? (
+                <MemorizationAnalyticsPanel
+                  schoolId={school.id}
+                  branchId={filters.branchId}
+                  classId={filters.classId}
+                  studentId={filters.studentId}
+                  dateFrom={filters.dateFrom}
+                  dateTo={filters.dateTo}
+                />
+              ) : (
+                <ModuleError label="تحليلات متابعة الحفظ" />
               )}
             </TabsContent>
 

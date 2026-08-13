@@ -4,10 +4,13 @@ import test from "node:test";
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [navigation, shell, dashboard] = await Promise.all([
+const [navigation, shell, locale, dashboard, financeNavigation, styles] = await Promise.all([
   read("client/src/lib/app-navigation.ts"),
   read("client/src/components/AppShell.tsx"),
+  read("client/src/lib/locale.ts"),
   read("client/src/pages/Dashboard.tsx"),
+  read("client/src/components/FinanceNavigation.tsx"),
+  read("client/src/index.css"),
 ]);
 
 test("app shell keeps role-aware destinations isolated", () => {
@@ -24,17 +27,36 @@ test("app shell keeps role-aware destinations isolated", () => {
   assert.doesNotMatch(navigation, /service_role/i);
 });
 
-test("app shell provides compact mobile navigation and an accessible drawer", () => {
-  assert.match(shell, /aria-label="التنقل السفلي"/);
-  assert.match(shell, /aria-label="المزيد"/);
-  assert.match(shell, /aria-label="قائمة المزيد"/);
+test("AppShell is the only visible desktop sidebar and mobile drawer", () => {
+  assert.match(shell, /quranos-page-root/);
+  assert.match(styles, /quranos-page-root > \.flex\.min-h-screen > aside:first-child/);
+  assert.match(styles, /button\[aria-label="تبديل القائمة"\]/);
+  assert.match(styles, /display: none !important/);
+});
+
+test("vertical and financial navigation restore scroll without route jumps", () => {
+  assert.match(shell, /quranos:app-sidebar-scroll/);
+  assert.match(shell, /sessionStorage/);
+  assert.match(shell, /scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\)/);
+  assert.match(financeNavigation, /quranos:finance-navigation-scroll/);
+  assert.match(financeNavigation, /navigation\.scrollLeft = stored/);
+  assert.match(financeNavigation, /overscroll-x-contain/);
+});
+
+test("app shell provides compact mobile navigation and an accessible localized drawer", () => {
+  assert.match(shell, /aria-label=\{t\("shell\.bottomNavigation"\)\}/);
+  assert.match(shell, /aria-label=\{t\("shell\.more"\)\}/);
+  assert.match(locale, /"shell\.bottomNavigation": "التنقل السفلي"/);
+  assert.match(locale, /"shell\.more": "المزيد"/);
   assert.match(shell, /min-h-12/);
   assert.match(shell, /pb-\[calc\(7rem\+env\(safe-area-inset-bottom\)\)\]/);
   assert.match(shell, /overflow-x-clip/);
   assert.match(shell, /variant\?: "dark" \| "light"/);
   assert.match(shell, /variant="light"/);
   assert.match(shell, /md:hidden/);
-  assert.match(shell, /dir="rtl"/);
+  assert.match(shell, /dir=\{direction\}/);
+  assert.match(shell, /direction === "rtl" \? "right-0" : "left-0"/);
+  assert.match(shell, /direction === "rtl" \? PanelRightClose : PanelLeftClose/);
 });
 
 test("dashboard uses reusable phase-one UI primitives", () => {

@@ -162,7 +162,7 @@ test("retries workspace loading with an explicit reload token", () => {
 
 test("supports the four memorization session types", () => {
   for (const [value, label] of [
-    ["new_memorization", "حفظ جديد"],
+    ["new_memorization", "التسميع الجديد"],
     ["near_revision", "مراجعة قريبة"],
     ["distant_revision", "مراجعة بعيدة"],
     ["assessment", "اختبار"],

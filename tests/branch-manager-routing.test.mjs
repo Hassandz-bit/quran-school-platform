@@ -13,12 +13,13 @@ test("branch manager gets a usable scoped default route", () => {
   );
 });
 
-test("branch manager sees scoped learning and finance navigation without admin-only school pages", () => {
+test("branch manager sees scoped modules and exact-access CRM without admin-only school pages", () => {
   const navigation = getAppNavigation({
     isSchoolAdmin: false,
     activeRoleCodes: ["branch_manager"],
     canViewAcademicReports: true,
     canViewMembers: true,
+    canViewRegistrations: true,
   });
   const ids = navigation.map(item => item.id);
 
@@ -26,11 +27,54 @@ test("branch manager sees scoped learning and finance navigation without admin-o
     "attendance",
     "memorization",
     "academic-reports",
+    "staff-payroll",
     "finance",
+    "receipts",
+    "registrations",
+    "notifications",
     "members",
   ]);
 
-  for (const adminOnly of ["dashboard", "students", "teachers", "classes"]) {
+  for (const adminOnly of ["dashboard", "students", "teachers", "classes", "guardians"]) {
     assert.equal(ids.includes(adminOnly), false);
   }
+});
+
+test("registration navigation follows exact access instead of role names", () => {
+  const branchManagerWithoutAccess = getAppNavigation({
+    isSchoolAdmin: false,
+    activeRoleCodes: ["branch_manager"],
+    canViewRegistrations: false,
+  });
+  assert.equal(
+    branchManagerWithoutAccess.some(item => item.id === "registrations"),
+    false
+  );
+
+  const teacherWithExplicitAccess = getAppNavigation({
+    isSchoolAdmin: false,
+    activeRoleCodes: ["teacher"],
+    canViewRegistrations: true,
+  });
+  assert.equal(
+    teacherWithExplicitAccess.some(item => item.id === "registrations"),
+    true
+  );
+});
+
+test("navigation labels switch to English without changing authorization", () => {
+  const navigation = getAppNavigation({
+    isSchoolAdmin: false,
+    activeRoleCodes: ["teacher"],
+    locale: "en",
+  });
+
+  assert.deepEqual(
+    navigation.map(item => [item.id, item.label]),
+    [
+      ["attendance", "Attendance"],
+      ["memorization", "Memorization"],
+      ["notifications", "Notifications"],
+    ]
+  );
 });

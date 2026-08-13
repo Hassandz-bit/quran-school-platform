@@ -853,7 +853,7 @@ export function getMemorizationSessionLabel(
   sessionType: MemorizationSessionType
 ): string {
   return {
-    new_memorization: "حفظ جديد",
+    new_memorization: "التسميع الجديد",
     near_revision: "مراجعة قريبة",
     distant_revision: "مراجعة بعيدة",
     assessment: "اختبار",

@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 .pnpm-store/
+.pnpm-home/
+.xdg-cache/
+.xdg-data/
 
 # Build and test outputs
 dist/
