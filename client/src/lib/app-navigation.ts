@@ -11,7 +11,6 @@ import {
   GraduationCap,
   Home,
   ReceiptText,
-  Settings,
   UserRoundCheck,
   Users,
 } from "lucide-react";
@@ -42,8 +41,7 @@ export type AppNavigationItem = {
     | "documents"
     | "guardians"
     | "notifications"
-    | "members"
-    | "settings";
+    | "members";
   label: string;
   path: string;
   group: "school" | "learning" | "management";
@@ -79,7 +77,6 @@ export function getAppNavigation({
   const canUseMembers = isSchoolAdmin || canViewMembers;
   const canUseGuardians = isSchoolAdmin || hasRole(roles, "registrar");
   const canUseNotifications = isSchoolAdmin || roles.size > 0;
-  const canUseSettings = isSchoolAdmin || roles.size > 0;
 
   return [
     ...(canManageSchool
@@ -217,17 +214,6 @@ export function getAppNavigation({
             path: "/members",
             group: "management" as const,
             icon: Users,
-          },
-        ]
-      : []),
-    ...(canUseSettings
-      ? [
-          {
-            id: "settings" as const,
-            label: translate(locale, "nav.settings"),
-            path: "/settings",
-            group: "management" as const,
-            icon: Settings,
           },
         ]
       : []),

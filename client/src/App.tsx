@@ -58,7 +58,6 @@ const Guardians = lazy(() => import("./pages/Guardians"));
 const Registrations = lazy(() => import("./pages/Registrations"));
 const Documents = lazy(() => import("./pages/Documents"));
 const Notifications = lazy(() => import("./pages/Notifications"));
-const Settings = lazy(() => import("./pages/Settings"));
 const Student360 = lazy(() => import("./pages/Student360"));
 const StudentBulkImport = lazy(() => import("./pages/StudentBulkImport"));
 const AcademicReports = lazy(() => import("./pages/AcademicReports"));
@@ -143,10 +142,6 @@ function NotificationsPageFallback() {
   return <ModuleFallback labelKey="fallback.notifications" />;
 }
 
-function SettingsPageFallback() {
-  return <ModuleFallback labelKey="fallback.settings" />;
-}
-
 function Shell({ children }: { children: ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
@@ -181,15 +176,6 @@ function Router() {
             <ParentShell>
               <Suspense fallback={<NotificationsPageFallback />}>
                 <Notifications />
-              </Suspense>
-            </ParentShell>
-          </ParentRoute>
-        </Route>
-        <Route path="/parent/settings">
-          <ParentRoute>
-            <ParentShell>
-              <Suspense fallback={<SettingsPageFallback />}>
-                <Settings />
               </Suspense>
             </ParentShell>
           </ParentRoute>
@@ -297,15 +283,6 @@ function Router() {
             <Shell>
               <Suspense fallback={<NotificationsPageFallback />}>
                 <Notifications />
-              </Suspense>
-            </Shell>
-          </StaffRoute>
-        </Route>
-        <Route path="/settings">
-          <StaffRoute>
-            <Shell>
-              <Suspense fallback={<SettingsPageFallback />}>
-                <Settings />
               </Suspense>
             </Shell>
           </StaffRoute>

@@ -2,6 +2,27 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* AppShell is the only navigation shell. Older feature pages may still render
+   their historical sidebars, so neutralize those direct children centrally. */
+.quranos-page-root > .flex.min-h-screen > aside:first-child,
+.quranos-page-root > .min-h-screen.flex > aside:first-child,
+.quranos-page-root > .flex.min-h-screen > aside:first-child + .fixed,
+.quranos-page-root > .min-h-screen.flex > aside:first-child + .fixed {
+  display: none !important;
+}
+
+.quranos-page-root button[aria-label="تبديل القائمة"],
+.quranos-page-root button[aria-label="القائمة"],
+.quranos-page-root button[aria-label="Menu"] {
+  display: none !important;
+}
+
+.quranos-page-root > .flex.min-h-screen,
+.quranos-page-root > .min-h-screen.flex {
+  min-height: 0;
+  width: 100%;
+}
+
 @layer base {
   :root {
     --font-sans: "Cairo", sans-serif;

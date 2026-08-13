@@ -19,6 +19,7 @@ import {
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchSchoolTeachers,
   fetchTeacherBranches,
@@ -39,7 +40,7 @@ const statusOptions: TeacherStatus[] = [
 const TeachersList: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [language, setLanguage] = useState<"ar" | "en">("ar");
+  const { locale: language, direction } = useLocale();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -464,7 +465,7 @@ const TeachersList: React.FC = () => {
   return (
     <div
       className="min-h-screen bg-[#F8F9FA] flex"
-      dir={language === "ar" ? "rtl" : "ltr"}
+      dir={direction}
     >
       <aside
         className={`hidden md:flex ${sidebarOpen ? "w-64" : "w-20"} flex-col transition-all duration-300 shadow-xl`}
@@ -512,22 +513,6 @@ const TeachersList: React.FC = () => {
             <h2 className="text-lg font-semibold text-[#2C3E50] hidden sm:block truncate">
               {school?.name ?? t.school}
             </h2>
-          </div>
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-            <button
-              type="button"
-              onClick={() => setLanguage("ar")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${language === "ar" ? "bg-[#0B4738] text-white shadow-sm" : "text-gray-600"}`}
-            >
-              العربية
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage("en")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${language === "en" ? "bg-[#0B4738] text-white shadow-sm" : "text-gray-600"}`}
-            >
-              English
-            </button>
           </div>
         </header>
 

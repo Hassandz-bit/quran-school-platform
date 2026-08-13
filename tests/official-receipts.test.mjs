@@ -59,7 +59,7 @@ test("shared staff routes no longer incorrectly require school_admin", () => {
   assert.match(staffRoute, /activeRoleCodes\.length === 0/);
   assert.match(app, /path="\/guardians"[\s\S]*?<StaffRoute>/);
   assert.match(app, /path="\/notifications"[\s\S]*?<StaffRoute>/);
-  assert.match(app, /path="\/settings"[\s\S]*?<StaffRoute>/);
+  assert.doesNotMatch(app, /path="\/settings"/);
   assert.match(app, /path="\/receipts"[\s\S]*?<StaffRoute>/);
   assert.match(navigation, /id: "receipts"/);
   assert.match(navigation, /path: "\/receipts"/);

@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Bell, Home, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { Bell, Home, LogOut, ShieldCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -82,16 +82,6 @@ export default function ParentShell({ children }: { children: ReactNode }) {
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setLocation("/parent/settings")}
-              className="gap-2 text-[#0F5132]"
-              aria-label={t("parent.settings")}
-            >
-              <Settings size={18} />
-              <span className="hidden md:inline">{t("parent.settings")}</span>
             </Button>
             <Button
               type="button"

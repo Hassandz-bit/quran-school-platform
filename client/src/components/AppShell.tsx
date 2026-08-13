@@ -12,7 +12,9 @@ import {
 } from "lucide-react";
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -38,6 +40,25 @@ import type { TranslationKey } from "@/lib/locale";
 
 function isActive(path: string, itemPath: string) {
   return path === itemPath || (itemPath !== "/dashboard" && path.startsWith(`${itemPath}/`));
+}
+
+const SIDEBAR_SCROLL_KEY = "quranos:app-sidebar-scroll";
+
+function readStoredScroll(key: string): number {
+  try {
+    const value = Number(window.sessionStorage.getItem(key));
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function storeScroll(key: string, value: number) {
+  try {
+    window.sessionStorage.setItem(key, String(value));
+  } catch {
+    // Keep navigation usable when session storage is unavailable.
+  }
 }
 
 function Brand({
@@ -121,6 +142,7 @@ function NavigationList({
                     type="button"
                     onClick={() => onNavigate(item.path)}
                     title={compact ? item.label : undefined}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-start text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
                       active
@@ -157,6 +179,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [canViewAcademicReports, setCanViewAcademicReports] = useState(false);
   const [canViewRegistrations, setCanViewRegistrations] = useState(false);
   const [canViewDocuments, setCanViewDocuments] = useState(false);
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -298,6 +321,26 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const ExpandIcon = direction === "rtl" ? PanelRightOpen : PanelLeftOpen;
   const DrawerChevron = direction === "rtl" ? ChevronLeft : ChevronRight;
 
+  useLayoutEffect(() => {
+    const container = sidebarScrollRef.current;
+    if (!container) return;
+
+    container.scrollTop = readStoredScroll(SIDEBAR_SCROLL_KEY);
+    const frame = window.requestAnimationFrame(() => {
+      const activeItem = container.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!activeItem) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const itemRect = activeItem.getBoundingClientRect();
+      if (itemRect.top < containerRect.top || itemRect.bottom > containerRect.bottom) {
+        activeItem.scrollIntoView({ block: "nearest", inline: "nearest" });
+        storeScroll(SIDEBAR_SCROLL_KEY, container.scrollTop);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [location, navigation.length, sidebarExpanded]);
+
   useEffect(() => {
     if (!drawerOpen) return;
 
@@ -356,7 +399,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </button>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          ref={sidebarScrollRef}
+          onScroll={event => storeScroll(SIDEBAR_SCROLL_KEY, event.currentTarget.scrollTop)}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
           <NavigationList
             items={navigation}
             currentPath={location}
@@ -414,7 +461,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         <main className="min-w-0 px-4 py-5 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:pb-8">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+          <div className="quranos-page-root mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
 
