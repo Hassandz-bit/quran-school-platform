@@ -113,6 +113,42 @@ test("export handler isolates every operational table by school_id and excludes 
   }
 });
 
+test("portable package contract produces stable format, exclusions, checksum and byte size", async () => {
+  const packageUrl = pathToFileURL(
+    new URL("../supabase/functions/create-school-backup/package.ts", import.meta.url).pathname
+  ).href;
+  const {
+    SCHOOL_BACKUP_TABLES,
+    SCHOOL_BACKUP_EXCLUSIONS,
+    serializeSchoolBackupPackage,
+  } = await import(packageUrl);
+
+  assert.deepEqual([...SCHOOL_BACKUP_TABLES], BACKUP_TABLE_NAMES);
+  for (const tableName of SCHOOL_BACKUP_TABLES) {
+    assert.ok(handlerSource.includes(`"${tableName}"`), `handler missing ${tableName}`);
+  }
+
+  const schoolId = "10000000-0000-4000-8000-000000000001";
+  const tables = Object.fromEntries(BACKUP_TABLE_NAMES.map(name => [name, []]));
+  tables.students = [{ id: "student-1", school_id: schoolId }];
+  const result = await serializeSchoolBackupPackage({
+    snapshotId: "40000000-0000-4000-8000-000000000004",
+    generatedAt: "2026-08-14T00:00:00.000Z",
+    school: { id: schoolId, name: "Test School" },
+    profiles: [],
+    permissionCatalog: [],
+    tables,
+    documentObjectPaths: [],
+  });
+
+  assert.equal(result.packageData.format, "quranos-school-backup");
+  assert.equal(result.packageData.formatVersion, 1);
+  assert.equal(result.packageData.snapshotId, "40000000-0000-4000-8000-000000000004");
+  assert.deepEqual(result.packageData.exclusions, [...SCHOOL_BACKUP_EXCLUSIONS]);
+  assert.match(result.checksumSha256, /^[0-9a-f]{64}$/);
+  assert.equal(result.byteSize, new TextEncoder().encode(result.serialized).byteLength);
+});
+
 test("restore dry-run validator rejects incomplete, cross-school, extra-table and secret packages", async () => {
   const validatorUrl = pathToFileURL(
     new URL("../supabase/functions/validate-school-backup/logic.ts", import.meta.url).pathname
