@@ -39,7 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 type LoadState = "loading" | "ready" | "forbidden" | "error";
 type ReportTab = "overview" | "attendance" | "memorization" | "analytics" | "classes";
 
-const arabicDateFormatter = new Intl.DateTimeFormat("ar-DZ", {
+const arabicDateFormatter = new Intl.DateTimeFormat("ar-DZ-u-nu-latn", {
   dateStyle: "medium",
 });
 
@@ -262,7 +262,7 @@ export default function AcademicReports() {
           {" · "}الفرع: {branchLabel}{" · "}الحلقة: {classLabel}
         </p>
         <p className="mt-1 text-xs">
-          تاريخ الطباعة: {new Intl.DateTimeFormat("ar-DZ", {
+          تاريخ الطباعة: {new Intl.DateTimeFormat("ar-DZ-u-nu-latn", {
             dateStyle: "medium",
             timeStyle: "short",
           }).format(new Date())}

@@ -204,7 +204,7 @@ const TeachersList: React.FC = () => {
   const formatDate = (value: string) => {
     const date = new Date(`${value}T00:00:00`);
     if (Number.isNaN(date.getTime())) return t.noValue;
-    return new Intl.DateTimeFormat(language === "ar" ? "ar-DZ" : "en-GB").format(
+    return new Intl.DateTimeFormat(language === "ar" ? "ar-DZ-u-nu-latn" : "en-GB").format(
       date
     );
   };

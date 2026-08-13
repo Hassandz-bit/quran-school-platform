@@ -31,7 +31,7 @@ const categories: Array<{ value: NotificationCategory | "all"; ar: string; en: s
 
 function formatDate(value: string, locale: "ar" | "en"): string {
   try {
-    return new Intl.DateTimeFormat(locale === "ar" ? "ar-DZ" : "en-GB", {
+    return new Intl.DateTimeFormat(locale === "ar" ? "ar-DZ-u-nu-latn" : "en-GB", {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(value));

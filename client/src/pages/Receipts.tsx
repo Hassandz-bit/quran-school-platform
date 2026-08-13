@@ -215,7 +215,7 @@ export default function Receipts() {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? value
-      : new Intl.DateTimeFormat(locale === "ar" ? "ar-DZ" : "en-GB", {
+      : new Intl.DateTimeFormat(locale === "ar" ? "ar-DZ-u-nu-latn" : "en-GB", {
           year: "numeric",
           month: "2-digit",
           day: "2-digit",

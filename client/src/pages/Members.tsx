@@ -55,7 +55,7 @@ function formatDate(value: string | null): string {
   if (!value) return "غير محدد";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "غير محدد";
-  return new Intl.DateTimeFormat("ar-DZ", {
+  return new Intl.DateTimeFormat("ar-DZ-u-nu-latn", {
     year: "numeric",
     month: "short",
     day: "numeric",

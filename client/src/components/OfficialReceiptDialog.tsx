@@ -114,7 +114,7 @@ export default function OfficialReceiptDialog({
           noValue: "—",
         };
 
-  const dateLocale = locale === "ar" ? "ar-DZ" : "en-GB";
+  const dateLocale = locale === "ar" ? "ar-DZ-u-nu-latn" : "en-GB";
   const formatDate = (value: string | null) => {
     if (!value) return copy.noValue;
     const date = value.includes("T") ? new Date(value) : new Date(`${value}T00:00:00`);

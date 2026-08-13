@@ -6,7 +6,7 @@ import { fetchMemorizationAnalytics, type MemorizationAnalyticsData, type Memori
 import { MEMORIZATION_FOLLOW_UP_CATEGORIES, MEMORIZATION_FOLLOW_UP_CATEGORY_LABELS, MEMORIZATION_FOLLOW_UP_PRIORITY_LABELS, MEMORIZATION_FOLLOW_UP_STATUSES, MEMORIZATION_FOLLOW_UP_STATUS_LABELS } from "@/lib/memorization-follow-up";
 
 type Props={schoolId:string;branchId:string;classId:string;studentId:string;dateFrom:string;dateTo:string};
-const arabicDateFormatter=new Intl.DateTimeFormat("ar-DZ",{dateStyle:"medium"});
+const arabicDateFormatter=new Intl.DateTimeFormat("ar-DZ-u-nu-latn",{dateStyle:"medium"});
 function formatDate(value:string){return arabicDateFormatter.format(new Date(value+"T12:00:00"));}
 function surahLabel(surahNumber:number){return "سورة رقم "+surahNumber;}
 function StudentLink({studentId,studentName}:{studentId:string;studentName:string}){const [,setLocation]=useLocation();return <button type="button" onClick={()=>setLocation("/students/"+studentId)} className="font-bold text-[#17663B] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]">{studentName}</button>;}

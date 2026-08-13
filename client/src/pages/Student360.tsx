@@ -35,11 +35,11 @@ function formatDate(value: string): string {
   const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
   return Number.isNaN(date.getTime())
     ? "—"
-    : new Intl.DateTimeFormat("ar-DZ", { dateStyle: "medium" }).format(date);
+    : new Intl.DateTimeFormat("ar-DZ-u-nu-latn", { dateStyle: "medium" }).format(date);
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("ar-DZ", {
+  return new Intl.NumberFormat("ar-DZ-u-nu-latn", {
     style: "currency",
     currency: "DZD",
     maximumFractionDigits: 0,
