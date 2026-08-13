@@ -60,6 +60,7 @@ const LEGACY_EXACT_ENGLISH: Record<string, string> = {
   "الوصف": "Description",
   "المبلغ": "Amount",
   "المبلغ بالعملة المحددة": "Amount in the configured currency",
+  "الرصيد الفعلي للحساب «» بالعملة المحددة:": "Actual account balance in the configured currency:",
   "المبلغ الأصلي": "Original amount",
   "قيمة الخصم": "Discount value",
   "مبلغ ثابت": "Fixed amount",
