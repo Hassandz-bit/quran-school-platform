@@ -1,0 +1,1 @@
+export const SCHOOL_BACKUP_FORMAT_VERSION = 1;
