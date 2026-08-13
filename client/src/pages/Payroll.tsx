@@ -8,18 +8,12 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import FinanceNavigation from "@/components/FinanceNavigation";
-import PayrollStaffDialog from "@/components/PayrollStaffDialog";
+import StaffPayrollNavigation from "@/components/StaffPayrollNavigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDzd } from "@/lib/finance";
-import {
-  fetchPayrollStaffDirectory,
-  getStaffJobLabel,
-  type PayrollStaffDirectory,
-} from "@/lib/staff";
 import {
   PAYROLL_ENTRY_STATUS_LABELS,
   PAYROLL_PAYMENT_METHOD_LABELS,
@@ -65,7 +59,6 @@ export default function Payroll() {
   const [scopeKey, setScopeKey] = useState("");
   const [periodMonth, setPeriodMonth] = useState(monthStart);
   const [workspace, setWorkspace] = useState<PayrollWorkspace | null>(null);
-  const [staffDirectory, setStaffDirectory] = useState<PayrollStaffDirectory>({ candidates: [], positions: [] });
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [busy, setBusy] = useState(false);
   const [candidateKey, setCandidateKey] = useState("");
@@ -96,7 +89,7 @@ export default function Payroll() {
   const candidateMap = useMemo(() => {
     const map = new Map<string, PayrollCandidate>();
     workspace?.candidates.forEach(candidate => {
-      const id = candidate.teacherId ?? candidate.membershipId;
+      const id = candidate.employeeId ?? candidate.teacherId ?? candidate.membershipId;
       map.set(`${candidate.kind}:${id}`, candidate);
     });
     return map;
@@ -121,12 +114,12 @@ export default function Payroll() {
     if (!school?.id || !selectedScope) return;
     setLoadState("loading");
     try {
-      const [data, nextStaffDirectory] = await Promise.all([
-        fetchPayrollWorkspace(school.id, selectedScope.branchId, periodMonth),
-        fetchPayrollStaffDirectory(school.id, selectedScope.branchId),
-      ]);
+      const data = await fetchPayrollWorkspace(
+        school.id,
+        selectedScope.branchId,
+        periodMonth
+      );
       setWorkspace(data);
-      setStaffDirectory(nextStaffDirectory);
       setLoadState("ready");
       setAdjustments(
         Object.fromEntries(
@@ -142,7 +135,6 @@ export default function Payroll() {
       );
     } catch (error) {
       setWorkspace(null);
-      setStaffDirectory({ candidates: [], positions: [] });
       setLoadState(
         String(error).includes("PAYROLL_VIEW_REQUIRED")
           ? "forbidden"
@@ -198,15 +190,6 @@ export default function Payroll() {
     setCandidateKey("");
   };
 
-  const candidateJobLabel = (candidate: PayrollCandidate) => {
-    const position = staffDirectory.positions.find(item =>
-      candidate.kind === "teacher"
-        ? item.teacherId === candidate.teacherId
-        : item.membershipId === candidate.membershipId
-    );
-    return position ? getStaffJobLabel(position) : candidate.roleLabel;
-  };
-
   const saveAdjustment = async (entry: PayrollEntry) => {
     if (!school?.id) return;
     const draft = adjustments[entry.id];
@@ -235,7 +218,7 @@ export default function Payroll() {
 
   return (
     <div className="space-y-5" dir="rtl">
-      <FinanceNavigation currentPath="/finance/payroll" />
+      <StaffPayrollNavigation currentPath="/staff/payroll" />
 
       <header className="flex flex-col gap-3 rounded-2xl border border-[#E2EAE4] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -248,16 +231,6 @@ export default function Payroll() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {workspace?.canManage && selectedScope && school?.id ? (
-            <PayrollStaffDialog
-              schoolId={school.id}
-              branchId={selectedScope.branchId}
-              scopeLabel={selectedScope.label}
-              candidates={staffDirectory.candidates}
-              positions={staffDirectory.positions}
-              onChanged={loadWorkspace}
-            />
-          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -401,11 +374,11 @@ export default function Payroll() {
                     <option value="">اختر...</option>
                     {workspace.candidates.map(candidate => {
                       const key = `${candidate.kind}:${
-                        candidate.teacherId ?? candidate.membershipId
+                        candidate.employeeId ?? candidate.teacherId ?? candidate.membershipId
                       }`;
                       return (
                         <option key={key} value={key}>
-                          {candidate.name} · {candidateJobLabel(candidate)}
+                          {candidate.name} · {candidate.roleLabel}
                         </option>
                       );
                     })}

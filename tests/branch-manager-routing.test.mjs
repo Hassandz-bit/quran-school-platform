@@ -27,6 +27,7 @@ test("branch manager sees scoped modules and exact-access CRM without admin-only
     "attendance",
     "memorization",
     "academic-reports",
+    "staff-payroll",
     "finance",
     "receipts",
     "registrations",

@@ -6,10 +6,12 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"
 const migration = read("supabase/056_manual_notifications_and_staff_directory.sql");
 const payrollStaffMigration = read("supabase/057_payroll_staff_job_management.sql");
 const payrollStaffLockdown = read("supabase/058_payroll_staff_legacy_rpc_lockdown.sql");
+const employeeMigration = read("supabase/059_staff_payroll_module.sql");
 const notifications = read("client/src/lib/notifications.ts");
 const composer = read("client/src/components/NotificationComposerDialog.tsx");
 const staff = read("client/src/lib/staff.ts");
-const staffDialog = read("client/src/components/PayrollStaffDialog.tsx");
+const employeePage = read("client/src/pages/Employees.tsx");
+const employeeClient = read("client/src/lib/employees.ts");
 const payrollPage = read("client/src/pages/Payroll.tsx");
 const membersPage = read("client/src/pages/Members.tsx");
 const focusNotes = read("client/src/components/MemorizationFocusNotes.tsx");
@@ -44,28 +46,29 @@ test("staff titles are independent from authorization roles and allow a custom j
     assert.match(staff, new RegExp(`\\b${job}\\b`));
   }
   assert.match(migration, /job_code = 'other'.*custom_job_title/is);
-  assert.match(staffDialog, /المسمى الوظيفي/);
-  assert.match(staffDialog, /اكتب المسمى غير المدرج/);
-  assert.match(staffDialog, /الوظيفة لا تمنح صلاحيات النظام تلقائيًا/);
-  assert.doesNotMatch(staffDialog, /membership_roles|role_permissions/);
+  assert.match(employeePage, /الوظيفة/);
+  assert.match(employeePage, /مسمى آخر/);
+  assert.match(employeePage, /الوظيفة تصف عمل الموظف فقط ولا تمنحه صلاحيات في النظام/);
+  assert.doesNotMatch(employeePage, /membership_roles|role_permissions/);
 });
 
-test("staff jobs are managed only inside Finance payroll and use payroll scope permissions", () => {
-  assert.match(payrollPage, /PayrollStaffDialog/);
+test("employees are an independent module connected to Finance payroll", () => {
+  assert.doesNotMatch(payrollPage, /PayrollStaffDialog/);
   assert.doesNotMatch(membersPage, /PayrollStaffDialog|StaffManagementDialog/);
-  assert.match(payrollStaffMigration, /public\.payroll_can_view_scope\(target_school_id, target_branch_id\)/);
-  assert.match(payrollStaffMigration, /public\.payroll_can_manage_scope\(target_school_id, target_branch_id\)/);
-  assert.match(payrollStaffMigration, /create or replace function public\.upsert_payroll_staff_position/);
-  assert.match(payrollStaffMigration, /revoke all on function public\.upsert_payroll_staff_position[\s\S]*from public, anon/i);
-  assert.match(staff, /rpc\("list_payroll_staff_candidates"/);
-  assert.match(staff, /rpc\("upsert_payroll_staff_position"/);
-  assert.match(payrollPage, /candidateJobLabel\(candidate\)/);
+  assert.match(employeeMigration, /create table public\.employees/);
+  assert.match(employeeMigration, /Employees do not require login accounts/i);
+  assert.match(employeeMigration, /public\.payroll_can_view_scope\(target_school_id, target_branch_id\)/);
+  assert.match(employeeMigration, /public\.payroll_can_manage_scope\(target_school_id, target_branch_id\)/);
+  assert.match(employeeMigration, /create or replace function public\.create_employee_compensation/);
+  assert.match(employeeClient, /rpc\("list_staff_employees"/);
+  assert.match(employeeClient, /rpc\("save_staff_employee"/);
+  assert.match(payrollPage, /candidate\.roleLabel/);
   for (const legacyFunction of ["list_school_staff", "upsert_staff_position", "deactivate_staff_position"]) {
     assert.match(
       payrollStaffLockdown,
       new RegExp(`revoke all on function public\\.${legacyFunction}[\\s\\S]*?from public, anon, authenticated`, "i")
     );
-    assert.doesNotMatch(staff, new RegExp(`rpc\\("${legacyFunction}"`));
+    assert.doesNotMatch(employeeClient, new RegExp(`rpc\\("${legacyFunction}"`));
   }
 });
 

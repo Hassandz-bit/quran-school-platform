@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { History, RefreshCw, RotateCcw, WalletCards } from "lucide-react";
-import FinanceNavigation from "@/components/FinanceNavigation";
+import StaffPayrollNavigation from "@/components/StaffPayrollNavigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,7 +73,7 @@ export default function PayrollHistory() {
   const payees = useMemo(() => {
     const map = new Map<string, string>();
     rows.forEach(row => {
-      const key = row.payeeKind + ":" + (row.teacherId ?? row.membershipId);
+      const key = row.payeeKind + ":" + (row.employeeId ?? row.teacherId ?? row.membershipId);
       map.set(key, row.payeeName);
     });
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], "ar"));
@@ -85,7 +85,7 @@ export default function PayrollHistory() {
         ? rows
         : rows.filter(
             row =>
-              row.payeeKind + ":" + (row.teacherId ?? row.membershipId) ===
+              row.payeeKind + ":" + (row.employeeId ?? row.teacherId ?? row.membershipId) ===
               payeeKey
           ),
     [payeeKey, rows]
@@ -104,7 +104,7 @@ export default function PayrollHistory() {
 
   return (
     <div className="space-y-5" dir="rtl">
-      <FinanceNavigation currentPath="/finance/payroll/history" />
+      <StaffPayrollNavigation currentPath="/staff/payroll/history" />
       <header className="flex flex-col gap-3 rounded-2xl border border-[#E2EAE4] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-bold text-[#17663B]">المالية · الأجور</p>
@@ -227,7 +227,7 @@ export default function PayrollHistory() {
                           <b>{row.payeeName}</b>
                           <p className="text-xs text-[#718377]">
                             {row.roleLabel ??
-                              (row.payeeKind === "teacher" ? "معلم" : "إداري/موظف")}
+                              (row.payeeKind === "teacher" ? "معلم" : row.payeeKind === "employee" ? "موظف" : "إداري/موظف")}
                           </p>
                         </td>
                         <td className="p-3">{formatDzd(row.baseAmount)}</td>

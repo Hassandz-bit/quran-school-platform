@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
+  BriefcaseBusiness,
   BookOpen,
   BookOpenCheck,
   ChartNoAxesCombined,
@@ -36,6 +37,7 @@ export type AppNavigationItem = {
     | "memorization"
     | "academic-reports"
     | "finance"
+    | "staff-payroll"
     | "receipts"
     | "registrations"
     | "documents"
@@ -142,6 +144,13 @@ export function getAppNavigation({
       : []),
     ...(canUseFinance
       ? [
+          {
+            id: "staff-payroll" as const,
+            label: translate(locale, "nav.staffPayroll"),
+            path: "/staff",
+            group: "management" as const,
+            icon: BriefcaseBusiness,
+          },
           {
             id: "finance" as const,
             label: translate(locale, "nav.finance"),

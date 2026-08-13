@@ -84,13 +84,8 @@ export default function FinanceNavigation({
         visible: access.canViewFinance,
       },
       {
-        label: "الرواتب",
-        path: "/finance/payroll",
-        visible: access.canViewFinance,
-      },
-      {
-        label: "سجل الأجور",
-        path: "/finance/payroll/history",
+        label: "الموظفون والرواتب",
+        path: "/staff",
         visible: access.canViewFinance,
       },
       {
