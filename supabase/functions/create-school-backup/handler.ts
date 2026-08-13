@@ -280,6 +280,7 @@ export async function handleCreateSchoolBackup(
       const packageData = {
         format: "quranos-school-backup",
         formatVersion: 1,
+        snapshotId: snapshot.id,
         generatedAt: createdAt,
         school,
         profiles,
