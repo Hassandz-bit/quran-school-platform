@@ -9,11 +9,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import FinanceNavigation from "@/components/FinanceNavigation";
+import PayrollStaffDialog from "@/components/PayrollStaffDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDzd } from "@/lib/finance";
+import {
+  fetchPayrollStaffDirectory,
+  getStaffJobLabel,
+  type PayrollStaffDirectory,
+} from "@/lib/staff";
 import {
   PAYROLL_ENTRY_STATUS_LABELS,
   PAYROLL_PAYMENT_METHOD_LABELS,
@@ -59,6 +65,7 @@ export default function Payroll() {
   const [scopeKey, setScopeKey] = useState("");
   const [periodMonth, setPeriodMonth] = useState(monthStart);
   const [workspace, setWorkspace] = useState<PayrollWorkspace | null>(null);
+  const [staffDirectory, setStaffDirectory] = useState<PayrollStaffDirectory>({ candidates: [], positions: [] });
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [busy, setBusy] = useState(false);
   const [candidateKey, setCandidateKey] = useState("");
@@ -114,12 +121,12 @@ export default function Payroll() {
     if (!school?.id || !selectedScope) return;
     setLoadState("loading");
     try {
-      const data = await fetchPayrollWorkspace(
-        school.id,
-        selectedScope.branchId,
-        periodMonth
-      );
+      const [data, nextStaffDirectory] = await Promise.all([
+        fetchPayrollWorkspace(school.id, selectedScope.branchId, periodMonth),
+        fetchPayrollStaffDirectory(school.id, selectedScope.branchId),
+      ]);
       setWorkspace(data);
+      setStaffDirectory(nextStaffDirectory);
       setLoadState("ready");
       setAdjustments(
         Object.fromEntries(
@@ -135,6 +142,7 @@ export default function Payroll() {
       );
     } catch (error) {
       setWorkspace(null);
+      setStaffDirectory({ candidates: [], positions: [] });
       setLoadState(
         String(error).includes("PAYROLL_VIEW_REQUIRED")
           ? "forbidden"
@@ -190,6 +198,15 @@ export default function Payroll() {
     setCandidateKey("");
   };
 
+  const candidateJobLabel = (candidate: PayrollCandidate) => {
+    const position = staffDirectory.positions.find(item =>
+      candidate.kind === "teacher"
+        ? item.teacherId === candidate.teacherId
+        : item.membershipId === candidate.membershipId
+    );
+    return position ? getStaffJobLabel(position) : candidate.roleLabel;
+  };
+
   const saveAdjustment = async (entry: PayrollEntry) => {
     if (!school?.id) return;
     const draft = adjustments[entry.id];
@@ -230,16 +247,28 @@ export default function Payroll() {
             مسير شهري مدقّق: الراتب الأساسي + الزيادات − الخصومات − السلف.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void loadWorkspace()}
-          disabled={busy || !selectedScope}
-          className="gap-2"
-        >
-          <RefreshCw className="size-4" />
-          تحديث
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {workspace?.canManage && selectedScope && school?.id ? (
+            <PayrollStaffDialog
+              schoolId={school.id}
+              branchId={selectedScope.branchId}
+              scopeLabel={selectedScope.label}
+              candidates={staffDirectory.candidates}
+              positions={staffDirectory.positions}
+              onChanged={loadWorkspace}
+            />
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void loadWorkspace()}
+            disabled={busy || !selectedScope}
+            className="gap-2"
+          >
+            <RefreshCw className="size-4" />
+            تحديث
+          </Button>
+        </div>
       </header>
 
       <Card className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -376,7 +405,7 @@ export default function Payroll() {
                       }`;
                       return (
                         <option key={key} value={key}>
-                          {candidate.name} · {candidate.roleLabel}
+                          {candidate.name} · {candidateJobLabel(candidate)}
                         </option>
                       );
                     })}

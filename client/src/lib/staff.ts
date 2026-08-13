@@ -29,6 +29,7 @@ export type StaffPosition = {
   positionId: string;
   membershipId: string;
   profileId: string;
+  teacherId: string | null;
   fullName: string;
   branchId: string | null;
   branchName: string | null;
@@ -36,6 +37,18 @@ export type StaffPosition = {
   customJobTitle: string | null;
   status: "active" | "inactive";
   updatedAt: string;
+};
+
+export type PayrollStaffCandidate = {
+  membershipId: string;
+  profileId: string;
+  teacherId: string | null;
+  fullName: string;
+};
+
+export type PayrollStaffDirectory = {
+  candidates: PayrollStaffCandidate[];
+  positions: StaffPosition[];
 };
 
 export function getStaffJobLabel(
@@ -46,18 +59,34 @@ export function getStaffJobLabel(
   return STAFF_JOB_LABELS[position.jobCode][locale];
 }
 
-export async function fetchSchoolStaff(
+export async function fetchPayrollStaffDirectory(
   schoolId: string,
+  branchId: string | null,
   client: SupabaseClient = getSupabaseClient()
-): Promise<StaffPosition[]> {
-  const { data, error } = await client.rpc("list_school_staff", {
-    target_school_id: schoolId,
-  });
-  if (error) throw error;
-  return ((data ?? []) as Record<string, unknown>[]).map(row => ({
+): Promise<PayrollStaffDirectory> {
+  const [candidateResult, positionResult] = await Promise.all([
+    client.rpc("list_payroll_staff_candidates", {
+      target_school_id: schoolId,
+      target_branch_id: branchId,
+    }),
+    client.rpc("list_payroll_staff", {
+      target_school_id: schoolId,
+      target_branch_id: branchId,
+    }),
+  ]);
+  if (candidateResult.error) throw candidateResult.error;
+  if (positionResult.error) throw positionResult.error;
+  const candidates = ((candidateResult.data ?? []) as Record<string, unknown>[]).map(row => ({
+    membershipId: String(row.membership_id),
+    profileId: String(row.profile_id),
+    teacherId: row.teacher_id ? String(row.teacher_id) : null,
+    fullName: String(row.full_name),
+  }));
+  const positions = ((positionResult.data ?? []) as Record<string, unknown>[]).map(row => ({
     positionId: String(row.position_id),
     membershipId: String(row.membership_id),
     profileId: String(row.profile_id),
+    teacherId: row.teacher_id ? String(row.teacher_id) : null,
     fullName: String(row.full_name),
     branchId: row.branch_id ? String(row.branch_id) : null,
     branchName: row.branch_name ? String(row.branch_name) : null,
@@ -65,12 +94,13 @@ export async function fetchSchoolStaff(
       ? row.job_code as StaffJobCode
       : "other",
     customJobTitle: row.custom_job_title ? String(row.custom_job_title) : null,
-    status: row.status === "inactive" ? "inactive" : "active",
+    status: row.status === "inactive" ? ("inactive" as const) : ("active" as const),
     updatedAt: String(row.updated_at),
   }));
+  return { candidates, positions };
 }
 
-export async function saveStaffPosition(
+export async function savePayrollStaffPosition(
   input: {
     schoolId: string;
     membershipId: string;
@@ -80,7 +110,7 @@ export async function saveStaffPosition(
   },
   client: SupabaseClient = getSupabaseClient()
 ): Promise<string> {
-  const { data, error } = await client.rpc("upsert_staff_position", {
+  const { data, error } = await client.rpc("upsert_payroll_staff_position", {
     target_school_id: input.schoolId,
     target_membership_id: input.membershipId,
     target_job_code: input.jobCode,
@@ -91,12 +121,12 @@ export async function saveStaffPosition(
   return String(data);
 }
 
-export async function deactivateStaffPosition(
+export async function deactivatePayrollStaffPosition(
   schoolId: string,
   positionId: string,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<boolean> {
-  const { data, error } = await client.rpc("deactivate_staff_position", {
+  const { data, error } = await client.rpc("deactivate_payroll_staff_position", {
     target_school_id: schoolId,
     target_position_id: positionId,
   });

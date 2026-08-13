@@ -4,10 +4,13 @@ import test from "node:test";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const migration = read("supabase/056_manual_notifications_and_staff_directory.sql");
+const payrollStaffMigration = read("supabase/057_payroll_staff_job_management.sql");
 const notifications = read("client/src/lib/notifications.ts");
 const composer = read("client/src/components/NotificationComposerDialog.tsx");
 const staff = read("client/src/lib/staff.ts");
-const staffDialog = read("client/src/components/StaffManagementDialog.tsx");
+const staffDialog = read("client/src/components/PayrollStaffDialog.tsx");
+const payrollPage = read("client/src/pages/Payroll.tsx");
+const membersPage = read("client/src/pages/Members.tsx");
 const focusNotes = read("client/src/components/MemorizationFocusNotes.tsx");
 const memorization = read("client/src/lib/memorization.ts");
 
@@ -42,7 +45,20 @@ test("staff titles are independent from authorization roles and allow a custom j
   assert.match(migration, /job_code = 'other'.*custom_job_title/is);
   assert.match(staffDialog, /المسمى الوظيفي/);
   assert.match(staffDialog, /اكتب المسمى غير المدرج/);
+  assert.match(staffDialog, /الوظيفة لا تمنح صلاحيات النظام تلقائيًا/);
   assert.doesNotMatch(staffDialog, /membership_roles|role_permissions/);
+});
+
+test("staff jobs are managed only inside Finance payroll and use payroll scope permissions", () => {
+  assert.match(payrollPage, /PayrollStaffDialog/);
+  assert.doesNotMatch(membersPage, /PayrollStaffDialog|StaffManagementDialog/);
+  assert.match(payrollStaffMigration, /public\.payroll_can_view_scope\(target_school_id, target_branch_id\)/);
+  assert.match(payrollStaffMigration, /public\.payroll_can_manage_scope\(target_school_id, target_branch_id\)/);
+  assert.match(payrollStaffMigration, /create or replace function public\.upsert_payroll_staff_position/);
+  assert.match(payrollStaffMigration, /revoke all on function public\.upsert_payroll_staff_position[\s\S]*from public, anon/i);
+  assert.match(staff, /rpc\("list_payroll_staff_candidates"/);
+  assert.match(staff, /rpc\("upsert_payroll_staff_position"/);
+  assert.match(payrollPage, /candidateJobLabel\(candidate\)/);
 });
 
 test("new recitation and multiple notes remain linked to one memorization record", () => {

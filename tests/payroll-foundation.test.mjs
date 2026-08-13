@@ -3,12 +3,16 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [migration, hardening, client, historyClient, page, historyPage, app, nav, reports] = await Promise.all([
+const [migration, hardening, staffMigration, client, staffClient, staffDialog, historyClient, page, membersPage, historyPage, app, nav, reports] = await Promise.all([
   read("supabase/043_payroll_foundation.sql"),
   read("supabase/044_payroll_hardening_and_history.sql"),
+  read("supabase/057_payroll_staff_job_management.sql"),
   read("client/src/lib/payroll.ts"),
+  read("client/src/lib/staff.ts"),
+  read("client/src/components/PayrollStaffDialog.tsx"),
   read("client/src/lib/payroll-history.ts"),
   read("client/src/pages/Payroll.tsx"),
+  read("client/src/pages/Members.tsx"),
   read("client/src/pages/PayrollHistory.tsx"),
   read("client/src/App.tsx"),
   read("client/src/components/FinanceNavigation.tsx"),
@@ -94,4 +98,16 @@ test("keeps payroll Arabic RTL and supports teacher and administrative staff", (
   assert.match(page, /المعلم \/ الإداري/);
   assert.match(page, /الزيادات − الخصومات − السلف/);
   assert.match(migration, /payee_kind in \('teacher', 'member'\)/);
+});
+
+test("places employment job management in payroll and labels salary candidates with it", () => {
+  assert.match(page, /PayrollStaffDialog/);
+  assert.match(page, /candidateJobLabel\(candidate\)/);
+  assert.match(staffDialog, /وظائف الموظفين في الرواتب/);
+  assert.match(staffDialog, /إضافة الوظيفة/);
+  assert.doesNotMatch(membersPage, /PayrollStaffDialog|StaffManagementDialog/);
+  assert.match(staffClient, /rpc\("list_payroll_staff"/);
+  assert.match(staffClient, /rpc\("upsert_payroll_staff_position"/);
+  assert.match(staffMigration, /payroll_can_manage_scope/);
+  assert.match(staffMigration, /position\.branch_id is not distinct from target_branch_id/);
 });

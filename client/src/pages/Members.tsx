@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import TeacherInvitationDialog from "@/components/TeacherInvitationDialog";
-import StaffManagementDialog from "@/components/StaffManagementDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import {
@@ -273,14 +272,6 @@ export default function Members() {
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             <TeacherInvitationDialog onInvitationSent={loadDirectory} />
-            {school?.id && directory && (
-              <StaffManagementDialog
-                schoolId={school.id}
-                members={members}
-                branches={directory.branchOptions}
-                canManage={isSchoolAdmin}
-              />
-            )}
             <Button
               type="button"
               variant="outline"
@@ -295,10 +286,6 @@ export default function Members() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 p-4 pb-12 md:p-6">
-        <section className="rounded-2xl border border-[#C8A26A]/30 bg-[#C8A26A]/10 p-4 text-sm leading-7 text-[#69491F]">
-          وظائف الموظفين مستقلة عن صلاحيات النظام: يمكنك تسجيل المدير ونائبه والمقتصد والمعلم والحارس وعامل النظافة والسائق، أو إضافة مسمى آخر غير مدرج.
-        </section>
-
         {loading ? (
           <Card className="border border-gray-100 p-10 text-center" role="status">
             <RefreshCw className="mx-auto mb-3 animate-spin text-[#0B4738]" />
