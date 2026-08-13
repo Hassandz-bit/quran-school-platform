@@ -23,6 +23,7 @@ import {
   type NotificationAudience,
   type NotificationCategory,
   type NotificationRecipient,
+  type NotificationSenderSchool,
   type NotificationScopes,
 } from "@/lib/notifications";
 
@@ -50,10 +51,10 @@ const audienceOptions: Array<{ value: NotificationAudience; ar: string; en: stri
 const selectClass = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm";
 
 export default function NotificationComposerDialog({
-  schoolId,
+  senderSchools,
   onSent,
 }: {
-  schoolId: string;
+  senderSchools: NotificationSenderSchool[];
   onSent: () => void | Promise<void>;
 }) {
   const { locale, direction } = useLocale();
@@ -73,14 +74,32 @@ export default function NotificationComposerDialog({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [targetPath, setTargetPath] = useState("");
+  const [selectedSchoolId, setSelectedSchoolId] = useState(senderSchools[0]?.schoolId ?? "");
+  const selectedSchool = senderSchools.find(item => item.schoolId === selectedSchoolId)
+    ?? senderSchools[0];
+  const schoolId = selectedSchool?.schoolId ?? "";
+  const staffSender = selectedSchool?.senderKind === "staff";
+  const canGroupSend = selectedSchool?.canGroupSend === true;
+
+  useEffect(() => {
+    if (!senderSchools.some(item => item.schoolId === selectedSchoolId)) {
+      setSelectedSchoolId(senderSchools[0]?.schoolId ?? "");
+    }
+  }, [selectedSchoolId, senderSchools]);
 
   useEffect(() => {
     if (!open) return;
     let active = true;
     setLoading(true);
+    if (!schoolId || !selectedSchool) {
+      setLoading(false);
+      return;
+    }
     void Promise.all([
       fetchManualNotificationRecipients(schoolId),
-      fetchNotificationScopes(schoolId),
+      staffSender
+        ? fetchNotificationScopes(schoolId)
+        : Promise.resolve({ branches: [], classes: [] } as NotificationScopes),
     ]).then(([nextRecipients, nextScopes]) => {
       if (!active) return;
       setRecipients(nextRecipients);
@@ -91,7 +110,35 @@ export default function NotificationComposerDialog({
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [en, open, schoolId]);
+  }, [en, open, schoolId, selectedSchool, staffSender]);
+
+  useEffect(() => {
+    if (!canGroupSend && mode !== "individual") {
+      setMode("individual");
+      setSelectedIds(current => current.slice(0, 1));
+    }
+    if (!staffSender) setTargetPath("");
+  }, [canGroupSend, mode, staffSender]);
+
+  const visibleCategories = useMemo(() => {
+    if (selectedSchool?.senderKind === "guardian") {
+      return categoryOptions.filter(option =>
+        ["administration", "learning", "attendance", "guardians"].includes(option.value)
+      );
+    }
+    if (selectedSchool?.senderKind === "teacher") {
+      return categoryOptions.filter(option =>
+        ["administration", "teachers", "learning", "attendance", "guardians"].includes(option.value)
+      );
+    }
+    return categoryOptions;
+  }, [selectedSchool?.senderKind]);
+
+  useEffect(() => {
+    if (!visibleCategories.some(option => option.value === category)) {
+      setCategory(visibleCategories[0]?.value ?? "administration");
+    }
+  }, [category, visibleCategories]);
 
   const filteredRecipients = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase(locale);
@@ -177,14 +224,36 @@ export default function NotificationComposerDialog({
         <DialogHeader className={en ? "text-left" : "text-right"}>
           <DialogTitle>{en ? "Create and send a notification" : "إنشاء وإرسال إشعار"}</DialogTitle>
           <DialogDescription>
-            {en ? "Choose individual, group or specific recipients. The final count is shown before sending."
-              : "اختر إرسالًا فرديًا أو جماعيًا أو أشخاصًا محددين، وراجع العدد قبل الإرسال."}
+            {selectedSchool?.senderKind === "guardian"
+              ? (en ? "Send an individual message to school administration or your children's teachers."
+                : "أرسل إشعارًا فرديًا إلى إدارة المدرسة أو معلمي أبنائك.")
+              : (en ? "Choose individual, group or specific recipients. The final count is shown before sending."
+                : "اختر إرسالًا فرديًا أو جماعيًا أو أشخاصًا محددين، وراجع العدد قبل الإرسال.")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-2">
-            {(["individual", "group", "custom"] as const).map(value => (
+          {senderSchools.length > 1 && (
+            <label>
+              <span className="mb-1 block text-sm font-medium">{en ? "School" : "المدرسة"}</span>
+              <select
+                className={selectClass}
+                value={schoolId}
+                onChange={event => {
+                  setSelectedSchoolId(event.target.value);
+                  setSelectedIds([]);
+                  setMode("individual");
+                }}
+              >
+                {senderSchools.map(item => (
+                  <option key={item.schoolId} value={item.schoolId}>{item.schoolName}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div className={`grid gap-2 ${canGroupSend ? "grid-cols-3" : "grid-cols-1"}`}>
+            {(canGroupSend ? (["individual", "group", "custom"] as const) : (["individual"] as const)).map(value => (
               <Button key={value} type="button" variant={mode === value ? "default" : "outline"}
                 onClick={() => resetSelection(value)}>
                 {value === "individual" ? (en ? "Individual" : "فردي")
@@ -201,8 +270,8 @@ export default function NotificationComposerDialog({
                 <select className={selectClass} value={groupMode} onChange={event => { setGroupMode(event.target.value as GroupMode); setScopeId(""); }}>
                   <option value="all">{en ? "Everyone" : "الجميع"}</option>
                   <option value="audience">{en ? "Category" : "فئة محددة"}</option>
-                  <option value="branch">{en ? "Branch" : "فرع محدد"}</option>
-                  <option value="class">{en ? "Class" : "حلقة محددة"}</option>
+                  {staffSender && <option value="branch">{en ? "Branch" : "فرع محدد"}</option>}
+                  {staffSender && <option value="class">{en ? "Class" : "حلقة محددة"}</option>}
                 </select>
               </label>
               {groupMode === "audience" && (
@@ -283,13 +352,13 @@ export default function NotificationComposerDialog({
             <label>
               <span className="mb-1 block text-sm font-medium">{en ? "Category" : "التصنيف"}</span>
               <select className={selectClass} value={category} onChange={event => setCategory(event.target.value as NotificationCategory)}>
-                {categoryOptions.map(option => <option key={option.value} value={option.value}>{en ? option.en : option.ar}</option>)}
+                {visibleCategories.map(option => <option key={option.value} value={option.value}>{en ? option.en : option.ar}</option>)}
               </select>
             </label>
-            <div>
+            {staffSender && <div>
               <Label htmlFor="notification-target-path">{en ? "Internal link (optional)" : "رابط داخلي (اختياري)"}</Label>
               <Input id="notification-target-path" value={targetPath} onChange={event => setTargetPath(event.target.value)} placeholder="/attendance" dir="ltr" />
-            </div>
+            </div>}
           </div>
           <div>
             <Label htmlFor="notification-title">{en ? "Title" : "العنوان"}</Label>
