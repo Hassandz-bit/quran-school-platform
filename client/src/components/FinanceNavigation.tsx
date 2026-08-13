@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import RecurringBillingLauncher from "@/components/RecurringBillingLauncher";
@@ -19,6 +19,16 @@ const emptyAccess: FinanceModuleAccess = {
   canManageExpenses: false,
 };
 
+const FINANCE_SCROLL_KEY = "quranos:finance-navigation-scroll";
+
+function persistFinanceScroll(value: number) {
+  try {
+    window.sessionStorage.setItem(FINANCE_SCROLL_KEY, String(value));
+  } catch {
+    // Navigation remains functional without storage.
+  }
+}
+
 export default function FinanceNavigation({
   currentPath,
   className = "",
@@ -27,6 +37,7 @@ export default function FinanceNavigation({
   const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
   const { school } = useAuth();
+  const navigationRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -73,13 +84,8 @@ export default function FinanceNavigation({
         visible: access.canViewFinance,
       },
       {
-        label: "الرواتب",
-        path: "/finance/payroll",
-        visible: access.canViewFinance,
-      },
-      {
-        label: "سجل الأجور",
-        path: "/finance/payroll/history",
+        label: "الموظفون والرواتب",
+        path: "/staff",
         visible: access.canViewFinance,
       },
       {
@@ -115,6 +121,31 @@ export default function FinanceNavigation({
     ].filter(link => link.visible);
   }, [access]);
 
+  useLayoutEffect(() => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+
+    try {
+      const stored = Number(window.sessionStorage.getItem(FINANCE_SCROLL_KEY));
+      if (Number.isFinite(stored)) navigation.scrollLeft = stored;
+    } catch {
+      // Keep the current browser position.
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const activeLink = navigation.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!activeLink) return;
+      const navigationRect = navigation.getBoundingClientRect();
+      const linkRect = activeLink.getBoundingClientRect();
+      if (linkRect.left < navigationRect.left || linkRect.right > navigationRect.right) {
+        activeLink.scrollIntoView({ block: "nearest", inline: "nearest" });
+        persistFinanceScroll(navigation.scrollLeft);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentPath, links.length]);
+
   if (loading) {
     return (
       <div
@@ -140,8 +171,10 @@ export default function FinanceNavigation({
   return (
     <>
       <nav
+        ref={navigationRef}
+        onScroll={event => persistFinanceScroll(event.currentTarget.scrollLeft)}
         aria-label="التنقل المالي"
-        className={`flex gap-2 overflow-x-auto border-b border-gray-100 bg-white px-4 py-3 print:hidden md:px-6 ${className}`}
+        className={`flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain border-b border-gray-100 bg-white px-4 py-3 print:hidden md:px-6 ${className}`}
       >
         {links.map(link => (
           <a

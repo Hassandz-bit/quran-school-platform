@@ -3,12 +3,19 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [migration, hardening, client, historyClient, page, historyPage, app, nav, reports] = await Promise.all([
+const [migration, hardening, staffMigration, staffLockdown, employeeMigration, employeeIndexes, client, employeeClient, employeePage, historyClient, page, membersPage, historyPage, app, nav, reports] = await Promise.all([
   read("supabase/043_payroll_foundation.sql"),
   read("supabase/044_payroll_hardening_and_history.sql"),
+  read("supabase/057_payroll_staff_job_management.sql"),
+  read("supabase/058_payroll_staff_legacy_rpc_lockdown.sql"),
+  read("supabase/059_staff_payroll_module.sql"),
+  read("supabase/060_staff_payroll_reference_indexes.sql"),
   read("client/src/lib/payroll.ts"),
+  read("client/src/lib/employees.ts"),
+  read("client/src/pages/Employees.tsx"),
   read("client/src/lib/payroll-history.ts"),
   read("client/src/pages/Payroll.tsx"),
+  read("client/src/pages/Members.tsx"),
   read("client/src/pages/PayrollHistory.tsx"),
   read("client/src/App.tsx"),
   read("client/src/components/FinanceNavigation.tsx"),
@@ -35,9 +42,9 @@ test("keeps payroll raw tables closed and browser access RPC-only", () => {
   assert.match(migration, /grant execute on function public\.record_payroll_payment/);
   assert.match(hardening, /grant execute on function public\.list_payroll_history/);
   assert.doesNotMatch(client + historyClient, /\.from\("payroll_/);
-  assert.match(client, /rpc\("get_payroll_workspace"/);
+  assert.match(client, /rpc\("get_staff_payroll_workspace"/);
   assert.match(client, /rpc<string \| null>\(\s*"record_payroll_payment"/);
-  assert.match(historyClient, /rpc\("list_payroll_history"/);
+  assert.match(historyClient, /rpc\("list_staff_payroll_history"/);
   assert.doesNotMatch(client + historyClient, /service_role/i);
 });
 
@@ -69,10 +76,13 @@ test("uses a strict draft approve pay close lifecycle", () => {
 });
 
 test("integrates payroll into Finance without duplicating ordinary expenses", () => {
+  assert.match(app, /path="\/staff"/);
+  assert.match(app, /path="\/staff\/payroll"/);
+  assert.match(app, /path="\/staff\/payroll\/history"/);
   assert.match(app, /path="\/finance\/payroll"/);
   assert.match(app, /path="\/finance\/payroll\/history"/);
-  assert.match(nav, /label: "الرواتب"/);
-  assert.match(nav, /label: "سجل الأجور"/);
+  assert.match(nav, /label: "الموظفون والرواتب"/);
+  assert.match(nav, /path: "\/staff"/);
   assert.match(reports, /rpc\("list_payroll_report_payments"/);
   assert.match(reports, /outflowTotal = roundCurrency\(expenseTotal \+ payrollTotal\)/);
   assert.match(reports, /netFlow: roundCurrency\(collectedTotal - outflowTotal\)/);
@@ -94,4 +104,22 @@ test("keeps payroll Arabic RTL and supports teacher and administrative staff", (
   assert.match(page, /المعلم \/ الإداري/);
   assert.match(page, /الزيادات − الخصومات − السلف/);
   assert.match(migration, /payee_kind in \('teacher', 'member'\)/);
+});
+
+test("provides an independent employee directory connected to payroll and Finance", () => {
+  assert.doesNotMatch(page, /PayrollStaffDialog/);
+  assert.match(page, /candidate\.roleLabel/);
+  assert.match(employeePage, /الموظفون والرواتب/);
+  assert.match(employeePage, /إضافة الموظف/);
+  assert.doesNotMatch(membersPage, /PayrollStaffDialog|StaffManagementDialog/);
+  assert.match(employeeClient, /rpc\("list_staff_employees"/);
+  assert.match(employeeClient, /rpc\("save_staff_employee"/);
+  assert.match(employeeMigration, /create_employee_compensation/);
+  assert.match(employeeMigration, /payee_kind in \('teacher', 'member', 'employee'\)/);
+  assert.match(employeeMigration, /employee\.branch_id is not distinct from target_branch_id/);
+  assert.match(employeeMigration, /public\.list_payroll_staff_candidates\(uuid,uuid\)[\s\S]*from public, anon, authenticated/);
+  assert.match(employeeIndexes, /employees_linked_profile_idx/);
+  assert.match(employeeIndexes, /employees_created_by_idx/);
+  assert.match(staffLockdown, /from public, anon, authenticated/);
+  assert.doesNotMatch(staffLockdown, /grant execute/i);
 });

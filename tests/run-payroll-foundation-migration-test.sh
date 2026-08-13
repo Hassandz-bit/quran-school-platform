@@ -39,7 +39,16 @@ docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_te
   < supabase/044_payroll_hardening_and_history.sql
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < supabase/059_staff_payroll_module.sql
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < supabase/060_staff_payroll_reference_indexes.sql
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/payroll-foundation-assertions.sql
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/payroll-hardening-assertions.sql
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/staff-payroll-module-assertions.sql

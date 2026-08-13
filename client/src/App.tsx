@@ -42,6 +42,7 @@ const FinanceDashboard = lazy(() => import("./pages/FinanceDashboard"));
 const FeePlans = lazy(() => import("./pages/FeePlans"));
 const StudentCharges = lazy(() => import("./pages/StudentCharges"));
 const Payments = lazy(() => import("./pages/Payments"));
+const Employees = lazy(() => import("./pages/Employees"));
 const Payroll = lazy(() => import("./pages/Payroll"));
 const PayrollHistory = lazy(() => import("./pages/PayrollHistory"));
 const Treasury = lazy(() => import("./pages/Treasury"));
@@ -58,7 +59,6 @@ const Guardians = lazy(() => import("./pages/Guardians"));
 const Registrations = lazy(() => import("./pages/Registrations"));
 const Documents = lazy(() => import("./pages/Documents"));
 const Notifications = lazy(() => import("./pages/Notifications"));
-const Settings = lazy(() => import("./pages/Settings"));
 const Student360 = lazy(() => import("./pages/Student360"));
 const StudentBulkImport = lazy(() => import("./pages/StudentBulkImport"));
 const AcademicReports = lazy(() => import("./pages/AcademicReports"));
@@ -143,10 +143,6 @@ function NotificationsPageFallback() {
   return <ModuleFallback labelKey="fallback.notifications" />;
 }
 
-function SettingsPageFallback() {
-  return <ModuleFallback labelKey="fallback.settings" />;
-}
-
 function Shell({ children }: { children: ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
@@ -181,15 +177,6 @@ function Router() {
             <ParentShell>
               <Suspense fallback={<NotificationsPageFallback />}>
                 <Notifications />
-              </Suspense>
-            </ParentShell>
-          </ParentRoute>
-        </Route>
-        <Route path="/parent/settings">
-          <ParentRoute>
-            <ParentShell>
-              <Suspense fallback={<SettingsPageFallback />}>
-                <Settings />
               </Suspense>
             </ParentShell>
           </ParentRoute>
@@ -301,15 +288,6 @@ function Router() {
             </Shell>
           </StaffRoute>
         </Route>
-        <Route path="/settings">
-          <StaffRoute>
-            <Shell>
-              <Suspense fallback={<SettingsPageFallback />}>
-                <Settings />
-              </Suspense>
-            </Shell>
-          </StaffRoute>
-        </Route>
         <Route path="/receipts">
           <StaffRoute>
             <Shell>
@@ -331,12 +309,17 @@ function Router() {
         <Route path="/finance/payments">
           <FinanceRoute><Shell><Payments /></Shell></FinanceRoute>
         </Route>
-        <Route path="/finance/payroll/history">
+        <Route path="/staff/payroll/history">
           <FinanceRoute><Shell><PayrollHistory /></Shell></FinanceRoute>
         </Route>
-        <Route path="/finance/payroll">
+        <Route path="/staff/payroll">
           <FinanceRoute><Shell><Payroll /></Shell></FinanceRoute>
         </Route>
+        <Route path="/staff">
+          <FinanceRoute><Shell><Employees /></Shell></FinanceRoute>
+        </Route>
+        <Route path="/finance/payroll/history"><Redirect to="/staff/payroll/history" /></Route>
+        <Route path="/finance/payroll"><Redirect to="/staff/payroll" /></Route>
         <Route path="/finance/treasury/reconciliation">
           <FinanceRoute><Shell><TreasuryReconciliation /></Shell></FinanceRoute>
         </Route>

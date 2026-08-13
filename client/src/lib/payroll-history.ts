@@ -6,9 +6,10 @@ export type PayrollHistoryRow = {
   entryId: string;
   branchId: string | null;
   periodMonth: string;
-  payeeKind: "teacher" | "member";
+  payeeKind: "teacher" | "member" | "employee";
   teacherId: string | null;
   membershipId: string | null;
+  employeeId: string | null;
   payeeName: string;
   roleLabel: string | null;
   baseAmount: number;
@@ -39,11 +40,9 @@ export async function fetchPayrollHistory(
   branchId: string | null,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<PayrollHistoryRow[]> {
-  const { data, error } = await client.rpc("list_payroll_history", {
+  const { data, error } = await client.rpc("list_staff_payroll_history", {
     target_school_id: schoolId,
     target_branch_id: branchId,
-    target_payee_kind: null,
-    target_payee_id: null,
     target_limit: 500,
   });
   if (error) throw error;
@@ -52,9 +51,12 @@ export async function fetchPayrollHistory(
     entryId: text(row.entry_id),
     branchId: nullableText(row.branch_id),
     periodMonth: text(row.period_month),
-    payeeKind: row.payee_kind === "teacher" ? "teacher" : "member",
+    payeeKind: ["teacher", "employee"].includes(text(row.payee_kind))
+      ? (text(row.payee_kind) as "teacher" | "employee")
+      : "member",
     teacherId: nullableText(row.teacher_id),
     membershipId: nullableText(row.membership_id),
+    employeeId: nullableText(row.employee_id),
     payeeName: text(row.payee_name),
     roleLabel: nullableText(row.role_label),
     baseAmount: num(row.base_amount),

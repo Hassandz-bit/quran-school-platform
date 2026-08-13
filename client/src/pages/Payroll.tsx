@@ -8,7 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import FinanceNavigation from "@/components/FinanceNavigation";
+import StaffPayrollNavigation from "@/components/StaffPayrollNavigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -89,7 +89,7 @@ export default function Payroll() {
   const candidateMap = useMemo(() => {
     const map = new Map<string, PayrollCandidate>();
     workspace?.candidates.forEach(candidate => {
-      const id = candidate.teacherId ?? candidate.membershipId;
+      const id = candidate.employeeId ?? candidate.teacherId ?? candidate.membershipId;
       map.set(`${candidate.kind}:${id}`, candidate);
     });
     return map;
@@ -218,7 +218,7 @@ export default function Payroll() {
 
   return (
     <div className="space-y-5" dir="rtl">
-      <FinanceNavigation currentPath="/finance/payroll" />
+      <StaffPayrollNavigation currentPath="/staff/payroll" />
 
       <header className="flex flex-col gap-3 rounded-2xl border border-[#E2EAE4] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -230,16 +230,18 @@ export default function Payroll() {
             مسير شهري مدقّق: الراتب الأساسي + الزيادات − الخصومات − السلف.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void loadWorkspace()}
-          disabled={busy || !selectedScope}
-          className="gap-2"
-        >
-          <RefreshCw className="size-4" />
-          تحديث
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void loadWorkspace()}
+            disabled={busy || !selectedScope}
+            className="gap-2"
+          >
+            <RefreshCw className="size-4" />
+            تحديث
+          </Button>
+        </div>
       </header>
 
       <Card className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -372,7 +374,7 @@ export default function Payroll() {
                     <option value="">اختر...</option>
                     {workspace.candidates.map(candidate => {
                       const key = `${candidate.kind}:${
-                        candidate.teacherId ?? candidate.membershipId
+                        candidate.employeeId ?? candidate.teacherId ?? candidate.membershipId
                       }`;
                       return (
                         <option key={key} value={key}>

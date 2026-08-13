@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   addTeacher,
   clearTeacherDraft,
@@ -56,7 +57,7 @@ const createDefaultTeacherFormValues = (): TeacherFormValues => ({
 });
 
 const AddTeacherForm: React.FC = () => {
-  const [language, setLanguage] = useState<"ar" | "en">("ar");
+  const { locale: language, direction } = useLocale();
   const [branches, setBranches] = useState<TeacherBranch[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const [branchLoadError, setBranchLoadError] = useState(false);
@@ -316,7 +317,7 @@ const AddTeacherForm: React.FC = () => {
   return (
     <div
       className="min-h-screen bg-[#F8F9FA] p-4 md:p-8"
-      dir={language === "ar" ? "rtl" : "ltr"}
+      dir={direction}
     >
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -339,22 +340,6 @@ const AddTeacherForm: React.FC = () => {
                 {t.draftDescription}
               </p>
             </div>
-          </div>
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setLanguage("ar")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${language === "ar" ? "bg-[#0B4738] text-white shadow-sm" : "text-gray-600"}`}
-            >
-              العربية
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage("en")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${language === "en" ? "bg-[#0B4738] text-white shadow-sm" : "text-gray-600"}`}
-            >
-              English
-            </button>
           </div>
         </div>
 

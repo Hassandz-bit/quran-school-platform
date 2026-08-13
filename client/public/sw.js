@@ -1,6 +1,13 @@
-const SHELL_CACHE = "quranos-shell-v1";
-const RUNTIME_CACHE = "quranos-runtime-v1";
-const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/pwa-icon.svg"];
+const SHELL_CACHE = "quranos-shell-v2";
+const RUNTIME_CACHE = "quranos-runtime-v2";
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/manifest.webmanifest",
+  "/apple-touch-icon.png",
+  "/pwa-icon-192.svg",
+  "/pwa-icon.svg",
+];
 
 self.addEventListener("install", event => {
   event.waitUntil(

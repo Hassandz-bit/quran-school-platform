@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchBranches,
   fetchClasses,
@@ -33,7 +34,7 @@ const statusOptions: StudentStatus[] = [
 ];
 
 const StudentsList: React.FC = () => {
-  const language = "ar" as const;
+  const { locale: language, direction } = useLocale();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
   const [filterClass, setFilterClass] = useState("all");
@@ -381,7 +382,7 @@ const StudentsList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6" dir={direction}>
       <div className="flex flex-wrap justify-end gap-2">
         <Button
           variant="outline"

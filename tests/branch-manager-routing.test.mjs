@@ -27,12 +27,12 @@ test("branch manager sees scoped modules and exact-access CRM without admin-only
     "attendance",
     "memorization",
     "academic-reports",
+    "staff-payroll",
     "finance",
     "receipts",
     "registrations",
     "notifications",
     "members",
-    "settings",
   ]);
 
   for (const adminOnly of ["dashboard", "students", "teachers", "classes", "guardians"]) {
@@ -75,7 +75,6 @@ test("navigation labels switch to English without changing authorization", () =>
       ["attendance", "Attendance"],
       ["memorization", "Memorization"],
       ["notifications", "Notifications"],
-      ["settings", "Settings"],
     ]
   );
 });

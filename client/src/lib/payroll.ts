@@ -8,9 +8,10 @@ export type PayrollScope = {
 };
 
 export type PayrollCandidate = {
-  kind: "teacher" | "member";
+  kind: "teacher" | "member" | "employee";
   teacherId: string | null;
   membershipId: string | null;
+  employeeId: string | null;
   branchId: string | null;
   name: string;
   roleLabel: string;
@@ -19,9 +20,10 @@ export type PayrollCandidate = {
 export type PayrollCompensationProfile = {
   id: string;
   branchId: string | null;
-  payeeKind: "teacher" | "member";
+  payeeKind: "teacher" | "member" | "employee";
   teacherId: string | null;
   membershipId: string | null;
+  employeeId: string | null;
   payeeName: string;
   baseAmount: number;
   effectiveFrom: string;
@@ -55,9 +57,10 @@ export type PayrollPayment = {
 export type PayrollEntry = {
   id: string;
   periodId: string;
-  payeeKind: "teacher" | "member";
+  payeeKind: "teacher" | "member" | "employee";
   teacherId: string | null;
   membershipId: string | null;
+  employeeId: string | null;
   payeeName: string;
   roleLabel: string | null;
   baseAmount: number;
@@ -197,9 +200,12 @@ function normalizeWorkspace(data: unknown): PayrollWorkspace {
       return {
         id: str(row.id),
         branchId: nullableStr(row.branch_id),
-        payeeKind: row.payee_kind === "teacher" ? "teacher" : "member",
+        payeeKind: ["teacher", "employee"].includes(str(row.payee_kind))
+          ? (str(row.payee_kind) as "teacher" | "employee")
+          : "member",
         teacherId: nullableStr(row.teacher_id),
         membershipId: nullableStr(row.membership_id),
+        employeeId: nullableStr(row.employee_id),
         payeeName: str(row.payee_name),
         baseAmount: num(row.base_amount),
         effectiveFrom: str(row.effective_from),
@@ -213,9 +219,12 @@ function normalizeWorkspace(data: unknown): PayrollWorkspace {
     candidates: candidates.map(value => {
       const row = value as JsonRow;
       return {
-        kind: row.kind === "teacher" ? "teacher" : "member",
+        kind: ["teacher", "employee"].includes(str(row.kind))
+          ? (str(row.kind) as "teacher" | "employee")
+          : "member",
         teacherId: nullableStr(row.teacher_id),
         membershipId: nullableStr(row.membership_id),
+        employeeId: nullableStr(row.employee_id),
         branchId: nullableStr(row.branch_id),
         name: str(row.name),
         roleLabel: str(row.role_label) || "إداري/موظف",
@@ -246,9 +255,12 @@ function normalizeWorkspace(data: unknown): PayrollWorkspace {
       return {
         id: str(row.id),
         periodId: str(row.period_id),
-        payeeKind: row.payee_kind === "teacher" ? "teacher" : "member",
+        payeeKind: ["teacher", "employee"].includes(str(row.payee_kind))
+          ? (str(row.payee_kind) as "teacher" | "employee")
+          : "member",
         teacherId: nullableStr(row.teacher_id),
         membershipId: nullableStr(row.membership_id),
+        employeeId: nullableStr(row.employee_id),
         payeeName: str(row.payee_name),
         roleLabel: nullableStr(row.role_label),
         baseAmount: num(row.base_amount),
@@ -280,7 +292,7 @@ export async function fetchPayrollWorkspace(
   periodMonth: string,
   client: SupabaseClient = getSupabaseClient()
 ) {
-  const { data, error } = await client.rpc("get_payroll_workspace", {
+  const { data, error } = await client.rpc("get_staff_payroll_workspace", {
     target_school_id: schoolId,
     target_branch_id: branchId,
     target_period_month: periodMonth,
@@ -310,22 +322,35 @@ export const createPayrollCompensation = (
     notes?: string | null;
   },
   client?: SupabaseClient
-) =>
-  rpc<string>(
-    "create_payroll_compensation",
-    {
-      target_school_id: input.schoolId,
-      target_branch_id: input.branchId,
-      target_payee_kind: input.candidate.kind,
-      target_teacher_id: input.candidate.teacherId,
-      target_membership_id: input.candidate.membershipId,
-      target_base_amount: input.baseAmount,
-      target_effective_from: input.effectiveFrom,
-      target_effective_to: input.effectiveTo ?? null,
-      target_notes: input.notes ?? null,
-    },
-    client
-  );
+) => input.candidate.kind === "employee"
+  ? rpc<string>(
+      "create_employee_compensation",
+      {
+        target_school_id: input.schoolId,
+        target_branch_id: input.branchId,
+        target_employee_id: input.candidate.employeeId,
+        target_base_amount: input.baseAmount,
+        target_effective_from: input.effectiveFrom,
+        target_effective_to: input.effectiveTo ?? null,
+        target_notes: input.notes ?? null,
+      },
+      client
+    )
+  : rpc<string>(
+      "create_payroll_compensation",
+      {
+        target_school_id: input.schoolId,
+        target_branch_id: input.branchId,
+        target_payee_kind: input.candidate.kind,
+        target_teacher_id: input.candidate.teacherId,
+        target_membership_id: input.candidate.membershipId,
+        target_base_amount: input.baseAmount,
+        target_effective_from: input.effectiveFrom,
+        target_effective_to: input.effectiveTo ?? null,
+        target_notes: input.notes ?? null,
+      },
+      client
+    );
 
 export const setPayrollCompensationStatus = (
   schoolId: string,

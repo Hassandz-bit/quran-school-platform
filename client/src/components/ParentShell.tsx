@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Bell, Home, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { Bell, Home, LogOut, ShieldCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,7 +38,7 @@ export default function ParentShell({ children }: { children: ReactNode }) {
     : t("parent.notifications");
 
   return (
-    <div className="min-h-screen bg-[#F7F8F3] text-[#173B2D]" dir={direction}>
+    <div className="min-h-screen bg-[#F7F5EF] text-[#173B2D]" dir={direction}>
       <header className="sticky top-0 z-30 border-b border-[#DCE7DF] bg-white/95 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <button
@@ -46,7 +46,12 @@ export default function ParentShell({ children }: { children: ReactNode }) {
             onClick={() => setLocation("/parent")}
             className="flex min-w-0 items-center gap-3 text-start"
           >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0B4738] font-bold text-[#D7B56D]">ق</span>
+            <img
+              src="/pwa-icon-192.svg"
+              alt=""
+              aria-hidden="true"
+              className="size-10 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-black/5"
+            />
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold text-[#173B2D]">{t("parent.title")}</span>
               <span className="block truncate text-xs text-[#64756D]">{t("brand.school")}</span>
@@ -58,7 +63,7 @@ export default function ParentShell({ children }: { children: ReactNode }) {
               type="button"
               variant="ghost"
               onClick={() => setLocation("/parent")}
-              className="gap-2 text-[#0B4738]"
+              className="gap-2 text-[#0F5132]"
             >
               <Home size={17} />
               <span className="hidden sm:inline">{t("parent.children")}</span>
@@ -67,7 +72,7 @@ export default function ParentShell({ children }: { children: ReactNode }) {
               type="button"
               variant="ghost"
               onClick={() => setLocation("/parent/notifications")}
-              className="relative gap-2 text-[#0B4738]"
+              className="relative gap-2 text-[#0F5132]"
               aria-label={notificationAria}
             >
               <Bell size={18} />
@@ -77,16 +82,6 @@ export default function ParentShell({ children }: { children: ReactNode }) {
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setLocation("/parent/settings")}
-              className="gap-2 text-[#0B4738]"
-              aria-label={t("parent.settings")}
-            >
-              <Settings size={18} />
-              <span className="hidden md:inline">{t("parent.settings")}</span>
             </Button>
             <Button
               type="button"

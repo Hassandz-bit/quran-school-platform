@@ -12,7 +12,9 @@ import {
 } from "lucide-react";
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -40,6 +42,25 @@ function isActive(path: string, itemPath: string) {
   return path === itemPath || (itemPath !== "/dashboard" && path.startsWith(`${itemPath}/`));
 }
 
+const SIDEBAR_SCROLL_KEY = "quranos:app-sidebar-scroll";
+
+function readStoredScroll(key: string): number {
+  try {
+    const value = Number(window.sessionStorage.getItem(key));
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function storeScroll(key: string, value: number) {
+  try {
+    window.sessionStorage.setItem(key, String(value));
+  } catch {
+    // Keep navigation usable when session storage is unavailable.
+  }
+}
+
 function Brand({
   schoolName,
   fallbackSchoolName,
@@ -55,13 +76,22 @@ function Brand({
 
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#D7B56D] text-base font-extrabold text-[#123B2C] shadow-sm">
-        ق
-      </span>
+      <img
+        src="/pwa-icon-192.svg"
+        alt=""
+        aria-hidden="true"
+        className="size-10 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-black/5"
+      />
       {!compact && (
         <span className="min-w-0">
-          <span className={cn("block text-sm font-extrabold", isLight ? "text-[#173B2D]" : "text-white")}>
-            QuranOS
+          <span
+            className={cn(
+              "block text-sm font-extrabold",
+              isLight ? "text-[#0F5132]" : "text-white"
+            )}
+            dir="ltr"
+          >
+            Quran<span className="text-[#DAAF37]">OS</span>
           </span>
           <span className={cn("block truncate text-[11px]", isLight ? "text-[#4C6256]" : "text-white/70")}>
             {schoolName ?? fallbackSchoolName}
@@ -112,6 +142,7 @@ function NavigationList({
                     type="button"
                     onClick={() => onNavigate(item.path)}
                     title={compact ? item.label : undefined}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-start text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
                       active
@@ -148,6 +179,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [canViewAcademicReports, setCanViewAcademicReports] = useState(false);
   const [canViewRegistrations, setCanViewRegistrations] = useState(false);
   const [canViewDocuments, setCanViewDocuments] = useState(false);
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -289,6 +321,26 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const ExpandIcon = direction === "rtl" ? PanelRightOpen : PanelLeftOpen;
   const DrawerChevron = direction === "rtl" ? ChevronLeft : ChevronRight;
 
+  useLayoutEffect(() => {
+    const container = sidebarScrollRef.current;
+    if (!container) return;
+
+    container.scrollTop = readStoredScroll(SIDEBAR_SCROLL_KEY);
+    const frame = window.requestAnimationFrame(() => {
+      const activeItem = container.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!activeItem) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const itemRect = activeItem.getBoundingClientRect();
+      if (itemRect.top < containerRect.top || itemRect.bottom > containerRect.bottom) {
+        activeItem.scrollIntoView({ block: "nearest", inline: "nearest" });
+        storeScroll(SIDEBAR_SCROLL_KEY, container.scrollTop);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [location, navigation.length, sidebarExpanded]);
+
   useEffect(() => {
     if (!drawerOpen) return;
 
@@ -315,10 +367,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#F7F8F3] text-[#173B2D]" dir={direction}>
+    <div className="min-h-screen overflow-x-clip bg-[#F7F5EF] text-[#173B2D]" dir={direction}>
       <aside
         className={cn(
-          "fixed inset-y-0 z-30 hidden flex-col bg-[#123B2C] px-3 py-5 shadow-[0_0_30px_rgba(18,59,44,0.14)] transition-[width] duration-200 md:flex",
+          "fixed inset-y-0 z-30 hidden flex-col bg-[#0F5132] px-3 py-5 shadow-[0_0_30px_rgba(15,81,50,0.14)] transition-[width] duration-200 md:flex",
           direction === "rtl" ? "right-0" : "left-0",
           sidebarExpanded ? "w-64" : "w-20"
         )}
@@ -347,7 +399,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </button>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          ref={sidebarScrollRef}
+          onScroll={event => storeScroll(SIDEBAR_SCROLL_KEY, event.currentTarget.scrollTop)}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
           <NavigationList
             items={navigation}
             currentPath={location}
@@ -399,13 +455,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </p>
             </div>
           </div>
-          <span className="hidden rounded-full bg-[#EAF3EC] px-3 py-1 text-xs font-semibold text-[#2F6E46] sm:inline">
-            QuranOS
+          <span className="hidden rounded-full bg-[#F3E8C6] px-3 py-1 text-xs font-extrabold text-[#0F5132] sm:inline" dir="ltr">
+            Quran<span className="text-[#B28820]">OS</span>
           </span>
         </header>
 
         <main className="min-w-0 px-4 py-5 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:pb-8">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+          <div className="quranos-page-root mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
 

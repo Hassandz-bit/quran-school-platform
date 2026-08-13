@@ -875,13 +875,13 @@ export default function Memorization() {
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
                     <span className="text-sm font-semibold text-[#2C3E50]">
-                      الملاحظات
+                      ملاحظة عامة للجلسة
                     </span>
                     <Textarea
                       value={draft.notes}
                       maxLength={1000}
                       rows={3}
-                      placeholder="ملاحظات الأداء والتصحيح — اختياري"
+                      placeholder="ملخص عام اختياري — ويمكن إدراج عدة ملاحظات مفصلة في سجل الملاحظات أسفل النموذج"
                       onChange={event => updateDraft({ notes: event.target.value })}
                       className="resize-none"
                     />

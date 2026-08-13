@@ -1,17 +1,20 @@
 {
   "id": "/",
-  "name": "QuranOS — منصة المدرسة القرآنية",
+  "name": "QuranOS — منظومة إدارة المدارس القرآنية",
   "short_name": "QuranOS",
-  "description": "منصة متكاملة لإدارة المدارس والمؤسسات القرآنية ومتابعة الطلاب والحضور والحفظ.",
+  "description": "منظومة متكاملة لإدارة المدارس القرآنية: تنظيم، تعليم، متابعة، وإتقان.",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#F7F8F3",
-  "theme_color": "#0B4738",
+  "background_color": "#F7F5EF",
+  "theme_color": "#0F5132",
   "prefer_related_applications": false,
-  "categories": ["education", "productivity"],
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/pwa-icon-192.svg",

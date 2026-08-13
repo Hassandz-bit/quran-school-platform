@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import TeacherInvitationDialog from "@/components/TeacherInvitationDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchMembersDirectory,
   filterMembers,
@@ -217,6 +218,7 @@ function MemberCard({ member }: { member: SchoolMember }) {
 export default function Members() {
   const [, setLocation] = useLocation();
   const { school, profile, isSchoolAdmin } = useAuth();
+  const { direction } = useLocale();
   const [directory, setDirectory] = useState<MembersDirectory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -261,7 +263,7 @@ export default function Members() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]" dir="rtl">
+    <div className="min-h-screen bg-[#F8F9FA]" dir={direction}>
       <header className="border-b border-white/10 bg-[#0B4738] text-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 md:px-6">
           <div className="min-w-0">
@@ -284,10 +286,6 @@ export default function Members() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 p-4 pb-12 md:p-6">
-        <section className="rounded-2xl border border-[#C8A26A]/30 bg-[#C8A26A]/10 p-4 text-sm leading-7 text-[#69491F]">
-          إدارة الدعوات والأدوار ستتوفر في مرحلة مستقلة. دعوة المعلمين المؤهلين متاحة فقط للمخولين، بينما تبقى إدارة الأدوار العامة وبقية الموظفين خارج النطاق.
-        </section>
-
         {loading ? (
           <Card className="border border-gray-100 p-10 text-center" role="status">
             <RefreshCw className="mx-auto mb-3 animate-spin text-[#0B4738]" />

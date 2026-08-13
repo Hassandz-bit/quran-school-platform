@@ -4,11 +4,13 @@ import test from "node:test";
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [navigation, shell, locale, dashboard] = await Promise.all([
+const [navigation, shell, locale, dashboard, financeNavigation, styles] = await Promise.all([
   read("client/src/lib/app-navigation.ts"),
   read("client/src/components/AppShell.tsx"),
   read("client/src/lib/locale.ts"),
   read("client/src/pages/Dashboard.tsx"),
+  read("client/src/components/FinanceNavigation.tsx"),
+  read("client/src/index.css"),
 ]);
 
 test("app shell keeps role-aware destinations isolated", () => {
@@ -23,6 +25,22 @@ test("app shell keeps role-aware destinations isolated", () => {
   assert.match(shell, /canViewAcademicReports/);
   assert.match(navigation, /\.slice\(0, 4\)/);
   assert.doesNotMatch(navigation, /service_role/i);
+});
+
+test("AppShell is the only visible desktop sidebar and mobile drawer", () => {
+  assert.match(shell, /quranos-page-root/);
+  assert.match(styles, /quranos-page-root > \.flex\.min-h-screen > aside:first-child/);
+  assert.match(styles, /button\[aria-label="تبديل القائمة"\]/);
+  assert.match(styles, /display: none !important/);
+});
+
+test("vertical and financial navigation restore scroll without route jumps", () => {
+  assert.match(shell, /quranos:app-sidebar-scroll/);
+  assert.match(shell, /sessionStorage/);
+  assert.match(shell, /scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\)/);
+  assert.match(financeNavigation, /quranos:finance-navigation-scroll/);
+  assert.match(financeNavigation, /navigation\.scrollLeft = stored/);
+  assert.match(financeNavigation, /overscroll-x-contain/);
 });
 
 test("app shell provides compact mobile navigation and an accessible localized drawer", () => {

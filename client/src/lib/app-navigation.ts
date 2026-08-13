@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
+  BriefcaseBusiness,
   BookOpen,
   BookOpenCheck,
   ChartNoAxesCombined,
@@ -11,7 +12,6 @@ import {
   GraduationCap,
   Home,
   ReceiptText,
-  Settings,
   UserRoundCheck,
   Users,
 } from "lucide-react";
@@ -37,13 +37,13 @@ export type AppNavigationItem = {
     | "memorization"
     | "academic-reports"
     | "finance"
+    | "staff-payroll"
     | "receipts"
     | "registrations"
     | "documents"
     | "guardians"
     | "notifications"
-    | "members"
-    | "settings";
+    | "members";
   label: string;
   path: string;
   group: "school" | "learning" | "management";
@@ -79,7 +79,6 @@ export function getAppNavigation({
   const canUseMembers = isSchoolAdmin || canViewMembers;
   const canUseGuardians = isSchoolAdmin || hasRole(roles, "registrar");
   const canUseNotifications = isSchoolAdmin || roles.size > 0;
-  const canUseSettings = isSchoolAdmin || roles.size > 0;
 
   return [
     ...(canManageSchool
@@ -145,6 +144,13 @@ export function getAppNavigation({
       : []),
     ...(canUseFinance
       ? [
+          {
+            id: "staff-payroll" as const,
+            label: translate(locale, "nav.staffPayroll"),
+            path: "/staff",
+            group: "management" as const,
+            icon: BriefcaseBusiness,
+          },
           {
             id: "finance" as const,
             label: translate(locale, "nav.finance"),
@@ -217,17 +223,6 @@ export function getAppNavigation({
             path: "/members",
             group: "management" as const,
             icon: Users,
-          },
-        ]
-      : []),
-    ...(canUseSettings
-      ? [
-          {
-            id: "settings" as const,
-            label: translate(locale, "nav.settings"),
-            path: "/settings",
-            group: "management" as const,
-            icon: Settings,
           },
         ]
       : []),
