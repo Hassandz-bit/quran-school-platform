@@ -45,6 +45,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="time"],
+  input[type="week"] {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @custom-variant dark (&:is(.dark *));

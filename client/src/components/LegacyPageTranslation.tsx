@@ -6,14 +6,43 @@ const lastTranslatedText = new WeakMap<Text, string>();
 const originalAttributes = new WeakMap<Element, Map<string, string>>();
 const lastTranslatedAttributes = new WeakMap<Element, Map<string, string>>();
 const TRANSLATED_ATTRIBUTES = ["placeholder", "title", "aria-label"] as const;
+const LATIN_DATE_CONTROL_TYPES = new Set([
+  "date",
+  "datetime-local",
+  "month",
+  "time",
+  "week",
+]);
+
+function isTranslationLocked(element: Element): boolean {
+  return element.closest('[data-translation-lock="true"], [translate="no"]') !== null;
+}
+
+function normalizeDateControls(root: ParentNode) {
+  const inputs = root instanceof HTMLInputElement
+    ? [root]
+    : [...root.querySelectorAll<HTMLInputElement>("input")];
+
+  for (const input of inputs) {
+    if (!LATIN_DATE_CONTROL_TYPES.has(input.type)) continue;
+    input.lang = "en-CA";
+    input.dir = "ltr";
+    input.dataset.latinDateControl = "true";
+  }
+}
 
 function translateTree(root: ParentNode, locale: "ar" | "en") {
+  normalizeDateControls(root);
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
   while (node) {
     const text = node as Text;
     const parent = text.parentElement;
-    if (parent && !["SCRIPT", "STYLE", "CODE", "PRE"].includes(parent.tagName)) {
+    if (
+      parent &&
+      !isTranslationLocked(parent) &&
+      !["SCRIPT", "STYLE", "CODE", "PRE"].includes(parent.tagName)
+    ) {
       const current = text.nodeValue ?? "";
       const lastTranslated = lastTranslatedText.get(text);
       if (!originalText.has(text) || (lastTranslated !== undefined && current !== lastTranslated)) {
@@ -29,6 +58,7 @@ function translateTree(root: ParentNode, locale: "ar" | "en") {
 
   const elements = root instanceof Element ? [root, ...root.querySelectorAll("*")] : [...root.querySelectorAll("*")];
   for (const element of elements) {
+    if (isTranslationLocked(element)) continue;
     let saved = originalAttributes.get(element);
     for (const attribute of TRANSLATED_ATTRIBUTES) {
       const current = element.getAttribute(attribute);
