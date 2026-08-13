@@ -42,7 +42,7 @@ export default function ForgotPassword() {
       if (error) {
         if (error.code === "over_email_send_rate_limit" || error.status === 429) {
           setSuccessMessage(
-            "تم إرسال رابط الاستعادة بالفعل. انتظر دقيقة قبل طلب رابط جديد، وافحص البريد الوارد ومجلد الرسائل غير المرغوب فيها (Spam)."
+            "إذا كان البريد مرتبطًا بحساب، فسيصلك رابط لتغيير كلمة المرور."
           );
           setCooldownSeconds(RECOVERY_COOLDOWN_SECONDS);
           return;
@@ -55,7 +55,7 @@ export default function ForgotPassword() {
       }
 
       setSuccessMessage(
-        "تم إرسال رابط الاستعادة. افحص البريد الوارد ومجلد الرسائل غير المرغوب فيها (Spam)، ثم افتح أحدث رسالة فقط."
+        "إذا كان البريد مرتبطًا بحساب، فسيصلك رابط لتغيير كلمة المرور."
       );
       setCooldownSeconds(RECOVERY_COOLDOWN_SECONDS);
     } catch {
@@ -123,11 +123,7 @@ export default function ForgotPassword() {
             disabled={isLoading || cooldownSeconds > 0}
             className="h-12 w-full rounded-xl bg-[#0B4738] text-base font-semibold text-white"
           >
-            {isLoading
-              ? "جارٍ الإرسال..."
-              : cooldownSeconds > 0
-                ? `يمكن إعادة الإرسال بعد ${cooldownSeconds} ثانية`
-                : "إرسال رابط الاستعادة"}
+            {isLoading ? "جارٍ الإرسال..." : "إرسال رابط الاستعادة"}
           </Button>
 
           <button
