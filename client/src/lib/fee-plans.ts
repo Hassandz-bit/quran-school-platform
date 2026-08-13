@@ -1,5 +1,6 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase.ts";
+import { DEFAULT_CURRENCY, type CurrencyCode } from "./currency.ts";
 
 export const feePlanBillingCycles = [
   "one_time",
@@ -20,7 +21,7 @@ export type FeePlanRow = {
   code: string;
   billing_cycle: FeePlanBillingCycle;
   amount: number | string;
-  currency: "DZD";
+  currency: CurrencyCode;
   due_day: number | null;
   status: FeePlanStatus;
   description: string | null;
@@ -67,13 +68,13 @@ type FeePlanInsert = {
   code: string;
   billing_cycle: FeePlanBillingCycle;
   amount: number;
-  currency: "DZD";
+  currency: CurrencyCode;
   due_day: number | null;
   status: FeePlanStatus;
   description: string | null;
 };
 
-type FeePlanUpdate = Omit<FeePlanInsert, "school_id" | "branch_id">;
+type FeePlanUpdate = Omit<FeePlanInsert, "school_id" | "branch_id" | "currency">;
 
 export class FeePlanPermissionError extends Error {
   constructor() {
@@ -146,7 +147,7 @@ export function buildFeePlanInsert(
     code: normalizeFeePlanCode(values.code),
     billing_cycle: values.billingCycle,
     amount: Number(values.amount),
-    currency: "DZD",
+    currency: DEFAULT_CURRENCY,
     due_day:
       values.dueDay.trim() === "" ? null : Number(values.dueDay.trim()),
     status: values.status,
@@ -160,6 +161,7 @@ export function buildFeePlanUpdate(
   const {
     school_id: _schoolId,
     branch_id: _branchId,
+    currency: _currency,
     ...editableFields
   } = buildFeePlanInsert("ignored", values);
   return editableFields;

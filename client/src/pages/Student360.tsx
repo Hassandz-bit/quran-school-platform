@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatCurrency } from "@/lib/currency";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -36,14 +37,6 @@ function formatDate(value: string): string {
   return Number.isNaN(date.getTime())
     ? "—"
     : new Intl.DateTimeFormat("ar-DZ-u-nu-latn", { dateStyle: "medium" }).format(date);
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("ar-DZ-u-nu-latn", {
-    style: "currency",
-    currency: "DZD",
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function attendanceLabel(status: string): string {

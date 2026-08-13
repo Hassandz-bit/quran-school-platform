@@ -52,7 +52,7 @@ export default function FinancialPeriodClose() {
 
   const reconcile = (account: PeriodAccount) => {
     if (!school?.id || !workspace?.period) return;
-    const actualText = window.prompt(`الرصيد الفعلي للحساب «${account.name}» بالدينار:`, String(account.systemBalance));
+    const actualText = window.prompt(`الرصيد الفعلي للحساب «${account.name}» بالعملة المحددة:`, String(account.systemBalance));
     if (actualText === null) return;
     const actual = Number(actualText.replace(",", "."));
     if (!Number.isFinite(actual)) { toast.error("أدخل رصيدًا رقميًا صحيحًا."); return; }

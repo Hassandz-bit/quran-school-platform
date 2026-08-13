@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase.ts";
+import { normalizeCurrency, type CurrencyCode } from "./currency.ts";
 
 export type TreasuryAccountType = "cash" | "bank" | "postal";
 export type TreasuryAccountStatus = "active" | "inactive" | "archived";
@@ -24,7 +25,7 @@ export type TreasuryAccount = {
   name: string;
   code: string;
   accountReference: string | null;
-  currency: "DZD";
+  currency: CurrencyCode;
   status: TreasuryAccountStatus;
   balance: number;
   canManage: boolean;
@@ -90,7 +91,7 @@ const n = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0
 const mapBranch = (row: any): TreasuryBranch => ({ id: row.id, name: row.name, isMain: row.is_main, canManage: row.can_manage });
 const mapAccount = (row: any): TreasuryAccount => ({
   id: row.id, branchId: row.branch_id, accountType: row.account_type, name: row.name, code: row.code,
-  accountReference: row.account_reference ?? null, currency: row.currency ?? "DZD", status: row.status,
+  accountReference: row.account_reference ?? null, currency: normalizeCurrency(row.currency), status: row.status,
   balance: n(row.balance ?? row.current_balance), canManage: row.can_manage ?? true,
 });
 const mapIncome = (row: any): OtherIncomeRow => ({

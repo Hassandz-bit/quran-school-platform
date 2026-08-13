@@ -770,7 +770,7 @@ export default function FeePlans() {
               {editingPlan ? "تعديل خطة الرسوم" : "إضافة خطة رسوم"}
             </DialogTitle>
             <DialogDescription>
-              جميع المبالغ بالدينار الجزائري. نطاق الخطة لا يمكن تغييره بعد
+              جميع المبالغ بالعملة المحددة. نطاق الخطة لا يمكن تغييره بعد
               الإنشاء.
             </DialogDescription>
           </DialogHeader>

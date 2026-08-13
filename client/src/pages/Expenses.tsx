@@ -867,7 +867,7 @@ export default function Expenses() {
               )}
             </label>
             <label className="space-y-1.5 text-sm">
-              <span className="font-medium">المبلغ بالدينار الجزائري</span>
+              <span className="font-medium">المبلغ بالعملة المحددة</span>
               <Input
                 inputMode="decimal"
                 value={formValues.amount}
