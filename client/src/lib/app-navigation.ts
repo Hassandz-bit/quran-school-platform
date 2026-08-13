@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Archive,
   Bell,
   BriefcaseBusiness,
   BookOpen,
@@ -43,7 +44,8 @@ export type AppNavigationItem = {
     | "documents"
     | "guardians"
     | "notifications"
-    | "members";
+    | "members"
+    | "backups";
   label: string;
   path: string;
   group: "school" | "learning" | "management";
@@ -72,8 +74,7 @@ export function getAppNavigation({
     isSchoolAdmin ||
     hasRole(roles, "finance_officer") ||
     hasRole(roles, "branch_manager");
-  const canUseReceipts =
-    canUseFinance || hasRole(roles, "registrar");
+  const canUseReceipts = canUseFinance || hasRole(roles, "registrar");
   const canUseRegistrations = canViewRegistrations;
   const canUseDocuments = canViewDocuments;
   const canUseMembers = isSchoolAdmin || canViewMembers;
@@ -223,6 +224,17 @@ export function getAppNavigation({
             path: "/members",
             group: "management" as const,
             icon: Users,
+          },
+        ]
+      : []),
+    ...(canManageSchool
+      ? [
+          {
+            id: "backups" as const,
+            label: translate(locale, "nav.backups"),
+            path: "/backups",
+            group: "management" as const,
+            icon: Archive,
           },
         ]
       : []),
