@@ -5,6 +5,7 @@ import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const migration = read("supabase/056_manual_notifications_and_staff_directory.sql");
 const payrollStaffMigration = read("supabase/057_payroll_staff_job_management.sql");
+const payrollStaffLockdown = read("supabase/058_payroll_staff_legacy_rpc_lockdown.sql");
 const notifications = read("client/src/lib/notifications.ts");
 const composer = read("client/src/components/NotificationComposerDialog.tsx");
 const staff = read("client/src/lib/staff.ts");
@@ -59,6 +60,13 @@ test("staff jobs are managed only inside Finance payroll and use payroll scope p
   assert.match(staff, /rpc\("list_payroll_staff_candidates"/);
   assert.match(staff, /rpc\("upsert_payroll_staff_position"/);
   assert.match(payrollPage, /candidateJobLabel\(candidate\)/);
+  for (const legacyFunction of ["list_school_staff", "upsert_staff_position", "deactivate_staff_position"]) {
+    assert.match(
+      payrollStaffLockdown,
+      new RegExp(`revoke all on function public\\.${legacyFunction}[\\s\\S]*?from public, anon, authenticated`, "i")
+    );
+    assert.doesNotMatch(staff, new RegExp(`rpc\\("${legacyFunction}"`));
+  }
 });
 
 test("new recitation and multiple notes remain linked to one memorization record", () => {

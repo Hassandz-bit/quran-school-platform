@@ -3,10 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [migration, hardening, staffMigration, client, staffClient, staffDialog, historyClient, page, membersPage, historyPage, app, nav, reports] = await Promise.all([
+const [migration, hardening, staffMigration, staffLockdown, client, staffClient, staffDialog, historyClient, page, membersPage, historyPage, app, nav, reports] = await Promise.all([
   read("supabase/043_payroll_foundation.sql"),
   read("supabase/044_payroll_hardening_and_history.sql"),
   read("supabase/057_payroll_staff_job_management.sql"),
+  read("supabase/058_payroll_staff_legacy_rpc_lockdown.sql"),
   read("client/src/lib/payroll.ts"),
   read("client/src/lib/staff.ts"),
   read("client/src/components/PayrollStaffDialog.tsx"),
@@ -110,4 +111,6 @@ test("places employment job management in payroll and labels salary candidates w
   assert.match(staffClient, /rpc\("upsert_payroll_staff_position"/);
   assert.match(staffMigration, /payroll_can_manage_scope/);
   assert.match(staffMigration, /position\.branch_id is not distinct from target_branch_id/);
+  assert.match(staffLockdown, /from public, anon, authenticated/);
+  assert.doesNotMatch(staffLockdown, /grant execute/i);
 });
