@@ -6,15 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NotificationComposerDialog from "@/components/NotificationComposerDialog";
-import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import {
-  canSendSchoolNotifications,
+  fetchMyNotificationSenderSchools,
   fetchMyNotifications,
   markNotificationRead,
   type AppNotification,
   type NotificationBox,
   type NotificationCategory,
+  type NotificationSenderSchool,
 } from "@/lib/notifications";
 
 const categories: Array<{ value: NotificationCategory | "all"; ar: string; en: string }> = [
@@ -41,7 +41,6 @@ function formatDate(value: string, locale: "ar" | "en"): string {
 }
 
 export default function Notifications() {
-  const { school } = useAuth();
   const { locale, direction } = useLocale();
   const en = locale === "en";
   const [location, setLocation] = useLocation();
@@ -51,7 +50,7 @@ export default function Notifications() {
   const [rows, setRows] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [canCompose, setCanCompose] = useState(false);
+  const [senderSchools, setSenderSchools] = useState<NotificationSenderSchool[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,16 +69,16 @@ export default function Notifications() {
   }, [load]);
 
   useEffect(() => {
-    if (parentMode || !school?.id) {
-      setCanCompose(false);
-      return;
-    }
     let active = true;
-    void canSendSchoolNotifications(school.id).then(result => {
-      if (active) setCanCompose(result);
-    });
+    void fetchMyNotificationSenderSchools()
+      .then(result => {
+        if (active) setSenderSchools(result);
+      })
+      .catch(() => {
+        if (active) setSenderSchools([]);
+      });
     return () => { active = false; };
-  }, [parentMode, school?.id]);
+  }, []);
 
   const openNotification = async (row: AppNotification) => {
     if (box !== "inbox") return;
@@ -109,8 +108,8 @@ export default function Notifications() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canCompose && school?.id && (
-            <NotificationComposerDialog schoolId={school.id} onSent={() => setBox("sent")} />
+          {senderSchools.length > 0 && (
+            <NotificationComposerDialog senderSchools={senderSchools} onSent={() => setBox("sent")} />
           )}
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> {en ? "Refresh" : "تحديث"}
@@ -190,7 +189,7 @@ export default function Notifications() {
       )}
 
       {parentMode && (
-        <p className="text-xs text-muted-foreground">{en ? "This page only shows notifications linked to the current guardian account." : "تعرض هذه الصفحة فقط الإشعارات المرتبطة بحساب ولي الأمر الحالي."}</p>
+        <p className="text-xs text-muted-foreground">{en ? "Guardians can send individual messages only to school administration or their children's assigned teachers." : "يمكن لولي الأمر إرسال إشعار فردي فقط إلى إدارة المدرسة أو معلمي أبنائه."}</p>
       )}
     </div>
   );

@@ -57,10 +57,32 @@ export type ManualNotificationResult = {
 
 export type NotificationScopeOption = { id: string; name: string };
 
+export type NotificationSenderKind = "staff" | "teacher" | "guardian";
+
+export type NotificationSenderSchool = {
+  schoolId: string;
+  schoolName: string;
+  senderKind: NotificationSenderKind;
+  canGroupSend: boolean;
+};
+
 export type NotificationScopes = {
   branches: NotificationScopeOption[];
   classes: Array<NotificationScopeOption & { branchId: string }>;
 };
+
+export async function fetchMyNotificationSenderSchools(
+  client: SupabaseClient = getSupabaseClient()
+): Promise<NotificationSenderSchool[]> {
+  const { data, error } = await client.rpc("list_my_notification_sender_schools");
+  if (error) throw error;
+  return ((data ?? []) as Record<string, unknown>[]).map(row => ({
+    schoolId: String(row.school_id),
+    schoolName: String(row.school_name),
+    senderKind: row.sender_kind as NotificationSenderKind,
+    canGroupSend: row.can_group_send === true,
+  }));
+}
 
 export async function fetchMyNotifications(
   box: NotificationBox,
