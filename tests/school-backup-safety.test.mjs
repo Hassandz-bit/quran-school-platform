@@ -8,6 +8,7 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"
 const appSource = read("client/src/App.tsx");
 const navigationSource = read("client/src/lib/app-navigation.ts");
 const pageSource = read("client/src/pages/SchoolBackups.tsx");
+const clientDryRunSource = read("client/src/lib/school-backup-validation.ts");
 const migrationSource = read("supabase/066_school_backup_recovery_foundation.sql");
 const handlerSource = read("supabase/functions/create-school-backup/handler.ts");
 const r2Source = read("supabase/functions/create-school-backup/r2-storage.ts");
@@ -73,6 +74,18 @@ test("backup UI uses the school-scoped backup client", () => {
   assert.match(pageSource, /createAndDownloadSchoolBackup/);
   assert.match(pageSource, /schoolId: school\.id/);
   assert.match(pageSource, /listSchoolBackups\(school\.id\)/);
+});
+
+test("pre-restore file check is exposed but remains read-only", () => {
+  assert.match(pageSource, /dryRunSchoolBackupFile/);
+  assert.match(pageSource, /type="file"/);
+  assert.match(pageSource, /accept="application\/json,\.json"/);
+  assert.match(clientDryRunSource, /\.from\("school_backup_snapshots"\)/);
+  assert.match(clientDryRunSource, /\.select\("id,status,checksum_sha256"\)/);
+  assert.doesNotMatch(clientDryRunSource, /\.insert\s*\(/);
+  assert.doesNotMatch(clientDryRunSource, /\.update\s*\(/);
+  assert.doesNotMatch(clientDryRunSource, /\.delete\s*\(/);
+  assert.doesNotMatch(pageSource, /restoreSchoolBackup|executeRestore|applyRestore/);
 });
 
 test("migration grants backup permissions only through school roles and protects metadata with RLS", () => {
