@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import TeacherInvitationDialog from "@/components/TeacherInvitationDialog";
+import StaffManagementDialog from "@/components/StaffManagementDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchMembersDirectory,
   filterMembers,
@@ -217,6 +219,7 @@ function MemberCard({ member }: { member: SchoolMember }) {
 export default function Members() {
   const [, setLocation] = useLocation();
   const { school, profile, isSchoolAdmin } = useAuth();
+  const { direction } = useLocale();
   const [directory, setDirectory] = useState<MembersDirectory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -261,7 +264,7 @@ export default function Members() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]" dir="rtl">
+    <div className="min-h-screen bg-[#F8F9FA]" dir={direction}>
       <header className="border-b border-white/10 bg-[#0B4738] text-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 md:px-6">
           <div className="min-w-0">
@@ -270,6 +273,14 @@ export default function Members() {
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             <TeacherInvitationDialog onInvitationSent={loadDirectory} />
+            {school?.id && directory && (
+              <StaffManagementDialog
+                schoolId={school.id}
+                members={members}
+                branches={directory.branchOptions}
+                canManage={isSchoolAdmin}
+              />
+            )}
             <Button
               type="button"
               variant="outline"
@@ -285,7 +296,7 @@ export default function Members() {
 
       <main className="mx-auto max-w-7xl space-y-5 p-4 pb-12 md:p-6">
         <section className="rounded-2xl border border-[#C8A26A]/30 bg-[#C8A26A]/10 p-4 text-sm leading-7 text-[#69491F]">
-          إدارة الدعوات والأدوار ستتوفر في مرحلة مستقلة. دعوة المعلمين المؤهلين متاحة فقط للمخولين، بينما تبقى إدارة الأدوار العامة وبقية الموظفين خارج النطاق.
+          وظائف الموظفين مستقلة عن صلاحيات النظام: يمكنك تسجيل المدير ونائبه والمقتصد والمعلم والحارس وعامل النظافة والسائق، أو إضافة مسمى آخر غير مدرج.
         </section>
 
         {loading ? (

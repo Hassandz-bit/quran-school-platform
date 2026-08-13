@@ -41,6 +41,12 @@ test("language selection is available only on login and drives every shell", () 
   assert.doesNotMatch(parentShell, /setLocation\("\/parent\/settings"\)/);
   assert.match(appShell, /dir=\{direction\}/);
   assert.match(appShell, /locale,/);
+  const provider = read("client/src/contexts/LocaleContext.tsx");
+  const bridge = read("client/src/components/LegacyPageTranslation.tsx");
+  assert.match(provider, /<LegacyPageTranslation locale=\{locale\}/);
+  assert.match(bridge, /MutationObserver/);
+  assert.match(bridge, /placeholder/);
+  assert.match(bridge, /aria-label/);
 });
 
 test("the explicit login locale survives profile loading and is persisted to the account", () => {

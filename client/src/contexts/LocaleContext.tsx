@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import LegacyPageTranslation from "@/components/LegacyPageTranslation";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   DEFAULT_LOCALE,
@@ -133,7 +134,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     [isSavingLocale, locale, setLocale]
   );
 
-  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+  return (
+    <LocaleContext.Provider value={value}>
+      <LegacyPageTranslation locale={locale} />
+      {children}
+    </LocaleContext.Provider>
+  );
 }
 
 export function useLocale(): LocaleContextValue {

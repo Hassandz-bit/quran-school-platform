@@ -202,6 +202,7 @@ function FollowUpCard({
 export function MemorizationFocusNotes(props: Props) {
   const [focusNotes, setFocusNotes] = useState<MemorizationFollowUpNote[]>([]);
   const [historyNotes, setHistoryNotes] = useState<MemorizationFollowUpNote[]>([]);
+  const [sessionNotes, setSessionNotes] = useState<MemorizationFollowUpNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -285,6 +286,27 @@ export function MemorizationFocusNotes(props: Props) {
     };
   }, [props.branchId, props.classId, props.schoolId, props.studentId, reload, showHistory]);
 
+  useEffect(() => {
+    if (!props.sourceRecordId) {
+      setSessionNotes([]);
+      return;
+    }
+    let active = true;
+    void fetchMemorizationFollowUpHistory(
+      props.schoolId,
+      props.branchId,
+      props.classId,
+      props.studentId
+    ).then(notes => {
+      if (active) {
+        setSessionNotes(notes.filter(note => note.sourceRecordId === props.sourceRecordId));
+      }
+    }).catch(() => {
+      if (active) setSessionNotes([]);
+    });
+    return () => { active = false; };
+  }, [props.branchId, props.classId, props.schoolId, props.sourceRecordId, props.studentId, reload]);
+
   const updateDraft = (update: Partial<FollowUpDraft>) => {
     setDraft(current => ({ ...current, ...update }));
   };
@@ -315,9 +337,11 @@ export function MemorizationFocusNotes(props: Props) {
         noteText: draft.noteText,
         observedOn: props.observedOn,
       });
-      toast.success("تمت إضافة نقطة المتابعة. ستظهر تلقائيًا في الحصة القادمة ما دامت تحتاج متابعة.");
+      toast.success(props.sourceRecordId
+        ? "تمت إضافة الملاحظة إلى جلسة التسميع. يمكنك إدراج ملاحظة أخرى الآن."
+        : "تمت إضافة نقطة المتابعة. ستظهر تلقائيًا في الحصة القادمة ما دامت تحتاج متابعة.");
       setDraft(current => ({ ...current, noteText: "" }));
-      setShowForm(false);
+      setShowForm(Boolean(props.sourceRecordId));
       setReload(current => current + 1);
     } catch (nextError) {
       const message = isStaleAppVersionError(nextError)
@@ -387,7 +411,7 @@ export function MemorizationFocusNotes(props: Props) {
               onClick={() => setShowHistory(current => !current)}
             >
               <History size={15} />
-              {showHistory ? "إخفاء سجل الملاحظات" : "سجل الملاحظات"}
+              {showHistory ? "إخفاء سجل الملاحظات" : "سجل الملاحظات المتعدد"}
             </Button>
             {props.canManage && props.teachers.length > 0 && (
               <Button
@@ -397,7 +421,7 @@ export function MemorizationFocusNotes(props: Props) {
                 className="bg-[#0B4738] text-white hover:bg-[#08382D]"
               >
                 {showForm ? <X size={15} /> : <Plus size={15} />}
-                {showForm ? "إلغاء" : "إضافة ملاحظة"}
+                {showForm ? "إغلاق الإدراج" : "إضافة ملاحظة"}
               </Button>
             )}
           </div>
@@ -415,7 +439,9 @@ export function MemorizationFocusNotes(props: Props) {
 
         {showForm && props.canManage && (
           <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
-            <h3 className="text-sm font-bold text-[#2C3E50]">ملاحظة متابعة جديدة</h3>
+            <h3 className="text-sm font-bold text-[#2C3E50]">
+              {props.sourceRecordId ? "إضافة ملاحظة إلى جلسة التسميع" : "ملاحظة متابعة جديدة"}
+            </h3>
             <p className="mt-1 text-xs text-gray-500">
               إذا تكرر نفس النوع في نفس نطاق الآيات لاحقًا فسيزيد عداد التكرار تلقائيًا.
             </p>
@@ -514,7 +540,7 @@ export function MemorizationFocusNotes(props: Props) {
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-gray-500">
                 {props.sourceRecordId
-                  ? "سترتبط الملاحظة بسجل التسميع المفتوح حاليًا."
+                  ? `سترتبط الملاحظة بسجل التسميع الحالي. الملاحظات المدرجة: ${sessionNotes.length}`
                   : "يمكن إضافة الملاحظة مستقلة عن سجل جلسة محدد."}
               </p>
               <Button
@@ -524,8 +550,32 @@ export function MemorizationFocusNotes(props: Props) {
                 className="bg-[#0B4738] text-white hover:bg-[#08382D]"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                حفظ الملاحظة
+                {props.sourceRecordId && sessionNotes.length > 0 ? "حفظ وإضافة ملاحظة أخرى" : "حفظ الملاحظة"}
               </Button>
+            </div>
+          </div>
+        )}
+
+        {props.sourceRecordId && sessionNotes.length > 0 && (
+          <div className="mt-4 rounded-xl border border-[#17663B]/20 bg-[#F5FBF7] p-3">
+            <h3 className="text-sm font-bold text-[#173B2D]">
+              ملاحظات جلسة التسميع الحالية ({sessionNotes.length})
+            </h3>
+            <p className="mt-1 text-xs text-gray-600">
+              يمكن إدراج أكثر من ملاحظة في الجلسة نفسها، ويُحفظ كل بند مستقلًا في السجل.
+            </p>
+            <div className="mt-3 space-y-2">
+              {sessionNotes.map((note, index) => (
+                <div key={note.id} className="rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <strong className="text-[#17663B]">#{index + 1}</strong>
+                    <span>{MEMORIZATION_FOLLOW_UP_CATEGORY_LABELS[note.category]}</span>
+                    <span>•</span>
+                    <span>سورة {getSurahByNumber(note.surahNumber).name} — {note.ayahStart}–{note.ayahEnd}</span>
+                  </div>
+                  <p className="mt-1 leading-6 text-[#40564B]">{note.noteText}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}

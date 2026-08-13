@@ -5,30 +5,33 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import NotificationComposerDialog from "@/components/NotificationComposerDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
+  canSendSchoolNotifications,
   fetchMyNotifications,
   markNotificationRead,
-  notificationCategoryLabels,
   type AppNotification,
   type NotificationBox,
   type NotificationCategory,
 } from "@/lib/notifications";
 
-const categories: Array<{ value: NotificationCategory | "all"; label: string }> = [
-  { value: "all", label: "الكل" },
-  { value: "administration", label: "الإدارة" },
-  { value: "teachers", label: "المعلمون" },
-  { value: "students", label: "الطلاب" },
-  { value: "learning", label: "التعليم والحفظ" },
-  { value: "attendance", label: "الحضور" },
-  { value: "finance", label: "المالية" },
-  { value: "guardians", label: "الأولياء" },
-  { value: "system", label: "النظام" },
+const categories: Array<{ value: NotificationCategory | "all"; ar: string; en: string }> = [
+  { value: "all", ar: "الكل", en: "All" },
+  { value: "administration", ar: "الإدارة", en: "Administration" },
+  { value: "teachers", ar: "المعلمون", en: "Teachers" },
+  { value: "students", ar: "الطلاب", en: "Students" },
+  { value: "learning", ar: "التعليم والحفظ", en: "Learning" },
+  { value: "attendance", ar: "الحضور", en: "Attendance" },
+  { value: "finance", ar: "المالية", en: "Finance" },
+  { value: "guardians", ar: "الأولياء", en: "Guardians" },
+  { value: "system", ar: "النظام", en: "System" },
 ];
 
-function formatDate(value: string): string {
+function formatDate(value: string, locale: "ar" | "en"): string {
   try {
-    return new Intl.DateTimeFormat("ar-DZ", {
+    return new Intl.DateTimeFormat(locale === "ar" ? "ar-DZ" : "en-GB", {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(value));
@@ -38,6 +41,9 @@ function formatDate(value: string): string {
 }
 
 export default function Notifications() {
+  const { school } = useAuth();
+  const { locale, direction } = useLocale();
+  const en = locale === "en";
   const [location, setLocation] = useLocation();
   const parentMode = location.startsWith("/parent/");
   const [box, setBox] = useState<NotificationBox>("inbox");
@@ -45,6 +51,7 @@ export default function Notifications() {
   const [rows, setRows] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [canCompose, setCanCompose] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +69,18 @@ export default function Notifications() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (parentMode || !school?.id) {
+      setCanCompose(false);
+      return;
+    }
+    let active = true;
+    void canSendSchoolNotifications(school.id).then(result => {
+      if (active) setCanCompose(result);
+    });
+    return () => { active = false; };
+  }, [parentMode, school?.id]);
+
   const openNotification = async (row: AppNotification) => {
     if (box !== "inbox") return;
     if (!row.readAt) {
@@ -78,25 +97,31 @@ export default function Notifications() {
   };
 
   return (
-    <div className="space-y-5 p-1 sm:p-2" dir="rtl">
+    <div className="space-y-5 p-1 sm:p-2" dir={direction}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-[#173B2D]">
-            <Bell className="size-6 text-[#17663B]" /> مركز الإشعارات
+            <Bell className="size-6 text-[#17663B]" /> {en ? "Notification center" : "مركز الإشعارات"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            سجل موحد للإشعارات الواردة والمرسلة من وحدات QuranOS.
+            {en ? "A unified log of received and sent notifications across QuranOS."
+              : "سجل موحد للإشعارات الواردة والمرسلة من وحدات QuranOS."}
           </p>
         </div>
-        <Button variant="outline" onClick={() => void load()} disabled={loading}>
-          <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> تحديث
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {canCompose && school?.id && (
+            <NotificationComposerDialog schoolId={school.id} onSent={() => setBox("sent")} />
+          )}
+          <Button variant="outline" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> {en ? "Refresh" : "تحديث"}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={box} onValueChange={value => setBox(value as NotificationBox)}>
         <TabsList className="grid w-full max-w-sm grid-cols-2">
-          <TabsTrigger value="inbox" className="gap-2"><Inbox className="size-4" /> الوارد</TabsTrigger>
-          <TabsTrigger value="sent" className="gap-2"><Send className="size-4" /> المرسل</TabsTrigger>
+          <TabsTrigger value="inbox" className="gap-2"><Inbox className="size-4" /> {en ? "Inbox" : "الوارد"}</TabsTrigger>
+          <TabsTrigger value="sent" className="gap-2"><Send className="size-4" /> {en ? "Sent" : "المرسل"}</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -109,21 +134,21 @@ export default function Notifications() {
             className={category === item.value ? "bg-[#0B4738] hover:bg-[#0B4738]/90" : ""}
             onClick={() => setCategory(item.value)}
           >
-            {item.label}
+            {en ? item.en : item.ar}
           </Button>
         ))}
       </div>
 
       {loadError && (
-        <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm text-red-800">تعذر تحميل الإشعارات. أعد المحاولة.</CardContent></Card>
+        <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm text-red-800">{en ? "Could not load notifications. Try again." : "تعذر تحميل الإشعارات. أعد المحاولة."}</CardContent></Card>
       )}
 
       {loading ? (
         <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
-          <RefreshCw className="size-4 animate-spin" /> جارٍ تحميل الإشعارات...
+          <RefreshCw className="size-4 animate-spin" /> {en ? "Loading notifications..." : "جارٍ تحميل الإشعارات..."}
         </div>
       ) : rows.length === 0 ? (
-        <Card><CardContent className="flex min-h-40 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground"><Bell className="size-8 opacity-40" />لا توجد إشعارات في هذا القسم بعد.</CardContent></Card>
+        <Card><CardContent className="flex min-h-40 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground"><Bell className="size-8 opacity-40" />{en ? "There are no notifications in this section yet." : "لا توجد إشعارات في هذا القسم بعد."}</CardContent></Card>
       ) : (
         <div className="space-y-3">
           {rows.map(row => {
@@ -134,26 +159,26 @@ export default function Notifications() {
                 type="button"
                 key={row.notificationId}
                 onClick={() => void openNotification(row)}
-                className={`w-full rounded-xl border bg-white p-4 text-right transition ${clickable ? "hover:border-[#8FB7A5] hover:shadow-sm" : "cursor-default"} ${unread ? "border-[#9CC8B4] bg-[#F5FBF7]" : ""}`}
+                className={`w-full rounded-xl border bg-white p-4 ${en ? "text-left" : "text-right"} transition ${clickable ? "hover:border-[#8FB7A5] hover:shadow-sm" : "cursor-default"} ${unread ? "border-[#9CC8B4] bg-[#F5FBF7]" : ""}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      {unread && <span className="size-2 rounded-full bg-[#17663B]" aria-label="غير مقروء" />}
+                      {unread && <span className="size-2 rounded-full bg-[#17663B]" aria-label={en ? "Unread" : "غير مقروء"} />}
                       <span className="font-bold text-[#173B2D]">{row.title}</span>
-                      <Badge variant="outline">{notificationCategoryLabels[row.category]}</Badge>
-                      {unread && <Badge className="bg-[#17663B]">جديد</Badge>}
+                      <Badge variant="outline">{en ? categories.find(item => item.value === row.category)?.en : categories.find(item => item.value === row.category)?.ar}</Badge>
+                      {unread && <Badge className="bg-[#17663B]">{en ? "New" : "جديد"}</Badge>}
                     </div>
                     <p className="mt-2 text-sm leading-6 text-[#40564B]">{row.body}</p>
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>المدرسة: {row.schoolName}</span>
-                      {row.studentName && <span>الطالب: {row.studentName}</span>}
+                      <span>{en ? "School" : "المدرسة"}: {row.schoolName}</span>
+                      {row.studentName && <span>{en ? "Student" : "الطالب"}: {row.studentName}</span>}
                       {box === "inbox" ? (
-                        <span>المرسل: {row.senderName ?? "النظام"}</span>
+                        <span>{en ? "Sender" : "المرسل"}: {row.senderName ?? (en ? "System" : "النظام")}</span>
                       ) : (
-                        <span>المستلم: {row.recipientName}</span>
+                        <span>{en ? "Recipient" : "المستلم"}: {row.recipientName}</span>
                       )}
-                      <span>{formatDate(row.createdAt)}</span>
+                      <span>{formatDate(row.createdAt, locale)}</span>
                     </div>
                   </div>
                   {box === "inbox" && row.readAt && <CheckCheck className="mt-1 size-4 shrink-0 text-[#17663B]" />}
@@ -165,7 +190,7 @@ export default function Notifications() {
       )}
 
       {parentMode && (
-        <p className="text-xs text-muted-foreground">تعرض هذه الصفحة فقط الإشعارات المرتبطة بحساب ولي الأمر الحالي.</p>
+        <p className="text-xs text-muted-foreground">{en ? "This page only shows notifications linked to the current guardian account." : "تعرض هذه الصفحة فقط الإشعارات المرتبطة بحساب ولي الأمر الحالي."}</p>
       )}
     </div>
   );

@@ -224,7 +224,7 @@ test("keeps the members link conditional in the shared app shell", () => {
   assert.match(appShell, /setCanViewMembers\(access\.canView\)/);
 });
 
-test("covers all required visible states without mutation controls", () => {
+test("covers directory states and exposes job management separately from roles", () => {
   for (const text of [
     "جارٍ تحميل أعضاء المدرسة",
     "تعذر تحميل دليل الأعضاء",
@@ -236,11 +236,12 @@ test("covers all required visible states without mutation controls", () => {
     "الملف معطل",
     "قيد الانتظار",
     "معلق",
-    "إدارة الدعوات والأدوار ستتوفر في مرحلة مستقلة",
+    "وظائف الموظفين مستقلة عن صلاحيات النظام",
   ]) {
     assert.match(page, new RegExp(text));
   }
-  assert.match(page, /dir="rtl"/);
+  assert.match(page, /dir=\{direction\}/);
+  assert.match(page, /StaffManagementDialog/);
   assert.match(page, /lg:hidden/);
   assert.match(page, /hidden overflow-hidden[\s\S]*lg:block/);
 });
