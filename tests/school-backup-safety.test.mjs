@@ -11,7 +11,6 @@ const pageSource = read("client/src/pages/SchoolBackups.tsx");
 const clientDryRunSource = read("client/src/lib/school-backup-validation.ts");
 const migrationSource = read("supabase/066_school_backup_recovery_foundation.sql");
 const handlerSource = read("supabase/functions/create-school-backup/handler.ts");
-const r2Source = read("supabase/functions/create-school-backup/r2-storage.ts");
 
 const BACKUP_TABLE_NAMES = [
   "branches",
@@ -100,6 +99,8 @@ test("migration grants backup permissions only through school roles and protects
 test("export handler isolates every operational table by school_id and excludes credential stores", () => {
   assert.match(handlerSource, /\.eq\("school_id", schoolId\)/);
   assert.match(handlerSource, /snapshotId: snapshot\.id/);
+  assert.match(handlerSource, /storage_backend: "temporary_download"/);
+  assert.doesNotMatch(handlerSource, /persistBackupOffsite|R2_|external_object_storage/);
   for (const forbiddenExport of [
     "auth.users",
     "passwords_and_auth_tokens",
@@ -110,17 +111,6 @@ test("export handler isolates every operational table by school_id and excludes 
   ]) {
     assert.ok(handlerSource.includes(`"${forbiddenExport}"`), `missing exclusion ${forbiddenExport}`);
   }
-});
-
-test("R2 offsite storage remains private server-side configuration", () => {
-  assert.match(r2Source, /QURANOS_BACKUP_R2_ENDPOINT/);
-  assert.match(r2Source, /QURANOS_BACKUP_R2_BUCKET/);
-  assert.match(r2Source, /QURANOS_BACKUP_R2_ACCESS_KEY_ID/);
-  assert.match(r2Source, /QURANOS_BACKUP_R2_SECRET_ACCESS_KEY/);
-  assert.match(r2Source, /\.r2\.cloudflarestorage\.com/);
-  assert.match(r2Source, /region: "auto"/);
-  assert.doesNotMatch(r2Source, /VITE_/);
-  assert.doesNotMatch(r2Source, /NEXT_PUBLIC_/);
 });
 
 test("restore dry-run validator rejects incomplete, cross-school, extra-table and secret packages", async () => {
