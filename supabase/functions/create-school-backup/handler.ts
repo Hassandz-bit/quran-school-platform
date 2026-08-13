@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.110.7";
-import { persistBackupOffsite } from "./r2-storage.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -308,31 +307,20 @@ export async function handleCreateSchoolBackup(
         0,
         10
       )}-${snapshot.id.slice(0, 8)}.json`;
-
-      const offsite = await persistBackupOffsite({
-        schoolId,
-        snapshotId: snapshot.id,
-        createdAt,
-        body: serialized,
-        checksumSha256: checksum,
-      });
-      const storageBackend = offsite
-        ? "external_object_storage"
-        : "temporary_download";
-      const storageKey = offsite?.storageKey ?? `direct-download://${fileName}`;
+      const storageKey = `direct-download://${fileName}`;
 
       const { error: readyError } = await adminClient
         .from("school_backup_snapshots")
         .update({
           status: "ready",
-          storage_backend: storageBackend,
+          storage_backend: "temporary_download",
           storage_key: storageKey,
           checksum_sha256: checksum,
           byte_size: byteSize,
           record_counts: counts,
           includes_documents: false,
           completed_at: createdAt,
-          expires_at: offsite ? null : createdAt,
+          expires_at: createdAt,
         })
         .eq("id", snapshot.id)
         .eq("school_id", schoolId);
@@ -349,8 +337,7 @@ export async function handleCreateSchoolBackup(
           checksum_sha256: checksum,
           byte_size: byteSize,
           documents_included: false,
-          storage_backend: storageBackend,
-          offsite_stored: Boolean(offsite),
+          storage_backend: "temporary_download",
         },
       });
 
@@ -362,7 +349,6 @@ export async function handleCreateSchoolBackup(
           "content-disposition": `attachment; filename="${fileName}"`,
           "x-quranos-backup-sha256": checksum,
           "x-quranos-backup-snapshot": snapshot.id,
-          "x-quranos-backup-offsite": offsite ? "stored" : "not-configured",
         },
       });
     } catch (generationError) {
