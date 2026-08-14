@@ -96,6 +96,26 @@ test("migration grants backup permissions only through school roles and protects
   assert.match(migrationSource, /public\.has_school_permission\(school_id, 'backup\.view'\)/);
 });
 
+test("backup Edge server gets explicit least-privilege Data API access", () => {
+  assert.match(migrationSource, /grant usage on schema public to service_role;/i);
+  assert.match(
+    migrationSource,
+    /grant select on table[\s\S]*?public\.schools,[\s\S]*?public\.employees,[\s\S]*?public\.profiles,[\s\S]*?public\.permissions\s+to service_role;/i
+  );
+  assert.match(
+    migrationSource,
+    /grant select, insert, update on table public\.school_backup_snapshots to service_role;/i
+  );
+  assert.match(
+    migrationSource,
+    /grant insert on table public\.school_backup_events to service_role;/i
+  );
+  assert.doesNotMatch(
+    migrationSource,
+    /grant\s+(?:insert|update|delete)[^;]*public\.students[^;]*to service_role;/i
+  );
+});
+
 test("export handler isolates every operational table by school_id and excludes credential stores", () => {
   assert.match(handlerSource, /\.eq\("school_id", schoolId\)/);
   assert.match(handlerSource, /snapshotId: snapshot\.id/);
