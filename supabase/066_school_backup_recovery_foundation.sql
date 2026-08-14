@@ -138,4 +138,65 @@ using (
   public.has_school_permission(school_id, 'backup.view')
 );
 
+-- The backup Edge Function authenticates the caller with the user's JWT first,
+-- then uses a server-only Supabase secret to export the already-authorized school.
+-- This project intentionally revokes broad Data API privileges, so the server
+-- role needs an explicit, least-privilege allowlist for the backup path.
+grant usage on schema public to service_role;
+
+grant select on table
+  public.schools,
+  public.branches,
+  public.school_memberships,
+  public.roles,
+  public.role_permissions,
+  public.membership_roles,
+  public.classes,
+  public.students,
+  public.teachers,
+  public.class_teachers,
+  public.fee_plans,
+  public.student_charges,
+  public.payments,
+  public.student_discounts,
+  public.expenses,
+  public.attendance_sessions,
+  public.attendance_records,
+  public.attendance_record_history,
+  public.memorization_records,
+  public.memorization_record_history,
+  public.student_guardians,
+  public.guardian_access_events,
+  public.app_notifications,
+  public.official_receipt_counters,
+  public.official_receipts,
+  public.registration_leads,
+  public.registration_lead_events,
+  public.document_records,
+  public.document_events,
+  public.memorization_follow_up_notes,
+  public.memorization_follow_up_note_history,
+  public.payroll_compensation_profiles,
+  public.payroll_periods,
+  public.payroll_entries,
+  public.payroll_payments,
+  public.payroll_audit_events,
+  public.treasury_accounts,
+  public.other_income,
+  public.treasury_transfers,
+  public.treasury_movements,
+  public.treasury_audit_events,
+  public.financial_periods,
+  public.financial_period_events,
+  public.treasury_account_reconciliations,
+  public.staff_positions,
+  public.notification_campaigns,
+  public.employees,
+  public.profiles,
+  public.permissions
+  to service_role;
+
+grant select, insert, update on table public.school_backup_snapshots to service_role;
+grant insert on table public.school_backup_events to service_role;
+
 commit;
