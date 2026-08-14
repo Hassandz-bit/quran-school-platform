@@ -37,6 +37,7 @@ import AddTeacherForm from "./pages/AddTeacherForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import PostLoginRedirect from "./pages/PostLoginRedirect";
+import SchoolBackups from "./pages/SchoolBackups";
 
 const FinanceDashboard = lazy(() => import("./pages/FinanceDashboard"));
 const FeePlans = lazy(() => import("./pages/FeePlans"));
@@ -373,6 +374,9 @@ function Router() {
               </Suspense>
             </Shell>
           </MembersRoute>
+        </Route>
+        <Route path="/backups">
+          <ProtectedRoute><Shell><SchoolBackups /></Shell></ProtectedRoute>
         </Route>
         <Route path="/"><Redirect to="/post-login" /></Route>
         <Route component={NotFound} />
