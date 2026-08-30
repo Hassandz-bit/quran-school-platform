@@ -51,10 +51,10 @@ VITE_SUPABASE_PUBLISHABLE_KEY
 ## التحقق
 
 ```bash
-node --test tests/*.test.mjs
-node --test tests/memorization-interface.test.mjs
-node --test tests/memorization-database.test.mjs
-node --test tests/members-directory.test.mjs
+pnpm test
+node --experimental-strip-types --test tests/memorization-interface.test.mjs
+node --experimental-strip-types --test tests/memorization-database.test.mjs
+node --experimental-strip-types --test tests/members-directory.test.mjs
 pnpm test:runtime
 pnpm check
 pnpm exec vite build

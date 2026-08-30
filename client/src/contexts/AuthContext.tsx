@@ -64,6 +64,18 @@ export type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function hasPasswordRecoveryIntent(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const queryType = new URLSearchParams(window.location.search).get("type");
+  if (queryType === "recovery") return true;
+
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  return new URLSearchParams(hash).get("type") === "recovery";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const clientState = useMemo(() => {
     try {
@@ -158,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let isMounted = true;
     const authorizationTimers = new Set<ReturnType<typeof setTimeout>>();
+    const recoveryIntent = hasPasswordRecoveryIntent();
 
     const applySession = (nextSession: Session | null) => {
       if (!isMounted) return;
@@ -166,6 +179,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
+
+      if (nextSession && recoveryIntent) {
+        setIsPasswordRecovery(true);
+      }
 
       if (!nextSession?.user) {
         clearAuthorization();
@@ -187,7 +204,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = client.auth.onAuthStateChange((event, nextSession) => {
       applySession(nextSession);
 
-      if (event === "PASSWORD_RECOVERY") {
+      if (
+        event === "PASSWORD_RECOVERY" ||
+        (event === "SIGNED_IN" && recoveryIntent)
+      ) {
         setIsPasswordRecovery(Boolean(nextSession));
       } else if (event === "SIGNED_OUT") {
         setIsPasswordRecovery(false);
@@ -202,6 +222,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsPasswordRecovery(false);
       } else {
         applySession(data.session);
+        if (data.session && recoveryIntent) {
+          setIsPasswordRecovery(true);
+        }
       }
     });
 
