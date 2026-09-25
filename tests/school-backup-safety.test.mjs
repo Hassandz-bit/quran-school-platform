@@ -242,3 +242,18 @@ test("restore dry-run validator rejects incomplete, cross-school, extra-table an
   assert.equal(missingTableResult.valid, false);
   assert.ok(missingTableResult.errors.includes("missing_table:payments"));
 });
+
+
+test("expired backup cleanup is secret-gated and removes private objects before expiring metadata", () => {
+  const cleanupSource = read("supabase/functions/cleanup-school-backups/handler.ts");
+  assert.match(cleanupSource, /x-backup-cleanup-secret/);
+  assert.match(cleanupSource, /BACKUP_CLEANUP_SECRET/);
+  assert.match(cleanupSource, /\.from\("school-backups"\)\.remove/);
+  assert.match(cleanupSource, /status.*expired/);
+  assert.match(cleanupSource, /event_type: "expired"/);
+});
+
+test("backup audit contract includes restore-start lifecycle state", () => {
+  const migrationSource = read("supabase/066_school_backup_recovery_foundation.sql");
+  assert.match(migrationSource, /'restore_started'/);
+});
