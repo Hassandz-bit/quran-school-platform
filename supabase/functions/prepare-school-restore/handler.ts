@@ -7,7 +7,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const json = (status: number, body: Record<string, unknown>) =>
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nconst MAX_BACKUP_BYTES = 50 * 1024 * 1024;\n\nconst json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: CORS });
 
 function tokenOf(req: Request) {
@@ -55,10 +55,10 @@ export async function handlePrepareSchoolRestore(request: Request) {
 
     const { data: snapshot, error: snapshotError } = await admin
       .from("school_backup_snapshots")
-      .select("id,school_id,status,storage_key,checksum_sha256,byte_size")
+      .select("id,school_id,status,storage_backend,storage_key,checksum_sha256,byte_size,expires_at")
       .eq("id", snapshotId).eq("school_id", schoolId).single();
     if (snapshotError || !snapshot) return json(404, { error: "snapshot_not_found" });
-    if (snapshot.status !== "ready" || !snapshot.storage_key || !snapshot.checksum_sha256) {
+    if (snapshot.status !== "ready" || snapshot.storage_backend !== "supabase_storage" || !snapshot.storage_key || !snapshot.checksum_sha256) {
       return json(409, { error: "snapshot_not_ready" });
     }
 
@@ -79,7 +79,7 @@ export async function handlePrepareSchoolRestore(request: Request) {
     try { pkg = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return json(422, { error: "backup_json_invalid", destructiveRestore: false }); }
 
-    const validation = validateSchoolBackupPackage(pkg, schoolId);
+    const { data: existingRequest } = await admin\n      .from("school_backup_restore_requests")\n      .select("id,status,pre_restore_snapshot_id,validation_report,conflict_report")\n      .eq("school_id", schoolId)\n      .eq("snapshot_id", snapshotId)\n      .in("status", ["dry_run_ready", "approved", "running"])\n      .order("created_at", { ascending: false })\n      .limit(1)\n      .maybeSingle();\n    if (existingRequest) {\n      return json(200, {\n        requestId: existingRequest.id,\n        status: existingRequest.status,\n        preRestoreSnapshotId: existingRequest.pre_restore_snapshot_id,\n        validation: existingRequest.validation_report,\n        conflicts: existingRequest.conflict_report,\n        destructiveRestore: false,\n        noSchoolDataModified: true,\n        idempotent: true,\n      });\n    }\n\n    const validation = validateSchoolBackupPackage(pkg, schoolId);
     if (!validation.valid) {
       await admin.from("school_backup_events").insert({
         school_id: schoolId, snapshot_id: snapshotId, actor_profile_id: authUser.user.id,
