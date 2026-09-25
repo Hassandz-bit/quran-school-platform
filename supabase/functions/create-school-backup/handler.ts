@@ -114,7 +114,8 @@ function createClients(token: string) {
 async function authorize(
   userClient: SupabaseClient,
   token: string,
-  schoolId: string
+  schoolId: string,
+  permissionCode: "backup.create" | "backup.restore_request"
 ) {
   const { data: userData, error: userError } = await userClient.auth.getUser(token);
   if (userError || !userData.user) {
@@ -123,7 +124,7 @@ async function authorize(
 
   const { data: allowed, error } = await userClient.rpc("has_school_permission", {
     target_school_id: schoolId,
-    target_permission_code: "backup.create",
+    target_permission_code: permissionCode,
   });
   if (error || allowed !== true) {
     throw new Error("backup_denied");
@@ -186,8 +187,18 @@ export async function handleCreateSchoolBackup(
       return json(400, { error: "invalid_school" });
     }
 
+    const backupKind = String(payload.backupKind ?? "manual");
+    if (backupKind !== "manual" && backupKind !== "pre_restore") {
+      return json(400, { error: "invalid_backup_kind" });
+    }
+
     const { userClient, adminClient } = createClients(token);
-    const actorId = await authorize(userClient, token, schoolId);
+    const actorId = await authorize(
+      userClient,
+      token,
+      schoolId,
+      backupKind === "pre_restore" ? "backup.restore_request" : "backup.create"
+    );
 
     const { data: school, error: schoolError } = await adminClient
       .from("schools")
@@ -204,9 +215,9 @@ export async function handleCreateSchoolBackup(
       .from("school_backup_snapshots")
       .insert({
         school_id: schoolId,
-        backup_kind: "manual",
+        backup_kind: backupKind,
         status: "generating",
-        storage_backend: "temporary_download",
+        storage_backend: "supabase_storage",
         created_by: actorId,
       })
       .select("id")
@@ -220,7 +231,7 @@ export async function handleCreateSchoolBackup(
       snapshot_id: snapshot.id,
       actor_profile_id: actorId,
       event_type: "generation_started",
-      details: { mode: "manual_download" },
+      details: { mode: backupKind === "pre_restore" ? "pre_restore_snapshot" : "manual_download" },
     });
 
     try {
@@ -333,7 +344,7 @@ export async function handleCreateSchoolBackup(
         .from("school_backup_snapshots")
         .update({
           status: "ready",
-          storage_backend: "external_object_storage",
+          storage_backend: "supabase_storage",
           storage_key: storageKey,
           checksum_sha256: checksum,
           byte_size: byteSize,
@@ -357,7 +368,7 @@ export async function handleCreateSchoolBackup(
           checksum_sha256: checksum,
           byte_size: byteSize,
           documents_included: false,
-          storage_backend: "external_object_storage",
+          storage_backend: "supabase_storage",
         },
       });
 
