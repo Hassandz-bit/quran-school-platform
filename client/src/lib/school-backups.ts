@@ -48,15 +48,21 @@ export async function createAndDownloadSchoolBackup(input: {
 
   if (error || !data) throw error ?? new Error("backup_empty_response");
 
-  const text = typeof data === "string" ? data : JSON.stringify(data, null, 2);
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+  const result = data as {
+    downloadUrl?: string;
+    fileName?: string;
+    snapshotId?: string;
+  };
+
+  if (!result.downloadUrl) {
+    throw new Error("backup_download_url_missing");
+  }
+
   const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = makeBackupFileName(input.schoolSlug);
+  anchor.href = result.downloadUrl;
+  anchor.download = result.fileName || makeBackupFileName(input.schoolSlug);
   anchor.rel = "noopener";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
 }
