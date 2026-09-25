@@ -1,6 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.110.7";
 import { validateSchoolBackupPackage } from "../validate-school-backup/logic.ts";
-import { SCHOOL_BACKUP_TABLES } from "../create-school-backup/package.ts";
 
 const CORS = {
   "content-type": "application/json; charset=utf-8",
@@ -92,7 +91,8 @@ export async function handlePrepareSchoolRestore(request: Request) {
     const currentCounts: Record<string, number> = {};
     const countDifferences: Record<string, { backup: number; current: number }> = {};
     const packageTables = (pkg as Record<string, unknown>).tables as Record<string, unknown[]>;
-    for (const table of SCHOOL_BACKUP_TABLES) {
+    const backupTables = Object.keys(packageTables);
+    for (const table of backupTables) {
       const { count, error: countError } = await admin
         .from(table)
         .select("*", { count: "exact", head: true })
