@@ -255,10 +255,10 @@ test("expired backup cleanup is secret-gated and removes private objects before 
 
 test("backup audit contract includes restore-start lifecycle state", () => {
   const migrationSource = read("supabase/066_school_backup_recovery_foundation.sql");
-  assert.match(restoreLedger, /'restore_started'/);
+  const restoreLedger = read("supabase/068_school_backup_restore_request_ledger.sql");
+  assert.match(migrationSource, /'restore_started'/);
   assert.match(restoreLedger, /school_backup_restore_requests_active_unique_idx/);
   assert.match(migrationSource, /'restore_requested'/);
-  const restoreLedger = read("supabase/068_school_backup_restore_request_ledger.sql");
   assert.match(restoreLedger, /school_backup_restore_requests/);
   assert.match(restoreLedger, /enable row level security/i);
   assert.match(restoreLedger, /backup\.view/);
