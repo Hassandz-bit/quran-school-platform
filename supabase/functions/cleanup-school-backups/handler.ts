@@ -38,8 +38,11 @@ export async function handleCleanupSchoolBackups(request: Request) {
 
   let deleted = 0;
   for (const snapshot of expired ?? []) {
+    let storageDeleted = !snapshot.storage_key;
     if (snapshot.storage_key) {
-      await admin.storage.from("school-backups").remove([snapshot.storage_key]);
+      const { error: storageError } = await admin.storage.from("school-backups").remove([snapshot.storage_key]);
+      if (storageError) continue;
+      storageDeleted = true;
     }
 
     const { error: updateError } = await admin
@@ -54,7 +57,7 @@ export async function handleCleanupSchoolBackups(request: Request) {
         school_id: snapshot.school_id,
         snapshot_id: snapshot.id,
         event_type: "expired",
-        details: { expired_at: now, storage_deleted: Boolean(snapshot.storage_key) },
+        details: { expired_at: now, storage_deleted: storageDeleted },
       });
       deleted++;
     }
