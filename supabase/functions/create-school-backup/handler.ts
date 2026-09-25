@@ -188,7 +188,7 @@ export async function handleCreateSchoolBackup(
     }
 
     const backupKind = String(payload.backupKind ?? "manual");
-    if (backupKind !== "manual" && backupKind !== "pre_restore") {
+    if (backupKind !== "manual" && backupKind !== "pre_restore" && backupKind !== "scheduled") {
       return json(400, { error: "invalid_backup_kind" });
     }
 
