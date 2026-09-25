@@ -1,133 +1,149 @@
 import { createClient } from "npm:@supabase/supabase-js@2.110.7";
+import { validateSchoolBackupPackage } from "../validate-school-backup/logic.ts";
 
-const headers = {
+const CORS = {
   "content-type": "application/json; charset=utf-8",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
 const json = (status: number, body: Record<string, unknown>) =>
-  new Response(JSON.stringify(body), { status, headers });
+  new Response(JSON.stringify(body), { status, headers: CORS });
 
-function bearer(request: Request) {
-  const value = request.headers.get("authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match?.[1]) throw new Error("unauthorized");
-  return match[1];
+function tokenOf(req: Request) {
+  const m = (req.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i);
+  if (!m?.[1]) throw new Error("unauthorized");
+  return m[1];
+}
+
+function clients(token: string) {
+  const url = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const anon = Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "";
+  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() || Deno.env.get("SUPABASE_SECRET_KEY")?.trim() || "";
+  if (!url || !anon || !service) throw new Error("server_config");
+  return {
+    url,
+    user: createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false, autoRefreshToken: false } }),
+    admin: createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } }),
+  };
+}
+
+async function checksum(data: Uint8Array) {
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2, "0")).join("");
 }
 
 export async function handlePrepareSchoolRestore(request: Request) {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
 
   try {
-    const token = bearer(request);
+    const token = tokenOf(request);
     const body = (await request.json()) as Record<string, unknown>;
     const schoolId = String(body.schoolId ?? "");
     const snapshotId = String(body.snapshotId ?? "");
+    const { url, user, admin } = clients(token);
 
-    const url = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
-    const anon = Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "";
-    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
-    if (!url || !anon || !service) return json(500, { error: "server_config" });
+    const { data: authUser, error: authError } = await user.auth.getUser(token);
+    if (authError || !authUser.user) throw new Error("unauthorized");
 
-    const userClient = createClient(url, anon, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false, autoRefreshToken: false },
+    const { data: allowed, error: permissionError } = await user.rpc("has_school_permission", {
+      target_school_id: schoolId,
+      target_permission_code: "backup.restore_request",
     });
-    const admin = createClient(url, service, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    const { data: user, error: userError } = await userClient.auth.getUser(token);
-    if (userError || !user.user) throw new Error("unauthorized");
-
-    const { data: allowed, error: permissionError } = await userClient.rpc(
-      "has_school_permission",
-      {
-        target_school_id: schoolId,
-        target_permission_code: "backup.restore_request",
-      }
-    );
     if (permissionError || allowed !== true) return json(403, { error: "restore_request_denied" });
 
     const { data: snapshot, error: snapshotError } = await admin
       .from("school_backup_snapshots")
-      .select("id,school_id,status,storage_key,checksum_sha256,byte_size,format_version,includes_documents")
-      .eq("id", snapshotId)
-      .eq("school_id", schoolId)
-      .single();
-
+      .select("id,school_id,status,storage_key,checksum_sha256,byte_size")
+      .eq("id", snapshotId).eq("school_id", schoolId).single();
     if (snapshotError || !snapshot) return json(404, { error: "snapshot_not_found" });
-    if (snapshot.status !== "ready") return json(409, { error: "snapshot_not_ready" });
-    if (!snapshot.storage_key) return json(409, { error: "snapshot_storage_missing" });
-
-    const { data: source, error: downloadError } = await admin.storage
-      .from("school-backups")
-      .download(snapshot.storage_key);
-    if (downloadError || !source) return json(409, { error: "snapshot_download_failed" });
-
-    const preRestoreKey = `${schoolId}/pre-restore-${crypto.randomUUID()}.json`;
-    const { error: uploadError } = await admin.storage
-      .from("school-backups")
-      .upload(preRestoreKey, source, {
-        contentType: "application/json",
-        upsert: false,
-      });
-    if (uploadError) return json(500, { error: "pre_restore_snapshot_failed" });
-
-    const { data: preRestore, error: insertError } = await admin
-      .from("school_backup_snapshots")
-      .insert({
-        school_id: schoolId,
-        backup_kind: "pre_restore",
-        status: "ready",
-        format_version: snapshot.format_version,
-        storage_backend: "external_object_storage",
-        storage_key: preRestoreKey,
-        checksum_sha256: snapshot.checksum_sha256,
-        byte_size: snapshot.byte_size,
-        includes_documents: snapshot.includes_documents,
-        created_by: user.user.id,
-        completed_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      })
-      .select("id")
-      .single();
-
-    if (insertError || !preRestore) {
-      await admin.storage.from("school-backups").remove([preRestoreKey]);
-      return json(500, { error: "pre_restore_metadata_failed" });
+    if (snapshot.status !== "ready" || !snapshot.storage_key || !snapshot.checksum_sha256) {
+      return json(409, { error: "snapshot_not_ready" });
     }
 
-    await admin.from("school_backup_events").insert([
-      {
+    const { data: source, error: downloadError } = await admin.storage.from("school-backups").download(snapshot.storage_key);
+    if (downloadError || !source) return json(409, { error: "snapshot_download_failed" });
+    const bytes = new Uint8Array(await source.arrayBuffer());
+    const actualChecksum = await checksum(bytes);
+    if (actualChecksum !== snapshot.checksum_sha256) {
+      await admin.from("school_backup_events").insert({
+        school_id: schoolId, snapshot_id: snapshotId, actor_profile_id: authUser.user.id,
+        event_type: "verification_failed",
+        details: { reason: "checksum_mismatch", expected: snapshot.checksum_sha256, actual: actualChecksum },
+      });
+      return json(409, { error: "backup_checksum_mismatch", destructiveRestore: false });
+    }
+
+    let pkg: unknown;
+    try { pkg = JSON.parse(new TextDecoder().decode(bytes)); }
+    catch { return json(422, { error: "backup_json_invalid", destructiveRestore: false }); }
+
+    const validation = validateSchoolBackupPackage(pkg, schoolId);
+    if (!validation.valid) {
+      await admin.from("school_backup_events").insert({
+        school_id: schoolId, snapshot_id: snapshotId, actor_profile_id: authUser.user.id,
+        event_type: "verification_failed", details: { reason: "package_validation_failed", errors: validation.errors },
+      });
+      return json(422, { error: "backup_package_invalid", validation, destructiveRestore: false });
+    }
+
+    const preRestoreResponse = await fetch(`${url}/functions/v1/create-school-backup`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ schoolId, backupKind: "pre_restore" }),
+    });
+    const preRestore = await preRestoreResponse.json().catch(() => ({}));
+    if (!preRestoreResponse.ok || typeof preRestore.snapshotId !== "string") {
+      throw new Error("pre_restore_backup_failed");
+    }
+
+    const { data: requestRow, error: requestError } = await admin
+      .from("school_backup_restore_requests")
+      .insert({
         school_id: schoolId,
         snapshot_id: snapshotId,
-        actor_profile_id: user.user.id,
+        requested_by: authUser.user.id,
+        status: "dry_run_ready",
+        pre_restore_snapshot_id: preRestore.snapshotId,
+        validation_report: validation,
+        conflict_report: {
+          sourceChecksum: snapshot.checksum_sha256,
+          sourceByteSize: snapshot.byte_size,
+          countDifferences: {},
+          destructiveRestore: false,
+        },
+      })
+      .select("id,status,pre_restore_snapshot_id")
+      .single();
+    if (requestError || !requestRow) throw new Error("restore_request_create_failed");
+
+    await admin.from("school_backup_events").insert([
+      { school_id: schoolId, snapshot_id: snapshotId, actor_profile_id: authUser.user.id,
         event_type: "restore_requested",
-        details: { pre_restore_snapshot_id: preRestore.id, destructive_restore: false },
-      },
-      {
-        school_id: schoolId,
-        snapshot_id: preRestore.id,
-        actor_profile_id: user.user.id,
-        event_type: "restore_started",
-        details: { stage: "pre_restore_snapshot_only", source_snapshot_id: snapshotId },
-      },
+        details: { request_id: requestRow.id, pre_restore_snapshot_id: preRestore.snapshotId } },
+      { school_id: schoolId, snapshot_id: snapshotId, actor_profile_id: authUser.user.id,
+        event_type: "restore_dry_run",
+        details: { request_id: requestRow.id, destructive_restore: false, validation_errors: validation.errors } },
     ]);
 
     return json(200, {
-      prepared: true,
+      requestId: requestRow.id,
+      status: requestRow.status,
+      preRestoreSnapshotId: preRestore.snapshotId,
+      validation,
+      conflicts: { countDifferences: {}, destructiveRestore: false },
       destructiveRestore: false,
-      sourceSnapshotId: snapshotId,
-      preRestoreSnapshotId: preRestore.id,
-      message: "Pre-restore safety snapshot created. No school data was modified.",
+      noSchoolDataModified: true,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "restore_prepare_failed";
     if (message === "unauthorized") return json(401, { error: "unauthorized" });
+    console.error("prepare school restore failed", message);
     return json(500, { error: "restore_prepare_failed" });
   }
 }
