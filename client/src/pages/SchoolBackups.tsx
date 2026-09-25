@@ -36,7 +36,8 @@ export default function SchoolBackups() {
   const { direction, t } = useLocale();
   const [items, setItems] = useState<SchoolBackupSnapshot[]>([]);
   const [busy, setBusy] = useState(false);
-  const [checking, setChecking] = useState(false);\n  const [preparingRestoreId, setPreparingRestoreId] = useState<string | null>(null);\n  const [restorePreparation, setRestorePreparation] = useState<Awaited<ReturnType<typeof prepareSchoolBackupRestore>> | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [preparingRestoreId, setPreparingRestoreId] = useState<string | null>(null);\n  const [restorePreparation, setRestorePreparation] = useState<Awaited<ReturnType<typeof prepareSchoolBackupRestore>> | null>(null);
   const [checkedFileName, setCheckedFileName] = useState("");
   const [dryRun, setDryRun] = useState<BackupDryRunResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
