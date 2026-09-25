@@ -257,3 +257,14 @@ test("backup audit contract includes restore-start lifecycle state", () => {
   const migrationSource = read("supabase/066_school_backup_recovery_foundation.sql");
   assert.match(migrationSource, /'restore_started'/);
 });
+
+
+test("pre-restore gate requires explicit restore permission and never performs destructive writes", () => {
+  const source = read("supabase/functions/prepare-school-restore/handler.ts");
+  assert.match(source, /backup\.restore_request/);
+  assert.match(source, /backup_restore|pre-restore/i);
+  assert.match(source, /backup_kind: "pre_restore"/);
+  assert.match(source, /destructiveRestore: false/);
+  assert.match(source, /No school data was modified/);
+  assert.doesNotMatch(source, /\.from\([^)]*\)\.(?:update|upsert|delete)\(/);
+});
