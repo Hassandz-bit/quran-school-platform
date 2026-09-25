@@ -307,20 +307,40 @@ export async function handleCreateSchoolBackup(
         0,
         10
       )}-${snapshot.id.slice(0, 8)}.json`;
-      const storageKey = `direct-download://${fileName}`;
+      const storageKey = `${schoolId}/${snapshot.id}.json`;
+      const { error: uploadError } = await adminClient.storage
+        .from("school-backups")
+        .upload(storageKey, serialized, {
+          contentType: "application/json",
+          upsert: false,
+        });
+      if (uploadError) {
+        throw new Error("backup_storage_upload_failed");
+      }
+
+      const { data: signedUrlData, error: signedUrlError } =
+        await adminClient.storage
+          .from("school-backups")
+          .createSignedUrl(storageKey, 300);
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        await adminClient.storage.from("school-backups").remove([storageKey]);
+        throw new Error("backup_signed_url_failed");
+      }
+
+      const downloadExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const { error: readyError } = await adminClient
         .from("school_backup_snapshots")
         .update({
           status: "ready",
-          storage_backend: "temporary_download",
+          storage_backend: "external_object_storage",
           storage_key: storageKey,
           checksum_sha256: checksum,
           byte_size: byteSize,
           record_counts: counts,
           includes_documents: false,
           completed_at: createdAt,
-          expires_at: createdAt,
+          expires_at: downloadExpiresAt,
         })
         .eq("id", snapshot.id)
         .eq("school_id", schoolId);
@@ -337,20 +357,24 @@ export async function handleCreateSchoolBackup(
           checksum_sha256: checksum,
           byte_size: byteSize,
           documents_included: false,
-          storage_backend: "temporary_download",
+          storage_backend: "external_object_storage",
         },
       });
 
-      return new Response(serialized, {
-        status: 200,
-        headers: {
-          ...CORS_HEADERS,
-          "content-type": "application/json; charset=utf-8",
-          "content-disposition": `attachment; filename="${fileName}"`,
-          "x-quranos-backup-sha256": checksum,
-          "x-quranos-backup-snapshot": snapshot.id,
-        },
-      });
+      return new Response(
+        JSON.stringify({
+          snapshotId: snapshot.id,
+          checksumSha256: checksum,
+          byteSize,
+          fileName,
+          downloadUrl: signedUrlData.signedUrl,
+          expiresAt: downloadExpiresAt,
+        }),
+        {
+          status: 200,
+          headers: JSON_HEADERS,
+        }
+      );
     } catch (generationError) {
       const code =
         generationError instanceof Error
