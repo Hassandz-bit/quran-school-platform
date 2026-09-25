@@ -96,6 +96,15 @@ test("migration grants backup permissions only through school roles and protects
   assert.match(migrationSource, /public\.has_school_permission\(school_id, 'backup\.view'\)/);
 });
 
+test("private backup storage is configured as non-public JSON-only storage", () => {
+  const storageMigration = read("supabase/067_school_backup_private_storage.sql");
+  assert.match(storageMigration, /'school-backups',\s*'school-backups'/);
+  assert.match(storageMigration, /public = false/i);
+  assert.match(storageMigration, /application\/json/);
+  assert.match(storageMigration, /52428800/);
+  assert.match(storageMigration, /<school_id>\/\<snapshot_id>\.json/);
+});
+
 test("backup Edge server gets explicit least-privilege Data API access", () => {
   assert.match(migrationSource, /grant usage on schema public to service_role;/i);
   assert.match(
@@ -119,8 +128,11 @@ test("backup Edge server gets explicit least-privilege Data API access", () => {
 test("export handler isolates every operational table by school_id and excludes credential stores", () => {
   assert.match(handlerSource, /\.eq\("school_id", schoolId\)/);
   assert.match(handlerSource, /snapshotId: snapshot\.id/);
-  assert.match(handlerSource, /storage_backend: "temporary_download"/);
-  assert.doesNotMatch(handlerSource, /persistBackupOffsite|R2_|external_object_storage/);
+  assert.match(handlerSource, /storage_backend: "external_object_storage"/);
+  assert.match(handlerSource, /\.from\("school-backups"\)/);
+  assert.match(handlerSource, /\.upload\(storageKey, serialized/);
+  assert.match(handlerSource, /\.createSignedUrl\(storageKey, 300\)/);
+  assert.doesNotMatch(handlerSource, /persistBackupOffsite|R2_/);
   for (const forbiddenExport of [
     "auth.users",
     "passwords_and_auth_tokens",
