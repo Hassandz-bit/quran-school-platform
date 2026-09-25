@@ -255,7 +255,9 @@ test("expired backup cleanup is secret-gated and removes private objects before 
 
 test("backup audit contract includes restore-start lifecycle state", () => {
   const migrationSource = read("supabase/066_school_backup_recovery_foundation.sql");
-  assert.match(migrationSource, /'restore_started'/);
+  const restoreRaceMigration = read("supabase/069_school_backup_restore_race_safety.sql");
+  assert.match(restoreRaceMigration, /'restore_started'/);
+  assert.match(restoreRaceMigration, /school_backup_restore_requests_active_unique_idx/);
   assert.match(migrationSource, /'restore_requested'/);
   const restoreLedger = read("supabase/068_school_backup_restore_request_ledger.sql");
   assert.match(restoreLedger, /school_backup_restore_requests/);
@@ -272,6 +274,26 @@ test("pre-restore gate requires explicit restore permission and never performs d
   assert.match(source, /pre-restore|pre_restore/i);
   assert.match(source, /backupKind: "pre_restore"/);
   assert.match(source, /destructiveRestore: false/);
-  assert.match(source, /No school data was modified/);
+  assert.match(source, /noSchoolDataModified: true/);
+  assert.match(source, /MAX_BACKUP_BYTES/);
+  assert.match(source, /storage_backend !== "supabase_storage"/);
+  assert.match(source, /idempotent: true/);
   assert.doesNotMatch(source, /\.from\([^)]*\)\.(?:update|upsert|delete)\(/);
+});
+
+
+test("scheduled backup path is secret-gated and includes retention cleanup", () => {
+  const scheduledSource = read("supabase/functions/run-scheduled-school-backups/handler.ts");
+  const configSource = read("supabase/config.toml");
+  const createSource = read("supabase/functions/create-school-backup/handler.ts");
+  assert.match(scheduledSource, /x-backup-scheduler-secret/);
+  assert.match(scheduledSource, /BACKUP_SCHEDULER_SECRET/);
+  assert.match(scheduledSource, /backupKind: "scheduled"/);
+  assert.match(scheduledSource, /school_backup_snapshots/);
+  assert.match(scheduledSource, /school-backups/);
+  assert.match(scheduledSource, /status.*expired/);
+  assert.match(configSource, /\[functions\.run-scheduled-school-backups\]/);
+  assert.match(configSource, /verify_jwt = false/);
+  assert.match(createSource, /backupKind !== "scheduled"/);
+  assert.match(createSource, /backup_scheduler_denied/);
 });
