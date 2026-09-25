@@ -108,7 +108,7 @@ export async function handlePrepareSchoolRestore(request: Request) {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        apikey: Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "",
+        apikey: Deno.env.get("SUPABASE_ANON_KEY")?.trim() || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")?.trim() || "",
         "content-type": "application/json",
       },
       body: JSON.stringify({ schoolId, backupKind: "pre_restore" }),
