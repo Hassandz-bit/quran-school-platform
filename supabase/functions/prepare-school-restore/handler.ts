@@ -88,7 +88,6 @@ export async function handlePrepareSchoolRestore(request: Request) {
       });
       return json(422, { error: "backup_package_invalid", validation, destructiveRestore: false });
     }
-    }
 
     const currentCounts: Record<string, number> = {};
     const countDifferences: Record<string, { backup: number; current: number }> = {};
