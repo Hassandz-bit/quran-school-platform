@@ -2,7 +2,7 @@
 
 ## Current safe scope
 
-The current feature provides a school-admin manual JSON backup and a read-only pre-restore Dry-Run. Destructive restore, scheduled backups, external object storage, and embedded document binaries are intentionally not enabled in this release.
+The current feature provides a school-admin manual JSON backup, a read-only pre-restore Dry-Run, private Supabase Storage retention, and a secured scheduled-backup maintenance path. Destructive restore, external object storage, and embedded document binaries are intentionally not enabled in this release.
 
 ## Backup contract
 
