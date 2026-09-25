@@ -128,7 +128,7 @@ test("backup Edge server gets explicit least-privilege Data API access", () => {
 test("export handler isolates every operational table by school_id and excludes credential stores", () => {
   assert.match(handlerSource, /\.eq\("school_id", schoolId\)/);
   assert.match(handlerSource, /snapshotId: snapshot\.id/);
-  assert.match(handlerSource, /storage_backend: "external_object_storage"/);
+  assert.match(handlerSource, /storage_backend: "supabase_storage"/);
   assert.match(handlerSource, /\.from\("school-backups"\)/);
   assert.match(handlerSource, /\.upload\(storageKey, serialized/);
   assert.match(handlerSource, /\.createSignedUrl\(storageKey, 300\)/);
@@ -256,14 +256,21 @@ test("expired backup cleanup is secret-gated and removes private objects before 
 test("backup audit contract includes restore-start lifecycle state", () => {
   const migrationSource = read("supabase/066_school_backup_recovery_foundation.sql");
   assert.match(migrationSource, /'restore_started'/);
+  assert.match(migrationSource, /'restore_requested'/);
+  const restoreLedger = read("supabase/068_school_backup_restore_request_ledger.sql");
+  assert.match(restoreLedger, /school_backup_restore_requests/);
+  assert.match(restoreLedger, /enable row level security/i);
+  assert.match(restoreLedger, /backup\.view/);
+  assert.match(restoreLedger, /status in \('dry_run_ready', 'approved', 'running', 'completed', 'failed', 'cancelled'\)/);
 });
 
 
 test("pre-restore gate requires explicit restore permission and never performs destructive writes", () => {
   const source = read("supabase/functions/prepare-school-restore/handler.ts");
   assert.match(source, /backup\.restore_request/);
-  assert.match(source, /backup_restore|pre-restore/i);
-  assert.match(source, /backup_kind: "pre_restore"/);
+  assert.match(source, /backup\.restore_request/);
+  assert.match(source, /pre-restore|pre_restore/i);
+  assert.match(source, /backupKind: "pre_restore"/);
   assert.match(source, /destructiveRestore: false/);
   assert.match(source, /No school data was modified/);
   assert.doesNotMatch(source, /\.from\([^)]*\)\.(?:update|upsert|delete)\(/);
