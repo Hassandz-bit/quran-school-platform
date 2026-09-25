@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.110.7";
 import { validateSchoolBackupPackage } from "../validate-school-backup/logic.ts";
+import { SCHOOL_BACKUP_TABLES } from "../create-school-backup/package.ts";
 
 const CORS = {
   "content-type": "application/json; charset=utf-8",
@@ -87,6 +88,22 @@ export async function handlePrepareSchoolRestore(request: Request) {
       });
       return json(422, { error: "backup_package_invalid", validation, destructiveRestore: false });
     }
+    }
+
+    const currentCounts: Record<string, number> = {};
+    const countDifferences: Record<string, { backup: number; current: number }> = {};
+    const packageTables = (pkg as Record<string, unknown>).tables as Record<string, unknown[]>;
+    for (const table of SCHOOL_BACKUP_TABLES) {
+      const { count, error: countError } = await admin
+        .from(table)
+        .select("*", { count: "exact", head: true })
+        .eq("school_id", schoolId);
+      if (countError) throw new Error(`restore_count_failed:${table}`);
+      const current = count ?? 0;
+      const backup = Array.isArray(packageTables[table]) ? packageTables[table].length : 0;
+      currentCounts[table] = current;
+      if (backup !== current) countDifferences[table] = { backup, current };
+    }
 
     const preRestoreResponse = await fetch(`${url}/functions/v1/create-school-backup`, {
       method: "POST",
@@ -114,7 +131,8 @@ export async function handlePrepareSchoolRestore(request: Request) {
         conflict_report: {
           sourceChecksum: snapshot.checksum_sha256,
           sourceByteSize: snapshot.byte_size,
-          countDifferences: {},
+          countDifferences,
+          currentCounts,
           destructiveRestore: false,
         },
       })
@@ -136,7 +154,7 @@ export async function handlePrepareSchoolRestore(request: Request) {
       status: requestRow.status,
       preRestoreSnapshotId: preRestore.snapshotId,
       validation,
-      conflicts: { countDifferences: {}, destructiveRestore: false },
+      conflicts: { countDifferences, currentCounts, destructiveRestore: false },
       destructiveRestore: false,
       noSchoolDataModified: true,
     });
