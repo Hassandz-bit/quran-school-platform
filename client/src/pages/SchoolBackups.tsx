@@ -18,6 +18,7 @@ import {
 import {
   createAndDownloadSchoolBackup,
   listSchoolBackups,
+  prepareSchoolBackupRestore,
   type SchoolBackupSnapshot,
 } from "@/lib/school-backups";
 
