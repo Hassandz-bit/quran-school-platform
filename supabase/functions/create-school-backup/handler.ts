@@ -180,7 +180,10 @@ export async function handleCreateSchoolBackup(
   }
 
   try {
-    const token = bearerToken(request);
+    const schedulerSecret = request.headers.get("x-backup-scheduler-secret")?.trim() ?? "";
+    const configuredSchedulerSecret = Deno.env.get("BACKUP_SCHEDULER_SECRET")?.trim() ?? "";
+    const isScheduled = schedulerSecret.length > 0 && configuredSchedulerSecret.length > 0 && schedulerSecret === configuredSchedulerSecret;
+    const token = isScheduled ? "" : bearerToken(request);
     const payload = (await request.json()) as Record<string, unknown>;
     const schoolId = String(payload.schoolId ?? "");
     if (!UUID_RE.test(schoolId)) {
@@ -193,12 +196,17 @@ export async function handleCreateSchoolBackup(
     }
 
     const { userClient, adminClient } = createClients(token);
-    const actorId = await authorize(
-      userClient,
-      token,
-      schoolId,
-      backupKind === "pre_restore" ? "backup.restore_request" : "backup.create"
-    );
+    let actorId: string | null = null;
+    if (backupKind === "scheduled") {
+      if (!isScheduled) return json(403, { error: "backup_scheduler_denied" });
+    } else {
+      actorId = await authorize(
+        userClient,
+        token,
+        schoolId,
+        backupKind === "pre_restore" ? "backup.restore_request" : "backup.create"
+      );
+    }
 
     const { data: school, error: schoolError } = await adminClient
       .from("schools")
@@ -231,7 +239,7 @@ export async function handleCreateSchoolBackup(
       snapshot_id: snapshot.id,
       actor_profile_id: actorId,
       event_type: "generation_started",
-      details: { mode: backupKind === "pre_restore" ? "pre_restore_snapshot" : "manual_download" },
+      details: { mode: backupKind === "pre_restore" ? "pre_restore_snapshot" : backupKind === "scheduled" ? "scheduled_cloud_copy" : "manual_download" },
     });
 
     try {
