@@ -61,6 +61,8 @@ create table public.school_backup_snapshots (
     check (checksum_sha256 is null or checksum_sha256 ~ '^[0-9a-f]{64}$'),
   constraint school_backup_snapshots_byte_size_check
     check (byte_size is null or byte_size >= 0),
+  constraint school_backup_snapshots_retention_check
+    check (expires_at is null or expires_at > created_at),
   constraint school_backup_snapshots_ready_metadata_check
     check (
       status <> 'ready'
