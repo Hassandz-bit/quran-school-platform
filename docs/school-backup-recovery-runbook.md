@@ -18,6 +18,12 @@ The pre-restore check is read-only. It validates format/version, snapshot id, sc
 
 Format v1 includes document database metadata and object paths but not document binary contents. Full document disaster recovery remains a later stage.
 
+## Restore preparation gate
+
+The non-destructive preparation endpoint is now implemented at `prepare-school-restore`. It requires `backup.restore_request`, verifies that the requested snapshot belongs to the caller's school, downloads the private object, recalculates SHA-256, validates the portable package against the school tenant, and compares row counts with the current school state. It then creates a fresh `pre_restore` backup through the same authorized generator and records a restore request plus audit events. It does **not** modify operational school data.
+
+The preparation result is a dry-run only. Count differences are reported as conflicts; they do not authorize or execute a restore.
+
 ## Restore gate
 
 Do not enable destructive restore on Production until a candidate passes tenant and checksum validation, a pre-restore backup is created, restoration is rehearsed on the isolated test project, academic/financial invariants and row counts are verified, cross-tenant negative tests pass, document recovery is verified separately, and authentication identities remain untouched.
