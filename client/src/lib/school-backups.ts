@@ -66,3 +66,29 @@ export async function createAndDownloadSchoolBackup(input: {
   anchor.click();
   anchor.remove();
 }
+
+
+export async function prepareSchoolBackupRestore(input: {
+  schoolId: string;
+  snapshotId: string;
+}) {
+  const { data, error } = await getSupabaseClient().functions.invoke(
+    "prepare-school-restore",
+    { body: input }
+  );
+  if (error || !data) throw error ?? new Error("prepare_empty_response");
+  return data as {
+    requestId: string;
+    status: string;
+    preRestoreSnapshotId: string | null;
+    validation: { valid: boolean; errors: string[]; warnings: string[] };
+    conflicts: {
+      countDifferences?: Record<string, { backup: number; current: number }>;
+      currentCounts?: Record<string, number>;
+      destructiveRestore: false;
+    };
+    destructiveRestore: false;
+    noSchoolDataModified: true;
+    idempotent?: boolean;
+  };
+}
