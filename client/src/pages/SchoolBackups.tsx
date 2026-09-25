@@ -36,7 +36,7 @@ export default function SchoolBackups() {
   const { direction, t } = useLocale();
   const [items, setItems] = useState<SchoolBackupSnapshot[]>([]);
   const [busy, setBusy] = useState(false);
-  const [checking, setChecking] = useState(false);
+  const [checking, setChecking] = useState(false);\n  const [preparingRestoreId, setPreparingRestoreId] = useState<string | null>(null);\n  const [restorePreparation, setRestorePreparation] = useState<Awaited<ReturnType<typeof prepareSchoolBackupRestore>> | null>(null);
   const [checkedFileName, setCheckedFileName] = useState("");
   const [dryRun, setDryRun] = useState<BackupDryRunResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,6 +97,25 @@ export default function SchoolBackups() {
   };
 
   const integrityText = dryRun ? integrityLabel(dryRun.integrity, t) : null;
+
+  const prepareRestore = async (snapshotId: string) => {
+    if (!school?.id || preparingRestoreId) return;
+    setPreparingRestoreId(snapshotId);
+    setRestorePreparation(null);
+    try {
+      const result = await prepareSchoolBackupRestore({
+        schoolId: school.id,
+        snapshotId,
+      });
+      setRestorePreparation(result);
+      toast.success(t("backup.restorePrepared"));
+    } catch {
+      toast.error(t("backup.restorePrepareError"));
+    } finally {
+      setPreparingRestoreId(null);
+    }
+  };
+
 
   return (
     <main className="min-h-full bg-[#F7F8F3] p-4 sm:p-6" dir={direction}>
@@ -256,6 +275,24 @@ export default function SchoolBackups() {
                       {item.checksum_sha256}
                     </p>
                   )}
+                  {item.status === "ready" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-3 gap-2 border-[#0B4738] text-[#0B4738]"
+                      disabled={preparingRestoreId !== null}
+                      onClick={() => void prepareRestore(item.id)}
+                    >
+                      {preparingRestoreId === item.id ? (
+                        <RefreshCw size={16} className="animate-spin" />
+                      ) : (
+                        <ShieldAlert size={16} />
+                      )}
+                      {preparingRestoreId === item.id
+                        ? t("backup.preparingRestore")
+                        : t("backup.prepareRestore")}
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -263,6 +300,23 @@ export default function SchoolBackups() {
         </section>
 
         <p className="text-sm text-[#697971]">{t("backup.cloudPending")}</p>
+        {restorePreparation && (
+          <section className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-6 shadow-sm">
+            <h2 className="font-bold text-[#173B2D]">{t("backup.restorePrepared")}</h2>
+            <p className="mt-2 text-sm text-[#3F5E4E]">{t("backup.noChanges")}</p>
+            {restorePreparation.preRestoreSnapshotId && (
+              <p className="mt-3 text-xs text-[#5B6D64]" dir="ltr">
+                {t("backup.preRestoreSnapshot")}: {restorePreparation.preRestoreSnapshotId}
+              </p>
+            )}
+            {Object.keys(restorePreparation.conflicts.countDifferences ?? {}).length > 0 && (
+              <p className="mt-3 text-sm font-semibold text-[#7A4B00]">
+                {t("backup.conflicts")}: {Object.keys(restorePreparation.conflicts.countDifferences ?? {}).length}
+              </p>
+            )}
+          </section>
+        )}
+
         <p className="text-sm text-[#697971]">{t("backup.restoreLocked")}</p>
       </div>
     </main>
