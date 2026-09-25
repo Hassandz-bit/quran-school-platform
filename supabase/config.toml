@@ -21,3 +21,5 @@ verify_jwt = false
 # Restore preparation validates the caller and permission inside the handler.
 [functions.prepare-school-restore]
 verify_jwt = false
+
+# Scheduled backups and retention are triggered by Supabase Cron with a server-only secret.\n[functions.run-scheduled-school-backups]\nverify_jwt = false\n
