@@ -18,6 +18,12 @@ export default function ResetPassword() {
     clearPasswordRecovery,
   } = useAuth();
 
+  const hasRecoveryUrl =
+    typeof window !== "undefined" &&
+    (new URLSearchParams(window.location.search).has("code") ||
+      new URLSearchParams(window.location.hash.replace(/^#/, "")).get("type") ===
+        "recovery");
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage("");
@@ -68,7 +74,7 @@ export default function ResetPassword() {
     );
   }
 
-  if (!session || !isPasswordRecovery) {
+  if (!session || (!isPasswordRecovery && !hasRecoveryUrl)) {
     return (
       <div
         className="min-h-screen flex items-center justify-center bg-[#0B4738] p-4"
