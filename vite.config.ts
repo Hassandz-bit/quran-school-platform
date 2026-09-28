@@ -13,29 +13,12 @@ function resolveAppVersion(): string {
   return normalized === "unknown" ? normalized : normalized.slice(0, 7);
 }
 
-const V2_PREVIEW_SUPABASE_URL =
-  "https://szwouadewolnctwfjwat.supabase.co";
-// Supabase publishable keys are intentionally safe to embed in browser builds.
-const V2_PREVIEW_SUPABASE_PUBLISHABLE_KEY =
-  "sb_publishable_YVj0Ud3Sy6JYE8XumCLonA_1vCLDUrF";
-
 export default defineConfig(() => {
   const appVersion = resolveAppVersion();
-  const isVercelPreview = process.env.VERCEL_ENV === "preview";
 
   return {
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
-      ...(isVercelPreview
-        ? {
-            "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
-              V2_PREVIEW_SUPABASE_URL
-            ),
-            "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
-              V2_PREVIEW_SUPABASE_PUBLISHABLE_KEY
-            ),
-          }
-        : {}),
     },
     plugins: [
       react(),
@@ -58,7 +41,7 @@ export default defineConfig(() => {
     root: path.resolve(import.meta.dirname, "client"),
     publicDir: path.resolve(import.meta.dirname, "client", "public"),
     build: {
-      outDir: path.resolve(import.meta.dirname, "dist"),
+      outDir: path.resolve(import.meta.dirname, "client", "dist"),
       emptyOutDir: true,
     },
     server: {
