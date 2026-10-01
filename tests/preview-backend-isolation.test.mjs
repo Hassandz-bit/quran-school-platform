@@ -4,24 +4,14 @@ import test from "node:test";
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("Vercel Preview is pinned to the V2-compatible staging backend", async () => {
+test("Vite never overrides the Supabase project for any Vercel environment", async () => {
   const config = await read("vite.config.ts");
+  const supabase = await read("client/src/lib/supabase.ts");
 
-  assert.match(config, /process\.env\.VERCEL_ENV === "preview"/);
-  assert.match(config, /szwouadewolnctwfjwat\.supabase\.co/);
-  assert.match(
-    config,
-    /"import\.meta\.env\.VITE_SUPABASE_URL"/
-  );
-  assert.match(
-    config,
-    /"import\.meta\.env\.VITE_SUPABASE_PUBLISHABLE_KEY"/
-  );
-});
-
-test("Production routing remains controlled by Production environment variables", async () => {
-  const config = await read("vite.config.ts");
-
+  assert.doesNotMatch(config, /VERCEL_ENV/);
+  assert.doesNotMatch(config, /supabase\.co/);
   assert.doesNotMatch(config, /dexquxtymmoyfzehjicf/);
-  assert.match(config, /\.\.\.\(isVercelPreview/);
+  assert.doesNotMatch(config, /szwouadewolnctwfjwat/);
+  assert.match(supabase, /import\.meta\.env\.VITE_SUPABASE_URL/);
+  assert.match(supabase, /VITE_SUPABASE_PUBLISHABLE_KEY/);
 });

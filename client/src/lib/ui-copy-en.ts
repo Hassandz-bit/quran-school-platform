@@ -938,6 +938,8 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تعذر تعيين كلمة المرور. قد يكون رابط الدعوة منتهيًا أو غير صالح.": "Could not set the password. The invitation link may be expired or invalid.",
   "حفظ كلمة المرور والدخول": "Save password and sign in",
   "تعذر إرسال رابط الاستعادة حاليًا. تحقق من البريد وحاول مرة أخرى.": "Could not send the recovery link. Check the email and try again.",
+  "رابط الموقع غير مضاف في إعدادات Supabase. أضف https://quran-school-platform-livid.vercel.app/reset-password إلى Authentication ثم URL Configuration ثم Redirect URLs.": "The site URL is not configured in Supabase. Add https://quran-school-platform-livid.vercel.app/reset-password under Authentication, URL Configuration, and Redirect URLs.",
+  "خدمة البريد في Supabase غير مفعلة حاليًا. فعّل Email Provider ثم أعد المحاولة.": "The Supabase email service is not enabled. Enable the Email Provider and try again.",
   "إذا كان البريد مرتبطًا بحساب، فسيصلك رابط لتغيير كلمة المرور.": "If the email is linked to an account, you will receive a password reset link.",
   "تعذر إرسال رابط الاستعادة حاليًا. حاول مرة أخرى لاحقًا.": "Could not send the recovery link right now. Try again later.",
   "إرسال رابط الاستعادة": "Send recovery link",
