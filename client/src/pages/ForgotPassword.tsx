@@ -6,6 +6,28 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const RECOVERY_COOLDOWN_SECONDS = 60;
 
+function getRecoveryErrorMessage(error: {
+  code?: string;
+  status?: number;
+  message?: string;
+}): string {
+  const details = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+
+  if (
+    details.includes("redirect") ||
+    details.includes("not allowed") ||
+    details.includes("invalid redirect")
+  ) {
+    return "رابط الموقع غير مضاف في إعدادات Supabase. أضف https://quran-school-platform-livid.vercel.app/reset-password إلى Authentication ثم URL Configuration ثم Redirect URLs.";
+  }
+
+  if (error.status === 422 || details.includes("email provider")) {
+    return "خدمة البريد في Supabase غير مفعلة حاليًا. فعّل Email Provider ثم أعد المحاولة.";
+  }
+
+  return "تعذر إرسال رابط الاستعادة حاليًا. تحقق من البريد وحاول مرة أخرى.";
+}
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -48,9 +70,7 @@ export default function ForgotPassword() {
           return;
         }
 
-        setErrorMessage(
-          "تعذر إرسال رابط الاستعادة حاليًا. تحقق من البريد وحاول مرة أخرى."
-        );
+        setErrorMessage(getRecoveryErrorMessage(error));
         return;
       }
 
