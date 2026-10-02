@@ -2,6 +2,7 @@ import { assertEquals, assertRejects } from "jsr:@std/assert@1.0.14";
 import ExcelJS from "npm:exceljs@4.4.0";
 import { handleStudentImport } from "./handler.ts";
 import {
+  buildGuardianTemplate,
   buildStudentTemplate,
   MAX_FILE_BASE64_CHARS,
   MAX_FILE_BYTES,
@@ -105,7 +106,20 @@ Deno.test("generated template is a readable xlsx with required headers", async (
   if (!sheet) throw new Error("Students sheet missing");
   const headers: string[] = [];
   sheet.getRow(1).eachCell(cell => headers.push(String(cell.value)));
-  for (const expected of ["first_name", "last_name", "birth_date", "gender", "guardian_name", "guardian_relation", "guardian_phone", "branch_code"]) {
+  for (const expected of ["الاسم الأول", "اسم العائلة", "تاريخ الميلاد", "الجنس", "اسم الولي", "صلة القرابة", "هاتف الولي", "رمز الفرع"]) {
     if (!headers.includes(expected)) throw new Error(`template missing ${expected}`);
+  }
+});
+
+Deno.test("generated guardian template is Arabic and includes student matching fields", async () => {
+  const bytes = await buildGuardianTemplate();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(bytes as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+  const sheet = workbook.getWorksheet("Guardians");
+  if (!sheet) throw new Error("Guardians sheet missing");
+  const headers: string[] = [];
+  sheet.getRow(1).eachCell(cell => headers.push(String(cell.value)));
+  for (const expected of ["اسم الطالب", "اسم ولي الأمر", "البريد الإلكتروني", "صلة القرابة", "رمز الفرع"]) {
+    if (!headers.includes(expected)) throw new Error(`guardian template missing ${expected}`);
   }
 });

@@ -16,6 +16,18 @@ test("student import route is permission-aware and preview is explicit", async (
   assert.match(page, /commitStudentImport/);
 });
 
+test("student and guardian screens expose Arabic import templates", async () => {
+  const [studentPage, guardianPage, client] = await Promise.all([
+    read("client/src/pages/StudentBulkImport.tsx"),
+    read("client/src/pages/Guardians.tsx"),
+    read("client/src/lib/student-import.ts"),
+  ]);
+  assert.match(studentPage, /تنزيل نموذج Excel/);
+  assert.match(guardianPage, /نموذج استيراد الأولياء/);
+  assert.match(client, /downloadGuardianImportTemplate/);
+  assert.match(client, /mode: "guardian-template"/);
+});
+
 test("choosing a new workbook clears any stale preview before commit", async () => {
   const page = await read("client/src/pages/StudentBulkImport.tsx");
   assert.match(page, /const handleFileChange = \(nextFile: File \| null\)[\s\S]*?setFile\(nextFile\)[\s\S]*?setBatch\(null\)[\s\S]*?setRows\(\[\]\)/);
@@ -50,7 +62,7 @@ test("student import Edge Function validates bearer and encoded size before work
   const decodeIndex = handler.indexOf("decodeBase64(fileBase64)");
   const parseIndex = handler.indexOf("parseStudentWorkbook(bytes)");
   assert.ok(bearerIndex >= 0 && sizeIndex > bearerIndex && decodeIndex > sizeIndex && parseIndex > decodeIndex);
-  assert.match(handler, /authorizeImporter\(userClient, schoolId\)/);
+  assert.match(handler, /authorizeImporter\(userClient, schoolId/);
   assert.match(handler, /invalid_workbook/);
 });
 

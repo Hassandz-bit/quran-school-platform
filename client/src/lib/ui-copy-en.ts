@@ -881,6 +881,8 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "موظف": "Employee",
   "لم يُسجل دفع": "No payment recorded",
   "استيراد Excel": "Import Excel",
+  "تم تنزيل نموذج الاستيراد الجماعي للأولياء.": "The bulk guardian import template was downloaded.",
+  "تعذر تنزيل نموذج استيراد الأولياء.": "Could not download the guardian import template.",
   "البحث بالاسم أو الهاتف أو البريد...": "Search by name, phone, or email...",
   "جميع الحلقات": "All classes",
   "جارٍ تحميل قائمة الطلاب...": "Loading students...",

@@ -2,6 +2,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2.110.7/cors";
 import {
   authorizeImporter,
   buildStudentTemplate,
+  buildGuardianTemplate,
   decodeBase64,
   encodeBase64,
   getClients,
@@ -45,12 +46,21 @@ export async function handleStudentImport(request: Request): Promise<Response> {
     if (!UUID_RE.test(schoolId)) return json(400, { error: "invalid_school" });
 
     const { userClient, adminClient } = getClients(bearer);
-    const actorId = await authorizeImporter(userClient, schoolId);
+    const actorId = await authorizeImporter(userClient, schoolId, mode === "guardian-template" ? "guardians.link" : "students.manage");
 
     if (mode === "template") {
       const bytes = await buildStudentTemplate();
       return json(200, {
         fileName: "quranos-student-import-template.xlsx",
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        fileBase64: encodeBase64(bytes),
+      });
+    }
+
+    if (mode === "guardian-template") {
+      const bytes = await buildGuardianTemplate();
+      return json(200, {
+        fileName: "quranos-guardian-import-template.xlsx",
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         fileBase64: encodeBase64(bytes),
       });

@@ -69,6 +69,21 @@ export async function downloadStudentImportTemplate(
   );
 }
 
+export async function downloadGuardianImportTemplate(
+  schoolId: string,
+  client: SupabaseClient = getSupabaseClient(),
+) {
+  const { data, error } = await client.functions.invoke("import-students", {
+    body: { mode: "guardian-template", schoolId },
+  });
+  if (error || !data?.fileBase64) throw error ?? new Error("guardian_template_failed");
+  downloadBase64(
+    String(data.fileName ?? "quranos-guardian-import-template.xlsx"),
+    String(data.mimeType ?? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    String(data.fileBase64),
+  );
+}
+
 export async function previewStudentImport(
   schoolId: string,
   file: File,

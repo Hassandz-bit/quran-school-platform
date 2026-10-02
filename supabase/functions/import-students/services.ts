@@ -168,9 +168,9 @@ export async function buildStudentTemplate(): Promise<Uint8Array> {
   workbook.creator = "QuranOS";
   const sheet = workbook.addWorksheet("Students");
   const headers = [
-    "first_name", "last_name", "birth_date", "gender", "national_id", "phone", "email", "address",
-    "previous_school", "education_level", "guardian_name", "guardian_relation", "guardian_phone",
-    "guardian_email", "guardian_job", "branch_code", "class_code", "start_date",
+    "الاسم الأول", "اسم العائلة", "تاريخ الميلاد", "الجنس", "الرقم الوطني", "الهاتف", "البريد الإلكتروني", "العنوان",
+    "المدرسة السابقة", "المستوى الدراسي", "اسم الولي", "صلة القرابة", "هاتف الولي",
+    "بريد الولي", "مهنة الولي", "رمز الفرع", "رمز الحلقة", "تاريخ التسجيل",
   ];
   sheet.addRow(headers);
   sheet.columns = headers.map(header => ({ header, key: header, width: Math.max(15, header.length + 3) }));
@@ -179,19 +179,46 @@ export async function buildStudentTemplate(): Promise<Uint8Array> {
 
   const instructions = workbook.addWorksheet("Instructions");
   instructions.addRows([
-    ["Field", "Required", "Accepted values / note"],
-    ["first_name", "Yes", "Student first name"],
-    ["last_name", "Yes", "Student family name"],
-    ["birth_date", "Yes", "YYYY-MM-DD"],
-    ["gender", "Yes", "male / female or ذكر / أنثى"],
-    ["guardian_name", "Yes", "Guardian full name"],
-    ["guardian_relation", "Yes", "father/mother/brother/sister/uncle/aunt/grandfather/grandmother/other"],
-    ["guardian_phone", "Yes", "Guardian phone"],
-    ["branch_code", "Yes", "Existing active QuranOS branch code"],
-    ["class_code", "No", "Existing active class code in the same branch; blank = warning only"],
-    ["start_date", "No", "YYYY-MM-DD; blank = import date"],
+    ["الحقل", "إجباري", "القيم المقبولة / الملاحظة"],
+    ["الاسم الأول", "نعم", "الاسم الأول للطالب"],
+    ["اسم العائلة", "نعم", "اسم عائلة الطالب"],
+    ["تاريخ الميلاد", "نعم", "بالصيغة YYYY-MM-DD"],
+    ["الجنس", "نعم", "ذكر أو أنثى"],
+    ["اسم الولي", "نعم", "الاسم الكامل لولي الأمر"],
+    ["صلة القرابة", "نعم", "أب، أم، أخ، أخت، عم، خال، جد، جدة، أخرى"],
+    ["هاتف الولي", "نعم", "رقم هاتف ولي الأمر"],
+    ["رمز الفرع", "نعم", "رمز فرع نشط موجود في QuranOS"],
+    ["رمز الحلقة", "لا", "رمز حلقة نشطة في الفرع نفسه؛ يترك فارغًا للتحذير فقط"],
+    ["تاريخ التسجيل", "لا", "بالصيغة YYYY-MM-DD؛ الفارغ يعني تاريخ الاستيراد"],
   ]);
   instructions.columns = [{ width: 24 }, { width: 14 }, { width: 72 }];
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Uint8Array(buffer);
+}
+
+export async function buildGuardianTemplate(): Promise<Uint8Array> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "QuranOS";
+  const sheet = workbook.addWorksheet("Guardians");
+  const headers = ["اسم الطالب", "رمز الطالب الوطني", "اسم ولي الأمر", "البريد الإلكتروني", "الهاتف", "صلة القرابة", "ولي أساسي", "رمز الفرع"];
+  sheet.addRow(headers);
+  sheet.columns = headers.map(header => ({ header, key: header, width: Math.max(18, header.length + 5) }));
+  sheet.views = [{ state: "frozen", ySplit: 1, rightToLeft: true }];
+  sheet.autoFilter = { from: "A1", to: "H1" };
+
+  const instructions = workbook.addWorksheet("إرشادات");
+  instructions.addRows([
+    ["الحقل", "إجباري", "الملاحظة"],
+    ["اسم الطالب", "نعم", "اسم الطالب كما هو مسجل في المدرسة"],
+    ["رمز الطالب الوطني", "لا", "يستخدم لتحديد الطالب بدقة عند وجود أسماء متشابهة"],
+    ["اسم ولي الأمر", "نعم", "الاسم الكامل لولي الأمر"],
+    ["البريد الإلكتروني", "نعم", "سيُستخدم لإرسال دعوة الدخول"],
+    ["الهاتف", "لا", "رقم هاتف ولي الأمر"],
+    ["صلة القرابة", "نعم", "أب، أم، ولي شرعي، قريب، أخرى"],
+    ["ولي أساسي", "لا", "نعم أو لا؛ لا يمكن تعيين أكثر من ولي أساسي للطالب"],
+    ["رمز الفرع", "نعم", "رمز الفرع الذي ينتمي إليه الطالب"],
+  ]);
+  instructions.columns = [{ width: 28 }, { width: 14 }, { width: 82 }];
   const buffer = await workbook.xlsx.writeBuffer();
   return new Uint8Array(buffer);
 }
@@ -206,7 +233,11 @@ export function getClients(bearer: string) {
   return { userClient, adminClient };
 }
 
-export async function authorizeImporter(userClient: SupabaseClient, schoolId: string) {
+export async function authorizeImporter(
+  userClient: SupabaseClient,
+  schoolId: string,
+  permissionCode = "students.manage",
+) {
   const { data: userResult, error: userError } = await userClient.auth.getUser();
   if (userError || !userResult.user) throw new Error("student_import_unauthorized");
   const { data: branches, error: branchError } = await userClient
@@ -220,7 +251,7 @@ export async function authorizeImporter(userClient: SupabaseClient, schoolId: st
     const { data, error } = await userClient.rpc("has_branch_permission", {
       target_school_id: schoolId,
       target_branch_id: branch.id,
-      target_permission_code: "students.manage",
+      target_permission_code: permissionCode,
     });
     if (!error && data === true) {
       allowed = true;

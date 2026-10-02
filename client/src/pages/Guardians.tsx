@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BellRing, Mail, Phone, Plus, RefreshCw, Search, ShieldCheck, Users } from "lucide-react";
+import { BellRing, Download, Mail, Phone, Plus, RefreshCw, Search, ShieldCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,7 @@ import {
   type GuardianManagementAccess,
   type GuardianRelationshipType,
 } from "@/lib/guardians";
+import { downloadGuardianImportTemplate } from "@/lib/student-import";
 
 const relationshipTypes: GuardianRelationshipType[] = [
   "father",
@@ -69,6 +70,7 @@ export default function Guardians() {
   const [email, setEmail] = useState("");
   const [relationshipType, setRelationshipType] = useState<GuardianRelationshipType>("father");
   const [isPrimary, setIsPrimary] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
   const load = useCallback(async () => {
     if (!school?.id) return;
@@ -155,6 +157,19 @@ export default function Guardians() {
     }
   };
 
+  const downloadTemplate = async () => {
+    if (!school?.id) return;
+    setDownloadingTemplate(true);
+    try {
+      await downloadGuardianImportTemplate(school.id);
+      toast.success("تم تنزيل نموذج الاستيراد الجماعي للأولياء.");
+    } catch {
+      toast.error("تعذر تنزيل نموذج استيراد الأولياء.");
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
   if (!school?.id) {
     return <div className="p-6 text-sm text-muted-foreground">تعذر تحديد المدرسة الحالية.</div>;
   }
@@ -195,6 +210,11 @@ export default function Guardians() {
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className="size-4" /> تحديث
           </Button>
+          {access.canInvite && (
+            <Button variant="outline" onClick={() => void downloadTemplate()} disabled={downloadingTemplate}>
+              {downloadingTemplate ? <RefreshCw className="size-4 animate-spin" /> : <Download className="size-4" />} نموذج استيراد الأولياء
+            </Button>
+          )}
           {access.canInvite && (
             <Button className="bg-[#0B4738] hover:bg-[#0B4738]/90" onClick={() => setInviteOpen(true)}>
               <Plus className="size-4" /> دعوة ولي أمر
