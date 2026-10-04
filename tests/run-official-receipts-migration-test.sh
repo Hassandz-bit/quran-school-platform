@@ -88,9 +88,11 @@ for migration in \
   supabase/024_guardian_absence_notifications.sql \
   supabase/025_guardian_directory_notification_center.sql \
   supabase/026_notification_center_module_categories.sql \
-  supabase/027_official_receipts.sql; do
+  supabase/027_official_receipts.sql \
+  supabase/070_institution_settings_branding.sql; do
   run_sql "$migration"
 done
 
 run_sql tests/official-receipts-fixture.sql
+run_sql tests/institution-settings-assertions.sql
 run_sql tests/official-receipts-assertions.sql

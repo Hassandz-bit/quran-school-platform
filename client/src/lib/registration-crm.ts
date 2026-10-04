@@ -29,6 +29,8 @@ export type RegistrationWaitlistReason =
   | "assessment_pending"
   | "other";
 
+export type RegistrationEducationLevel = "primary" | "middle" | "secondary" | "university";
+
 export type RegistrationCrmAccess = {
   canView: boolean;
   canManage: boolean;
@@ -50,6 +52,8 @@ export type RegistrationLead = {
   prospectLastName: string;
   birthDate: string | null;
   gender: "male" | "female" | null;
+  educationLevel: RegistrationEducationLevel | null;
+  previousMemorizationOutcome: string | null;
   guardianName: string;
   guardianPhone: string;
   guardianEmail: string | null;
@@ -73,10 +77,10 @@ export type CreateRegistrationLeadInput = {
   prospectFirstName: string;
   prospectLastName: string;
   birthDate?: string | null;
-  gender?: "male" | "female" | null;
+  educationLevel?: RegistrationEducationLevel | null;
+  previousMemorizationOutcome?: string | null;
   guardianName: string;
   guardianPhone: string;
-  guardianEmail?: string | null;
   source: RegistrationLeadSource;
   nextFollowUpAt?: string | null;
   notes?: string | null;
@@ -87,6 +91,13 @@ export type UpdateRegistrationLeadInput = {
   status: Exclude<RegistrationLeadStatus, "waitlisted">;
   nextFollowUpAt?: string | null;
   notes?: string | null;
+};
+
+export type UpdateRegistrationLeadStudentDetailsInput = {
+  leadId: string;
+  birthDate?: string | null;
+  educationLevel?: RegistrationEducationLevel | null;
+  previousMemorizationOutcome?: string | null;
 };
 
 export type SetRegistrationLeadWaitlistInput = {
@@ -111,6 +122,10 @@ function mapLead(row: Record<string, unknown>): RegistrationLead {
     prospectLastName: String(row.prospect_last_name),
     birthDate: row.birth_date ? String(row.birth_date) : null,
     gender: row.gender === "male" || row.gender === "female" ? row.gender : null,
+    educationLevel: row.education_level === "primary" || row.education_level === "middle" || row.education_level === "secondary" || row.education_level === "university"
+      ? row.education_level
+      : null,
+    previousMemorizationOutcome: row.previous_memorization_outcome ? String(row.previous_memorization_outcome) : null,
     guardianName: String(row.guardian_name),
     guardianPhone: String(row.guardian_phone),
     guardianEmail: row.guardian_email ? String(row.guardian_email) : null,
@@ -178,19 +193,19 @@ export async function createRegistrationLead(
   input: CreateRegistrationLeadInput,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<string> {
-  const { data, error } = await client.rpc("create_registration_lead", {
+  const { data, error } = await client.rpc("create_registration_lead_with_details", {
     target_school_id: input.schoolId,
     target_branch_id: input.branchId,
     target_prospect_first_name: input.prospectFirstName,
     target_prospect_last_name: input.prospectLastName,
     target_birth_date: input.birthDate || null,
-    target_gender: input.gender || null,
     target_guardian_name: input.guardianName,
     target_guardian_phone: input.guardianPhone,
-    target_guardian_email: input.guardianEmail || null,
     target_source: input.source,
     target_next_follow_up_at: input.nextFollowUpAt || null,
     target_notes: input.notes || null,
+    target_education_level: input.educationLevel || null,
+    target_previous_memorization_outcome: input.previousMemorizationOutcome || null,
   });
   if (error) throw error;
   if (!data) throw new Error("registration_crm_create_failed");
@@ -209,6 +224,20 @@ export async function updateRegistrationLeadPipeline(
   });
   if (error) throw error;
   if (data !== true) throw new Error("registration_crm_update_failed");
+}
+
+export async function updateRegistrationLeadStudentDetails(
+  input: UpdateRegistrationLeadStudentDetailsInput,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<void> {
+  const { data, error } = await client.rpc("update_registration_lead_student_details", {
+    target_lead_id: input.leadId,
+    target_birth_date: input.birthDate || null,
+    target_education_level: input.educationLevel || null,
+    target_previous_memorization_outcome: input.previousMemorizationOutcome || null,
+  });
+  if (error) throw error;
+  if (data !== true) throw new Error("registration_student_details_update_failed");
 }
 
 export async function setRegistrationLeadWaitlist(

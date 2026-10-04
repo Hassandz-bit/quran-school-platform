@@ -17,3 +17,6 @@ verify_jwt = false
 # any workbook. This keeps authorization testable and fail-closed inside handler.
 [functions.import-students]
 verify_jwt = false
+
+[functions.analyze-school-track]
+verify_jwt = true

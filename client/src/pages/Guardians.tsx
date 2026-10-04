@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BellRing, Download, Mail, Phone, Plus, RefreshCw, Search, ShieldCheck, Users } from "lucide-react";
+import { BellRing, Download, Mail, Pencil, Phone, Plus, RefreshCw, Search, ShieldCheck, UserX, Users } from "lucide-react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   GuardianInviteError,
   fetchGuardianDirectory,
+  fetchGuardianBranchRights,
   fetchGuardianInviteStudents,
   fetchGuardianManagementAccess,
   guardianInviteErrorMessage,
@@ -33,7 +35,10 @@ import {
   guardianStatusLabel,
   invitationStatusLabel,
   inviteGuardian,
+  revokeGuardianRelationship,
+  updateGuardianRelationship,
   type GuardianDirectoryRow,
+  type GuardianBranchRights,
   type GuardianInviteStudent,
   type GuardianManagementAccess,
   type GuardianRelationshipType,
@@ -55,14 +60,33 @@ const emptyAccess: GuardianManagementAccess = {
   canRevoke: false,
 };
 
+type GuardianDirectoryStatusFilter = "all" | "not_invited" | "pending" | "sent" | "accepted" | "active" | "failed" | "expired" | "revoked";
+
+function guardianDirectoryCohortKey(row: GuardianDirectoryRow) {
+  return `${row.branchId}:${row.className ?? "__no_class__"}`;
+}
+
+function matchesGuardianStatus(row: GuardianDirectoryRow, filter: GuardianDirectoryStatusFilter) {
+  if (filter === "all") return true;
+  if (filter === "not_invited") return row.invitationStatus === null;
+  if (filter === "pending") return row.relationshipStatus === "pending" || row.invitationStatus === "prepared";
+  if (filter === "active") return row.relationshipStatus === "active";
+  if (filter === "revoked") return row.relationshipStatus === "revoked" || row.invitationStatus === "revoked";
+  return row.invitationStatus === filter;
+}
+
 export default function Guardians() {
   const { school } = useAuth();
+  const [, setLocation] = useLocation();
   const [access, setAccess] = useState<GuardianManagementAccess>(emptyAccess);
   const [rows, setRows] = useState<GuardianDirectoryRow[]>([]);
+  const [branchRights, setBranchRights] = useState<Map<string, GuardianBranchRights>>(() => new Map());
   const [inviteStudents, setInviteStudents] = useState<GuardianInviteStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState("");
+  const [cohortFilter, setCohortFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<GuardianDirectoryStatusFilter>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [studentId, setStudentId] = useState("");
@@ -71,6 +95,12 @@ export default function Guardians() {
   const [relationshipType, setRelationshipType] = useState<GuardianRelationshipType>("father");
   const [isPrimary, setIsPrimary] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [editing, setEditing] = useState<GuardianDirectoryRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRelationshipType, setEditRelationshipType] = useState<GuardianRelationshipType>("father");
+  const [editIsPrimary, setEditIsPrimary] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     if (!school?.id) return;
@@ -82,13 +112,16 @@ export default function Guardians() {
       if (!nextAccess.canView) {
         setRows([]);
         setInviteStudents([]);
+        setBranchRights(new Map());
         return;
       }
       const [directory, students] = await Promise.all([
         fetchGuardianDirectory(school.id),
         nextAccess.canInvite ? fetchGuardianInviteStudents(school.id) : Promise.resolve([]),
       ]);
+      const rights = await fetchGuardianBranchRights(school.id, directory.map(row => row.branchId));
       setRows(directory);
+      setBranchRights(rights);
       setInviteStudents(students);
     } catch {
       setLoadError(true);
@@ -101,20 +134,29 @@ export default function Guardians() {
     void load();
   }, [load]);
 
+  const cohortOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    for (const row of rows) {
+      options.set(guardianDirectoryCohortKey(row), `${row.branchName} — ${row.className ?? "بدون فوج/حلقة"}`);
+    }
+    return [...options.entries()].sort((left, right) => left[1].localeCompare(right[1], "ar"));
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("ar");
-    if (!needle) return rows;
     return rows.filter(row =>
-      [
+      (cohortFilter === "all" || guardianDirectoryCohortKey(row) === cohortFilter) &&
+      matchesGuardianStatus(row, statusFilter) &&
+      (!needle || [
         row.studentName,
         row.guardianName,
         row.guardianEmail ?? "",
         row.guardianPhone ?? "",
         row.branchName,
         row.className ?? "",
-      ].some(value => value.toLocaleLowerCase("ar").includes(needle))
+      ].some(value => value.toLocaleLowerCase("ar").includes(needle)))
     );
-  }, [query, rows]);
+  }, [cohortFilter, query, rows, statusFilter]);
 
   const activeCount = rows.filter(row => row.relationshipStatus === "active").length;
   const pendingCount = rows.filter(row => row.relationshipStatus === "pending").length;
@@ -170,6 +212,53 @@ export default function Guardians() {
     }
   };
 
+  const startEditing = (row: GuardianDirectoryRow) => {
+    setEditing(row);
+    setEditName(row.guardianName);
+    setEditPhone(row.guardianPhone ?? "");
+    setEditRelationshipType(row.relationshipType);
+    setEditIsPrimary(row.isPrimary);
+  };
+
+  const submitEdit = async () => {
+    if (!school?.id || !editing) return;
+    const rights = branchRights.get(editing.branchId);
+    if (!rights?.canEdit || editName.trim().length < 2) {
+      toast.error("تحقق من الاسم وصلاحية تعديل علاقة الولي.");
+      return;
+    }
+    setEditSubmitting(true);
+    try {
+      await updateGuardianRelationship({
+        schoolId: school.id,
+        relationshipId: editing.relationshipId,
+        guardianName: editName,
+        guardianPhone: rights.canViewContacts ? (editPhone.trim() || null) : null,
+        relationshipType: editRelationshipType,
+        isPrimary: editIsPrimary,
+      });
+      toast.success("تم تحديث بيانات الولي المرتبطة بهذا الطالب.");
+      setEditing(null);
+      await load();
+    } catch {
+      toast.error("تعذر تحديث علاقة ولي الأمر؛ تحقق من الصلاحيات والحالة.");
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const revoke = async (row: GuardianDirectoryRow) => {
+    if (!school?.id || !branchRights.get(row.branchId)?.canRevoke || row.relationshipStatus === "revoked") return;
+    if (!window.confirm("هل تريد إلغاء وصول ولي الأمر إلى بيانات هذا الطالب؟ سيبقى سجل العلاقة محفوظًا.")) return;
+    try {
+      await revokeGuardianRelationship(school.id, row.relationshipId);
+      toast.success("تم إلغاء وصول ولي الأمر مع حفظ سجل العلاقة.");
+      await load();
+    } catch {
+      toast.error("تعذر إلغاء ربط ولي الأمر؛ تحقق من الصلاحيات والحالة.");
+    }
+  };
+
   if (!school?.id) {
     return <div className="p-6 text-sm text-muted-foreground">تعذر تحديد المدرسة الحالية.</div>;
   }
@@ -206,10 +295,15 @@ export default function Guardians() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">إدارة روابط أولياء الأمور ودعواتهم ومتابعة حالة التفعيل.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className="size-4" /> تحديث
           </Button>
+          {access.canInvite && (
+            <Button variant="outline" onClick={() => setLocation("/guardians/import")}>
+              <Users className="size-4" /> استيراد الأولياء
+            </Button>
+          )}
           {access.canInvite && (
             <Button variant="outline" onClick={() => void downloadTemplate()} disabled={downloadingTemplate}>
               {downloadingTemplate ? <RefreshCw className="size-4 animate-spin" /> : <Download className="size-4" />} نموذج استيراد الأولياء
@@ -239,9 +333,30 @@ export default function Guardians() {
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">روابط الأولياء</CardTitle>
-            <div className="relative w-full sm:max-w-sm">
-              <Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="بحث بالطالب أو الولي أو الفرع..." className="pr-9" />
+            <div className="grid w-full gap-2 sm:max-w-4xl sm:grid-cols-[minmax(190px,1fr)_minmax(180px,0.8fr)_minmax(180px,0.8fr)]">
+              <div className="relative">
+                <Search className="absolute right-3 top-3 size-4 text-muted-foreground" />
+                <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="بحث بالطالب أو الولي أو الفرع..." className="pr-9" />
+              </div>
+              <label className="text-xs font-semibold text-muted-foreground">الفوج / الحلقة
+                <select value={cohortFilter} onChange={event => setCohortFilter(event.target.value)} className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-normal text-foreground">
+                  <option value="all">كل الأفواج</option>
+                  {cohortOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-semibold text-muted-foreground">حالة الدعوة / العلاقة
+                <select value={statusFilter} onChange={event => setStatusFilter(event.target.value as GuardianDirectoryStatusFilter)} className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-normal text-foreground">
+                  <option value="all">كل الحالات</option>
+                  <option value="not_invited">لم تُرسل دعوة</option>
+                  <option value="pending">قيد الانتظار / بانتظار التفعيل</option>
+                  <option value="sent">أُرسلت الدعوة</option>
+                  <option value="accepted">قُبلت الدعوة</option>
+                  <option value="active">نشط</option>
+                  <option value="failed">تعذر الإرسال</option>
+                  <option value="expired">انتهت الدعوة</option>
+                  <option value="revoked">ملغاة</option>
+                </select>
+              </label>
             </div>
           </div>
         </CardHeader>
@@ -268,9 +383,10 @@ export default function Guardians() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <BellRing className="size-4 text-[#17663B]" />
-                  <span>{invitationStatusLabel(row.invitationStatus)}</span>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2"><BellRing className="size-4 text-[#17663B]" /><span>{invitationStatusLabel(row.invitationStatus)}</span></div>
+                  {row.relationshipStatus !== "revoked" && branchRights.get(row.branchId)?.canEdit && <Button type="button" size="sm" variant="outline" onClick={() => startEditing(row)}><Pencil className="size-3.5" />تعديل بيانات العلاقة</Button>}
+                  {row.relationshipStatus !== "revoked" && branchRights.get(row.branchId)?.canRevoke && <Button type="button" size="sm" variant="outline" className="text-red-700 hover:text-red-800" onClick={() => void revoke(row)}><UserX className="size-3.5" />إلغاء الربط</Button>}
                 </div>
               </div>
             </div>
@@ -317,6 +433,38 @@ export default function Guardians() {
               {submitting ? "جارٍ الإرسال..." : "إرسال الدعوة"}
             </Button>
             <Button variant="outline" onClick={() => setInviteOpen(false)} disabled={submitting}>إلغاء</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editing)} onOpenChange={open => { if (!open && !editSubmitting) setEditing(null); }}>
+        <DialogContent dir="rtl" className="sm:max-w-lg">
+          <DialogHeader className="text-right">
+            <DialogTitle>تعديل بيانات علاقة ولي الأمر</DialogTitle>
+            <DialogDescription>تُحفظ التعديلات لهذا الطالب فقط. لا يتغير بريد تسجيل الدخول أو ملف الولي المشترك مع مدارس أخرى.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2"><Label htmlFor="edit-guardian-student">الطالب</Label><Input id="edit-guardian-student" value={editing?.studentName ?? ""} readOnly /></div>
+            <div className="space-y-2"><Label htmlFor="edit-guardian-name">اسم ولي الأمر</Label><Input id="edit-guardian-name" value={editName} onChange={event => setEditName(event.target.value)} maxLength={150} /></div>
+            {editing && branchRights.get(editing.branchId)?.canViewContacts && <>
+              <div className="space-y-2"><Label htmlFor="edit-guardian-email">البريد المرتبط بالحساب (غير قابل للتعديل هنا)</Label><Input id="edit-guardian-email" value={editing.guardianEmail ?? "—"} readOnly dir="ltr" /></div>
+              <div className="space-y-2"><Label htmlFor="edit-guardian-phone">هاتف ولي الأمر لهذا الطالب</Label><Input id="edit-guardian-phone" value={editPhone} onChange={event => setEditPhone(event.target.value)} dir="ltr" type="tel" maxLength={40} /></div>
+            </>}
+            <div className="space-y-2">
+              <Label>صلة القرابة</Label>
+              <Select value={editRelationshipType} onValueChange={value => setEditRelationshipType(value as GuardianRelationshipType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{relationshipTypes.map(type => <SelectItem key={type} value={type}>{guardianRelationshipLabel(type)}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border p-3">
+              <div><div className="text-sm font-medium">ولي أساسي</div><div className="text-xs text-muted-foreground">سيصبح هذا الرابط أساسيًا للطالب، ويُحدّث الرابط الأساسي السابق تلقائيًا.</div></div>
+              <Switch checked={editIsPrimary} onCheckedChange={setEditIsPrimary} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button onClick={() => void submitEdit()} disabled={editSubmitting || !editing || editName.trim().length < 2} className="bg-[#0B4738] hover:bg-[#0B4738]/90">{editSubmitting ? "جارٍ الحفظ..." : "حفظ التعديلات"}</Button>
+            <Button variant="outline" onClick={() => setEditing(null)} disabled={editSubmitting}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

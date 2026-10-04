@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   attendanceAccess: vi.fn(),
   memorizationAccess: vi.fn(),
   memorizationRecords: vi.fn(),
+  schoolTrackResults: vi.fn(async (..._args: unknown[]) => null as unknown),
 }));
 
 vi.mock("@/lib/attendance", () => ({
@@ -14,6 +15,10 @@ vi.mock("@/lib/attendance", () => ({
 vi.mock("@/lib/memorization", () => ({
   canAccessMemorizationClass: mocks.memorizationAccess,
   fetchStudentMemorizationRecords: mocks.memorizationRecords,
+}));
+
+vi.mock("@/lib/school-track", () => ({
+  fetchStudentSchoolTrackResults: mocks.schoolTrackResults,
 }));
 
 import { fetchStudent360 } from "@/lib/student-360";
@@ -66,6 +71,45 @@ function buildClient(options: {
 }
 
 describe("Student 360 read-only access boundaries", () => {
+  test("includes only the school-track records returned by the authorized reader", async () => {
+    const schoolResult = {
+      id: "school-result-1",
+      school_id: "school-1",
+      branch_id: "branch-1",
+      class_id: null,
+      student_id: "student-1",
+      subject: "الرياضيات",
+      assessment_title: "الفرض الأول",
+      assessment_type: "test",
+      academic_year: "2026/2027",
+      term: "الفصل الأول",
+      assessment_date: "2026-10-03",
+      score: 16,
+      max_score: 20,
+      notes: null,
+      created_at: "2026-10-03T09:00:00Z",
+      updated_at: "2026-10-03T09:00:00Z",
+    };
+    mocks.schoolTrackResults.mockResolvedValueOnce([schoolResult]);
+    const { client } = buildClient({
+      student: {
+        id: "student-1",
+        branch_id: "branch-1",
+        class_id: null,
+        first_name: "طالب",
+        last_name: "اختبار",
+        start_date: "2026-08-01",
+        status: "active",
+      },
+    });
+
+    const data = await fetchStudent360("school-1", "student-1", client);
+
+    expect(data?.schoolTrack).toEqual({ state: "ready", data: [schoolResult] });
+    expect(data?.attendance).toEqual({ state: "hidden" });
+    expect(data?.memorization).toEqual({ state: "hidden" });
+  });
+
   test("uses the supplied school and student id without cross-school fallback", async () => {
     const { client, studentQuery } = buildClient({
       student: {

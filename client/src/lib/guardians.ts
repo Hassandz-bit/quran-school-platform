@@ -56,6 +56,8 @@ export type InviteGuardianInput = {
   fullName: string;
   relationshipType: GuardianRelationshipType;
   isPrimary: boolean;
+  phone?: string;
+  idempotencyKey?: string;
 };
 
 export type GuardianInviteErrorCode =
@@ -184,13 +186,14 @@ export async function inviteGuardian(
     throw new GuardianInviteError("invalid_request");
   }
 
-  const idempotencyKey = `guardian-ui-${crypto.randomUUID()}`;
+  const idempotencyKey = input.idempotencyKey?.trim() || `guardian-ui-${crypto.randomUUID()}`;
   const { data, error } = await client.functions.invoke("invite-guardian", {
     body: {
       schoolId: input.schoolId,
       studentId: input.studentId,
       email,
       fullName,
+      phone: input.phone?.trim() || undefined,
       relationshipType: input.relationshipType,
       isPrimary: input.isPrimary,
     },
@@ -219,7 +222,7 @@ export function guardianStatusLabel(status: GuardianDirectoryRow["relationshipSt
 export function invitationStatusLabel(status: GuardianDirectoryRow["invitationStatus"]): string {
   if (!status) return "لم تُرسل دعوة";
   return {
-    prepared: "قيد التجهيز",
+    prepared: "قيد الانتظار",
     sent: "أُرسلت الدعوة",
     accepted: "قُبلت الدعوة",
     failed: "تعذر الإرسال",
@@ -237,4 +240,80 @@ export function guardianInviteErrorMessage(code: GuardianInviteErrorCode): strin
     delivery_unavailable: "تعذر إرسال رسالة الدعوة حاليًا. حاول لاحقًا.",
     provisioning_failed: "تعذر تجهيز دعوة ولي الأمر بصورة آمنة.",
   }[code];
+}
+
+
+export type GuardianBranchRights = {
+  canEdit: boolean;
+  canViewContacts: boolean;
+  canRevoke: boolean;
+};
+
+export async function fetchGuardianBranchRights(
+  schoolId: string,
+  branchIds: readonly string[],
+  client: SupabaseClient = getSupabaseClient()
+): Promise<Map<string, GuardianBranchRights>> {
+  const uniqueBranchIds = [...new Set(branchIds.filter(Boolean))];
+  const entries = await Promise.all(uniqueBranchIds.map(async branchId => {
+    const [edit, contacts, revoke] = await Promise.all([
+      client.rpc("has_branch_permission", { target_school_id: schoolId, target_branch_id: branchId, target_permission_code: "guardians.link" }),
+      client.rpc("has_branch_permission", { target_school_id: schoolId, target_branch_id: branchId, target_permission_code: "guardians.view_contacts" }),
+      client.rpc("has_branch_permission", { target_school_id: schoolId, target_branch_id: branchId, target_permission_code: "guardians.revoke" }),
+    ]);
+    return [branchId, {
+      canEdit: !edit.error && edit.data === true,
+      canViewContacts: !contacts.error && contacts.data === true,
+      canRevoke: !revoke.error && revoke.data === true,
+    }] as const;
+  }));
+  return new Map(entries);
+}
+
+export type UpdateGuardianRelationshipInput = {
+  schoolId: string;
+  relationshipId: string;
+  guardianName: string;
+  guardianPhone: string | null;
+  relationshipType: GuardianRelationshipType;
+  isPrimary: boolean;
+};
+
+export async function updateGuardianRelationship(
+  input: UpdateGuardianRelationshipInput,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<void> {
+  const guardianName = input.guardianName.trim().replace(/\s+/g, " ");
+  if (guardianName.length < 2 || guardianName.length > 150) {
+    throw new Error("invalid_guardian_name");
+  }
+  const guardianPhone = input.guardianPhone?.trim() || null;
+  if (guardianPhone && guardianPhone.length > 40) {
+    throw new Error("invalid_guardian_phone");
+  }
+
+  const { data, error } = await client.rpc("update_student_guardian_link", {
+    target_school_id: input.schoolId,
+    target_student_guardian_id: input.relationshipId,
+    target_guardian_name: guardianName,
+    target_guardian_phone: guardianPhone,
+    target_relationship_type: input.relationshipType,
+    target_is_primary: input.isPrimary,
+  });
+  if (error) throw error;
+  if (data !== true) throw new Error("guardian_relationship_not_updated");
+}
+
+export async function revokeGuardianRelationship(
+  schoolId: string,
+  relationshipId: string,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<void> {
+  const { data, error } = await client.rpc("revoke_student_guardian_link", {
+    target_school_id: schoolId,
+    target_student_guardian_id: relationshipId,
+    target_reason_code: "manual_revoke",
+  });
+  if (error) throw error;
+  if (data !== true) throw new Error("guardian_relationship_not_revoked");
 }

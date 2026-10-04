@@ -103,3 +103,83 @@ test("rollback is batch-scoped and blocked after downstream activity", async () 
   assert.match(consistency, /official_receipts/);
   assert.match(consistency, /student_import_rollback_blocked_by_activity/);
 });
+
+test("guardian bulk import is routed from the directory and confirms before sending", async () => {
+  const [app, directory, page, client] = await Promise.all([
+    read("client/src/App.tsx"),
+    read("client/src/pages/Guardians.tsx"),
+    read("client/src/pages/GuardianBulkImport.tsx"),
+    read("client/src/lib/guardian-import.ts"),
+  ]);
+  assert.match(app, /path="\/guardians\/import"[\s\S]*?<GuardianBulkImport \/>/);
+  assert.match(directory, /setLocation\("\/guardians\/import"\)/);
+  assert.match(page, /previewGuardianImport\(school\.id, file\)/);
+  assert.match(page, /setConfirmOpen\(true\)/);
+  assert.match(page, /inviteGuardian\(/);
+  assert.match(page, /لا يمكن التراجع عنه/);
+  assert.match(client, /mode: "guardian-preview"/);
+  assert.match(client, /file\.size > MAX_GUARDIAN_IMPORT_FILE_BYTES/);
+  assert.ok(client.includes("const safe = /^[=+\\-@\\t\\r]/.test(raw) ? `'${raw}` : raw;"));
+});
+
+test("guardian import previews only permission-scoped students and rejects ambiguous or duplicate rows", async () => {
+  const [handler, importer] = await Promise.all([
+    read("supabase/functions/import-students/handler.ts"),
+    read("supabase/functions/import-students/guardian-import.ts"),
+  ]);
+  assert.match(handler, /mode === "guardian-preview"/);
+  assert.match(handler, /guardianMode \? "guardians\.link"/);
+  assert.match(importer, /list_guardian_invite_students/);
+  assert.match(importer, /student_ambiguous/);
+  assert.match(importer, /duplicate_relationship/);
+  assert.match(importer, /multiple_primary_guardians/);
+  assert.match(importer, /MAX_GUARDIAN_ROWS = 500/);
+});
+
+test("guardian invitations accept and save an optional imported phone number", async () => {
+  const [logic, services, client] = await Promise.all([
+    read("supabase/functions/invite-guardian/logic.ts"),
+    read("supabase/functions/invite-guardian/services.ts"),
+    read("client/src/lib/guardians.ts"),
+  ]);
+  assert.match(logic, /normalizeGuardianPhone/);
+  assert.match(logic, /phone: normalizeGuardianPhone\(record\.phone\)/);
+  assert.match(services, /update\(\{ phone \}\)/);
+  assert.match(services, /phone,\s*locale: "ar"/);
+  assert.match(client, /phone: input\.phone\?\.trim\(\) \|\| undefined/);
+});
+
+test("guardian invitations can be filtered and sent by cohort while retaining per-row outcomes", async () => {
+  const [directory, page, importer] = await Promise.all([
+    read("client/src/pages/Guardians.tsx"),
+    read("client/src/pages/GuardianBulkImport.tsx"),
+    read("supabase/functions/import-students/guardian-import.ts"),
+  ]);
+  assert.match(directory, /guardianDirectoryCohortKey/);
+  assert.match(directory, /matchesGuardianStatus/);
+  assert.match(directory, /قُبلت الدعوة/);
+  assert.match(directory, /أُرسلت الدعوة/);
+  assert.match(page, /studentClassName/);
+  assert.match(page, /selectedRowNumbers\.has\(row\.rowNumber\)/);
+  assert.match(page, /cohortOptions/);
+  assert.match(importer, /studentClassName: matched\?\.className/);
+});
+
+test("new-student paper form is blank, printable, bilingual, and available from registration", async () => {
+  const [app, studentForm, paperForm, copy] = await Promise.all([
+    read("client/src/App.tsx"),
+    read("client/src/pages/AddStudentForm.tsx"),
+    read("client/src/pages/PrintableStudentRegistrationForm.tsx"),
+    read("client/src/lib/printable-registration-form-copy.ts"),
+  ]);
+  assert.match(app, /path="\/students\/registration-form"[\s\S]*?StudentsRoute requireManage/);
+  assert.match(studentForm, /setLocation\("\/students\/registration-form"\)/);
+  assert.match(paperForm, /window\.print\(\)/);
+  assert.match(paperForm, /registration-sheet:last-of-type/);
+  assert.match(paperForm, /guardianDeclaration/);
+  assert.match(paperForm, /additionalGuardianName/);
+  assert.match(copy, /ar: \{/);
+  assert.match(copy, /en: \{/);
+  assert.match(copy, /firstName: "الاسم الأول"/);
+  assert.match(copy, /guardianPhone: "رقم هاتف ولي الأمر"/);
+});

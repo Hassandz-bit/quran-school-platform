@@ -8,6 +8,7 @@ import {
   Check,
   AlertTriangle,
   ImagePlus,
+  Printer,
   X,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -119,6 +120,7 @@ const AddStudentForm: React.FC = () => {
   const content = {
     ar: {
       title: "إضافة طالب جديد",
+      printPaperForm: "طباعة استمارة ورقية فارغة",
       steps: [
         "البيانات الأساسية والصورة",
         "الاتصال والتعليم",
@@ -206,6 +208,7 @@ const AddStudentForm: React.FC = () => {
     },
     en: {
       title: "Add New Student",
+      printPaperForm: "Print blank paper form",
       steps: [
         "Basic Info & Photo",
         "Contact & Education",
@@ -1020,7 +1023,7 @@ const AddStudentForm: React.FC = () => {
       )}
 
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <button
               onClick={handleBack}
@@ -1031,6 +1034,9 @@ const AddStudentForm: React.FC = () => {
             </button>
             <h1 className="text-2xl font-bold text-[#2C3E50]">{t.title}</h1>
           </div>
+          <Button type="button" variant="outline" onClick={() => setLocation("/students/registration-form")} className="gap-2">
+            <Printer size={16} />{t.printPaperForm}
+          </Button>
         </div>
 
         <div className="flex items-center justify-center gap-1 md:gap-2">

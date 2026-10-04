@@ -94,7 +94,7 @@ describe("memorization edit runtime", () => {
     const user = userEvent.setup();
     render(<Memorization />);
 
-    expect(await screen.findByText("معلم الاختبار")).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "معلم الاختبار" })).toBeInTheDocument();
     expect(screen.queryByText("لا يوجد معلم معيّن للحلقة")).not.toBeInTheDocument();
 
     const editButton = await screen.findByRole("button", { name: "تعديل" });

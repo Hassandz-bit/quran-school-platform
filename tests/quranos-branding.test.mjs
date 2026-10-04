@@ -17,7 +17,7 @@ test("primary QuranOS surfaces use the approved mark and descriptor", async () =
   assert.match(login, /تنظيم • تعليم • متابعة • إتقان/);
   assert.doesNotMatch(login, /منصة المدرسة القرآنية الذكية/);
 
-  assert.match(shell, /src="\/pwa-icon-192\.svg"/);
+  assert.match(shell, /src=\{logoUrl \?\? "\/pwa-icon-192\.svg"\}/);
   assert.match(shell, /Quran/);
   assert.match(shell, /text-\[#DAAF37\]/);
 

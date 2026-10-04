@@ -1,4 +1,4 @@
-import type { PostgrestError } from "@supabase/supabase-js";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase.ts";
 
 export type TeacherStatus = "active" | "inactive" | "on_leave" | "archived";
@@ -17,6 +17,7 @@ export type TeacherRow = {
   qualification: string | null;
   hire_date: string;
   status: TeacherStatus;
+  notes: string | null;
 };
 
 export type TeacherBranch = {
@@ -203,7 +204,7 @@ export async function fetchSchoolTeachers(
   const { data, error } = await getSupabaseClient()
     .from("teachers")
     .select(
-      "id, branch_id, first_name, last_name, gender, phone, email, specialization, qualification, hire_date, status"
+      "id, branch_id, first_name, last_name, gender, phone, email, specialization, qualification, hire_date, status, notes"
     )
     .eq("school_id", schoolId)
     .order("last_name", { ascending: true })
@@ -244,6 +245,35 @@ export async function addTeacher(
   if (error) throw error;
 }
 
+export type TeacherUpdate = Omit<TeacherInsert, "school_id">;
+
+export function buildTeacherUpdate(
+  schoolId: string,
+  values: TeacherFormValues
+): TeacherUpdate {
+  const payload = buildTeacherInsert(schoolId, values);
+  const { school_id, ...update } = payload;
+  void school_id;
+  return update;
+}
+
+export async function updateTeacher(
+  schoolId: string,
+  teacherId: string,
+  values: TeacherFormValues
+): Promise<void> {
+  const { data, error } = await getSupabaseClient()
+    .from("teachers")
+    .update(buildTeacherUpdate(schoolId, values))
+    .eq("school_id", schoolId)
+    .eq("id", teacherId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.id) throw new Error("teacher_not_updatable");
+}
+
 const statusLabels: Record<"ar" | "en", Record<TeacherStatus, string>> = {
   ar: {
     active: "نشط",
@@ -282,6 +312,112 @@ export function translateTeacherGender(
   locale: "ar" | "en" = "ar"
 ): string {
   return genderLabels[locale][gender];
+}
+
+export type TeacherClassAssignmentDetails = {
+  id: string;
+  classId: string;
+  className: string;
+  classCode: string;
+  scheduleLabel: string | null;
+  classStatus: string;
+  assignmentRole: "primary" | "assistant";
+  assignmentStatus: "active" | "inactive";
+  assignedAt: string;
+};
+
+export type TeacherDetailsData = {
+  teacher: TeacherRow;
+  branchName: string | null;
+  assignments: TeacherClassAssignmentDetails[];
+};
+
+export async function fetchTeacherDetails(
+  schoolId: string,
+  teacherId: string
+): Promise<TeacherDetailsData | null> {
+  const client = getSupabaseClient();
+  const { data: teacherData, error: teacherError } = await client
+    .from("teachers")
+    .select(
+      "id, branch_id, first_name, last_name, gender, phone, email, specialization, qualification, hire_date, status, notes"
+    )
+    .eq("school_id", schoolId)
+    .eq("id", teacherId)
+    .maybeSingle();
+
+  if (teacherError) throw teacherError;
+  if (!teacherData) return null;
+
+  const teacher = teacherData as TeacherRow;
+  const [branchResult, assignmentResult] = await Promise.all([
+    client
+      .from("branches")
+      .select("id, name")
+      .eq("school_id", schoolId)
+      .eq("id", teacher.branch_id)
+      .maybeSingle(),
+    client
+      .from("class_teachers")
+      .select("id, class_id, assignment_role, status, assigned_at")
+      .eq("school_id", schoolId)
+      .eq("branch_id", teacher.branch_id)
+      .eq("teacher_id", teacher.id)
+      .order("assigned_at", { ascending: false }),
+  ]);
+
+  if (branchResult.error) throw branchResult.error;
+  if (assignmentResult.error) throw assignmentResult.error;
+
+  const assignmentRows = (assignmentResult.data ?? []) as Array<{
+    id: string;
+    class_id: string;
+    assignment_role: "primary" | "assistant";
+    status: "active" | "inactive";
+    assigned_at: string;
+  }>;
+  const classIds = [...new Set(assignmentRows.map(row => row.class_id))];
+  let classRows: Array<{
+    id: string;
+    name: string;
+    code: string;
+    schedule_label: string | null;
+    status: string;
+  }> = [];
+
+  if (classIds.length > 0) {
+    const { data, error } = await client
+      .from("classes")
+      .select("id, name, code, schedule_label, status")
+      .eq("school_id", schoolId)
+      .eq("branch_id", teacher.branch_id)
+      .in("id", classIds);
+    if (error) throw error;
+    classRows = (data ?? []) as typeof classRows;
+  }
+
+  const classesById = new Map(classRows.map(row => [row.id, row]));
+  const assignments = assignmentRows.flatMap(row => {
+    const classItem = classesById.get(row.class_id);
+    if (!classItem) return [];
+    return [{
+      id: row.id,
+      classId: classItem.id,
+      className: classItem.name,
+      classCode: classItem.code,
+      scheduleLabel: classItem.schedule_label,
+      classStatus: classItem.status,
+      assignmentRole: row.assignment_role,
+      assignmentStatus: row.status,
+      assignedAt: row.assigned_at,
+    }];
+  });
+
+  return {
+    teacher,
+    branchName: branchResult.data?.name ?? null,
+    assignments,
+  };
 }
 
 type SafeError = Pick<PostgrestError, "code" | "message"> | null | undefined;
@@ -328,4 +464,68 @@ export function getTeacherSaveErrorMessage(
   }
 
   return messages.general;
+}
+
+
+export async function hasTeacherManagePermission(
+  schoolId: string,
+  branchId: string,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<boolean> {
+  const { data, error } = await client.rpc("has_branch_permission", {
+    target_school_id: schoolId,
+    target_branch_id: branchId,
+    target_permission_code: "teachers.manage",
+  });
+  return !error && data === true;
+}
+
+export async function fetchTeacherManageableBranchIds(
+  schoolId: string,
+  branchIds: readonly string[],
+  client: SupabaseClient = getSupabaseClient()
+): Promise<Set<string>> {
+  const uniqueBranchIds = [...new Set(branchIds.filter(Boolean))];
+  const results = await Promise.all(uniqueBranchIds.map(async branchId => {
+    const allowed = await hasTeacherManagePermission(schoolId, branchId, client);
+    return allowed ? branchId : null;
+  }));
+  return new Set(results.filter((branchId): branchId is string => branchId !== null));
+}
+
+export type TeacherEditRecord = {
+  teacher: TeacherRow;
+  branchName: string | null;
+  assignmentHistoryKnown: boolean;
+  assignmentCount: number;
+};
+
+export async function fetchTeacherEditRecord(
+  schoolId: string,
+  teacherId: string
+): Promise<TeacherEditRecord | null> {
+  const client = getSupabaseClient();
+  const { data: teacherData, error: teacherError } = await client
+    .from("teachers")
+    .select("id, branch_id, first_name, last_name, gender, phone, email, specialization, qualification, hire_date, status, notes")
+    .eq("school_id", schoolId)
+    .eq("id", teacherId)
+    .maybeSingle();
+
+  if (teacherError) throw teacherError;
+  if (!teacherData) return null;
+  const teacher = teacherData as TeacherRow;
+
+  const [branchResult, assignmentResult, viewPermissionResult] = await Promise.all([
+    client.from("branches").select("id, name").eq("school_id", schoolId).eq("id", teacher.branch_id).maybeSingle(),
+    client.from("class_teachers").select("id").eq("school_id", schoolId).eq("teacher_id", teacher.id),
+    client.rpc("has_branch_permission", { target_school_id: schoolId, target_branch_id: teacher.branch_id, target_permission_code: "teachers.view" }),
+  ]);
+
+  return {
+    teacher,
+    branchName: branchResult.error ? null : (branchResult.data?.name ?? null),
+    assignmentHistoryKnown: !assignmentResult.error && !viewPermissionResult.error && viewPermissionResult.data === true,
+    assignmentCount: assignmentResult.error ? 0 : (assignmentResult.data ?? []).length,
+  };
 }

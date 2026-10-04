@@ -24,6 +24,11 @@ import {
 } from "@/lib/memorization";
 import { formatEducation, translateStudentStatus } from "@/lib/students";
 import {
+  evaluateSchoolTrackScore,
+  getSchoolTrackEvaluationLabel,
+  getSchoolTrackPercentage,
+} from "@/lib/school-track";
+import {
   EmptyState,
   PageHeader,
   SectionHeader,
@@ -37,6 +42,10 @@ function formatDate(value: string): string {
   return Number.isNaN(date.getTime())
     ? "—"
     : new Intl.DateTimeFormat("ar-DZ-u-nu-latn", { dateStyle: "medium" }).format(date);
+}
+
+function formatSchoolPercent(value: number): string {
+  return `${new Intl.NumberFormat("ar-DZ-u-nu-latn", { maximumFractionDigits: 1 }).format(value)}%`;
 }
 
 function attendanceLabel(status: string): string {
@@ -123,6 +132,16 @@ export default function Student360() {
         });
       });
     }
+    if (data.schoolTrack.state === "ready") {
+      data.schoolTrack.data.forEach(record => {
+        nextActivities.push({
+          id: `school-track-${record.id}`,
+          date: record.assessment_date,
+          label: "نتيجة مدرسية",
+          detail: `${record.subject} · ${record.score}/${record.max_score}`,
+        });
+      });
+    }
     if (data.finance.state === "ready") {
       data.finance.data.recentPayments.forEach(payment => {
         nextActivities.push({
@@ -190,12 +209,21 @@ export default function Student360() {
     data.attendance.state === "ready" ? data.attendance.data : null;
   const memorization =
     data.memorization.state === "ready" ? data.memorization.data : null;
+  const schoolTrack =
+    data.schoolTrack.state === "ready" ? data.schoolTrack.data : null;
   const finance = data.finance.state === "ready" ? data.finance.data : null;
   const attendancePresent =
     attendance?.filter(record => record.status === "present").length ?? 0;
   const attendanceAbsent =
     attendance?.filter(record => record.status === "absent").length ?? 0;
   const latestMemorization = memorization?.[0] ?? null;
+  const schoolTrackAverage = schoolTrack?.length
+    ? schoolTrack.reduce(
+        (total, record) =>
+          total + getSchoolTrackPercentage(record.score, record.max_score),
+        0
+      ) / schoolTrack.length
+    : null;
 
   return (
     <div className="space-y-8" dir="rtl">
@@ -204,27 +232,31 @@ export default function Student360() {
         title="ملف الطالب"
         description="عرض موحد للبيانات المتاحة حسب صلاحياتك الحالية."
         action={
-          <Button
-            variant="outline"
-            onClick={() => setLocation("/students")}
-            className="min-h-11"
-          >
-            <ArrowRight className="size-4" />
-            الطلاب
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {data.schoolTrack.state === "ready" && (
+              <Button variant="outline" onClick={() => setLocation("/school-track?studentId=" + profile.id)} className="min-h-11">
+                <GraduationCap className="size-4" />
+                نتائج المسار المدرسي
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/students")}
+              className="min-h-11"
+            >
+              <ArrowRight className="size-4" />
+              الطلاب
+            </Button>
+          </div>
         }
       />
 
       <section className="rounded-2xl border border-[#E5EDE7] bg-white p-5 shadow-[0_1px_2px_rgba(23,59,45,0.04)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
-            <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#DCE9E0] bg-[#E8F3EC] text-[#17663B]">
+            <span aria-hidden="true" className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#DCE9E0] bg-[#E8F3EC] text-[#17663B]">
               {profile.photoUrl ? (
-                <img
-                  src={profile.photoUrl}
-                  alt={`صورة ${profile.firstName} ${profile.lastName}`}
-                  className="h-full w-full object-cover"
-                />
+                <img src={profile.photoUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <UserRound className="size-8" />
               )}
@@ -279,7 +311,7 @@ export default function Student360() {
 
       <section>
         <SectionHeader title="ملخص سريع" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {attendance && (
             <>
               <StatCard
@@ -310,6 +342,15 @@ export default function Student360() {
               tone="blue"
             />
           )}
+          {schoolTrack && (
+            <StatCard
+              label="نتائج المسار المدرسي"
+              value={String(schoolTrack.length)}
+              hint={schoolTrackAverage === null ? "لا توجد نتائج" : `متوسط آخر النتائج: ${schoolTrackAverage.toFixed(1)}%`}
+              icon={GraduationCap}
+              tone="green"
+            />
+          )}
           {finance && (
             <StatCard
               label="المتبقي المالي"
@@ -319,7 +360,7 @@ export default function Student360() {
               tone="amber"
             />
           )}
-          {!attendance && !memorization && !finance && (
+          {!attendance && !memorization && !schoolTrack && !finance && (
             <EmptyState
               title="لا توجد بيانات ملخصة متاحة"
               description="تظهر الوحدات التي تملك صلاحية عرضها فقط."
@@ -421,6 +462,49 @@ export default function Student360() {
         </section>
       )}
 
+      {data.schoolTrack.state !== "hidden" && (
+        <section>
+          <SectionHeader
+            title="نتائج المسار المدرسي"
+            description="نتائج الامتحانات والتقويم بجانب متابعة الحفظ والمراجعة في الملف الموحد."
+          />
+          {data.schoolTrack.state === "error" ? (
+            <EmptyState
+              title="تعذر تحميل نتائج المدرسة"
+              description="لم يؤثر هذا الخطأ على سجل الحفظ أو بقية ملف الطالب."
+            />
+          ) : schoolTrack && schoolTrack.length > 0 ? (
+            <div className="overflow-hidden rounded-2xl border border-[#E5EDE7] bg-white">
+              <div className="divide-y divide-[#EEF3EF]">
+                {schoolTrack.map(record => {
+                  const percentage = getSchoolTrackPercentage(record.score, record.max_score);
+                  const evaluation = evaluateSchoolTrackScore(record.score, record.max_score);
+                  return (
+                    <article key={record.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-bold text-[#244E3B]">{record.subject} · {record.assessment_title}</p>
+                        <p className="mt-1 text-xs text-[#718377]">{record.academic_year} · {record.term} · {formatDate(record.assessment_date)}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-[#E8F3EC] px-3 py-1 text-xs font-bold text-[#17663B]">
+                        {record.score}/{record.max_score} · {formatSchoolPercent(percentage)} · {getSchoolTrackEvaluationLabel(evaluation)}
+                      </span>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="border-t border-[#EEF3EF] p-3 text-center">
+                <Button variant="outline" onClick={() => setLocation("/school-track?studentId=" + profile.id)}>عرض التقارير والتحليل الذكي</Button>
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              icon={GraduationCap}
+              title="لا توجد نتائج امتحانات مسجلة"
+              description="يمكن تسجيل نتائج الطالب من صفحة المسار المدرسي عند توفر صلاحية الإدارة."
+            />
+          )}
+        </section>
+      )}
       {data.finance.state !== "hidden" && (
         <section>
           <SectionHeader

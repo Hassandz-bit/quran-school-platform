@@ -63,7 +63,7 @@ export type InviteGuardianDependencies = {
     idempotencyKeyHash: string;
     requestPayloadHash: string;
   }) => Promise<GuardianInvitationAttempt | null>;
-  resolveAccount: (email: string, fullName: string) => Promise<GuardianAccount>;
+  resolveAccount: (email: string, fullName: string, phone: string | null) => Promise<GuardianAccount>;
   prepareInvitation: (input: {
     token: string;
     schoolId: string;
@@ -199,7 +199,8 @@ export function createInviteGuardianHandler(
       if (!invitationId) {
         const account = await dependencies.resolveAccount(
           payload.email,
-          payload.fullName
+          payload.fullName,
+          payload.phone
         );
         createdUserId = account.createdByThisAttempt ? account.userId : null;
         let attempt: GuardianInvitationAttempt;

@@ -27,14 +27,16 @@ export type InviteGuardianRequest = {
   fullName: string;
   relationshipType: GuardianRelationshipType;
   isPrimary: boolean;
+  phone: string | null;
 };
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_PATTERN = /^\+?[0-9][0-9\s().-]{4,39}$/;
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
-const ALLOWED_BODY_KEYS = new Set([
+const REQUIRED_BODY_KEYS = new Set([
   "schoolId",
   "studentId",
   "email",
@@ -42,6 +44,7 @@ const ALLOWED_BODY_KEYS = new Set([
   "relationshipType",
   "isPrimary",
 ]);
+const ALLOWED_BODY_KEYS = new Set([...REQUIRED_BODY_KEYS, "phone"]);
 
 export class SafeGuardianInvitationError extends Error {
   constructor(
@@ -95,6 +98,17 @@ export function normalizeFullName(value: unknown): string {
   return normalized;
 }
 
+export function normalizeGuardianPhone(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string") throw new SafeGuardianInvitationError("invalid_request", 400);
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (!normalized) return null;
+  if (normalized.length > 40 || !PHONE_PATTERN.test(normalized)) {
+    throw new SafeGuardianInvitationError("invalid_request", 400);
+  }
+  return normalized;
+}
+
 export function parseInviteGuardianRequest(raw: unknown): InviteGuardianRequest {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new SafeGuardianInvitationError("invalid_request", 400);
@@ -103,8 +117,8 @@ export function parseInviteGuardianRequest(raw: unknown): InviteGuardianRequest 
   const record = raw as Record<string, unknown>;
   const keys = Object.keys(record);
   if (
-    keys.length !== ALLOWED_BODY_KEYS.size ||
     keys.some(key => !ALLOWED_BODY_KEYS.has(key)) ||
+    [...REQUIRED_BODY_KEYS].some(key => !Object.hasOwn(record, key)) ||
     !isUuid(record.schoolId) ||
     !isUuid(record.studentId) ||
     typeof record.isPrimary !== "boolean" ||
@@ -123,6 +137,7 @@ export function parseInviteGuardianRequest(raw: unknown): InviteGuardianRequest 
     fullName: normalizeFullName(record.fullName),
     relationshipType: record.relationshipType as GuardianRelationshipType,
     isPrimary: record.isPrimary,
+    phone: normalizeGuardianPhone(record.phone),
   };
 }
 
@@ -137,14 +152,16 @@ export async function sha256(value: string): Promise<string> {
 export async function hashNormalizedPayload(
   payload: InviteGuardianRequest
 ): Promise<string> {
-  return await sha256(JSON.stringify([
+  const normalized = [
     payload.schoolId,
     payload.studentId,
     payload.email,
     payload.fullName,
     payload.relationshipType,
     payload.isPrimary,
-  ]));
+  ];
+  if (payload.phone) normalized.push(payload.phone);
+  return await sha256(JSON.stringify(normalized));
 }
 
 export function parseAllowedOrigins(value: string | undefined): Set<string> {

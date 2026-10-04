@@ -8,6 +8,7 @@ import OfficialReceiptDialog from "@/components/OfficialReceiptDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { formatDzd } from "@/lib/finance";
+import { getInstitutionLogoUrl } from "@/lib/institution-settings";
 import { buildPaymentLedgerRows, fetchPaymentPageData } from "@/lib/payments";
 import {
   fetchOfficialReceipt,
@@ -41,6 +42,15 @@ const emptyAccess: OfficialReceiptAccess = {
 export default function Receipts() {
   const { school } = useAuth();
   const { locale, direction } = useLocale();
+  const receiptBranding = school
+    ? {
+        logoUrl: getInstitutionLogoUrl(school.logo_path),
+        address: school.address,
+        contactPhone: school.contact_phone,
+        contactEmail: school.contact_email,
+        websiteUrl: school.website_url,
+      }
+    : null;
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [access, setAccess] = useState<OfficialReceiptAccess>(emptyAccess);
   const [receipts, setReceipts] = useState<OfficialReceiptListItem[]>([]);
@@ -435,6 +445,7 @@ export default function Receipts() {
 
       <OfficialReceiptDialog
         receipt={activeReceipt}
+        branding={receiptBranding}
         open={Boolean(activeReceipt)}
         onOpenChange={open => {
           if (!open) setActiveReceipt(null);

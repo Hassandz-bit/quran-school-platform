@@ -167,3 +167,120 @@ export function getClassSaveErrorMessage(
 
   return messages.general;
 }
+
+export type ClassDetailsStudent = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  status: string;
+};
+
+export type ClassDetailsAssignment = {
+  id: string;
+  teacherId: string | null;
+  teacherName: string | null;
+  teacherStatus: string | null;
+  assignmentRole: "primary" | "assistant";
+  status: "active" | "inactive";
+  assignedAt: string;
+};
+
+export type ClassDetailsData = {
+  classItem: ClassRow;
+  branchName: string | null;
+  students: ClassDetailsStudent[];
+  assignments: ClassDetailsAssignment[];
+};
+
+export async function fetchClassDetails(
+  schoolId: string,
+  classId: string
+): Promise<ClassDetailsData | null> {
+  const client = getSupabaseClient();
+  const { data: classData, error: classError } = await client
+    .from("classes")
+    .select("id, branch_id, name, code, schedule_label, status")
+    .eq("school_id", schoolId)
+    .eq("id", classId)
+    .maybeSingle();
+
+  if (classError) throw classError;
+  if (!classData) return null;
+
+  const classItem = classData as ClassRow;
+  const [branchResult, studentsResult, assignmentsResult] = await Promise.all([
+    client
+      .from("branches")
+      .select("id, name")
+      .eq("school_id", schoolId)
+      .eq("id", classItem.branch_id)
+      .maybeSingle(),
+    client
+      .from("students")
+      .select("id, first_name, last_name, status")
+      .eq("school_id", schoolId)
+      .eq("branch_id", classItem.branch_id)
+      .eq("class_id", classItem.id)
+      .order("last_name", { ascending: true })
+      .order("first_name", { ascending: true }),
+    client
+      .from("class_teachers")
+      .select("id, teacher_id, assignment_role, status, assigned_at")
+      .eq("school_id", schoolId)
+      .eq("branch_id", classItem.branch_id)
+      .eq("class_id", classItem.id)
+      .order("assigned_at", { ascending: false }),
+  ]);
+
+  if (branchResult.error) throw branchResult.error;
+  if (studentsResult.error) throw studentsResult.error;
+  if (assignmentsResult.error) throw assignmentsResult.error;
+
+  const studentRows = (studentsResult.data ?? []) as ClassDetailsStudent[];
+  const assignmentRows = (assignmentsResult.data ?? []) as Array<{
+    id: string;
+    teacher_id: string;
+    assignment_role: "primary" | "assistant";
+    status: "active" | "inactive";
+    assigned_at: string;
+  }>;
+  const teacherIds = [...new Set(assignmentRows.map(row => row.teacher_id))];
+  let teacherRows: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    status: string;
+  }> = [];
+
+  if (teacherIds.length > 0) {
+    const { data, error } = await client
+      .from("teachers")
+      .select("id, first_name, last_name, status")
+      .eq("school_id", schoolId)
+      .eq("branch_id", classItem.branch_id)
+      .in("id", teacherIds);
+    if (error) throw error;
+    teacherRows = (data ?? []) as typeof teacherRows;
+  }
+
+  const teachersById = new Map(teacherRows.map(row => [row.id, row]));
+  const assignments = assignmentRows.map(row => {
+    const teacher = teachersById.get(row.teacher_id);
+    return {
+      id: row.id,
+      teacherId: teacher?.id ?? null,
+      teacherName: teacher ? `${teacher.first_name} ${teacher.last_name}`.trim() : null,
+      teacherStatus: teacher?.status ?? null,
+      assignmentRole: row.assignment_role,
+      status: row.status,
+      assignedAt: row.assigned_at,
+    };
+  });
+
+  return {
+    classItem,
+    branchName: branchResult.data?.name ?? null,
+    students: studentRows,
+    assignments,
+  };
+}
