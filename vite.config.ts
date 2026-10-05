@@ -43,6 +43,35 @@ export default defineConfig(() => {
     build: {
       outDir: path.resolve(import.meta.dirname, "client", "dist"),
       emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return undefined;
+            if (id.includes("/recharts/") || id.includes("/d3-")) {
+              return "charts-vendor";
+            }
+            if (
+              id.includes("/react/") ||
+              id.includes("/react-dom/") ||
+              id.includes("/scheduler/") ||
+              id.includes("/wouter/")
+            ) {
+              return "react-vendor";
+            }
+            if (
+              id.includes("/@radix-ui/") ||
+              id.includes("/lucide-react/") ||
+              id.includes("/sonner/") ||
+              id.includes("/cmdk/") ||
+              id.includes("/vaul/") ||
+              id.includes("/embla-carousel")
+            ) {
+              return "ui-vendor";
+            }
+            return undefined;
+          },
+        },
+      },
     },
     server: {
       host: true,
