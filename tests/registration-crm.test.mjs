@@ -6,6 +6,7 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"
 
 const migration = read("supabase/033_registration_crm_foundation.sql");
 const hardeningMigration = read("supabase/034_registration_crm_hardening.sql");
+const stageDetailsMigration = read("supabase/069_registration_lead_stage_details.sql");
 const crmLib = read("client/src/lib/registration-crm.ts");
 const crmPage = read("client/src/pages/Registrations.tsx");
 const crmRoute = read("client/src/components/RegistrationRoute.tsx");
@@ -20,8 +21,23 @@ test("registration CRM tables stay private and browser access is RPC only", () =
   assert.match(migration, /revoke all on table public\.registration_leads, public\.registration_lead_events[\s\S]*authenticated/i);
   assert.doesNotMatch(crmLib, /\.from\(["']registration_(?:leads|lead_events)["']\)/);
   assert.match(crmLib, /rpc\(["']list_registration_leads["']/);
-  assert.match(crmLib, /rpc\(["']create_registration_lead["']/);
+  assert.match(crmLib, /rpc\(["']create_registration_lead_with_details["']/);
   assert.match(crmLib, /rpc\(["']update_registration_lead_pipeline["']/);
+});
+
+test("registration first stage stores optional student details and supports branch-scoped follow-up edits", () => {
+  assert.match(stageDetailsMigration, /add column education_level text/i);
+  assert.match(stageDetailsMigration, /add column previous_memorization_outcome text/i);
+  assert.match(stageDetailsMigration, /education_level in \('primary', 'middle', 'secondary', 'university'\)/i);
+  assert.match(stageDetailsMigration, /char_length\(normalized_memorization_outcome\) > 1000/i);
+  assert.match(stageDetailsMigration, /create or replace function public\.create_registration_lead_with_details/i);
+  assert.match(stageDetailsMigration, /create or replace function public\.update_registration_lead_student_details/i);
+  assert.match(stageDetailsMigration, /has_branch_permission\(lead_row\.school_id, lead_row\.branch_id, 'registrations\.manage'\)/i);
+  assert.match(stageDetailsMigration, /lead\.education_level/i);
+  assert.match(stageDetailsMigration, /lead\.previous_memorization_outcome/i);
+  assert.match(crmLib, /rpc\(["']update_registration_lead_student_details["']/);
+  assert.match(crmPage, /copy\.studentDetailsProgress/);
+  assert.match(crmPage, /copy\.previousMemorizationOutcome/);
 });
 
 test("registration CRM authorization is exact and branch scoped", () => {

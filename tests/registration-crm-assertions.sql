@@ -6,12 +6,13 @@ begin;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', true);
 
-select public.create_registration_lead(
+select public.create_registration_lead_with_details(
   '10000000-0000-4000-8000-000000000001',
   '20000000-0000-4000-8000-000000000001',
-  'أحمد', 'بن سالم', '2017-03-04', 'male',
-  'محمد بن سالم', '+213555000001', 'guardian-a@example.test',
-  'walk_in', now() + interval '2 days', 'طلب زيارة أولية'
+  'أحمد', 'بن سالم', '2017-03-04',
+  'محمد بن سالم', '+213555000001',
+  'walk_in', now() + interval '2 days', 'طلب زيارة أولية',
+  'primary', 'حفظ سورة عمّ وبعض السور القصيرة'
 ) as lead_a1 \gset
 select set_config('test.lead_a1', :'lead_a1', true);
 
@@ -49,6 +50,7 @@ select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002
 do $$
 declare
   access_row record;
+  lead_details record;
   visible_count integer;
   branch_count integer;
 begin
@@ -69,6 +71,15 @@ begin
   if branch_count <> 1 then
     raise exception 'registrar should see exactly one CRM branch, saw %', branch_count;
   end if;
+
+  select * into lead_details
+  from public.list_registration_leads('10000000-0000-4000-8000-000000000001', null, 200)
+  where lead_id = current_setting('test.lead_a1')::uuid;
+  if lead_details.birth_date is distinct from date '2017-03-04'
+     or lead_details.education_level is distinct from 'primary'
+     or lead_details.previous_memorization_outcome is distinct from 'حفظ سورة عمّ وبعض السور القصيرة' then
+    raise exception 'first-stage student details were not returned by the CRM list';
+  end if;
 end;
 $$;
 
@@ -77,6 +88,13 @@ select public.update_registration_lead_pipeline(
   'contacted',
   now() + interval '1 day',
   'تم الاتصال بولي الأمر وتحديد متابعة.'
+);
+
+select public.update_registration_lead_student_details(
+  current_setting('test.lead_a1')::uuid,
+  '2017-03-05',
+  'middle',
+  'أتمّ جزء عمّ'
 );
 
 -- Registrar cannot create or update a lead in branch A2.
@@ -100,6 +118,15 @@ begin
       current_setting('test.lead_a2')::uuid, 'qualified', null, null
     );
     raise exception 'registrar cross-branch update unexpectedly succeeded';
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  begin
+    perform public.update_registration_lead_student_details(
+      current_setting('test.lead_a2')::uuid, '2016-08-11', 'middle', 'مراجعة جزأين'
+    );
+    raise exception 'registrar cross-branch student detail update unexpectedly succeeded';
   exception
     when insufficient_privilege then null;
   end;
@@ -135,6 +162,15 @@ begin
       'phone', null, null
     );
     raise exception 'teacher create unexpectedly succeeded';
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  begin
+    perform public.update_registration_lead_student_details(
+      current_setting('test.lead_a1')::uuid, null, 'secondary', 'غير مصرح'
+    );
+    raise exception 'teacher student detail update unexpectedly succeeded';
   exception
     when insufficient_privilege then null;
   end;
@@ -184,8 +220,8 @@ begin
   from public.registration_lead_events
   where lead_id = current_setting('test.lead_a1')::uuid;
 
-  if a1_event_count <> 2 then
-    raise exception 'A1 lead should have two audit events, saw %', a1_event_count;
+  if a1_event_count <> 3 then
+    raise exception 'A1 lead should have three audit events, saw %', a1_event_count;
   end if;
 
   if not exists (
@@ -196,6 +232,16 @@ begin
       and new_status = 'contacted'
   ) then
     raise exception 'A1 pipeline transition audit is missing';
+  end if;
+
+  if not exists (
+    select 1 from public.registration_lead_events
+    where lead_id = current_setting('test.lead_a1')::uuid
+      and event_type = 'student_details_updated'
+      and previous_status = 'contacted'
+      and new_status = 'contacted'
+  ) then
+    raise exception 'A1 student details audit is missing';
   end if;
 
   select count(*) into a2_event_count

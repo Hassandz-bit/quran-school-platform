@@ -23,6 +23,11 @@ export type School = {
   slug: string;
   status: string;
   currency_code: string;
+  contact_phone: string | null;
+  contact_email: string | null;
+  address: string | null;
+  website_url: string | null;
+  logo_path: string | null;
 };
 
 export type SchoolRole = {
@@ -136,7 +141,7 @@ export async function loadCurrentAuthorization(
     ];
     const { data: schoolData, error: schoolError } = await client
       .from("schools")
-      .select("id, name, slug, status, currency_code")
+      .select("id, name, slug, status, currency_code, contact_phone, contact_email, address, website_url, logo_path")
       .in("id", schoolIds);
 
     if (schoolError) throw schoolError;

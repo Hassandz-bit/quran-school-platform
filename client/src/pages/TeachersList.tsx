@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Plus,
+  Pencil,
   RefreshCw,
   Search,
   Settings,
@@ -23,6 +24,7 @@ import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchSchoolTeachers,
   fetchTeacherBranches,
+  fetchTeacherManageableBranchIds,
   translateTeacherGender,
   translateTeacherStatus,
   type TeacherBranch,
@@ -46,6 +48,7 @@ const TeachersList: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
   const [branches, setBranches] = useState<TeacherBranch[]>([]);
+  const [manageableBranches, setManageableBranches] = useState<Set<string>>(() => new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [, setLocation] = useLocation();
@@ -80,6 +83,9 @@ const TeachersList: React.FC = () => {
       retry: "إعادة المحاولة",
       empty: "لم تتم إضافة أي معلم بعد.",
       noResults: "لا توجد نتائج بحث مطابقة.",
+      openDetails: "عرض بيانات المعلم",
+      editTeacher: "تعديل المعلم",
+      actions: "الإجراءات",
     },
     en: {
       dashboard: "Dashboard",
@@ -109,6 +115,9 @@ const TeachersList: React.FC = () => {
       retry: "Try again",
       empty: "No teachers have been added yet.",
       noResults: "No matching search results.",
+      openDetails: "View teacher details",
+      editTeacher: "Edit teacher",
+      actions: "Actions",
     },
   };
   const t = content[language];
@@ -128,8 +137,10 @@ const TeachersList: React.FC = () => {
         fetchSchoolTeachers(school.id),
         fetchTeacherBranches(school.id),
       ]);
+      const manageable = await fetchTeacherManageableBranchIds(school.id, branchRows.map(branch => branch.id));
       setTeachers(teacherRows);
       setBranches(branchRows);
+      setManageableBranches(manageable);
     } catch {
       setHasLoadError(true);
     } finally {
@@ -351,6 +362,7 @@ const TeachersList: React.FC = () => {
                     t.specialization,
                     t.hireDate,
                     t.status,
+                    t.actions,
                   ].map(heading => (
                     <th
                       key={heading}
@@ -366,10 +378,18 @@ const TeachersList: React.FC = () => {
                   filteredTeachers.map(teacher => (
                     <tr
                       key={teacher.id}
-                      className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
+                      onClick={() => setLocation(`/teachers/${teacher.id}`)}
+                      className="cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50/70"
                     >
                       <td className="px-4 py-3 font-medium text-[#2C3E50] text-sm">
-                        {teacher.first_name} {teacher.last_name}
+                        <button
+                          type="button"
+                          aria-label={`${t.openDetails}: ${teacher.first_name} ${teacher.last_name}`}
+                          className="text-start font-medium underline-offset-4 hover:text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                          onClick={() => setLocation(`/teachers/${teacher.id}`)}
+                        >
+                          {teacher.first_name} {teacher.last_name}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {translateTeacherGender(teacher.gender, language)}
@@ -393,11 +413,14 @@ const TeachersList: React.FC = () => {
                           {translateTeacherStatus(teacher.status, language)}
                         </span>
                       </td>
+                      <td className="px-4 py-3">
+                        {manageableBranches.has(teacher.branch_id) && <Button type="button" size="sm" variant="outline" aria-label={`${t.editTeacher}: ${teacher.first_name} ${teacher.last_name}`} onClick={event => { event.stopPropagation(); setLocation(`/teachers/${teacher.id}/edit`); }}><Pencil size={14} />{t.editTeacher}</Button>}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                    <td colSpan={8} className="px-4 py-10 text-center text-gray-500">
                       {t.noResults}
                     </td>
                   </tr>
@@ -410,7 +433,21 @@ const TeachersList: React.FC = () => {
         <div className="md:hidden space-y-3">
           {filteredTeachers.length > 0 ? (
             filteredTeachers.map(teacher => (
-              <Card key={teacher.id} className="p-4 border border-gray-100">
+              <Card
+                key={teacher.id}
+                role="link"
+                tabIndex={0}
+                aria-label={`${t.openDetails}: ${teacher.first_name} ${teacher.last_name}`}
+                onClick={() => setLocation(`/teachers/${teacher.id}`)}
+                onKeyDown={event => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setLocation(`/teachers/${teacher.id}`);
+                  }
+                }}
+                className="cursor-pointer border border-gray-100 p-4 transition hover:border-[#CDE4D2] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+              >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
                     <p className="font-semibold text-[#2C3E50]">
@@ -450,6 +487,7 @@ const TeachersList: React.FC = () => {
                     <dd className="inline">{formatDate(teacher.hire_date)}</dd>
                   </div>
                 </dl>
+                {manageableBranches.has(teacher.branch_id) && <Button type="button" variant="outline" className="mt-4 min-h-11" aria-label={`${t.editTeacher}: ${teacher.first_name} ${teacher.last_name}`} onClick={event => { event.stopPropagation(); setLocation(`/teachers/${teacher.id}/edit`); }}><Pencil size={15} />{t.editTeacher}</Button>}
               </Card>
             ))
           ) : (
@@ -522,7 +560,7 @@ const TeachersList: React.FC = () => {
               <h1 className="text-2xl font-bold text-[#2C3E50]">{t.teachers}</h1>
               <p className="mt-1 text-sm text-gray-500">{school?.name ?? t.school}</p>
             </div>
-            <Button
+            {manageableBranches.size > 0 && <Button
               type="button"
               onClick={() => setLocation("/teachers/new")}
               className="flex items-center gap-2 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.97]"
@@ -530,7 +568,7 @@ const TeachersList: React.FC = () => {
             >
               <Plus size={18} />
               {t.addTeacher}
-            </Button>
+            </Button>}
           </div>
 
           {isLoading ? (

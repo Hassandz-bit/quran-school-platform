@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Languages, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import InstitutionSettingsPanel from "@/components/InstitutionSettingsPanel";
 import {
   Dialog,
   DialogContent,
@@ -115,6 +116,8 @@ export default function PreferencesDialog() {
             {t("settings.currencyWarning")}
           </p>
         </section>
+
+        <InstitutionSettingsPanel />
       </DialogContent>
     </Dialog>
   );

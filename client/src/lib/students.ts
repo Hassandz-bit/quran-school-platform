@@ -1,4 +1,4 @@
-import type { PostgrestError } from "@supabase/supabase-js";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase.ts";
 
 export type StudentStatus =
@@ -107,6 +107,39 @@ export type StudentInsert = {
   photos_provided: boolean;
   medical_report_provided: boolean;
   previous_certificate_provided: boolean;
+};
+
+export type StudentEditRecord = {
+  id: string;
+  branch_id: string;
+  class_id: string | null;
+  first_name: string;
+  last_name: string;
+  birth_date: string;
+  gender: StudentGender;
+  national_id: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  previous_school: string | null;
+  education_level: EducationLevel | null;
+  education_year: number | null;
+  guardian_name: string;
+  guardian_relation: GuardianRelation;
+  guardian_phone: string;
+  guardian_email: string | null;
+  guardian_job: string | null;
+  start_date: string;
+  status: StudentStatus;
+  birth_certificate_provided: boolean;
+  photos_provided: boolean;
+  medical_report_provided: boolean;
+  previous_certificate_provided: boolean;
+  photo_path: string | null;
+};
+
+export type StudentUpdate = Omit<StudentInsert, "school_id" | "status"> & {
+  status: StudentStatus;
 };
 
 type LookupOptions = {
@@ -220,6 +253,17 @@ export function buildStudentInsert(
   };
 }
 
+export function buildStudentUpdate(
+  schoolId: string,
+  values: StudentFormValues,
+  status: StudentStatus
+): StudentUpdate {
+  const payload = { ...buildStudentInsert(schoolId, values), status };
+  const { school_id, ...update } = payload;
+  void school_id;
+  return update;
+}
+
 export async function fetchBranches(
   schoolId: string,
   { activeOnly = true }: LookupOptions = {}
@@ -281,6 +325,103 @@ export async function fetchStudents(schoolId: string): Promise<StudentRow[]> {
 
   if (error) throw error;
   return (data ?? []) as StudentRow[];
+}
+
+export async function fetchStudentManageableBranchIds(
+  schoolId: string,
+  branchIds: readonly string[],
+  client: SupabaseClient = getSupabaseClient()
+): Promise<Set<string>> {
+  const uniqueBranchIds = [...new Set(branchIds.filter(Boolean))];
+  const results = await Promise.all(uniqueBranchIds.map(async branchId => {
+    const { data, error } = await client.rpc("has_branch_permission", {
+      target_school_id: schoolId,
+      target_branch_id: branchId,
+      target_permission_code: "students.manage",
+    });
+    return !error && data === true ? branchId : null;
+  }));
+  return new Set(results.filter((branchId): branchId is string => branchId !== null));
+}
+
+export async function hasStudentManagePermission(
+  schoolId: string,
+  branchId: string,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<boolean> {
+  const { data, error } = await client.rpc("has_branch_permission", {
+    target_school_id: schoolId,
+    target_branch_id: branchId,
+    target_permission_code: "students.manage",
+  });
+  return !error && data === true;
+}
+
+export async function fetchStudentEditRecord(
+  schoolId: string,
+  studentId: string,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<StudentEditRecord | null> {
+  const { data, error } = await client
+    .from("students")
+    .select("id, branch_id, class_id, first_name, last_name, birth_date, gender, national_id, phone, email, address, previous_school, education_level, education_year, guardian_name, guardian_relation, guardian_phone, guardian_email, guardian_job, start_date, status, birth_certificate_provided, photos_provided, medical_report_provided, previous_certificate_provided, photo_path")
+    .eq("school_id", schoolId)
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as StudentEditRecord | null) ?? null;
+}
+
+export async function updateStudentRecord(
+  schoolId: string,
+  studentId: string,
+  values: StudentFormValues,
+  status: StudentStatus,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<void> {
+  const { data, error } = await client
+    .from("students")
+    .update(buildStudentUpdate(schoolId, values, status))
+    .eq("school_id", schoolId)
+    .eq("id", studentId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.id) throw new Error("student_not_updatable");
+}
+
+export async function createStudentPhotoUrlMap(
+  students: readonly Pick<StudentRow, "id" | "photo_path">[],
+  client: SupabaseClient = getSupabaseClient()
+): Promise<Map<string, string>> {
+  const withPhotos = students.filter(
+    student => typeof student.photo_path === "string" && student.photo_path.length > 0
+  );
+  if (withPhotos.length === 0) return new Map();
+
+  try {
+    const paths = [...new Set(withPhotos.map(student => student.photo_path as string))];
+    const { data, error } = await client.storage
+      .from(STUDENT_PHOTO_BUCKET)
+      .createSignedUrls(paths, 3600);
+    if (error) return new Map();
+
+    const urlsByPath = new Map(
+      (data ?? [])
+        .filter(item => Boolean(item.path && item.signedUrl))
+        .map(item => [item.path as string, item.signedUrl as string])
+    );
+    return new Map(
+      withPhotos.flatMap(student => {
+        const url = urlsByPath.get(student.photo_path as string);
+        return url ? [[student.id, url] as const] : [];
+      })
+    );
+  } catch {
+    return new Map();
+  }
 }
 
 export async function addStudent(
@@ -408,4 +549,37 @@ export function getStudentSaveErrorMessage(error: unknown): string {
   }
 
   return "تعذر حفظ بيانات الطالب حاليًا.";
+}
+
+
+export async function removeStudentPhotoObject(
+  schoolId: string,
+  studentId: string,
+  path: string
+): Promise<void> {
+  const expectedPrefix = `${schoolId}/${studentId}/`;
+  if (!path.startsWith(expectedPrefix) || path.includes("..")) {
+    throw new Error("student_photo_path_out_of_scope");
+  }
+  const { error } = await getSupabaseClient().storage
+    .from(STUDENT_PHOTO_BUCKET)
+    .remove([path]);
+  if (error) throw error;
+}
+
+
+export async function clearStudentPhotoRecord(
+  schoolId: string,
+  studentId: string,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<void> {
+  const { data, error } = await client
+    .from("students")
+    .update({ photo_path: null })
+    .eq("school_id", schoolId)
+    .eq("id", studentId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.id) throw new Error("student_photo_not_cleared");
 }

@@ -14,7 +14,15 @@ import {
   type PaymentCharge,
   type PaymentRow,
 } from "./payments";
-import type { EducationLevel, StudentStatus } from "./students";
+import {
+  createStudentPhotoUrlMap,
+  type EducationLevel,
+  type StudentStatus,
+} from "./students";
+import {
+  fetchStudentSchoolTrackResults,
+  type SchoolTrackResult,
+} from "./school-track";
 
 export type Student360Profile = {
   id: string;
@@ -24,7 +32,6 @@ export type Student360Profile = {
   lastName: string;
   educationLevel: EducationLevel | null;
   educationYear: number | null;
-  photoPath: string | null;
   photoUrl: string | null;
   startDate: string;
   status: StudentStatus;
@@ -54,6 +61,7 @@ export type Student360Data = {
   profile: Student360Profile;
   attendance: Student360Section<Student360AttendanceRecord[]>;
   memorization: Student360Section<MemorizationRecord[]>;
+  schoolTrack: Student360Section<SchoolTrackResult[]>;
   finance: Student360Section<Student360Finance>;
 };
 
@@ -86,21 +94,15 @@ type AttendanceRecordRow = {
   status: AttendanceStatus;
 };
 
-const financePermissionCodes = ["finance.view", "finance.manage"] as const;
-
-async function fetchStudentPhotoUrl(
-  client: SupabaseClient,
-  photoPath: string | null
-): Promise<string | null> {
-  if (!photoPath) return null;
-
-  const { data, error } = await client.storage
-    .from("student-photos")
-    .createSignedUrl(photoPath, 3600);
-
-  if (error) return null;
-  return data?.signedUrl ?? null;
+function sectionFrom<T>(
+  result: PromiseSettledResult<T | null>
+): Student360Section<T> {
+  if (result.status === "rejected") return { state: "error" };
+  if (result.value === null) return { state: "hidden" };
+  return { state: "ready", data: result.value };
 }
+
+const financePermissionCodes = ["finance.view", "finance.manage"] as const;
 
 async function hasAnyFinanceAccess(
   client: SupabaseClient,
@@ -279,7 +281,7 @@ export async function fetchStudent360(
   if (!student) return null;
 
   const studentRow = student as StudentRow;
-  const [branchResult, classResult, photoUrl] = await Promise.all([
+  const [branchResult, classResult, photoUrls] = await Promise.all([
     client
       .from("branches")
       .select("id, name")
@@ -295,7 +297,7 @@ export async function fetchStudent360(
           .eq("id", studentRow.class_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    fetchStudentPhotoUrl(client, studentRow.photo_path),
+    createStudentPhotoUrlMap([studentRow], client),
   ]);
 
   if (branchResult.error) throw branchResult.error;
@@ -309,8 +311,7 @@ export async function fetchStudent360(
     lastName: studentRow.last_name,
     educationLevel: studentRow.education_level,
     educationYear: studentRow.education_year,
-    photoPath: studentRow.photo_path,
-    photoUrl,
+    photoUrl: photoUrls.get(studentRow.id) ?? null,
     startDate: studentRow.start_date,
     status: studentRow.status,
     branchName: (branchResult.data as LookupRow | null)?.name ?? null,
@@ -319,20 +320,23 @@ export async function fetchStudent360(
 
   const classId = profile.classId;
   if (!classId) {
-    const [financeResult] = await Promise.allSettled([
+    const results = await Promise.allSettled([
       fetchFinance(client, schoolId, profile.branchId, profile.id),
+      fetchStudentSchoolTrackResults(
+        schoolId,
+        profile.branchId,
+        null,
+        profile.id,
+        client
+      ),
     ]);
 
     return {
       profile,
       attendance: { state: "hidden" },
       memorization: { state: "hidden" },
-      finance:
-        financeResult.status === "rejected"
-          ? { state: "error" }
-          : financeResult.value === null
-            ? { state: "hidden" }
-            : { state: "ready", data: financeResult.value },
+      finance: sectionFrom(results[0]),
+      schoolTrack: sectionFrom(results[1]),
     };
   }
 
@@ -373,20 +377,20 @@ export async function fetchStudent360(
       );
     })(),
     fetchFinance(client, schoolId, profile.branchId, profile.id),
+    fetchStudentSchoolTrackResults(
+      schoolId,
+      profile.branchId,
+      classId,
+      profile.id,
+      client
+    ),
   ]);
-
-  const sectionFrom = <T,>(
-    result: PromiseSettledResult<T | null>
-  ): Student360Section<T> => {
-    if (result.status === "rejected") return { state: "error" };
-    if (result.value === null) return { state: "hidden" };
-    return { state: "ready", data: result.value };
-  };
 
   return {
     profile,
     attendance: sectionFrom(results[0]),
     memorization: sectionFrom(results[1]),
     finance: sectionFrom(results[2]),
+    schoolTrack: sectionFrom(results[3]),
   };
 }

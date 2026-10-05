@@ -30,13 +30,16 @@ import {
   listRegistrationLeads,
   setRegistrationLeadWaitlist,
   updateRegistrationLeadPipeline,
+  updateRegistrationLeadStudentDetails,
   type RegistrationCrmAccess,
   type RegistrationCrmBranch,
+  type RegistrationEducationLevel,
   type RegistrationLead,
   type RegistrationLeadSource,
   type RegistrationLeadStatus,
   type RegistrationWaitlistReason,
 } from "@/lib/registration-crm";
+import { translateEducationLevel } from "@/lib/students";
 
 const STATUS_VALUES: RegistrationLeadStatus[] = [
   "new",
@@ -69,6 +72,13 @@ const WAITLIST_REASON_VALUES: RegistrationWaitlistReason[] = [
   "other",
 ];
 
+const EDUCATION_LEVEL_VALUES: RegistrationEducationLevel[] = [
+  "primary",
+  "middle",
+  "secondary",
+  "university",
+];
+
 const EMPTY_ACCESS: RegistrationCrmAccess = { canView: false, canManage: false };
 
 function toIso(value: string): string | null {
@@ -83,6 +93,11 @@ function toLocalDateTime(value: string | null): string {
   if (Number.isNaN(date.getTime())) return "";
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function studentDetailsCompletion(lead: RegistrationLead): number {
+  return [lead.birthDate, lead.educationLevel, lead.previousMemorizationOutcome]
+    .filter(value => Boolean(value && String(value).trim())).length;
 }
 
 export default function Registrations() {
@@ -104,15 +119,19 @@ export default function Registrations() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [gender, setGender] = useState<"male" | "female" | "none">("none");
+  const [educationLevel, setEducationLevel] = useState<RegistrationEducationLevel | "none">("none");
+  const [previousMemorizationOutcome, setPreviousMemorizationOutcome] = useState("");
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
-  const [guardianEmail, setGuardianEmail] = useState("");
   const [source, setSource] = useState<RegistrationLeadSource>("walk_in");
   const [followUpAt, setFollowUpAt] = useState("");
   const [notes, setNotes] = useState("");
 
   const [editStatus, setEditStatus] = useState<RegistrationLeadStatus>("new");
+  const [editBirthDate, setEditBirthDate] = useState("");
+  const [editEducationLevel, setEditEducationLevel] = useState<RegistrationEducationLevel | "none">("none");
+  const [editPreviousMemorizationOutcome, setEditPreviousMemorizationOutcome] = useState("");
+  const [detailsSubmitting, setDetailsSubmitting] = useState(false);
   const [editFollowUpAt, setEditFollowUpAt] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editWaitlistPriority, setEditWaitlistPriority] = useState<1 | 2 | 3>(2);
@@ -220,17 +239,26 @@ export default function Registrations() {
         noFollowUp: "غير محددة",
         edit: "تحديث المتابعة",
         createTitle: "إضافة طلب تسجيل",
-        createDescription: "سجّل بيانات التواصل الأولية فقط. إنشاء الطالب يتم بعد القبول في مسار مستقل.",
+        createDescription: "سجّل الاسم وبيانات التواصل، وأضف تاريخ الميلاد والمستوى ومحصلة الحفظ إن توفرت. إنشاء ملف الطالب النهائي يتم بعد القبول.",
         firstName: "الاسم",
         lastName: "اللقب",
         birthDate: "تاريخ الميلاد (اختياري)",
-        gender: "الجنس (اختياري)",
+        birthDateLabel: "تاريخ الميلاد",
         none: "غير محدد",
-        male: "ذكر",
-        female: "أنثى",
+        educationLevel: "المستوى الدراسي الحالي (اختياري)",
+        educationLevelLabel: "المستوى الدراسي",
+        previousMemorizationOutcome: "محصلة الحفظ السابق (اختياري)",
+        previousMemorizationLabel: "الحفظ السابق",
+        memorizationHint: "اذكر السور أو الأجزاء المحفوظة ومستوى الإتقان إن توفر.",
+        studentDetailsTitle: "بيانات الطالب الأولية (اختيارية)",
+        studentDetailsHelp: "يمكن تدوينها من البداية أو استكمال ما ينقص منها لاحقًا.",
+        studentDetailsProgress: "اكتمال بيانات الطالب الأولية",
+        saveStudentDetails: "حفظ بيانات الطالب",
+        detailsSaved: "تم حفظ بيانات الطالب الأولية.",
+        detailsSaveError: "تعذر حفظ بيانات الطالب الأولية.",
+        detailsNotProvided: "لم تُستكمل بعد",
         guardianName: "اسم ولي الأمر",
         guardianPhone: "هاتف ولي الأمر",
-        guardianEmail: "بريد ولي الأمر (اختياري)",
         notes: "ملاحظات",
         save: "حفظ الطلب",
         saving: "جارٍ الحفظ...",
@@ -270,17 +298,26 @@ export default function Registrations() {
         noFollowUp: "Not set",
         edit: "Update follow-up",
         createTitle: "Add registration lead",
-        createDescription: "Capture initial contact only. Student creation happens later after admission.",
+        createDescription: "Record the name and contact details, plus birth date, school level, and prior memorization if available. The student profile is created after admission.",
         firstName: "First name",
         lastName: "Last name",
         birthDate: "Birth date (optional)",
-        gender: "Gender (optional)",
+        birthDateLabel: "Birth date",
         none: "Not set",
-        male: "Male",
-        female: "Female",
+        educationLevel: "Current school level (optional)",
+        educationLevelLabel: "School level",
+        previousMemorizationOutcome: "Previous Quran memorization (optional)",
+        previousMemorizationLabel: "Previous memorization",
+        memorizationHint: "Note memorized surahs or portions and proficiency, if known.",
+        studentDetailsTitle: "Initial student details (optional)",
+        studentDetailsHelp: "Add these now or complete missing details later.",
+        studentDetailsProgress: "Initial student details",
+        saveStudentDetails: "Save student details",
+        detailsSaved: "Initial student details saved.",
+        detailsSaveError: "Could not save initial student details.",
+        detailsNotProvided: "Not completed yet",
         guardianName: "Guardian name",
         guardianPhone: "Guardian phone",
-        guardianEmail: "Guardian email (optional)",
         notes: "Notes",
         save: "Save lead",
         saving: "Saving...",
@@ -337,10 +374,10 @@ export default function Registrations() {
     setFirstName("");
     setLastName("");
     setBirthDate("");
-    setGender("none");
+    setEducationLevel("none");
+    setPreviousMemorizationOutcome("");
     setGuardianName("");
     setGuardianPhone("");
-    setGuardianEmail("");
     setSource("walk_in");
     setFollowUpAt("");
     setNotes("");
@@ -364,10 +401,10 @@ export default function Registrations() {
         prospectFirstName: firstName,
         prospectLastName: lastName,
         birthDate: birthDate || null,
-        gender: gender === "none" ? null : gender,
+        educationLevel: educationLevel === "none" ? null : educationLevel,
+        previousMemorizationOutcome: previousMemorizationOutcome.trim() || null,
         guardianName,
         guardianPhone,
-        guardianEmail: guardianEmail || null,
         source,
         nextFollowUpAt: toIso(followUpAt),
         notes: notes || null,
@@ -386,11 +423,42 @@ export default function Registrations() {
   const openEdit = (lead: RegistrationLead) => {
     setEditLead(lead);
     setEditStatus(lead.status);
+    setEditBirthDate(lead.birthDate ?? "");
+    setEditEducationLevel(lead.educationLevel ?? "none");
+    setEditPreviousMemorizationOutcome(lead.previousMemorizationOutcome ?? "");
     setEditFollowUpAt(toLocalDateTime(lead.nextFollowUpAt));
     setEditNotes(lead.notes ?? "");
     setEditWaitlistPriority(lead.waitlistPriority ?? 2);
     setEditWaitlistReason(lead.waitlistReason ?? "capacity_full");
     setEditDesiredLevel(lead.desiredLevel ?? "");
+  };
+
+  const submitStudentDetails = async () => {
+    if (!editLead) return;
+    setDetailsSubmitting(true);
+    const normalizedEducationLevel = editEducationLevel === "none" ? null : editEducationLevel;
+    const normalizedMemorizationOutcome = editPreviousMemorizationOutcome.trim() || null;
+    try {
+      await updateRegistrationLeadStudentDetails({
+        leadId: editLead.leadId,
+        birthDate: editBirthDate || null,
+        educationLevel: normalizedEducationLevel,
+        previousMemorizationOutcome: normalizedMemorizationOutcome,
+      });
+      const updatedLead = {
+        ...editLead,
+        birthDate: editBirthDate || null,
+        educationLevel: normalizedEducationLevel,
+        previousMemorizationOutcome: normalizedMemorizationOutcome,
+      };
+      setLeads(current => current.map(lead => lead.leadId === updatedLead.leadId ? updatedLead : lead));
+      setEditLead(updatedLead);
+      toast.success(copy.detailsSaved);
+    } catch {
+      toast.error(copy.detailsSaveError);
+    } finally {
+      setDetailsSubmitting(false);
+    }
   };
 
   const submitEdit = async () => {
@@ -516,6 +584,14 @@ export default function Registrations() {
                     <span className="flex items-center gap-1" dir="ltr"><Phone className="size-4" />{lead.guardianPhone}</span>
                     <span>{copy.source}: {sourceLabel(lead.source)}</span>
                   </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    <Badge variant={studentDetailsCompletion(lead) === 3 ? "default" : "outline"}>
+                      {copy.studentDetailsProgress}: {studentDetailsCompletion(lead)}/3
+                    </Badge>
+                    {lead.birthDate && <span>{copy.birthDateLabel}: {new Intl.DateTimeFormat(ar ? "ar-DZ-u-nu-latn" : "en-GB", { dateStyle: "medium" }).format(new Date(`${lead.birthDate}T12:00:00`))}</span>}
+                    {lead.educationLevel && <span>{copy.educationLevelLabel}: {translateEducationLevel(lead.educationLevel, locale)}</span>}
+                    {lead.previousMemorizationOutcome && <span className="max-w-3xl whitespace-pre-wrap">{copy.previousMemorizationLabel}: {lead.previousMemorizationOutcome}</span>}
+                  </div>
                   {lead.status === "waitlisted" && lead.waitlistPriority && lead.waitlistReason && (
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-[#694F18]">
                       <span className="flex items-center gap-1"><ListOrdered className="size-4" />{copy.waitlistPosition}: #{lead.waitlistRank ?? "—"}</span>
@@ -555,11 +631,30 @@ export default function Registrations() {
             </div>
             <div className="space-y-2"><Label htmlFor="crm-first-name">{copy.firstName}</Label><Input id="crm-first-name" value={firstName} onChange={event => setFirstName(event.target.value)} maxLength={100} /></div>
             <div className="space-y-2"><Label htmlFor="crm-last-name">{copy.lastName}</Label><Input id="crm-last-name" value={lastName} onChange={event => setLastName(event.target.value)} maxLength={100} /></div>
-            <div className="space-y-2"><Label htmlFor="crm-birth-date">{copy.birthDate}</Label><Input id="crm-birth-date" type="date" value={birthDate} onChange={event => setBirthDate(event.target.value)} /></div>
-            <div className="space-y-2"><Label>{copy.gender}</Label><Select value={gender} onValueChange={value => setGender(value as "male" | "female" | "none")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">{copy.none}</SelectItem><SelectItem value="male">{copy.male}</SelectItem><SelectItem value="female">{copy.female}</SelectItem></SelectContent></Select></div>
+            <section className="grid gap-4 rounded-xl border bg-muted/20 p-4 sm:col-span-2 sm:grid-cols-2" aria-labelledby="crm-initial-student-details">
+              <div className="space-y-1 sm:col-span-2">
+                <h3 id="crm-initial-student-details" className="text-sm font-semibold">{copy.studentDetailsTitle}</h3>
+                <p className="text-xs text-muted-foreground">{copy.studentDetailsHelp}</p>
+              </div>
+              <div className="space-y-2"><Label htmlFor="crm-birth-date">{copy.birthDate}</Label><Input id="crm-birth-date" type="date" max={new Date().toISOString().slice(0, 10)} value={birthDate} onChange={event => setBirthDate(event.target.value)} /></div>
+              <div className="space-y-2">
+                <Label>{copy.educationLevel}</Label>
+                <Select value={educationLevel} onValueChange={value => setEducationLevel(value as RegistrationEducationLevel | "none")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{copy.none}</SelectItem>
+                    {EDUCATION_LEVEL_VALUES.map(level => <SelectItem key={level} value={level}>{translateEducationLevel(level, locale)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="crm-previous-memorization">{copy.previousMemorizationOutcome}</Label>
+                <p className="text-xs text-muted-foreground">{copy.memorizationHint}</p>
+                <textarea id="crm-previous-memorization" value={previousMemorizationOutcome} onChange={event => setPreviousMemorizationOutcome(event.target.value)} maxLength={1000} rows={3} className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+              </div>
+            </section>
             <div className="space-y-2"><Label htmlFor="crm-guardian-name">{copy.guardianName}</Label><Input id="crm-guardian-name" value={guardianName} onChange={event => setGuardianName(event.target.value)} maxLength={150} /></div>
             <div className="space-y-2"><Label htmlFor="crm-guardian-phone">{copy.guardianPhone}</Label><Input id="crm-guardian-phone" dir="ltr" value={guardianPhone} onChange={event => setGuardianPhone(event.target.value)} maxLength={40} /></div>
-            <div className="space-y-2"><Label htmlFor="crm-guardian-email">{copy.guardianEmail}</Label><Input id="crm-guardian-email" type="email" dir="ltr" value={guardianEmail} onChange={event => setGuardianEmail(event.target.value)} maxLength={254} /></div>
             <div className="space-y-2"><Label>{copy.source}</Label><Select value={source} onValueChange={value => setSource(value as RegistrationLeadSource)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{SOURCE_VALUES.map(value => <SelectItem key={value} value={value}>{sourceLabel(value)}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2 sm:col-span-2"><Label htmlFor="crm-follow-up">{copy.followUp}</Label><Input id="crm-follow-up" type="datetime-local" value={followUpAt} onChange={event => setFollowUpAt(event.target.value)} /></div>
             <div className="space-y-2 sm:col-span-2"><Label htmlFor="crm-notes">{copy.notes}</Label><textarea id="crm-notes" value={notes} onChange={event => setNotes(event.target.value)} maxLength={2000} rows={4} className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring" /></div>
@@ -579,6 +674,33 @@ export default function Registrations() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2"><Label>{copy.status}</Label><Select value={editStatus} onValueChange={value => setEditStatus(value as RegistrationLeadStatus)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUS_VALUES.map(value => <SelectItem key={value} value={value}>{statusLabel(value)}</SelectItem>)}</SelectContent></Select></div>
+            <section className="space-y-4 rounded-xl border bg-muted/20 p-4" aria-labelledby="crm-edit-student-details">
+              <div className="space-y-1">
+                <h3 id="crm-edit-student-details" className="text-sm font-semibold">{copy.studentDetailsTitle}</h3>
+                <p className="text-xs text-muted-foreground">{copy.studentDetailsHelp}</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2"><Label htmlFor="crm-edit-birth-date">{copy.birthDate}</Label><Input id="crm-edit-birth-date" type="date" max={new Date().toISOString().slice(0, 10)} value={editBirthDate} onChange={event => setEditBirthDate(event.target.value)} /></div>
+                <div className="space-y-2">
+                  <Label>{copy.educationLevel}</Label>
+                  <Select value={editEducationLevel} onValueChange={value => setEditEducationLevel(value as RegistrationEducationLevel | "none")}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{copy.none}</SelectItem>
+                      {EDUCATION_LEVEL_VALUES.map(level => <SelectItem key={level} value={level}>{translateEducationLevel(level, locale)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="crm-edit-previous-memorization">{copy.previousMemorizationOutcome}</Label>
+                  <p className="text-xs text-muted-foreground">{copy.memorizationHint}</p>
+                  <textarea id="crm-edit-previous-memorization" value={editPreviousMemorizationOutcome} onChange={event => setEditPreviousMemorizationOutcome(event.target.value)} maxLength={1000} rows={3} className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                </div>
+              </div>
+              <Button variant="outline" onClick={() => void submitStudentDetails()} disabled={detailsSubmitting}>
+                {detailsSubmitting ? copy.saving : copy.saveStudentDetails}
+              </Button>
+            </section>
             {editStatus === "waitlisted" && (
               <div className="grid gap-4 rounded-xl border bg-amber-50/50 p-4 sm:grid-cols-2">
                 <div className="space-y-2">

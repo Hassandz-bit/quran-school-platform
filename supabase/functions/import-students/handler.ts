@@ -11,6 +11,7 @@ import {
   sha256Hex,
   stageImport,
 } from "./services.ts";
+import { parseGuardianWorkbook, previewGuardianRows } from "./guardian-import.ts";
 
 const JSON_HEADERS = {
   ...corsHeaders,
@@ -46,7 +47,8 @@ export async function handleStudentImport(request: Request): Promise<Response> {
     if (!UUID_RE.test(schoolId)) return json(400, { error: "invalid_school" });
 
     const { userClient, adminClient } = getClients(bearer);
-    const actorId = await authorizeImporter(userClient, schoolId, mode === "guardian-template" ? "guardians.link" : "students.manage");
+    const guardianMode = mode === "guardian-template" || mode === "guardian-preview";
+    const actorId = await authorizeImporter(userClient, schoolId, guardianMode ? "guardians.link" : "students.manage");
 
     if (mode === "template") {
       const bytes = await buildStudentTemplate();
@@ -64,6 +66,21 @@ export async function handleStudentImport(request: Request): Promise<Response> {
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         fileBase64: encodeBase64(bytes),
       });
+    }
+
+    if (mode === "guardian-preview") {
+      const fileName = String(body.fileName ?? "").trim();
+      const fileBase64 = String(body.fileBase64 ?? "");
+      if (!/\.xlsx$/i.test(fileName) || fileName.length > 180 || fileBase64.length === 0) {
+        return json(400, { error: "invalid_file" });
+      }
+      if (fileBase64.length > MAX_FILE_BASE64_CHARS) {
+        return json(422, { error: "guardian_import_file_size" });
+      }
+      const bytes = decodeBase64(fileBase64);
+      const sourceRows = await parseGuardianWorkbook(bytes);
+      const rows = await previewGuardianRows(userClient, adminClient, schoolId, sourceRows);
+      return json(200, { rows });
     }
 
     if (mode !== "preview") return json(400, { error: "invalid_mode" });
@@ -86,7 +103,7 @@ export async function handleStudentImport(request: Request): Promise<Response> {
     return json(200, { batchId, rowCount: rows.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : "student_import_failed";
-    if (message.includes("unauthorized")) return json(403, { error: "student_import_denied" });
+    if (message.includes("unauthorized") || message.includes("authorization")) return json(403, { error: "student_import_denied" });
     if (message.includes("missing_header")) return json(422, { error: message });
     if (message.includes("file_size") || message.includes("invalid_base64") || message.includes("invalid_workbook") || message.includes("too_many_rows") || message.includes("no_rows") || message.includes("sheet_missing")) {
       return json(422, { error: message });

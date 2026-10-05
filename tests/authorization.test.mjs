@@ -77,7 +77,18 @@ function membership(id, schoolId, joinedAt) {
 }
 
 function school(id, status = "active") {
-  return { id, name: `School ${id}`, slug: id, status };
+  return {
+    id,
+    name: `School ${id}`,
+    slug: id,
+    status,
+    currency_code: "DZD",
+    contact_phone: null,
+    contact_email: null,
+    address: null,
+    website_url: null,
+    logo_path: null,
+  };
 }
 
 function role(id, schoolId, code = "school_admin") {

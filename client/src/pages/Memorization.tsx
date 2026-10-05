@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MemorizationFocusNotes } from "@/components/MemorizationFocusNotes";
+import GroupMemorizationEntry from "@/components/GroupMemorizationEntry";
+import StudentAvatar from "@/components/StudentAvatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -157,6 +159,11 @@ export default function Memorization() {
     useState<MemorizationManagerScope>(emptyManagerScope);
   const [branchId, setBranchId] = useState("");
   const [classId, setClassId] = useState("");
+  const [entryMode, setEntryMode] = useState<"individual" | "group">(() =>
+    new URLSearchParams(window.location.search).get("mode") === "group"
+      ? "group"
+      : "individual"
+  );
   const [recordDate, setRecordDate] = useState(getTodayInputValue);
   const [workspace, setWorkspace] = useState<MemorizationWorkspace | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
@@ -206,7 +213,11 @@ export default function Memorization() {
       ]);
       setScope(nextScope);
       setManagerScope(nextManagerScope);
-      const firstClass = nextScope.classes[0];
+      const params = new URLSearchParams(window.location.search);
+      const requestedClass = nextScope.classes.find(item =>
+        item.id === params.get("classId") && item.branchId === params.get("branchId")
+      );
+      const firstClass = requestedClass ?? nextScope.classes[0];
       const firstBranchId =
         firstClass?.branchId ?? nextScope.branches[0]?.id ?? "";
       const firstClassId =
@@ -255,6 +266,8 @@ export default function Memorization() {
     [draft.surahNumber]
   );
   const canManageSelectedClass = selectedClass?.canManage === true;
+  const showGroupEntry =
+    canManageSelectedClass && Boolean(workspace && workspace.teachers.length > 0) && entryMode === "group";
   const canChooseAssignedTeacher =
     isSchoolAdmin ||
     managerScope.schoolWide ||
@@ -602,30 +615,36 @@ export default function Memorization() {
               </select>
             </label>
 
-            <label className="space-y-2">
-              <span className="flex items-center gap-2 text-sm font-semibold text-[#2C3E50]">
+            <fieldset className="min-w-0 space-y-2">
+              <legend className="flex items-center gap-2 text-sm font-semibold text-[#2C3E50]">
                 <UserRound size={16} className="text-[#0B4738]" />
                 الطالب
-              </span>
-              <select
-                value={selectedStudentId}
-                onChange={event => {
-                  setSelectedStudentId(event.target.value);
-                  handleNewRecord();
-                }}
-                disabled={!workspace || workspace.students.length === 0}
-                className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#0B4738] focus:ring-2 focus:ring-[#0B4738]/15 disabled:bg-gray-100"
-              >
-                {(!workspace || workspace.students.length === 0) && (
-                  <option value="">لا يوجد طلاب نشطون</option>
-                )}
-                {workspace?.students.map(student => (
-                  <option key={student.id} value={student.id}>
-                    {student.fullName}
-                  </option>
-                ))}
-              </select>
-            </label>
+              </legend>
+              {!workspace || workspace.students.length === 0 ? (
+                <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-500">
+                  لا يوجد طلاب نشطون
+                </div>
+              ) : (
+                <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-gray-200 bg-white p-1">
+                  {workspace.students.map(student => (
+                    <button
+                      key={student.id}
+                      type="button"
+                      aria-pressed={selectedStudentId === student.id}
+                      onClick={() => {
+                        setSelectedStudentId(student.id);
+                        handleNewRecord();
+                      }}
+                      className={`flex min-h-12 w-full items-center gap-3 rounded-md px-2 py-1.5 text-right text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B4738] ${selectedStudentId === student.id ? "bg-[#E8F3EC] font-bold text-[#0B4738]" : "text-[#2C3E50] hover:bg-gray-50"}`}
+                    >
+                      <StudentAvatar photoUrl={student.photoUrl} className="size-9" />
+                      <span className="min-w-0 flex-1 truncate">{student.fullName}</span>
+                      {selectedStudentId === student.id && <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </fieldset>
           </div>
         </Card>
 
@@ -682,6 +701,56 @@ export default function Memorization() {
               />
             )}
 
+            {canManageSelectedClass && workspace.teachers.length > 0 && (
+              <>
+                <div
+                  role="tablist"
+                  aria-label="طريقة تسجيل متابعة الحفظ"
+                  className="flex flex-wrap gap-2 rounded-xl border border-gray-100 bg-white p-2 shadow-sm"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={entryMode === "individual"}
+                    onClick={() => setEntryMode("individual")}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold ${entryMode === "individual" ? "bg-[#0B4738] text-white" : "text-[#2C3E50] hover:bg-gray-50"}`}
+                  >
+                    <UserRound size={17} />
+                    متابعة فردية
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={entryMode === "group"}
+                    onClick={() => setEntryMode("group")}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold ${entryMode === "group" ? "bg-[#0B4738] text-white" : "text-[#2C3E50] hover:bg-gray-50"}`}
+                  >
+                    <Users size={17} />
+                    حفظ جماعي
+                  </button>
+                </div>
+                <div hidden={!showGroupEntry}>
+                  <GroupMemorizationEntry
+                    key={`${school?.id}:${branchId}:${classId}:${recordDate}`}
+                    schoolId={school?.id ?? ""}
+                    branchId={branchId}
+                    classId={classId}
+                    recordDate={recordDate}
+                    students={workspace.students}
+                    teachers={workspace.teachers}
+                    defaultTeacherId={
+                      teacherRestrictedToOwnRecords
+                        ? (currentTeacherId ?? "")
+                        : draft.teacherId || workspace.teachers[0]?.id || ""
+                    }
+                    teacherSelectionDisabled={teacherRestrictedToOwnRecords}
+                    onSaved={() => setRecordsReload(current => current + 1)}
+                  />
+                </div>
+              </>
+            )}
+
+            <div hidden={showGroupEntry} className="space-y-4">
             {canManageSelectedClass && workspace.teachers.length > 0 && (
               <Card className="border border-gray-100 p-4 shadow-sm">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -1143,11 +1212,12 @@ export default function Memorization() {
                 })
               )}
             </section>
+            </div>
           </>
         )}
       </div>
 
-      {canManageSelectedClass &&
+      {!showGroupEntry && canManageSelectedClass &&
         workspace &&
         workspace.teachers.length > 0 &&
         selectedStudentId && (

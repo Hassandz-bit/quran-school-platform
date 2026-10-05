@@ -30,6 +30,8 @@ import {
 } from "@/lib/academic-reports";
 import { fetchRegistrationCrmAccess } from "@/lib/registration-crm";
 import { fetchDocumentsAccess } from "@/lib/documents";
+import { fetchSchoolTrackScope } from "@/lib/school-track";
+import { getInstitutionLogoUrl } from "@/lib/institution-settings";
 import {
   getAppNavigation,
   getBottomNavigation,
@@ -65,11 +67,13 @@ function storeScroll(key: string, value: number) {
 function Brand({
   schoolName,
   fallbackSchoolName,
+  logoUrl,
   compact = false,
   variant = "dark",
 }: {
   schoolName?: string;
   fallbackSchoolName: string;
+  logoUrl?: string | null;
   compact?: boolean;
   variant?: "dark" | "light";
 }) {
@@ -78,10 +82,13 @@ function Brand({
   return (
     <div className="flex min-w-0 items-center gap-3">
       <img
-        src="/pwa-icon-192.svg"
+        src={logoUrl ?? "/pwa-icon-192.svg"}
         alt=""
         aria-hidden="true"
-        className="size-10 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-black/5"
+        className={cn(
+          "size-10 shrink-0 rounded-xl shadow-sm ring-1 ring-black/5",
+          logoUrl ? "bg-white p-1 object-contain" : "object-cover"
+        )}
       />
       {!compact && (
         <span className="min-w-0">
@@ -178,6 +185,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [canViewMembers, setCanViewMembers] = useState(false);
   const [canViewAcademicReports, setCanViewAcademicReports] = useState(false);
+  const [canViewSchoolTrack, setCanViewSchoolTrack] = useState(false);
   const [canViewRegistrations, setCanViewRegistrations] = useState(false);
   const [canViewDocuments, setCanViewDocuments] = useState(false);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -241,6 +249,29 @@ export default function AppShell({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     if (!school?.id) {
+      setCanViewSchoolTrack(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void fetchSchoolTrackScope(school.id)
+      .then(scope => {
+        if (!cancelled) setCanViewSchoolTrack(scope.canView);
+      })
+      .catch(() => {
+        if (!cancelled) setCanViewSchoolTrack(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [school?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!school?.id) {
       setCanViewRegistrations(false);
       return () => {
         cancelled = true;
@@ -290,6 +321,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         activeRoleCodes,
         canViewMembers,
         canViewAcademicReports,
+        canViewSchoolTrack,
         canViewRegistrations,
         canViewDocuments,
         locale,
@@ -297,6 +329,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     [
       activeRoleCodes,
       canViewAcademicReports,
+      canViewSchoolTrack,
       canViewDocuments,
       canViewMembers,
       canViewRegistrations,
@@ -318,6 +351,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     [t]
   );
   const fallbackSchoolName = t("brand.school");
+  const schoolLogoUrl = getInstitutionLogoUrl(school?.logo_path);
   const CollapseIcon = direction === "rtl" ? PanelRightClose : PanelLeftClose;
   const ExpandIcon = direction === "rtl" ? PanelRightOpen : PanelLeftOpen;
   const DrawerChevron = direction === "rtl" ? ChevronLeft : ChevronRight;
@@ -377,7 +411,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         )}
       >
         <div className="mb-7 flex items-center justify-between gap-2 px-1">
-          <Brand schoolName={school?.name} fallbackSchoolName={fallbackSchoolName} compact={!sidebarExpanded} />
+          <Brand schoolName={school?.name} fallbackSchoolName={fallbackSchoolName} logoUrl={schoolLogoUrl} compact={!sidebarExpanded} />
           {sidebarExpanded && (
             <button
               type="button"
@@ -447,13 +481,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
             >
               <Menu size={21} aria-hidden="true" />
             </button>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-extrabold text-[#173B2D]">
-                {currentPageLabel}
-              </p>
-              <p className="truncate text-[11px] text-[#718377]">
-                {school?.name ?? fallbackSchoolName}
-              </p>
+            <div className="flex min-w-0 items-center gap-2">
+              {schoolLogoUrl && (
+                <img src={schoolLogoUrl} alt="" aria-hidden="true" className="size-8 shrink-0 rounded-lg bg-white object-contain ring-1 ring-[#E2E9E3]" />
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-extrabold text-[#173B2D]">
+                  {currentPageLabel}
+                </p>
+                <p className="truncate text-[11px] text-[#718377]">
+                  {school?.name ?? fallbackSchoolName}
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -521,7 +560,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             aria-label={t("shell.more")}
           >
             <div className="mb-5 flex items-center justify-between">
-              <Brand schoolName={school?.name} fallbackSchoolName={fallbackSchoolName} variant="light" />
+              <Brand schoolName={school?.name} fallbackSchoolName={fallbackSchoolName} logoUrl={schoolLogoUrl} variant="light" />
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}

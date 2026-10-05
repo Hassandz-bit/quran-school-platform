@@ -26,13 +26,15 @@ test("demo cleanup fails closed when demo entities are mixed with real relations
   }
 });
 
-test("student education is structured and the photo bucket is private", async () => {
-  const [sql, students, student360Data, form, profile] = await Promise.all([
+test("student photos are private and appear in the directory, class list, and profile", async () => {
+  const [sql, students, student360Data, form, profile, studentList, classList] = await Promise.all([
     read("supabase/021_demo_mode_student_profile.sql"),
     read("client/src/lib/students.ts"),
     read("client/src/lib/student-360.ts"),
     read("client/src/pages/AddStudentForm.tsx"),
     read("client/src/pages/Student360.tsx"),
+    read("client/src/pages/StudentsList.tsx"),
+    read("client/src/pages/Memorization.tsx"),
   ]);
 
   assert.match(sql, /'primary'.*'middle'.*'secondary'.*'university'/s);
@@ -43,15 +45,18 @@ test("student education is structured and the photo bucket is private", async ()
   assert.match(sql, /'student-photos'[\s\S]*false[\s\S]*5242880/);
   assert.match(students, /crypto\.randomUUID/);
   assert.match(students, /\.storage\.from\(STUDENT_PHOTO_BUCKET\)\.upload/);
-  assert.match(student360Data, /client\.storage/);
-  assert.match(student360Data, /createSignedUrl/);
-  assert.doesNotMatch(student360Data, /getSupabaseClient\(\)\.storage/);
+  assert.match(students, /createStudentPhotoUrlMap/);
+  assert.match(students, /createSignedUrls/);
+  assert.match(student360Data, /createStudentPhotoUrlMap/);
+  assert.match(student360Data, /photoUrl/);
   assert.match(form, /ابتدائي/);
   assert.match(form, /متوسط/);
   assert.match(form, /ثانوي/);
   assert.match(form, /جامعي/);
   assert.match(form, /accept="image\/jpeg,image\/png,image\/webp"/);
   assert.match(profile, /profile\.photoUrl/);
+  assert.match(studentList, /StudentAvatar/);
+  assert.match(classList, /StudentAvatar/);
   assert.match(profile, /formatEducation\(profile\.educationLevel, profile\.educationYear\)/);
 });
 

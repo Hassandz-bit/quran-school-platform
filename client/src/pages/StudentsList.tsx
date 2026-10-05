@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import StudentAvatar from "@/components/StudentAvatar";
 import {
   Users,
   Plus,
@@ -9,6 +10,9 @@ import {
   RefreshCw,
   FileSearch,
   FileSpreadsheet,
+  Pencil,
+  CalendarCheck,
+  BookOpenCheck,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +20,9 @@ import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchBranches,
   fetchClasses,
+  createStudentPhotoUrlMap,
   fetchStudents,
+  fetchStudentManageableBranchIds,
   translateStudentStatus,
   type BranchOption,
   type ClassOption,
@@ -40,8 +46,10 @@ const StudentsList: React.FC = () => {
   const [filterClass, setFilterClass] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [students, setStudents] = useState<StudentRow[]>([]);
+  const [studentPhotoUrls, setStudentPhotoUrls] = useState<Map<string, string>>(() => new Map());
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [manageableBranches, setManageableBranches] = useState<Set<string>>(() => new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [, setLocation] = useLocation();
@@ -80,6 +88,12 @@ const StudentsList: React.FC = () => {
       empty: "لم تتم إضافة أي طالب بعد.",
       noResults: "لا توجد نتائج مطابقة.",
       viewProfile: "عرض الملف",
+      editStudent: "تعديل الطالب",
+      actions: "الإجراءات",
+      followUpShortcuts: "اختصارات متابعة الحلقة",
+      selectClassForShortcuts: "اختر حلقة واحدة من الفلاتر لعرض أدوات المتابعة الجماعية.",
+      attendanceShortcut: "الحضور والملاحظات",
+      memorizationShortcut: "الحفظ الجماعي",
     },
     en: {
       dashboard: "Dashboard",
@@ -113,6 +127,12 @@ const StudentsList: React.FC = () => {
       empty: "No students have been added yet.",
       noResults: "No matching results.",
       viewProfile: "View profile",
+      editStudent: "Edit student",
+      actions: "Actions",
+      followUpShortcuts: "Cohort follow-up shortcuts",
+      selectClassForShortcuts: "Select one cohort in the filters to open its group follow-up tools.",
+      attendanceShortcut: "Attendance and notes",
+      memorizationShortcut: "Group memorization",
     },
   };
 
@@ -127,6 +147,7 @@ const StudentsList: React.FC = () => {
 
     setIsLoading(true);
     setHasLoadError(false);
+    setStudentPhotoUrls(new Map());
 
     try {
       const [studentRows, branchRows, classRows] = await Promise.all([
@@ -134,10 +155,14 @@ const StudentsList: React.FC = () => {
         fetchBranches(school.id, { activeOnly: false }),
         fetchClasses(school.id, undefined, { activeOnly: false }),
       ]);
+      const manageable = await fetchStudentManageableBranchIds(school.id, branchRows.map(branch => branch.id));
+      const photoUrls = await createStudentPhotoUrlMap(studentRows);
 
       setStudents(studentRows);
+      setStudentPhotoUrls(photoUrls);
       setBranches(branchRows);
       setClasses(classRows);
+      setManageableBranches(manageable);
     } catch {
       setHasLoadError(true);
     } finally {
@@ -156,6 +181,10 @@ const StudentsList: React.FC = () => {
   const classNames = useMemo(
     () => new Map(classes.map(classItem => [classItem.id, classItem.name])),
     [classes]
+  );
+  const selectedCohort = useMemo(
+    () => classes.find(classItem => classItem.id === filterClass) ?? null,
+    [classes, filterClass]
   );
 
   const filteredStudents = useMemo(() => {
@@ -263,6 +292,33 @@ const StudentsList: React.FC = () => {
               ))}
             </select>
           </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+            <div>
+              <p className="text-sm font-bold text-[#2C3E50]">{t.followUpShortcuts}</p>
+              {!selectedCohort && <p className="mt-1 text-xs text-gray-500">{t.selectClassForShortcuts}</p>}
+            </div>
+            {selectedCohort && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setLocation(`/attendance?branchId=${encodeURIComponent(selectedCohort.branch_id)}&classId=${encodeURIComponent(selectedCohort.id)}`)}
+                  className="min-h-10 border-[#0B4738]/30 text-[#0B4738]"
+                >
+                  <CalendarCheck size={17} />
+                  {t.attendanceShortcut}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setLocation(`/memorization?branchId=${encodeURIComponent(selectedCohort.branch_id)}&classId=${encodeURIComponent(selectedCohort.id)}&mode=group`)}
+                  className="min-h-10 bg-[#0B4738] text-white hover:bg-[#08382D]"
+                >
+                  <BookOpenCheck size={17} />
+                  {t.memorizationShortcut}
+                </Button>
+              </div>
+            )}
+          </div>
         </Card>
 
         <Card className="hidden md:block border border-gray-100 overflow-hidden">
@@ -270,7 +326,7 @@ const StudentsList: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {[t.name, t.phone, t.email, t.branch, t.class, t.status, t.registrationDate].map(
+                  {[t.name, t.phone, t.email, t.branch, t.class, t.status, t.registrationDate, t.actions].map(
                     heading => (
                       <th
                         key={heading}
@@ -293,9 +349,10 @@ const StudentsList: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setLocation(`/students/${student.id}`)}
-                          className="font-medium text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                          className="inline-flex items-center gap-3 font-medium text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
                         >
-                          {student.first_name} {student.last_name}
+                          <StudentAvatar photoUrl={studentPhotoUrls.get(student.id)} className="size-9" />
+                          <span>{student.first_name} {student.last_name}</span>
                         </button>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
@@ -322,11 +379,14 @@ const StudentsList: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {formatDate(student.start_date)}
                       </td>
+                      <td className="px-4 py-3">
+                        {manageableBranches.has(student.branch_id) && <Button type="button" size="sm" variant="outline" aria-label={`${t.editStudent}: ${student.first_name} ${student.last_name}`} onClick={() => setLocation(`/students/${student.id}/edit`)}><Pencil size={14} />{t.editStudent}</Button>}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                    <td colSpan={8} className="px-4 py-10 text-center text-gray-500">
                       {t.noResults}
                     </td>
                   </tr>
@@ -344,9 +404,10 @@ const StudentsList: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setLocation(`/students/${student.id}`)}
-                    className="min-h-11 text-right font-semibold text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                    className="inline-flex min-h-11 items-center gap-3 text-right font-semibold text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
                   >
-                    {student.first_name} {student.last_name}
+                    <StudentAvatar photoUrl={studentPhotoUrls.get(student.id)} className="size-10" />
+                    <span>{student.first_name} {student.last_name}</span>
                   </button>
                   <span
                     className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.status)}`}
@@ -369,6 +430,7 @@ const StudentsList: React.FC = () => {
                   <FileSearch className="size-4" />
                   {t.viewProfile}
                 </button>
+                {manageableBranches.has(student.branch_id) && <Button type="button" variant="outline" className="ms-3 mt-4 min-h-11" onClick={() => setLocation(`/students/${student.id}/edit`)}><Pencil size={15} />{t.editStudent}</Button>}
               </Card>
             ))
           ) : (
@@ -384,21 +446,21 @@ const StudentsList: React.FC = () => {
   return (
     <div className="space-y-6" dir={direction}>
       <div className="flex flex-wrap justify-end gap-2">
-        <Button
+        {manageableBranches.size > 0 && <Button
           variant="outline"
           onClick={() => setLocation("/students/import")}
           className="flex items-center gap-2 rounded-xl border-[#0B4738]/30 text-[#0B4738]"
         >
           <FileSpreadsheet size={18} />
           {t.importExcel}
-        </Button>
-        <Button
+        </Button>}
+        {manageableBranches.size > 0 && <Button
           onClick={() => setLocation("/students/new")}
           className="flex items-center gap-2 rounded-xl bg-[#0B4738] text-white shadow-md transition-all hover:bg-[#08382d] hover:shadow-lg active:scale-[0.97]"
         >
           <Plus size={18} />
           {t.addStudent}
-        </Button>
+        </Button>}
       </div>
 
       {isLoading ? (

@@ -23,6 +23,7 @@ export type AppNavigationInput = {
   activeRoleCodes: readonly string[];
   canViewMembers?: boolean;
   canViewAcademicReports?: boolean;
+  canViewSchoolTrack?: boolean;
   canViewRegistrations?: boolean;
   canViewDocuments?: boolean;
   locale?: AppLocale;
@@ -37,6 +38,7 @@ export type AppNavigationItem = {
     | "attendance"
     | "memorization"
     | "academic-reports"
+    | "school-track"
     | "finance"
     | "staff-payroll"
     | "receipts"
@@ -59,6 +61,7 @@ export function getAppNavigation({
   activeRoleCodes,
   canViewMembers = false,
   canViewAcademicReports = false,
+  canViewSchoolTrack = false,
   canViewRegistrations = false,
   canViewDocuments = false,
   locale = "ar",
@@ -140,6 +143,17 @@ export function getAppNavigation({
             path: "/academic-reports",
             group: "learning" as const,
             icon: ChartNoAxesCombined,
+          },
+        ]
+      : []),
+    ...(canViewSchoolTrack
+      ? [
+          {
+            id: "school-track" as const,
+            label: translate(locale, "nav.schoolTrack"),
+            path: "/school-track",
+            group: "learning" as const,
+            icon: GraduationCap,
           },
         ]
       : []),
@@ -253,6 +267,7 @@ export function getBottomNavigation(
     "registrations",
     "documents",
     "academic-reports",
+    "school-track",
     "finance",
     "guardians",
     "members",

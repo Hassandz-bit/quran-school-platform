@@ -38,6 +38,18 @@ begin
   end;
 
   begin
+    perform public.update_registration_lead_student_details(
+      current_setting('test.hardening_lead_id')::uuid,
+      '2017-01-01',
+      'primary',
+      'لا ينبغي حفظ هذا التعديل'
+    );
+    raise exception 'inactive-branch student detail update unexpectedly succeeded';
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  begin
     perform public.update_registration_lead_pipeline(
       current_setting('test.hardening_lead_id')::uuid,
       null,

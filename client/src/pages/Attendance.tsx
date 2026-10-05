@@ -148,7 +148,11 @@ export default function Attendance() {
       const nextScope = await fetchAttendanceScope(school.id);
       setScope(nextScope);
 
-      const firstClass = nextScope.classes[0];
+      const params = new URLSearchParams(window.location.search);
+      const requestedClass = nextScope.classes.find(item =>
+        item.id === params.get("classId") && item.branchId === params.get("branchId")
+      );
+      const firstClass = requestedClass ?? nextScope.classes[0];
       const firstBranchId =
         firstClass?.branchId ?? nextScope.branches[0]?.id ?? "";
       const firstClassId =

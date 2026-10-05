@@ -72,6 +72,7 @@ const ClassesList: React.FC = () => {
       retry: "إعادة المحاولة",
       empty: "لم تتم إضافة أي حلقة بعد.",
       noResults: "لا توجد نتائج مطابقة.",
+      openDetails: "عرض تفاصيل الحلقة",
     },
     en: {
       dashboard: "Dashboard",
@@ -99,6 +100,7 @@ const ClassesList: React.FC = () => {
       retry: "Try again",
       empty: "No classes have been added yet.",
       noResults: "No matching results.",
+      openDetails: "View class details",
     },
   };
   const t = content[language];
@@ -316,10 +318,18 @@ const ClassesList: React.FC = () => {
                   filteredClasses.map(classItem => (
                     <tr
                       key={classItem.id}
-                      className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
+                      onClick={() => setLocation(`/classes/${classItem.id}`)}
+                      className="cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50/70"
                     >
                       <td className="px-4 py-3 font-medium text-[#2C3E50] text-sm">
-                        {classItem.name}
+                        <button
+                          type="button"
+                          aria-label={`${t.openDetails}: ${classItem.name}`}
+                          className="text-start font-medium underline-offset-4 hover:text-[#17663B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+                          onClick={() => setLocation(`/classes/${classItem.id}`)}
+                        >
+                          {classItem.name}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 font-mono" dir="ltr">
                         {classItem.code}
@@ -354,7 +364,20 @@ const ClassesList: React.FC = () => {
         <div className="md:hidden space-y-3">
           {filteredClasses.length > 0 ? (
             filteredClasses.map(classItem => (
-              <Card key={classItem.id} className="p-4 border border-gray-100">
+              <Card
+                key={classItem.id}
+                role="link"
+                tabIndex={0}
+                aria-label={`${t.openDetails}: ${classItem.name}`}
+                onClick={() => setLocation(`/classes/${classItem.id}`)}
+                onKeyDown={event => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setLocation(`/classes/${classItem.id}`);
+                  }
+                }}
+                className="cursor-pointer border border-gray-100 p-4 transition hover:border-[#CDE4D2] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F855A]"
+              >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
                     <p className="font-semibold text-[#2C3E50]">{classItem.name}</p>

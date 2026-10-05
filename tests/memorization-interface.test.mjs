@@ -90,8 +90,9 @@ test("filters branches and classes to the memorization scope", () => {
 test("loads only active students in the exact class scope", () => {
   assert.match(
     data,
-    /\.from\("students"\)[\s\S]*?\.select\("id, first_name, last_name"\)[\s\S]*?\.eq\("school_id", schoolId\)[\s\S]*?\.eq\("branch_id", branchId\)[\s\S]*?\.eq\("class_id", classId\)[\s\S]*?\.eq\("status", "active"\)/
+    /\.from\("students"\)[\s\S]*?\.select\("id, first_name, last_name, photo_path"\)[\s\S]*?\.eq\("school_id", schoolId\)[\s\S]*?\.eq\("branch_id", branchId\)[\s\S]*?\.eq\("class_id", classId\)[\s\S]*?\.eq\("status", "active"\)/
   );
+  assert.match(data, /createStudentPhotoUrlMap/);
 });
 
 test("loads only active teachers assigned to the class through a scoped RPC", () => {

@@ -10,6 +10,7 @@ describe("memorization workspace teacher RPC", () => {
           id: "student-1",
           first_name: "طالب",
           last_name: "الاختبار",
+          photo_path: null,
         },
       ],
       error: null,
@@ -60,7 +61,7 @@ describe("memorization workspace teacher RPC", () => {
       target_class_id: "class-1",
     });
     expect(workspace.students).toEqual([
-      { id: "student-1", fullName: "طالب الاختبار" },
+      { id: "student-1", fullName: "طالب الاختبار", photoUrl: null },
     ]);
     expect(workspace.teachers).toEqual([
       {

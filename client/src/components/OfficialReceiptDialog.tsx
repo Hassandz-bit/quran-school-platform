@@ -49,10 +49,18 @@ export default function OfficialReceiptDialog({
   receipt,
   open,
   onOpenChange,
+  branding = null,
 }: {
   receipt: OfficialReceipt | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  branding?: {
+    logoUrl: string | null;
+    address: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
+    websiteUrl: string | null;
+  } | null;
 }) {
   const { locale, direction } = useLocale();
   if (!receipt) return null;
@@ -142,6 +150,12 @@ export default function OfficialReceiptDialog({
     receipt.receiptType === "registration"
       ? copy.registration
       : receipt.description ?? chargeType ?? copy.noValue;
+  const contactDetails = [
+    branding?.address,
+    branding?.contactPhone,
+    branding?.contactEmail,
+    branding?.websiteUrl,
+  ].filter((value): value is string => Boolean(value)).join(" · ");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -167,11 +181,16 @@ export default function OfficialReceiptDialog({
           dir={direction}
         >
           <header className="border-b-2 border-[#C8A26A] pb-5 text-center">
-            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-[#0B4738] text-xl font-black text-white">
-              ق
+            <div className="mx-auto mb-3 grid size-16 place-items-center overflow-hidden rounded-xl bg-[#0B4738] text-xl font-black text-white">
+              {branding?.logoUrl ? (
+                <img src={branding.logoUrl} alt={receipt.schoolName} className="size-full bg-white object-contain p-1" />
+              ) : (
+                "ق"
+              )}
             </div>
             <h1 className="text-2xl font-black text-[#0B4738]">{receipt.schoolName}</h1>
             <p className="mt-1 text-sm text-gray-600">{receipt.branchName}</p>
+            {contactDetails && <p className="mt-2 break-all text-xs leading-5 text-gray-500">{contactDetails}</p>}
             <h2 className="mt-4 text-xl font-bold">{copy.title}</h2>
             <p className="mt-1 font-mono text-sm font-bold tracking-wide text-[#9A7137]">
               {receipt.receiptNumber}

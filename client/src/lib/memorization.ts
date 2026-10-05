@@ -1,5 +1,6 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase.ts";
+import { createStudentPhotoUrlMap } from "./students.ts";
 
 export const MEMORIZATION_SESSION_TYPES = [
   "new_memorization",
@@ -181,6 +182,7 @@ export type MemorizationScope = {
 export type MemorizationStudent = {
   id: string;
   fullName: string;
+  photoUrl: string | null;
 };
 
 export type MemorizationTeacher = {
@@ -242,6 +244,22 @@ export type SaveMemorizationInput = {
   draft: MemorizationDraft;
 };
 
+export type SaveMemorizationGroupEntry = {
+  studentId: string;
+  draft: MemorizationDraft;
+};
+
+export type SaveMemorizationGroupInput = {
+  schoolId: string;
+  branchId: string;
+  classId: string;
+  entries: SaveMemorizationGroupEntry[];
+};
+
+export type SaveMemorizationGroupResult = {
+  savedCount: number;
+};
+
 export type SaveMemorizationResult = {
   recordId: string;
   mode: "created" | "updated";
@@ -256,7 +274,7 @@ type ClassRow = {
   name: string;
   schedule_label: string | null;
 };
-type StudentRow = { id: string; first_name: string; last_name: string };
+type StudentRow = { id: string; first_name: string; last_name: string; photo_path: string | null };
 type TeacherRow = {
   id: string;
   profile_id: string | null;
@@ -578,7 +596,7 @@ export async function fetchMemorizationWorkspace(
   const [studentsResult, teachers] = await Promise.all([
     client
       .from("students")
-      .select("id, first_name, last_name")
+      .select("id, first_name, last_name, photo_path")
       .eq("school_id", schoolId)
       .eq("branch_id", branchId)
       .eq("class_id", classId)
@@ -590,9 +608,12 @@ export async function fetchMemorizationWorkspace(
 
   if (studentsResult.error) throw studentsResult.error;
 
-  const students = ((studentsResult.data ?? []) as StudentRow[]).map(student => ({
+  const studentRows = (studentsResult.data ?? []) as StudentRow[];
+  const photoUrls = await createStudentPhotoUrlMap(studentRows, client);
+  const students = studentRows.map(student => ({
     id: student.id,
     fullName: `${student.first_name} ${student.last_name}`.trim(),
+    photoUrl: photoUrls.get(student.id) ?? null,
   }));
 
   return { students, teachers };
@@ -847,6 +868,85 @@ export async function saveMemorizationRecord(
 
   if (error) throw error;
   return { recordId: data.id as string, mode: "created" };
+}
+
+/**
+ * Saves one shared Quran portion for multiple students in one PostgREST insert.
+ * A bulk INSERT is a single database transaction, so a rejected row cannot
+ * leave the class with a partially saved group.
+ */
+export async function saveMemorizationGroup(
+  input: SaveMemorizationGroupInput,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<SaveMemorizationGroupResult> {
+  await assertClassAccess(
+    client,
+    input.schoolId,
+    input.branchId,
+    input.classId,
+    "memorization.manage"
+  );
+
+  if (input.entries.length === 0 || input.entries.length > 200) {
+    throw new MemorizationValidationError();
+  }
+
+  const studentIds = new Set<string>();
+  for (const entry of input.entries) {
+    if (!entry.studentId || studentIds.has(entry.studentId) || entry.draft.recordId) {
+      throw new MemorizationValidationError();
+    }
+    studentIds.add(entry.studentId);
+    validateDraft({ ...input, studentId: entry.studentId, draft: entry.draft });
+  }
+
+  const [studentsResult, teachers] = await Promise.all([
+    client
+      .from("students")
+      .select("id")
+      .eq("school_id", input.schoolId)
+      .eq("branch_id", input.branchId)
+      .eq("class_id", input.classId)
+      .eq("status", "active")
+      .in("id", [...studentIds]),
+    listMemorizationClassTeachers(
+      client,
+      input.schoolId,
+      input.branchId,
+      input.classId
+    ),
+  ]);
+
+  if (studentsResult.error) throw studentsResult.error;
+  const allowedStudentIds = new Set(
+    ((studentsResult.data ?? []) as Array<{ id: string }>).map(row => row.id)
+  );
+  if ([...studentIds].some(studentId => !allowedStudentIds.has(studentId))) {
+    throw new MemorizationPermissionError();
+  }
+
+  const assignedTeacherIds = new Set(teachers.map(teacher => teacher.id));
+  if (input.entries.some(entry => !assignedTeacherIds.has(entry.draft.teacherId))) {
+    throw new MemorizationValidationError("teacher_not_assigned");
+  }
+
+  const payload = input.entries.map(({ studentId, draft }) => ({
+    class_id: input.classId,
+    student_id: studentId,
+    teacher_id: draft.teacherId,
+    ...normalizedWritePayload(draft),
+  }));
+  const { data, error } = await client
+    .from("memorization_records")
+    .insert(payload)
+    .select("id");
+
+  if (error) throw error;
+  if (!data || data.length !== input.entries.length) {
+    throw new MemorizationPermissionError();
+  }
+
+  return { savedCount: data.length };
 }
 
 export function getMemorizationSessionLabel(

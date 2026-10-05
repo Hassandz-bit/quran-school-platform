@@ -14,6 +14,7 @@ import AttendanceRoute from "./components/AttendanceRoute";
 import MemorizationRoute from "./components/MemorizationRoute";
 import MembersRoute from "./components/MembersRoute";
 import AcademicReportsRoute from "./components/AcademicReportsRoute";
+import SchoolTrackRoute from "./components/SchoolTrackRoute";
 import LoginRoute from "./components/LoginRoute";
 import ParentRoute from "./components/ParentRoute";
 import AppShell from "./components/AppShell";
@@ -27,17 +28,22 @@ import { LocaleProvider, useLocale } from "./contexts/LocaleContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import type { TranslationKey } from "./lib/locale";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import StudentsList from "./pages/StudentsList";
-import AddStudentForm from "./pages/AddStudentForm";
-import ClassesList from "./pages/ClassesList";
-import AddClassForm from "./pages/AddClassForm";
-import TeachersList from "./pages/TeachersList";
-import AddTeacherForm from "./pages/AddTeacherForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import PostLoginRedirect from "./pages/PostLoginRedirect";
-import SchoolBackups from "./pages/SchoolBackups";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const StudentsList = lazy(() => import("./pages/StudentsList"));
+const AddStudentForm = lazy(() => import("./pages/AddStudentForm"));
+const EditStudentForm = lazy(() => import("./pages/EditStudentForm"));
+const ClassesList = lazy(() => import("./pages/ClassesList"));
+const AddClassForm = lazy(() => import("./pages/AddClassForm"));
+const TeachersList = lazy(() => import("./pages/TeachersList"));
+const AddTeacherForm = lazy(() => import("./pages/AddTeacherForm"));
+const EditTeacherForm = lazy(() => import("./pages/EditTeacherForm"));
+const ClassDetails = lazy(() => import("./pages/ClassDetails"));
+const TeacherDetails = lazy(() => import("./pages/TeacherDetails"));
+const SchoolBackups = lazy(() => import("./pages/SchoolBackups"));
 
 const FinanceDashboard = lazy(() => import("./pages/FinanceDashboard"));
 const FeePlans = lazy(() => import("./pages/FeePlans"));
@@ -57,12 +63,15 @@ const Attendance = lazy(() => import("./pages/Attendance"));
 const Memorization = lazy(() => import("./pages/Memorization"));
 const Members = lazy(() => import("./pages/Members"));
 const Guardians = lazy(() => import("./pages/Guardians"));
+const GuardianBulkImport = lazy(() => import("./pages/GuardianBulkImport"));
 const Registrations = lazy(() => import("./pages/Registrations"));
 const Documents = lazy(() => import("./pages/Documents"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Student360 = lazy(() => import("./pages/Student360"));
 const StudentBulkImport = lazy(() => import("./pages/StudentBulkImport"));
+const PrintableStudentRegistrationForm = lazy(() => import("./pages/PrintableStudentRegistrationForm"));
 const AcademicReports = lazy(() => import("./pages/AcademicReports"));
+const SchoolTrack = lazy(() => import("./pages/SchoolTrack"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const AcceptGuardianInvite = lazy(
   () => import("./pages/AcceptGuardianInvite")
@@ -80,6 +89,7 @@ const ARABIC_MODULE_FALLBACKS: Partial<Record<TranslationKey, string>> = {
   "fallback.members": "جارٍ تحميل دليل أعضاء المدرسة...",
   "fallback.registrations": "جارٍ تحميل متابعة التسجيل...",
   "fallback.documents": "جارٍ تحميل مركز الوثائق...",
+  "fallback.schoolTrack": "جارٍ تحميل المسار المدرسي...",
 };
 
 function ModuleFallback({ labelKey }: { labelKey: TranslationKey }) {
@@ -212,8 +222,18 @@ function Router() {
             </Shell>
           </StudentsRoute>
         </Route>
+        <Route path="/students/registration-form">
+          <StudentsRoute requireManage>
+            <Suspense fallback={<Student360PageFallback />}>
+              <PrintableStudentRegistrationForm />
+            </Suspense>
+          </StudentsRoute>
+        </Route>
         <Route path="/students/new">
           <StudentsRoute requireManage><Shell><AddStudentForm /></Shell></StudentsRoute>
+        </Route>
+        <Route path="/students/:studentId/edit">
+          <StudentsRoute requireManage><Shell><EditStudentForm /></Shell></StudentsRoute>
         </Route>
         <Route path="/students/:studentId">
           <StudentsRoute>
@@ -247,11 +267,20 @@ function Router() {
         <Route path="/classes/new">
           <ProtectedRoute><Shell><AddClassForm /></Shell></ProtectedRoute>
         </Route>
+        <Route path="/classes/:classId">
+          <ProtectedRoute><Shell><ClassDetails /></Shell></ProtectedRoute>
+        </Route>
         <Route path="/teachers">
           <ProtectedRoute><Shell><TeachersList /></Shell></ProtectedRoute>
         </Route>
         <Route path="/teachers/new">
           <ProtectedRoute><Shell><AddTeacherForm /></Shell></ProtectedRoute>
+        </Route>
+        <Route path="/teachers/:teacherId/edit">
+          <ProtectedRoute><Shell><EditTeacherForm /></Shell></ProtectedRoute>
+        </Route>
+        <Route path="/teachers/:teacherId">
+          <ProtectedRoute><Shell><TeacherDetails /></Shell></ProtectedRoute>
         </Route>
         <Route path="/registrations">
           <RegistrationRoute>
@@ -270,6 +299,15 @@ function Router() {
               </Suspense>
             </Shell>
           </DocumentsRoute>
+        </Route>
+        <Route path="/guardians/import">
+          <StaffRoute>
+            <Shell>
+              <Suspense fallback={<ParentPageFallback />}>
+                <GuardianBulkImport />
+              </Suspense>
+            </Shell>
+          </StaffRoute>
         </Route>
         <Route path="/guardians">
           <StaffRoute>
@@ -347,6 +385,15 @@ function Router() {
               </Suspense>
             </Shell>
           </AttendanceRoute>
+        </Route>
+        <Route path="/school-track">
+          <SchoolTrackRoute>
+            <Shell>
+              <Suspense fallback={<ModuleFallback labelKey="fallback.schoolTrack" />}>
+                <SchoolTrack />
+              </Suspense>
+            </Shell>
+          </SchoolTrackRoute>
         </Route>
         <Route path="/academic-reports">
           <AcademicReportsRoute>

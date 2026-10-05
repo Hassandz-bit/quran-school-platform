@@ -107,10 +107,10 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
     throw new SafeGuardianInvitationError("provisioning_failed", 500);
   }
 
-  async function ensureActiveProfile(userId: string, fullName: string) {
+  async function ensureActiveProfile(userId: string, fullName: string, phone: string | null) {
     const { data: existing, error: readError } = await admin
       .from("profiles")
-      .select("id, status")
+      .select("id, status, phone")
       .eq("id", userId)
       .maybeSingle();
     if (readError) {
@@ -120,12 +120,17 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
       if (existing.status !== "active") {
         throw new GuardianAccountIneligibleError();
       }
+      if (phone && existing.phone !== phone) {
+        const { error } = await admin.from("profiles").update({ phone }).eq("id", userId);
+        if (error) throw new SafeGuardianInvitationError("provisioning_failed", 500);
+      }
       return;
     }
 
     const { error: insertError } = await admin.from("profiles").insert({
       id: userId,
       full_name: fullName,
+      phone,
       locale: "ar",
       status: "active",
     });
@@ -136,7 +141,7 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
 
     const { data: racedProfile, error: retryError } = await admin
       .from("profiles")
-      .select("id, status")
+      .select("id, status, phone")
       .eq("id", userId)
       .maybeSingle();
     if (retryError || !racedProfile) {
@@ -144,6 +149,10 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
     }
     if (racedProfile.status !== "active") {
       throw new GuardianAccountIneligibleError();
+    }
+    if (phone && racedProfile.phone !== phone) {
+      const { error } = await admin.from("profiles").update({ phone }).eq("id", userId);
+      if (error) throw new SafeGuardianInvitationError("provisioning_failed", 500);
     }
   }
 
@@ -202,7 +211,7 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
       } satisfies GuardianInvitationAttempt;
     },
 
-    async resolveAccount(email, fullName) {
+    async resolveAccount(email, fullName, phone) {
       let user = await findAuthUser(email);
       let created = false;
 
@@ -224,7 +233,7 @@ export function createSupabaseGuardianInviteDependencies(): InviteGuardianDepend
       }
 
       try {
-        await ensureActiveProfile(user.id, fullName);
+        await ensureActiveProfile(user.id, fullName, phone);
       } catch (error) {
         if (created) {
           try {
