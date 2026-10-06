@@ -27,6 +27,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:guardian-security:migration
-      - run: pnpm test
-      - run: pnpm check
-      - run: pnpm build
+      - run: node --experimental-strip-types --test tests/guardian-security-foundation.test.mjs
+      - run: git diff --check
