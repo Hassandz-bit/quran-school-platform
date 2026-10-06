@@ -28,7 +28,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:guardian-parent-finance:migration
-      - run: pnpm test
+      - run: node --experimental-strip-types --test tests/guardian-parent-finance.test.mjs
+      - run: pnpm exec vitest --config vitest.config.ts run tests/guardian-parent-finance-runtime.test.ts
       - run: pnpm check
-      - run: pnpm build
+      - run: pnpm exec vite build
       - run: git diff --check

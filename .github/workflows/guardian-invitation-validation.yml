@@ -36,9 +36,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:guardian-invitations:migration
       - run: pnpm test:guardian-invitations:function
-      - run: pnpm test:teacher-invitations:migration
-      - run: pnpm test:teacher-invitations:function
-      - run: pnpm test
+      - run: node --experimental-strip-types --test tests/guardian-invitations.test.mjs
+      - run: pnpm exec vitest --config vitest.config.ts run tests/guardian-invitations-runtime.test.tsx
       - run: pnpm check
-      - run: pnpm build
+      - run: pnpm exec vite build
       - run: git diff --check

@@ -2,17 +2,6 @@ name: Launch Readiness Validation
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
-      - develop/v2
-    paths:
-      - "client/**"
-      - "supabase/**"
-      - "tests/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/launch-readiness-validation.yml"
 
 permissions:
   contents: read

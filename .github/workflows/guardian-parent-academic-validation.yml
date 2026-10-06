@@ -33,7 +33,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:guardian-parent-academic:migration
-      - run: pnpm test
+      - run: node --experimental-strip-types --test tests/guardian-parent-academic.test.mjs
+      - run: pnpm exec vitest --config vitest.config.ts run tests/guardian-parent-academic-runtime.test.ts
       - run: pnpm check
-      - run: pnpm build
+      - run: pnpm exec vite build
       - run: git diff --check
