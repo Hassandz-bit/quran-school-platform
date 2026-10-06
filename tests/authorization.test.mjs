@@ -153,6 +153,7 @@ test("selects a later school_admin membership when the first membership is ordin
       "profiles",
       "school_memberships",
       "schools",
+      "schools",
       "membership_roles",
       "roles",
     ]

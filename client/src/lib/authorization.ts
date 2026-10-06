@@ -141,11 +141,31 @@ export async function loadCurrentAuthorization(
     ];
     const { data: schoolData, error: schoolError } = await client
       .from("schools")
-      .select("id, name, slug, status, currency_code, contact_phone, contact_email, address, website_url, logo_path")
+      // Keep the authentication path compatible while optional branding columns
+      // are being rolled out to an existing Supabase project.
+      .select("id, name, slug, status, currency_code")
       .in("id", schoolIds);
 
     if (schoolError) throw schoolError;
-    const schools = (schoolData ?? []) as School[];
+    const schools = (schoolData ?? []).map(school => ({
+      ...school,
+      contact_phone: null,
+      contact_email: null,
+      address: null,
+      website_url: null,
+      logo_path: null,
+    })) as School[];
+
+    // Branding is optional for authorization. If migration 070 is not present,
+    // this query fails harmlessly and the user can still enter the platform.
+    const { data: brandingData } = await client
+      .from("schools")
+      .select("id, contact_phone, contact_email, address, website_url, logo_path")
+      .in("id", schoolIds);
+    for (const branding of brandingData ?? []) {
+      const school = schools.find(item => item.id === branding.id);
+      if (school) Object.assign(school, branding);
+    }
     const activeSchoolsById = new Map(
       schools
         .filter(school =>
