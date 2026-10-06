@@ -99,6 +99,30 @@ export function getDemoErrorMessage(error: unknown): string {
   if (message.includes("demo_cleanup_blocked_real_memorization_with_demo_teacher")) {
     return "تعذر مسح العرض لأن معلّمًا تجريبيًا استُخدم في سجل حفظ لطالب حقيقي.";
   }
+  if (message.includes("demo_cleanup_blocked_student_photo")) {
+    return "تعذر مسح العرض لأن الطالب التجريبي لديه صورة شخصية. أزل الصورة أو احفظها خارج المنصة ثم أعد المحاولة.";
+  }
+  if (message.includes("demo_cleanup_blocked_student_documents")) {
+    return "تعذر مسح العرض لأن طالبًا تجريبيًا لديه وثائق مرفقة. انقل الوثائق أو احذفها أولًا؛ لم تُحذف.";
+  }
+  if (message.includes("demo_cleanup_blocked_student_import_history")) {
+    return "تعذر مسح العرض لأن سجل استيراد يحتفظ بمرجع إلى طالب تجريبي. راجع سجل الاستيراد أولًا.";
+  }
+  if (message.includes("demo_cleanup_blocked_real_school_track_result")) {
+    return "تعذر مسح العرض لأن نتيجة مسار مدرسي لطالب حقيقي مرتبطة بحلقة تجريبية. صحح ربط النتيجة أولًا.";
+  }
+  if (message.includes("demo_cleanup_blocked_real_follow_up_note")) {
+    return "تعذر مسح العرض لأن ملاحظة متابعة لطالب حقيقي مرتبطة بحلقة أو معلم تجريبي. انقلها أو صحح الربط أولًا.";
+  }
+  if (message.includes("demo_cleanup_blocked_demo_teacher_payroll")) {
+    return "تعذر مسح العرض لأن المعلم التجريبي مرتبط ببيانات موظف أو رواتب. عالج ارتباطات الرواتب أولًا.";
+  }
+  if (message.includes("demo_cleanup_blocked_related_record") || safe?.code === "23503") {
+    return "تعذر مسح العرض لوجود سجل مرتبط غير معروف؛ لم يُحذف شيء. أرسل رمز الخطأ إلى مسؤول الدعم.";
+  }
+  if (safe?.code === "PGRST202" || message.includes("clear_school_demo_data")) {
+    return "إجراء إنهاء العرض غير متاح في قاعدة البيانات بعد. طبّق تحديثات قاعدة البيانات ثم أعد المحاولة.";
+  }
   if (safe?.code === "42501" || message.includes("demo_access_denied")) {
     return "هذه العملية متاحة لمدير المدرسة فقط.";
   }

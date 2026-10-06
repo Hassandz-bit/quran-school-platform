@@ -72,6 +72,11 @@ for _ in 1 2; do
     < supabase/022_student_profile_column_privileges.sql
 done
 
+# First apply and exercise the cleanup migration against the baseline schema,
+# where optional later-module tables do not exist.
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < supabase/071_demo_cleanup_related_records.sql
+
 if ! docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/demo-mode-student-profile-assertions.sql; then
   echo "Demo migration assertions failed. Diagnostic student education rows:" >&2
@@ -95,3 +100,15 @@ if ! docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d qur
   " >&2 || true
   exit 1
 fi
+
+# Create minimal later-module relations, then replay the migration twice to
+# exercise dependent-record cleanup and idempotency with those modules present.
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/demo-cleanup-related-tables-fixture.sql
+for _ in 1 2; do
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+    < supabase/071_demo_cleanup_related_records.sql
+done
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/demo-cleanup-related-data-assertions.sql
