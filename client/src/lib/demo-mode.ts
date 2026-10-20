@@ -75,33 +75,73 @@ export async function clearDemoData(schoolId: string): Promise<number> {
   return Number.isFinite(count) ? count : 0;
 }
 
-type SafeError = Pick<PostgrestError, "code" | "message"> | null | undefined;
+type SafeError = Pick<PostgrestError, "code" | "message" | "details" | "hint"> | null | undefined;
+
+function getErrorParts(error: unknown): {
+  code: string;
+  message: string;
+  details: string;
+  hint: string;
+} {
+  if (!error || typeof error !== "object") {
+    return { code: "", message: String(error ?? ""), details: "", hint: "" };
+  }
+
+  const value = error as Partial<SafeError> & { error_description?: unknown };
+  return {
+    code: typeof value.code === "string" ? value.code : "",
+    message: typeof value.message === "string" ? value.message : "",
+    details: typeof value.details === "string" ? value.details : "",
+    hint: typeof value.hint === "string" ? value.hint : "",
+  };
+}
 
 export function getDemoErrorMessage(error: unknown): string {
-  const safe = error as SafeError;
-  const message = safe?.message ?? "";
+  const { code, message, details, hint } = getErrorParts(error);
+  const combined = [message, details, hint].join(" ");
 
-  if (message.includes("demo_already_active")) {
+  // Keep technical diagnostics in the browser console for support, without
+  // exposing SQL, row values, or internal database details in the UI.
+  console.error("[QuranOS demo cleanup] operation failed", {
+    code: code || "unknown",
+    message: message || "No backend message returned",
+  });
+
+  if (combined.includes("demo_already_active")) {
     return "البيانات التجريبية مفعلة بالفعل لهذه المدرسة.";
   }
-  if (message.includes("demo_requires_active_branch")) {
+  if (combined.includes("demo_requires_active_branch")) {
     return "يلزم وجود فرع نشط قبل إنشاء البيانات التجريبية.";
   }
-  if (message.includes("demo_cleanup_blocked_teacher_invitation")) {
+  if (combined.includes("demo_cleanup_blocked_teacher_invitation")) {
     return "تعذر مسح العرض لأن معلّمًا تجريبيًا استُخدم في دعوة حساب حقيقية. راجع الدعوات أولًا.";
   }
-  if (message.includes("demo_cleanup_blocked_guardian_link")) {
+  if (combined.includes("demo_cleanup_blocked_guardian_link")) {
     return "تعذر مسح العرض لأن طالبًا تجريبيًا مرتبط بولي أمر أو دعوة ولي أمر. فك الارتباط أولًا.";
   }
-  if (message.includes("demo_cleanup_blocked_real_student_in_demo_class")) {
+  if (combined.includes("demo_cleanup_blocked_real_student_in_demo_class")) {
     return "تعذر مسح العرض لأن طالبًا حقيقيًا أُضيف إلى حلقة تجريبية. انقله إلى حلقة حقيقية أولًا.";
   }
-  if (message.includes("demo_cleanup_blocked_real_memorization_with_demo_teacher")) {
+  if (combined.includes("demo_cleanup_blocked_real_memorization_with_demo_teacher")) {
     return "تعذر مسح العرض لأن معلّمًا تجريبيًا استُخدم في سجل حفظ لطالب حقيقي.";
   }
-  if (safe?.code === "42501" || message.includes("demo_access_denied")) {
+  if (code === "42501" || combined.includes("demo_access_denied")) {
     return "هذه العملية متاحة لمدير المدرسة فقط.";
   }
+  if (code === "23503") {
+    return "تعذر إنهاء العرض بسبب ارتباط ببيانات أخرى. لم تُحذف البيانات الحقيقية؛ أرسل رمز الخطأ 23503 للدعم الفني.";
+  }
+  if (code === "23505") {
+    return "تعذر إنهاء العرض بسبب تعارض في سجل قاعدة البيانات. أرسل رمز الخطأ 23505 للدعم الفني.";
+  }
+  if (code === "23514") {
+    return "تعذر إنهاء العرض بسبب شرط تحقق في قاعدة البيانات. أرسل رمز الخطأ 23514 للدعم الفني.";
+  }
+  if (code === "57014" || code === "statement_timeout") {
+    return "استغرقت عملية إنهاء العرض وقتًا أطول من المسموح. أعد المحاولة لاحقًا، وإذا تكرر الخطأ أرسل الرمز 57014 للدعم.";
+  }
 
-  return "تعذر تنفيذ عملية البيانات التجريبية حاليًا.";
+  return code
+    ? `تعذر تنفيذ عملية البيانات التجريبية (رمز الخطأ: ${code}). أرسل الرمز للدعم الفني.`
+    : "تعذر تنفيذ عملية البيانات التجريبية حاليًا. افتح أدوات المطور (Console) أو أرسل سجل الخطأ للدعم الفني.";
 }
