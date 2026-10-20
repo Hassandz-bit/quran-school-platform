@@ -75,7 +75,7 @@ export async function clearDemoData(schoolId: string): Promise<number> {
   return Number.isFinite(count) ? count : 0;
 }
 
-type SafeError = Pick<PostgrestError, "code" | "message" | "details" | "hint"> | null | undefined;
+type SafeError = Pick<PostgrestError, "code" | "message" | "details" | "hint">;
 
 function getErrorParts(error: unknown): {
   code: string;
@@ -87,7 +87,7 @@ function getErrorParts(error: unknown): {
     return { code: "", message: String(error ?? ""), details: "", hint: "" };
   }
 
-  const value = error as Partial<SafeError> & { error_description?: unknown };
+  const value = error as Partial<SafeError>;
   return {
     code: typeof value.code === "string" ? value.code : "",
     message: typeof value.message === "string" ? value.message : "",
@@ -100,9 +100,9 @@ export function getDemoErrorMessage(error: unknown): string {
   const { code, message, details, hint } = getErrorParts(error);
   const combined = [message, details, hint].join(" ");
 
-  // Keep technical diagnostics in the browser console for support, without
-  // exposing SQL, row values, or internal database details in the UI.
-  console.error("[QuranOS demo cleanup] operation failed", {
+  // Log only the SQLSTATE and backend message for troubleshooting. Never log
+  // request payloads, student records, or other potentially sensitive data.
+  console.error("[QuranOS demo operation failed]", {
     code: code || "unknown",
     message: message || "No backend message returned",
   });
@@ -143,5 +143,5 @@ export function getDemoErrorMessage(error: unknown): string {
 
   return code
     ? `تعذر تنفيذ عملية البيانات التجريبية (رمز الخطأ: ${code}). أرسل الرمز للدعم الفني.`
-    : "تعذر تنفيذ عملية البيانات التجريبية حاليًا. افتح أدوات المطور (Console) أو أرسل سجل الخطأ للدعم الفني.";
+    : "تعذر تنفيذ عملية البيانات التجريبية حاليًا. افتح أدوات المطور (Console) وأرسل سجل الخطأ للدعم الفني.";
 }
