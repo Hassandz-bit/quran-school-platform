@@ -46,11 +46,33 @@ const Login: React.FC = () => {
       const { error } = await signInWithPassword(email, password);
 
       if (error) {
-        setErrorMessage(
-          language === "ar"
-            ? "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور."
-            : "Could not sign in. Check your email and password."
-        );
+        const details = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+        let messageAr = "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.";
+        let messageEn = "Could not sign in. Check your email and password.";
+
+        if (details.includes("email_not_confirmed")) {
+          messageAr = "لم يتم تأكيد البريد الإلكتروني لهذا الحساب. تحقق من رسالة التأكيد أو تواصل مع مسؤول المنصة.";
+          messageEn = "This account's email has not been confirmed. Check your confirmation email or contact the platform administrator.";
+        } else if (details.includes("too_many_requests") || details.includes("rate limit")) {
+          messageAr = "تكررت محاولات الدخول أو إرسال الرسائل كثيرًا. انتظر قليلًا ثم حاول مجددًا.";
+          messageEn = "Too many sign-in attempts or messages. Please wait a little and try again.";
+        } else if (details.includes("invalid login credentials")) {
+          messageAr = "البريد الإلكتروني أو كلمة المرور غير صحيحة، أو أن الحساب غير موجود. إذا نسيت كلمة المرور فاستخدم «نسيت كلمة المرور؟».";
+          messageEn = "Email or password is incorrect, or the account does not exist. Use “Forgot password?” if needed.";
+        } else if (details.includes("fetch") || details.includes("network") || details.includes("failed to fetch")) {
+          messageAr = "تعذر الاتصال بخدمة تسجيل الدخول. تحقق من الإنترنت ثم أعد المحاولة.";
+          messageEn = "Could not connect to the sign-in service. Check your internet connection and try again.";
+        } else if (details.includes("supabase") || details.includes("configuration")) {
+          messageAr = "إعدادات الاتصال بخدمة تسجيل الدخول غير مكتملة. يرجى إبلاغ مسؤول المنصة.";
+          messageEn = "Sign-in service configuration is incomplete. Please contact the platform administrator.";
+        }
+
+        console.error("[QuranOS auth] sign-in failed", {
+          code: error.code ?? "unknown",
+          status: error.status ?? "unknown",
+          message: error.message,
+        });
+        setErrorMessage(language === "ar" ? messageAr : messageEn);
         return;
       }
 
