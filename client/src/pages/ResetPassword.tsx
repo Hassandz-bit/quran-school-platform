@@ -44,8 +44,13 @@ export default function ResetPassword() {
       const { error } = await updateUser({ password });
 
       if (error) {
+        console.error("[QuranOS auth] password update failed", {
+          code: error.code ?? "unknown",
+          status: error.status ?? "unknown",
+          message: error.message,
+        });
         setErrorMessage(
-          "تعذر تغيير كلمة المرور. قد يكون رابط الاستعادة منتهيًا أو غير صالح."
+          "تعذر تغيير كلمة المرور. قد يكون رابط الاستعادة منتهيًا أو غير صالح. أرسل رمز الخطأ إلى الدعم الفني إذا تكرر الأمر."
         );
         return;
       }

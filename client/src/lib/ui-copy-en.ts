@@ -1779,4 +1779,10 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "سيصبح هذا الرابط أساسيًا للطالب، ويُحدّث الرابط الأساسي السابق تلقائيًا.": "This will become the student's primary guardian link; the previous primary link will be updated automatically.",
   "تعديل الطالب": "Edit student",
   "تعديل المعلم": "Edit teacher",
+  "لم يتم تأكيد البريد الإلكتروني لهذا الحساب. تحقق من رسالة التأكيد أو تواصل مع مسؤول المنصة.": "This account's email has not been confirmed. Check your confirmation email or contact the platform administrator.",
+  "تكررت محاولات الدخول أو إرسال الرسائل كثيرًا. انتظر قليلًا ثم حاول مجددًا.": "Too many sign-in attempts or messages. Please wait a little and try again.",
+  "البريد الإلكتروني أو كلمة المرور غير صحيحة، أو أن الحساب غير موجود. إذا نسيت كلمة المرور فاستخدم «نسيت كلمة المرور؟».": "Email or password is incorrect, or the account does not exist. Use “Forgot password?” if needed.",
+  "تعذر الاتصال بخدمة تسجيل الدخول. تحقق من الإنترنت ثم أعد المحاولة.": "Could not connect to the sign-in service. Check your internet connection and try again.",
+  "إعدادات الاتصال بخدمة تسجيل الدخول غير مكتملة. يرجى إبلاغ مسؤول المنصة.": "Sign-in service configuration is incomplete. Please contact the platform administrator.",
+  "تعذر تغيير كلمة المرور. قد يكون رابط الاستعادة منتهيًا أو غير صالح. أرسل رمز الخطأ إلى الدعم الفني إذا تكرر الأمر.": "Could not update the password. The recovery link may be expired or invalid. Send the error code to support if the issue persists.",
 };
