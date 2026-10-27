@@ -70,6 +70,11 @@ export default function ForgotPassword() {
           return;
         }
 
+        console.error("[QuranOS auth] password recovery request failed", {
+          code: error.code ?? "unknown",
+          status: error.status ?? "unknown",
+          message: error.message,
+        });
         setErrorMessage(getRecoveryErrorMessage(error));
         return;
       }
