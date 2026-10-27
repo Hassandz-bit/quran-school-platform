@@ -56,10 +56,11 @@ export default function ForgotPassword() {
     setSuccessMessage("");
 
     try {
-      const { error } = await resetPasswordForEmail(
-        email,
-        `${window.location.origin}/reset-password`
-      );
+      // Always return to the verified production domain. Preview and generated
+      // Vercel aliases may not be allow-listed in Supabase Auth Redirect URLs.
+      const recoveryRedirectTo =
+        "https://quran-school-platform-livid.vercel.app/reset-password";
+      const { error } = await resetPasswordForEmail(email, recoveryRedirectTo);
 
       if (error) {
         if (error.code === "over_email_send_rate_limit" || error.status === 429) {
