@@ -208,8 +208,8 @@ export function getReceiptErrorMessage(error: unknown, locale: AppLocale): strin
 
   if (text.includes("official_receipt_demo_record")) {
     return locale === "ar"
-      ? "لا تُصدر أرقام وصولات رسمية لبيانات Demo. استخدم بيانات حقيقية."
-      : "Official receipt numbers are not issued for Demo data. Use real records.";
+      ? "لا يمكن إصدار وصل رسمي لسجل اختباري أو غير معتمد. راجع سجل الطالب."
+      : "Official receipts cannot be issued for test or unverified records. Review the student record.";
   }
   if (text.includes("receipt issue denied") || text.includes("42501")) {
     return locale === "ar"

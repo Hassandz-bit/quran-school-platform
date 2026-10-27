@@ -69,8 +69,13 @@ test("student profile privilege migration preserves column-level least privilege
   assert.doesNotMatch(sql, /grant\s+all/i);
 });
 
-test("demo controls are school-admin only in the dashboard", async () => {
-  const dashboard = await read("client/src/pages/Dashboard.tsx");
-  assert.match(dashboard, /isSchoolAdmin && school\?\.id/);
-  assert.match(dashboard, /<DemoModeCard schoolId=\{school\.id\}/);
+test("demo creation controls are retired while the legacy cleanup RPC is preserved", async () => {
+  const [dashboard, retirement, cleanup] = await Promise.all([
+    read("client/src/pages/Dashboard.tsx"),
+    read("supabase/072_retire_demo_mode.sql"),
+    read("supabase/071_demo_cleanup_related_records.sql"),
+  ]);
+  assert.doesNotMatch(dashboard, /DemoModeCard/);
+  assert.match(retirement, /revoke all on function public\.create_school_demo_data\(uuid\)/);
+  assert.match(cleanup, /grant execute on function public\.clear_school_demo_data\(uuid\) to authenticated/);
 });

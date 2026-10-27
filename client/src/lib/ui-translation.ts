@@ -303,7 +303,6 @@ const DYNAMIC_ENGLISH: Array<[
   RegExp,
   (match: RegExpMatchArray) => string,
 ]> = [
-  [/^تم مسح بيانات العرض التجريبية \((\d+) طالب\)\.$/u, match => `Demo data cleared (${match[1]} students).`],
   [/^تم إرسال الإشعار إلى (\d+) مستلمًا\.$/u, match => `Notification sent to ${match[1]} recipients.`],
   [/^تم إنشاء (\d+) استحقاقًا دوريًا\.$/u, match => `${match[1]} recurring charges created.`],
   [/^تم إنشاء (\d+) تذكيرًا جديدًا\.$/u, match => `${match[1]} new reminders created.`],

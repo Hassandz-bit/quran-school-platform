@@ -13,27 +13,10 @@ const BLOCKERS = [
   "demo_cleanup_blocked_demo_teacher_payroll",
 ];
 
-const UI_ERRORS = [
-  "تعذر مسح العرض لأن الطالب التجريبي لديه صورة شخصية. أزل الصورة أو احفظها خارج المنصة ثم أعد المحاولة.",
-  "تعذر مسح العرض لأن طالبًا تجريبيًا لديه وثائق مرفقة. انقل الوثائق أو احذفها أولًا؛ لم تُحذف.",
-  "تعذر مسح العرض لأن سجل استيراد يحتفظ بمرجع إلى طالب تجريبي. راجع سجل الاستيراد أولًا.",
-  "تعذر مسح العرض لأن نتيجة مسار مدرسي لطالب حقيقي مرتبطة بحلقة تجريبية. صحح ربط النتيجة أولًا.",
-  "تعذر مسح العرض لأن ملاحظة متابعة لطالب حقيقي مرتبطة بحلقة أو معلم تجريبي. انقلها أو صحح الربط أولًا.",
-  "تعذر مسح العرض لأن المعلم التجريبي مرتبط ببيانات موظف أو رواتب. عالج ارتباطات الرواتب أولًا.",
-  "تعذر مسح العرض لوجود سجل مرتبط غير معروف؛ لم يُحذف شيء. أرسل رمز الخطأ إلى مسؤول الدعم.",
-  "إجراء إنهاء العرض غير متاح في قاعدة البيانات بعد. طبّق تحديثات قاعدة البيانات ثم أعد المحاولة.",
-];
-
-const WARNING_STRINGS = [
-  "استخدم البيانات التجريبية للاستكشاف فقط. عند إنهاء العرض تُحذف سجلاته المرتبطة، بما فيها الحضور والحفظ وملاحظات المتابعة ونتائج المسار المدرسي والإشعارات والعمليات المالية. لا تربطها بطلاب حقيقيين أو حسابات ودعوات حقيقية؛ وتتوقف العملية إذا وجدت صورًا أو وثائق أو سجلات استيراد أو رواتب يجب حفظها.",
-  "للتأكيد اضغط الزر مرة ثانية. سيحذف النظام كيانات العرض والسجلات التابعة لها، ويوقف العملية إذا اكتشف طالبًا أو ولي أمر أو دعوة حقيقية مرتبطة، أو مرفقات أو رواتب أو سجل استيراد يجب حفظه.",
-];
-
-test("demo cleanup covers dependent modules while failing closed on real or sensitive records", async () => {
-  const [sql, dataLayer, card] = await Promise.all([
+test("legacy demo cleanup remains atomic and preserves real or sensitive records", async () => {
+  const [sql, receipts] = await Promise.all([
     read("supabase/071_demo_cleanup_related_records.sql"),
-    read("client/src/lib/demo-mode.ts"),
-    read("client/src/components/DemoModeCard.tsx"),
+    read("supabase/027_official_receipts.sql"),
   ]);
 
   assert.match(sql, /rename to clear_school_demo_data_before_071/);
@@ -56,28 +39,31 @@ test("demo cleanup covers dependent modules while failing closed on real or sens
   assert.deepEqual(deletionOrder, [...deletionOrder].sort((left, right) => left - right));
   assert.match(sql, /when foreign_key_violation then[\s\S]*blocked_constraint = constraint_name[\s\S]*message = 'demo_cleanup_blocked_related_record'/i);
   assert.doesNotMatch(sql, /delete from public\.(document_records|payroll_entries|payroll_compensation_profiles|employees)/i);
-
-  for (const blocker of [...BLOCKERS, "demo_cleanup_blocked_related_record"]) {
-    assert.ok(dataLayer.includes(blocker), `missing client error mapping: ${blocker}`);
-  }
-  assert.match(dataLayer, /safe\?\.code === "PGRST202"/);
-  assert.match(card, /نتائج المسار المدرسي/);
-  assert.match(card, /تتوقف العملية/);
+  assert.match(receipts, /receipt_record_is_active_demo/);
 });
 
-test("demo cleanup warnings and mapped errors have English catalog entries", async () => {
-  const [dataLayer, card, catalog] = await Promise.all([
-    read("client/src/lib/demo-mode.ts"),
-    read("client/src/components/DemoModeCard.tsx"),
+test("demo creation is retired while the protected cleanup path remains available", async () => {
+  const [dashboard, retirement, cleanup, catalog, runner, fixture, assertions] = await Promise.all([
+    read("client/src/pages/Dashboard.tsx"),
+    read("supabase/072_retire_demo_mode.sql"),
+    read("supabase/071_demo_cleanup_related_records.sql"),
     read("client/src/lib/ui-copy-en.ts"),
+    read("tests/run-demo-mode-student-profile-migration-test.sh"),
+    read("tests/demo-mode-retirement-fixture.sql"),
+    read("tests/demo-mode-retirement-assertions.sql"),
   ]);
 
-  for (const value of UI_ERRORS) {
-    assert.ok(dataLayer.includes(value), `missing error mapping: ${value}`);
-    assert.ok(catalog.includes(`"${value}":`), `missing English catalog entry: ${value}`);
-  }
-  for (const value of WARNING_STRINGS) {
-    assert.ok(card.includes(value), `missing Demo warning: ${value}`);
-    assert.ok(catalog.includes(`"${value}":`), `missing English catalog entry: ${value}`);
+  assert.doesNotMatch(dashboard, /DemoModeCard|demo-mode/i);
+  assert.match(retirement, /revoke all on function public\.create_school_demo_data\(uuid\)[\s\S]*from public, anon, authenticated/i);
+  assert.match(retirement, /revoke all on function public\.get_school_demo_status\(uuid\)[\s\S]*from public, anon, authenticated/i);
+  assert.match(cleanup, /grant execute on function public\.clear_school_demo_data\(uuid\) to authenticated/);
+  assert.doesNotMatch(retirement, /drop table[\s\S]*demo_seed/i);
+  assert.doesNotMatch(catalog, /وضع العرض التجريبي|البيانات التجريبية|إنشاء بيانات العرض/);
+  assert.match(fixture, /create_school_demo_data/);
+  assert.ok(runner.indexOf("demo-mode-retirement-fixture.sql") < runner.indexOf("072_retire_demo_mode.sql"));
+  assert.match(assertions, /retirement_migration_removed_existing_demo_records/);
+
+  for (const path of ["client/src/components/DemoModeCard.tsx", "client/src/lib/demo-mode.ts"]) {
+    await assert.rejects(read(path), error => error?.code === "ENOENT");
   }
 });

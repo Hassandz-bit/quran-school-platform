@@ -112,3 +112,12 @@ done
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/demo-cleanup-related-data-assertions.sql
+
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/demo-mode-retirement-fixture.sql
+for _ in 1 2; do
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+    < supabase/072_retire_demo_mode.sql
+done
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/demo-mode-retirement-assertions.sql
