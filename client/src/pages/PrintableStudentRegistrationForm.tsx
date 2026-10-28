@@ -9,18 +9,14 @@ import { printableRegistrationFormCopy } from "@/lib/printable-registration-form
 type WritingFieldProps = {
   label: string;
   required?: boolean;
-  optionalText: string;
   className?: string;
   compact?: boolean;
 };
 
-function WritingField({ label, required = false, optionalText, className = "", compact = false }: WritingFieldProps) {
+function WritingField({ label, required = false, className = "", compact = false }: WritingFieldProps) {
   return (
     <div className={`registration-field min-w-0 ${className}`}>
-      <div className="flex items-baseline justify-between gap-1 text-[10px] font-semibold text-slate-700">
-        <span>{label}{required && <span className="ms-1 text-red-700">*</span>}</span>
-        {!required && <span className="text-[8px] font-normal text-slate-400">{optionalText}</span>}
-      </div>
+      <div className="text-[10px] font-semibold text-slate-700"><span>{label}{required && <span className="ms-1 text-red-700">*</span>}</span></div>
       <div className={`registration-writing-line ${compact ? "registration-writing-line-compact" : ""}`} />
     </div>
   );
@@ -100,9 +96,9 @@ export default function PrintableStudentRegistrationForm() {
         <section className="registration-section mb-2">
           <div className="registration-section-title mb-2 text-xs">{copy.studentSection}</div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-            <WritingField label={copy.firstName} required optionalText={copy.optional} compact />
-            <WritingField label={copy.lastName} required optionalText={copy.optional} compact />
-            <WritingField label={copy.birthDate} required optionalText={copy.optional} compact />
+            <WritingField label={copy.firstName} required compact />
+            <WritingField label={copy.lastName} required compact />
+            <WritingField label={copy.birthDate} required compact />
             <div className="registration-field">
               <div className="text-[10px] font-semibold text-slate-700">{copy.gender}<span className="ms-1 text-red-700">*</span></div>
               <div className="registration-writing-line registration-writing-line-compact flex items-center gap-5 text-[10px]">
@@ -110,30 +106,30 @@ export default function PrintableStudentRegistrationForm() {
                 <span className="flex items-center gap-1"><span className="registration-checkbox" />{copy.female}</span>
               </div>
             </div>
-            <WritingField label={copy.previousSchool} optionalText={copy.optional} compact />
-            <WritingField label={copy.educationStage} optionalText={copy.optional} compact />
-            <WritingField label={copy.educationYear} optionalText={copy.optional} compact />
+            <WritingField label={copy.previousSchool} compact />
+            <div className="registration-field col-span-2"><div className="mb-1 text-[10px] font-semibold text-slate-700">{copy.educationStage}</div><div className="grid grid-cols-4 gap-x-2 gap-y-1 text-[9px]">{copy.educationStages.map((stage) => (<span key={stage} className="flex items-center gap-1"><span className="registration-checkbox" />{stage}</span>))}</div></div>
+            <WritingField label={copy.educationYear} compact />
           </div>
         </section>
 
         <section className="registration-section mb-2">
           <div className="registration-section-title mb-2 text-xs">{copy.guardianSection}</div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-            <WritingField label={copy.guardianName} required optionalText={copy.optional} compact />
-            <WritingField label={copy.guardianRelation} required optionalText={copy.optional} compact />
-            <WritingField label={copy.guardianPhone} required optionalText={copy.optional} compact />
-            <WritingField label={copy.guardianEmail} optionalText={copy.optional} compact />
-            <WritingField label={copy.guardianJob} optionalText={copy.optional} compact />
-            <WritingField label={copy.additionalGuardianName} optionalText={copy.optional} compact />
+            <WritingField label={copy.guardianName} required compact />
+            <WritingField label={copy.guardianRelation} required compact />
+            <WritingField label={copy.guardianPhone} required compact />
+            <WritingField label={copy.guardianEmail} compact />
+            <WritingField label={copy.guardianJob} compact />
+            <WritingField label={copy.additionalGuardianName} compact />
           </div>
         </section>
 
         <section className="registration-section mb-2">
           <div className="registration-section-title mb-1 text-xs">{copy.admissionSection}</div>
           <div className="grid grid-cols-3 gap-x-4 gap-y-1">
-            <WritingField label={copy.branch} required optionalText={copy.optional} compact />
-            <WritingField label={copy.className} optionalText={copy.optional} compact />
-            <WritingField label={copy.startDate} required optionalText={copy.optional} compact />
+            <WritingField label={copy.branch} required compact />
+            <WritingField label={copy.className} compact />
+            <WritingField label={copy.startDate} required compact />
           </div>
         </section>
 
@@ -150,16 +146,16 @@ export default function PrintableStudentRegistrationForm() {
         <section className="registration-section mb-2">
           <p className="text-[9px] leading-4 text-slate-700">{copy.guardianDeclaration}</p>
           <div className="mt-1 grid grid-cols-2 gap-x-5">
-            <WritingField label={copy.guardianSignature} required optionalText={copy.optional} compact />
-            <WritingField label={copy.receivedDate} required optionalText={copy.optional} compact />
+            <WritingField label={copy.guardianSignature} required compact />
+            <WritingField label={copy.receivedDate} required compact />
           </div>
         </section>
 
         <section className="registration-section mb-2">
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-            <WritingField label={copy.enteredBy} optionalText={copy.optional} compact />
-            <WritingField label={copy.studentNumber} optionalText={copy.optional} compact />
-            <WritingField label={copy.officeNotes} optionalText={copy.optional} className="col-span-2" compact />
+            <WritingField label={copy.enteredBy} compact />
+            <WritingField label={copy.studentNumber} compact />
+            <WritingField label={copy.officeNotes} className="col-span-2" compact />
           </div>
         </section>
 
