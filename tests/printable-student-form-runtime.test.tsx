@@ -29,7 +29,7 @@ describe("printable student registration form", () => {
     expect(screen.getByText("بيانات الطالب")).toBeInTheDocument();
     expect(screen.getByText("بيانات ولي الأمر")).toBeInTheDocument();
     expect(screen.getByText("اسم ولي أمر إضافي")).toBeInTheDocument();
-    expect(screen.getByText("استمارة التسجيل — صفحة واحدة")).toBeInTheDocument();
+    expect(screen.getByLabelText("استمارة التسجيل — صفحة واحدة")).toBeInTheDocument();
     expect(screen.queryByText("رقم الهوية")).not.toBeInTheDocument();
     expect(screen.queryByText("العنوان الكامل")).not.toBeInTheDocument();
     expect(screen.queryByText("هاتف الطالب")).not.toBeInTheDocument();
