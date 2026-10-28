@@ -9,6 +9,9 @@ export type ClassRow = {
   name: string;
   code: string;
   schedule_label: string | null;
+  study_days: string[];
+  start_time: string | null;
+  end_time: string | null;
   status: ClassStatus;
 };
 
@@ -23,6 +26,9 @@ export type ClassFormValues = {
   name: string;
   code: string;
   scheduleLabel: string;
+  studyDays: string[];
+  startTime: string;
+  endTime: string;
   status: ClassStatus;
 };
 
@@ -32,6 +38,9 @@ export type ClassInsert = {
   name: string;
   code: string;
   schedule_label: string | null;
+  study_days: string[];
+  start_time: string | null;
+  end_time: string | null;
   status: ClassStatus;
 };
 
@@ -48,6 +57,25 @@ export function normalizeClassCode(value: string): string {
   return value.trim().toUpperCase();
 }
 
+export const STUDY_DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
+
+export function buildScheduleLabel(values: Pick<ClassFormValues, "studyDays" | "startTime" | "endTime">): string | null {
+  if (!values.studyDays.length || !values.startTime || !values.endTime) return null;
+  const names: Record<string, string> = { sunday: "الأحد", monday: "الإثنين", tuesday: "الثلاثاء", wednesday: "الأربعاء", thursday: "الخميس", friday: "الجمعة", saturday: "السبت" };
+  return values.studyDays.map(day => names[day] ?? day).join("، ") + " · " + values.startTime + "–" + values.endTime;
+}
+export function getDuwamKey(item: Pick<ClassRow, "branch_id" | "study_days" | "start_time" | "end_time">): string | null {
+  if (!item.study_days?.length || !item.start_time || !item.end_time) return null;
+  return [item.branch_id, [...item.study_days].sort().join(","), item.start_time.slice(0, 5), item.end_time.slice(0, 5)].join("|");
+}
+export function getDuwamLabel(item: Pick<ClassRow, "study_days" | "start_time" | "end_time">, locale: "ar" | "en" = "ar"): string {
+  const order = new Map(STUDY_DAY_KEYS.map((day, index) => [day, index]));
+  const days = [...(item.study_days ?? [])].sort((a, b) => (order.get(a as typeof STUDY_DAY_KEYS[number]) ?? 99) - (order.get(b as typeof STUDY_DAY_KEYS[number]) ?? 99));
+  const labels: Record<string, Record<string, string>> = { ar: { sunday: "الأحد", monday: "الإثنين", tuesday: "الثلاثاء", wednesday: "الأربعاء", thursday: "الخميس", friday: "الجمعة", saturday: "السبت" }, en: { sunday: "Sunday", monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday", thursday: "Thursday", friday: "Friday", saturday: "Saturday" } };
+  const dayLabel = days.map(day => labels[locale][day] ?? day).join(locale === "ar" ? "، " : ", ");
+  return item.start_time && item.end_time ? dayLabel + " · " + item.start_time.slice(0, 5) + "–" + item.end_time.slice(0, 5) : "";
+}
+
 export function buildClassInsert(
   schoolId: string,
   values: ClassFormValues
@@ -57,7 +85,10 @@ export function buildClassInsert(
     branch_id: values.branchId.trim(),
     name: values.name.trim(),
     code: normalizeClassCode(values.code),
-    schedule_label: optionalText(values.scheduleLabel),
+    schedule_label: buildScheduleLabel(values) ?? optionalText(values.scheduleLabel),
+    study_days: [...values.studyDays],
+    start_time: values.startTime || null,
+    end_time: values.endTime || null,
     status: values.status,
   };
 }
@@ -67,7 +98,7 @@ export async function fetchSchoolClasses(
 ): Promise<ClassRow[]> {
   const { data, error } = await getSupabaseClient()
     .from("classes")
-    .select("id, branch_id, name, code, schedule_label, status")
+    .select("id, branch_id, name, code, schedule_label, study_days, start_time, end_time, status")
     .eq("school_id", schoolId)
     .order("name", { ascending: true })
     .order("code", { ascending: true });
@@ -199,7 +230,7 @@ export async function fetchClassDetails(
   const client = getSupabaseClient();
   const { data: classData, error: classError } = await client
     .from("classes")
-    .select("id, branch_id, name, code, schedule_label, status")
+    .select("id, branch_id, name, code, schedule_label, study_days, start_time, end_time, status")
     .eq("school_id", schoolId)
     .eq("id", classId)
     .maybeSingle();
