@@ -9,7 +9,7 @@ import { fetchUnreadNotificationCount } from "@/lib/notifications";
 
 export default function ParentShell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, profile, user } = useAuth();
   const { direction, currency, t } = useLocale();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -55,7 +55,7 @@ export default function ParentShell({ children }: { children: ReactNode }) {
             />
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold text-[#173B2D]">{t("parent.title")}</span>
-              <span className="block truncate text-xs text-[#64756D]">{t("brand.school")}</span>
+              <span className="block truncate text-xs text-[#64756D]">{profile?.full_name?.trim() || user?.email || t("shell.account")}</span>
             </span>
           </button>
 
