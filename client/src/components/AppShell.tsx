@@ -176,6 +176,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const {
     school,
+    profile,
+    user,
     activeRoleCodes,
     isSchoolAdmin,
     signOut,
@@ -487,10 +489,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
               )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-extrabold text-[#173B2D]">
-                  {currentPageLabel}
+                  {activeRoleCodes.includes("teacher") ? t("teacher.title") : currentPageLabel}
                 </p>
                 <p className="truncate text-[11px] text-[#718377]">
-                  {school?.name ?? fallbackSchoolName}
+                  {profile?.full_name?.trim() || user?.email || t("shell.account")}
                 </p>
               </div>
             </div>
