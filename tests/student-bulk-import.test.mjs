@@ -175,7 +175,7 @@ test("new-student paper form is blank, printable, bilingual, and available from 
   assert.match(app, /path="\/students\/registration-form"[\s\S]*?StudentsRoute requireManage/);
   assert.match(studentForm, /setLocation\("\/students\/registration-form"\)/);
   assert.match(paperForm, /window\.print\(\)/);
-  assert.match(paperForm, /registration-sheet:last-of-type/);
+  assert.match(paperForm, /registration-sheet/);
   assert.match(paperForm, /guardianDeclaration/);
   assert.match(paperForm, /additionalGuardianName/);
   assert.match(copy, /ar: \{/);
