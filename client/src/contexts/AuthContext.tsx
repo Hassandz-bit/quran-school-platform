@@ -108,6 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const authorizationGenerationRef = useRef(0);
+  // Supabase emits INITIAL_SESSION through onAuthStateChange. If getSession()
+  // resolves later, its snapshot may be stale and must not overwrite the event's
+  // newer session (including a valid signed-in session with null).
+  const authEventReceivedRef = useRef(false);
 
   const clearAuthorization = useCallback(
     (nextError: string | null = null) => {
@@ -202,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = client.auth.onAuthStateChange((event, nextSession) => {
+      authEventReceivedRef.current = true;
       applySession(nextSession);
 
       if (
@@ -215,8 +220,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     void client.auth.getSession().then(({ data, error }) => {
-      if (!isMounted) return;
+      if (!isMounted || authEventReceivedRef.current) return;
 
+      // The auth-state listener is the live source of truth once it has emitted
+      // an event. Do not let this parallel initialization request overwrite it.
       if (error) {
         applySession(null);
         setIsPasswordRecovery(false);
