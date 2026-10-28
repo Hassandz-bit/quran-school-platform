@@ -21,14 +21,19 @@ beforeEach(() => {
 });
 
 describe("printable student registration form", () => {
-  test("shows blank student and guardian sections and opens the browser print dialog", async () => {
+  test("renders one compact A4 form without duplicate student contact, ID, or address fields", async () => {
     const user = userEvent.setup();
     render(<PrintableStudentRegistrationForm />);
 
     expect(screen.getByRole("heading", { name: "استمارة تسجيل طالب جديد" })).toBeInTheDocument();
-    expect(screen.getByText("القسم الأول — بيانات الطالب")).toBeInTheDocument();
-    expect(screen.getAllByText("القسم الثاني — بيانات ولي الأمر").length).toBeGreaterThan(0);
-    expect(screen.getByText("اسم ولي الأمر الإضافي")).toBeInTheDocument();
+    expect(screen.getByText("بيانات الطالب")).toBeInTheDocument();
+    expect(screen.getByText("بيانات ولي الأمر")).toBeInTheDocument();
+    expect(screen.getByText("اسم ولي أمر إضافي")).toBeInTheDocument();
+    expect(screen.getByText("استمارة التسجيل — صفحة واحدة")).toBeInTheDocument();
+    expect(screen.queryByText("رقم الهوية")).not.toBeInTheDocument();
+    expect(screen.queryByText("العنوان الكامل")).not.toBeInTheDocument();
+    expect(screen.queryByText("هاتف الطالب")).not.toBeInTheDocument();
+    expect(screen.queryByText("البريد الإلكتروني للطالب")).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getAllByText((_content, element) => element?.textContent?.includes("مدرسة النور") ?? false).length).toBeGreaterThan(0);
 
