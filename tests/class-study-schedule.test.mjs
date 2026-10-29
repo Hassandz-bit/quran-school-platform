@@ -14,7 +14,7 @@ test("migration adds weekdays and validates paired time values", () => {
   assert.doesNotMatch(migration, /drop column.*schedule_label/i);
 });
 test("class creation persists schedule and provides duwam grouping helpers", () => {
-  assert.match(classes, /study_days: \\[\.\.\.(?:values\.studyDays|\(values\.studyDays \?\? \[\]\))\\]/);
+  assert.ok(classes.includes("study_days: [...(values.studyDays ?? [])]"));
   assert.match(classes, /start_time: values\.startTime \|\| null/);
   assert.match(classes, /getDuwamKey/);
   assert.match(classes, /getDuwamLabel/);
