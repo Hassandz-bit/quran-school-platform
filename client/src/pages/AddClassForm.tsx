@@ -10,6 +10,7 @@ import { useLocale } from "@/contexts/LocaleContext";
 import {
   addClass,
   fetchSchoolBranches,
+  STUDY_DAY_KEYS,
   getClassSaveErrorMessage,
   normalizeClassCode,
   translateClassStatus,
@@ -32,6 +33,9 @@ const AddClassForm: React.FC = () => {
     name: "",
     code: "",
     scheduleLabel: "",
+    studyDays: [],
+    startTime: "",
+    endTime: "",
     status: "active",
   });
   const [, setLocation] = useLocation();
@@ -51,7 +55,7 @@ const AddClassForm: React.FC = () => {
         codePlaceholder: "مثال: FAJR_01",
         codeHint: "أحرف إنجليزية كبيرة وأرقام وشرطة سفلية (_) فقط.",
         schedule: "توقيت الحلقة",
-        schedulePlaceholder: "مثال: 05:30 - 06:30",
+        schedulePlaceholder: "مثال: 05:30 - 06:30", studyDays: "أيام الدراسة", selectDays: "حدد أيام الدراسة", startTime: "من الساعة", endTime: "إلى الساعة", duwamNote: "الحلقات التي تتشارك أيام الدراسة ووقت البداية والنهاية تُجمع تلقائيًا ضمن الدوام نفسه.", days: ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
         optional: "اختياري",
         status: "الحالة",
         save: "حفظ الحلقة",
@@ -80,7 +84,7 @@ const AddClassForm: React.FC = () => {
         codePlaceholder: "Example: FAJR_01",
         codeHint: "Uppercase English letters, numbers, and underscores (_) only.",
         schedule: "Class schedule",
-        schedulePlaceholder: "Example: 05:30 - 06:30",
+        schedulePlaceholder: "Example: 05:30 - 06:30", studyDays: "Study days", selectDays: "Choose study days", startTime: "Start time", endTime: "End time", duwamNote: "Classes with the same study days and start/end times are automatically grouped into one duwam.", days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         optional: "Optional",
         status: "Status",
         save: "Save Class",
@@ -159,6 +163,9 @@ const AddClassForm: React.FC = () => {
       nextErrors.code = t.requiredCode;
     } else if (!/^[A-Z0-9_]+$/.test(code)) {
       nextErrors.code = t.invalidCode;
+    }
+    if ((formData.studyDays.length > 0 || formData.startTime || formData.endTime) && (!formData.studyDays.length || !formData.startTime || !formData.endTime || formData.startTime >= formData.endTime)) {
+      nextErrors.schedule = language === "ar" ? "حدد أيام الدراسة ووقت البداية والنهاية الصحيحين." : "Choose study days and valid start/end times.";
     }
 
     setErrors(nextErrors);
@@ -298,6 +305,15 @@ const AddClassForm: React.FC = () => {
                 className="h-11"
               />
             </div>
+
+            <section className="space-y-4 rounded-xl border border-[#DCE8E0] bg-[#F7FAF8] p-4">
+              <div><h2 className="text-sm font-bold text-[#173B2D]">{t.studyDays}</h2><p className="mt-1 text-xs text-gray-500">{t.duwamNote}</p></div>
+              <fieldset className="grid grid-cols-2 gap-3 sm:grid-cols-4"><legend className="sr-only">{t.selectDays}</legend>
+                {STUDY_DAY_KEYS.map((day, index) => <label key={day} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={formData.studyDays.includes(day)} onChange={event => updateField("studyDays", event.target.checked ? [...formData.studyDays, day] : formData.studyDays.filter(item => item !== day))} className="size-4 accent-[#0B4738]" /><span>{t.days[index]}</span></label>)}
+              </fieldset>
+              <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="startTime" className="mb-2 block text-sm font-medium text-[#2C3E50]">{t.startTime}</label><Input id="startTime" type="time" value={formData.startTime} onChange={event => updateField("startTime", event.target.value)} className="h-11" dir="ltr" /></div><div><label htmlFor="endTime" className="mb-2 block text-sm font-medium text-[#2C3E50]">{t.endTime}</label><Input id="endTime" type="time" value={formData.endTime} min={formData.startTime || undefined} onChange={event => updateField("endTime", event.target.value)} className="h-11" dir="ltr" /></div></div>
+              {errors.schedule && <p className="text-xs text-red-600">{errors.schedule}</p>}
+            </section>
 
             <div>
               <label htmlFor="classStatus" className="block text-sm font-medium text-[#2C3E50] mb-2">

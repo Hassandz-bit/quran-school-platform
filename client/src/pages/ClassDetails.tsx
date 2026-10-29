@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchClassDetails,
+  getDuwamLabel,
   translateClassStatus,
   type ClassDetailsData,
 } from "@/lib/classes";
@@ -215,7 +216,7 @@ export default function ClassDetails() {
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <DetailField label={t.branch} value={branchName ?? t.noValue} />
             <DetailField label={t.code} value={classItem.code} />
-            <DetailField label={t.schedule} value={classItem.schedule_label ?? t.noValue} />
+            <DetailField label={t.schedule} value={classItem.study_days?.length && classItem.start_time && classItem.end_time ? getDuwamLabel(classItem, locale) : (classItem.schedule_label ?? t.noValue)} />
             <div className="min-w-0 rounded-xl bg-[#F7FAF8] p-3">
               <dt className="text-xs font-semibold text-[#718377]">{t.status}</dt>
               <dd className="mt-1">
