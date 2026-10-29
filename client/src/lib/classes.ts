@@ -60,7 +60,7 @@ export function normalizeClassCode(value: string): string {
 export const STUDY_DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 
 export function buildScheduleLabel(values: Pick<ClassFormValues, "studyDays" | "startTime" | "endTime">): string | null {
-  if (!values.studyDays.length || !values.startTime || !values.endTime) return null;
+  if (!values.studyDays?.length || !values.startTime || !values.endTime) return null;
   const names: Record<string, string> = { sunday: "الأحد", monday: "الإثنين", tuesday: "الثلاثاء", wednesday: "الأربعاء", thursday: "الخميس", friday: "الجمعة", saturday: "السبت" };
   return values.studyDays.map(day => names[day] ?? day).join("، ") + " · " + values.startTime + "–" + values.endTime;
 }
@@ -86,7 +86,7 @@ export function buildClassInsert(
     name: values.name.trim(),
     code: normalizeClassCode(values.code),
     schedule_label: buildScheduleLabel(values) ?? optionalText(values.scheduleLabel),
-    study_days: [...values.studyDays],
+    study_days: [...(values.studyDays ?? [])],
     start_time: values.startTime || null,
     end_time: values.endTime || null,
     status: values.status,
