@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { MemorizationFocusNotes } from "@/components/MemorizationFocusNotes";
 import GroupMemorizationEntry from "@/components/GroupMemorizationEntry";
 import StudentAvatar from "@/components/StudentAvatar";
+import StudentQuranCard from "@/components/StudentQuranCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1013,6 +1014,12 @@ export default function Memorization() {
               suggestedSurahNumber={draft.surahNumber}
               suggestedAyahStart={draft.ayahStart}
               suggestedAyahEnd={draft.ayahEnd}
+            />
+
+            <StudentQuranCard
+              studentName={selectedStudent?.fullName ?? ""}
+              records={records}
+              loading={recordsLoading}
             />
 
             <section aria-label="السجل السابق" className="space-y-3">
