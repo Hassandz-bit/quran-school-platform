@@ -49,6 +49,7 @@ import {
   fetchMemorizationScope,
   fetchMemorizationWorkspace,
   fetchStudentMemorizationRecords,
+  fetchAllStudentMemorizationRecords,
   getMemorizationErrorMessage,
   getMemorizationSessionLabel,
   getSurahByNumber,
@@ -381,7 +382,7 @@ export default function Memorization() {
       return;
     }
     let active = true;
-    void fetchStudentMemorizationRecords(school.id, branchId, classId, selectedStudentId, null)
+    void fetchAllStudentMemorizationRecords(school.id, branchId, classId, selectedStudentId)
       .then(nextRecords => { if (active) setCardRecords(nextRecords); })
       .catch(() => { if (active) setCardRecords([]); });
     return () => { active = false; };
