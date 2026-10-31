@@ -173,6 +173,7 @@ export default function Memorization() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [records, setRecords] = useState<MemorizationRecord[]>([]);
+  const [cardRecords, setCardRecords] = useState<MemorizationRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [recordsError, setRecordsError] = useState<string | null>(null);
   const [recordsReload, setRecordsReload] = useState(0);
@@ -373,6 +374,18 @@ export default function Memorization() {
     selectedStudentId,
     showAllHistory,
   ]);
+
+  useEffect(() => {
+    if (!school?.id || !branchId || !classId || !selectedStudentId) {
+      setCardRecords([]);
+      return;
+    }
+    let active = true;
+    void fetchStudentMemorizationRecords(school.id, branchId, classId, selectedStudentId, null)
+      .then(nextRecords => { if (active) setCardRecords(nextRecords); })
+      .catch(() => { if (active) setCardRecords([]); });
+    return () => { active = false; };
+  }, [branchId, classId, recordsReload, school?.id, selectedStudentId, workspaceReload]);
 
   const handleBranchChange = (nextBranchId: string) => {
     setBranchId(nextBranchId);
@@ -1018,7 +1031,7 @@ export default function Memorization() {
 
             <StudentQuranCard
               studentName={selectedStudent?.fullName ?? ""}
-              records={records}
+              records={cardRecords}
               loading={recordsLoading}
             />
 
