@@ -1801,4 +1801,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "الدوام": "Duwam",
   "حلقة": "class",
   "تجميع الحلقات المتشاركة في أيام الدراسة والتوقيت نفسه.": "Grouping classes that share the same study days and times.",
+  "غير معروفة": "Unknown",
 };
