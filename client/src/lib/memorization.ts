@@ -629,25 +629,33 @@ export async function fetchStudentMemorizationRecords(
 ): Promise<MemorizationRecord[]> {
   await assertViewOrManage(client, schoolId, branchId, classId);
 
-  let query = client
-    .from("memorization_records")
-    .select(
-      "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, notes, next_assignment, created_at, updated_at"
-    )
-    .eq("school_id", schoolId)
-    .eq("branch_id", branchId)
-    .eq("class_id", classId)
-    .eq("student_id", studentId)
-    .order("record_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const pageSize = 500;
+  const rows: RecordRow[] = [];
 
-  if (recordDate) query = query.eq("record_date", recordDate);
+  for (let offset = 0; ; offset += pageSize) {
+    let query = client
+      .from("memorization_records")
+      .select(
+        "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, notes, next_assignment, created_at, updated_at"
+      )
+      .eq("school_id", schoolId)
+      .eq("branch_id", branchId)
+      .eq("class_id", classId)
+      .eq("student_id", studentId)
+      .order("record_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
 
-  const { data, error } = await query;
-  if (error) throw error;
+    if (recordDate) query = query.eq("record_date", recordDate);
 
-  return ((data ?? []) as RecordRow[]).map(row => ({
+    const { data, error } = await query;
+    if (error) throw error;
+    const page = (data ?? []) as RecordRow[];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+
+  return rows.map(row => ({
     id: row.id,
     studentId: row.student_id,
     teacherId: row.teacher_id,
