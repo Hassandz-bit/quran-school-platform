@@ -40,7 +40,7 @@ alter table public.classes
   add constraint classes_duwam_scope_fk
   foreign key (school_id, branch_id, duwam_id)
   references public.duwams(school_id, branch_id, id)
-  on delete set null;
+  on delete restrict;
 
 create index if not exists classes_duwam_id_idx
   on public.classes(duwam_id) where duwam_id is not null;
