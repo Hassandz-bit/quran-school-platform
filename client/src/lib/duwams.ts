@@ -57,8 +57,8 @@ function validateDuwam(input: DuwamInput): void {
   if (days.length === 0 || days.some(day => !DUWAM_STUDY_DAYS.includes(day))) {
     throw new Error("duwam_days_invalid");
   }
-  if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(input.startTime) ||
-      !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(input.endTime) ||
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.startTime) ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.endTime) ||
       input.startTime >= input.endTime) {
     throw new Error("duwam_time_invalid");
   }
