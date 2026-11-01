@@ -26,6 +26,10 @@ create table if not exists public.duwams (
   constraint duwams_created_by_fk foreign key (created_by) references public.profiles(id)
 );
 
+-- The class-to-duwam foreign key references this exact tenant/branch-scoped key.
+alter table public.duwams
+  add constraint duwams_school_branch_id_unique unique (school_id, branch_id, id);
+
 create unique index if not exists duwams_school_branch_name_unique
   on public.duwams(school_id, branch_id, lower(name));
 create index if not exists duwams_school_branch_status_idx
