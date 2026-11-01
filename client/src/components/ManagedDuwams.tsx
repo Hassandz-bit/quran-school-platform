@@ -21,7 +21,6 @@ export default function ManagedDuwams({ schoolId, branches, classes }: { schoolI
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [canManage, setCanManage] = useState(false);
-  const [assignments, setAssignments] = useState<Record<string, string>>({});
   const ar = locale === "ar";
   const branchClasses = useMemo(() => classes.filter(item => item.branch_id === branchId), [classes, branchId]);
 
