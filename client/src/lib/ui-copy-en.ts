@@ -1823,22 +1823,4 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "لا توجد سجلات تطابق الفلاتر.": "No records match the filters.",
 
   // Additional fixed labels discovered by localization coverage
-  "· مراجعة:": "· Revision:",
-  "الدوام": "Duwam",
-  "إجراءات سريعة": "Quick actions",
-  "المسدد": "Paid",
-  "يجب تعيين معلم نشط للحلقة قبل تسجيل متابعة الحفظ.": "Assign an active teacher to the class before recording memorization follow-up.",
-  "غير مسند إلى حلقة حاليًا": "Not assigned to a class right now",
-  "الفرع / الحلقة": "Branch / class",
-  "تاريخ الرصيد": "Balance date",
-  "استلم / أصدر بواسطة": "Received / issued by",
-  "أحدث الحلقات المسجلة في المدرسة.": "Latest classes registered at the school.",
-  "القوائم المالية الشهرية": "Monthly financial statements",
-  "لا توجد عضويات متاحة": "No memberships available",
-  "تعديل سجل المتابعة": "Edit progress record",
-  "امتحان": "Exam",
-  "الفئة": "Category",
-  "فلاتر أخطاء الحفظ": "Memorization error filters",
-  "إثبات تسجيل — دون مبلغ مالي": "Registration confirmation — no monetary amount",
-  "متوسط التقييم المسجل": "Average recorded rating",
 };
