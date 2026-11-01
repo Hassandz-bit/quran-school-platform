@@ -1823,4 +1823,21 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "لا توجد سجلات تطابق الفلاتر.": "No records match the filters.",
 
   // Additional fixed labels discovered by localization coverage
+  "تعذر تحميل الدوامات أو التحقق من الصلاحية.": "Could not load duwams or verify permissions.",
+  "تم حفظ الدوام.": "Duwam saved.",
+  "ليست لديك صلاحية إدارة هذا الفرع.": "You do not have permission to manage this branch.",
+  "تعذر حفظ الدوام. تحقق من الاسم والأيام والتوقيت.": "Could not save the duwam. Check its name, days, and times.",
+  "تم تحديث ربط الحلقة.": "Class assignment updated.",
+  "تعذر ربط الحلقة بهذا الدوام.": "Could not assign the class to this duwam.",
+  "تم تعطيل الدوام.": "Duwam disabled.",
+  "تعذر تعطيل الدوام.": "Could not disable the duwam.",
+  "إدارة الدوامات": "Manage duwams",
+  "أنشئ دوامًا لكل فرع واربط به عدة حلقات. لا تتغير بيانات الجدول القديم إلا عند الربط.": "Create a duwam for each branch and assign multiple classes. Existing schedules remain unchanged until a class is assigned.",
+  "العرض أو الإدارة غير متاحين دون صلاحية classes.manage.": "Viewing or managing duwams requires the classes.manage permission.",
+  "اسم الدوام": "Duwam name",
+  "إنشاء دوام": "Create duwam",
+  "معطل": "Inactive",
+  "حلقة مرتبطة": "assigned classes",
+  "دون دوام": "No duwam",
+  "لا توجد دوامات في هذا الفرع بعد.": "No duwams have been created for this branch yet.",
 };
