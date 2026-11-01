@@ -225,6 +225,9 @@ test("loads filtered and full previous student history", () => {
   assert.match(data, /fetchStudentMemorizationRecords/);
   assert.match(data, /if \(recordDate\) query = query\.eq\("record_date", recordDate\)/);
   assert.match(data, /\.limit\(20\)/);
+  assert.match(data, /fetchAllStudentMemorizationRecords/);
+  assert.match(data, /\.range\(offset, offset \+ pageSize - 1\)/);
+  assert.match(page, /fetchAllStudentMemorizationRecords\(school\.id, branchId, classId, selectedStudentId\)/);
   assert.match(page, /عرض كل السجل السابق/);
   assert.match(page, /آخر 20 سجلًا عبر جميع التواريخ/);
 });
