@@ -646,8 +646,44 @@ export async function fetchStudentMemorizationRecords(
 
   const { data, error } = await query;
   if (error) throw error;
+  return ((data ?? []) as RecordRow[]).map(mapMemorizationRecordRow);
+}
 
-  return ((data ?? []) as RecordRow[]).map(row => ({
+export async function fetchAllStudentMemorizationRecords(
+  schoolId: string,
+  branchId: string,
+  classId: string,
+  studentId: string,
+  client: SupabaseClient = getSupabaseClient()
+): Promise<MemorizationRecord[]> {
+  await assertViewOrManage(client, schoolId, branchId, classId);
+  const pageSize = 500;
+  const rows: RecordRow[] = [];
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await client
+      .from("memorization_records")
+      .select(
+        "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, notes, next_assignment, created_at, updated_at"
+      )
+      .eq("school_id", schoolId)
+      .eq("branch_id", branchId)
+      .eq("class_id", classId)
+      .eq("student_id", studentId)
+      .order("record_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []) as RecordRow[];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+
+  return rows.map(mapMemorizationRecordRow);
+}
+
+function mapMemorizationRecordRow(row: RecordRow): MemorizationRecord {
+  return {
     id: row.id,
     studentId: row.student_id,
     teacherId: row.teacher_id,
@@ -662,7 +698,7 @@ export async function fetchStudentMemorizationRecords(
     nextAssignment: row.next_assignment ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  }));
+  };
 }
 
 export async function fetchMemorizationAudit(
