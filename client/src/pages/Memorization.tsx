@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { MemorizationFocusNotes } from "@/components/MemorizationFocusNotes";
 import GroupMemorizationEntry from "@/components/GroupMemorizationEntry";
 import StudentAvatar from "@/components/StudentAvatar";
+import StudentQuranCard from "@/components/StudentQuranCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ import {
   fetchMemorizationScope,
   fetchMemorizationWorkspace,
   fetchStudentMemorizationRecords,
+  fetchAllStudentMemorizationRecords,
   getMemorizationErrorMessage,
   getMemorizationSessionLabel,
   getSurahByNumber,
@@ -172,6 +174,7 @@ export default function Memorization() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [records, setRecords] = useState<MemorizationRecord[]>([]);
+  const [cardRecords, setCardRecords] = useState<MemorizationRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [recordsError, setRecordsError] = useState<string | null>(null);
   const [recordsReload, setRecordsReload] = useState(0);
@@ -372,6 +375,18 @@ export default function Memorization() {
     selectedStudentId,
     showAllHistory,
   ]);
+
+  useEffect(() => {
+    if (!school?.id || !branchId || !classId || !selectedStudentId) {
+      setCardRecords([]);
+      return;
+    }
+    let active = true;
+    void fetchAllStudentMemorizationRecords(school.id, branchId, classId, selectedStudentId)
+      .then(nextRecords => { if (active) setCardRecords(nextRecords); })
+      .catch(() => { if (active) setCardRecords([]); });
+    return () => { active = false; };
+  }, [branchId, classId, recordsReload, school?.id, selectedStudentId, workspaceReload]);
 
   const handleBranchChange = (nextBranchId: string) => {
     setBranchId(nextBranchId);
@@ -1013,6 +1028,12 @@ export default function Memorization() {
               suggestedSurahNumber={draft.surahNumber}
               suggestedAyahStart={draft.ayahStart}
               suggestedAyahEnd={draft.ayahEnd}
+            />
+
+            <StudentQuranCard
+              studentName={selectedStudent?.fullName ?? ""}
+              records={cardRecords}
+              loading={recordsLoading}
             />
 
             <section aria-label="السجل السابق" className="space-y-3">
