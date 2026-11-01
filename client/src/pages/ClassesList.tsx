@@ -30,6 +30,7 @@ import {
   type ClassStatus,
 } from "@/lib/classes";
 import { toast } from "sonner";
+import ManagedDuwams from "@/components/ManagedDuwams";
 
 const statusOptions: ClassStatus[] = ["active", "inactive", "archived"];
 
@@ -264,14 +265,18 @@ const ClassesList: React.FC = () => {
   const renderLoadedContent = () => {
     if (classes.length === 0) {
       return (
-        <Card className="p-10 text-center text-gray-500 border border-gray-100">
-          {t.empty}
-        </Card>
+        <>
+          {school?.id && <ManagedDuwams schoolId={school.id} branches={branches} classes={classes} />}
+          <Card className="p-10 text-center text-gray-500 border border-gray-100">
+            {t.empty}
+          </Card>
+        </>
       );
     }
 
     return (
       <>
+        {school?.id && <ManagedDuwams schoolId={school.id} branches={branches} classes={classes} />}
         <Card className="p-4 border border-gray-100">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="relative">
