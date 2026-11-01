@@ -6,6 +6,9 @@ export type DashboardClass = {
   name: string;
   code: string;
   schedule_label: string | null;
+  study_days: string[];
+  start_time: string | null;
+  end_time: string | null;
   status: "active";
 };
 
@@ -76,7 +79,7 @@ export async function fetchDashboardData(
         .eq("status", "active"),
       supabase
         .from("classes")
-        .select("id, branch_id, name, code, schedule_label, status")
+        .select("id, branch_id, name, code, schedule_label, study_days, start_time, end_time, status")
         .eq("school_id", schoolId)
         .eq("status", "active")
         .order("name", { ascending: true })

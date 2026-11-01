@@ -22,6 +22,8 @@ import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchSchoolBranches,
   fetchSchoolClasses,
+  getDuwamKey,
+  getDuwamLabel,
   translateClassStatus,
   type ClassBranch,
   type ClassRow,
@@ -63,7 +65,7 @@ const ClassesList: React.FC = () => {
       name: "اسم الحلقة",
       code: "رمز الحلقة",
       branch: "الفرع",
-      schedule: "التوقيت",
+      schedule: "التوقيت", duwam: "الدوام", duwamCount: "حلقة",
       status: "الحالة",
       noSchedule: "غير محدد",
       unavailable: "غير متاح",
@@ -91,7 +93,7 @@ const ClassesList: React.FC = () => {
       name: "Class name",
       code: "Class code",
       branch: "Branch",
-      schedule: "Schedule",
+      schedule: "Schedule", duwam: "Duwam", duwamCount: "classes",
       status: "Status",
       noSchedule: "Not set",
       unavailable: "Unavailable",
@@ -173,6 +175,19 @@ const ClassesList: React.FC = () => {
       return matchesSearch && matchesBranch && matchesStatus;
     });
   }, [classes, filterBranch, filterStatus, searchQuery]);
+
+  const duwamGroups = useMemo(() => {
+    const groups = new Map<string, { label: string; classes: ClassRow[] }>();
+    for (const classItem of filteredClasses) {
+      const key = getDuwamKey(classItem);
+      if (!key) continue;
+      const current = groups.get(key) ?? { label: getDuwamLabel(classItem, language), classes: [] };
+      current.classes.push(classItem);
+      groups.set(key, current);
+    }
+    return [...groups.entries()].filter(([, group]) => group.classes.length > 1).map(([key, group]) => ({ key, ...group }));
+  }, [filteredClasses, language]);
+
 
   const getStatusBadge = (status: ClassStatus) => {
     const styles: Record<ClassStatus, string> = {
@@ -297,6 +312,15 @@ const ClassesList: React.FC = () => {
             </select>
           </div>
         </Card>
+
+        {duwamGroups.length > 0 && (
+          <section className="space-y-3">
+            <div><h2 className="text-lg font-bold text-[#173B2D]">{t.duwam}</h2><p className="text-sm text-gray-500">{language === "ar" ? "تجميع الحلقات المتشاركة في أيام الدراسة والتوقيت نفسه." : "Classes sharing the same study days and times."}</p></div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {duwamGroups.map(group => <Card key={group.key} className="border border-[#DCE8E0] p-4"><p className="text-sm font-bold text-[#17663B]">{t.duwam} · {group.label}</p><p className="mt-2 text-xs text-gray-500">{group.classes.length} {t.duwamCount}</p><div className="mt-3 flex flex-wrap gap-2">{group.classes.map(item => <button key={item.id} type="button" onClick={() => setLocation("/classes/" + item.id)} className="rounded-full bg-[#EEF6F0] px-3 py-1 text-xs font-medium text-[#173B2D] hover:bg-[#DCEFE2]">{item.name}</button>)}</div></Card>)}
+            </div>
+          </section>
+        )}
 
         <Card className="hidden md:block border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
