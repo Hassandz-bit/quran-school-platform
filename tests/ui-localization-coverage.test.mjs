@@ -33,10 +33,9 @@ function parseCatalog(source) {
 function sourceCopy(source) {
   const values = [];
   for (const match of source.matchAll(/(["'`])((?:\\.|(?!\1)[\s\S])*?)\1/g)) {
-    const value = match[2]
-      .replace(/\$\{[^}]+\}/g, "")
-      .replace(/\\"/g, '"')
-      .trim();
+    // Interpolated templates are translated by runtime patterns, not exact catalog entries.
+    if (match[1] === "`" && match[2].includes("${")) continue;
+    const value = match[2].replace(/\\\"/g, '"' ).trim();
     if (value && value.length < 500 && ARABIC.test(value)) values.push(value);
   }
   for (const match of source.matchAll(/>([^<>{}]*[\u0600-\u06ff][^<>{}]*)</g)) {
