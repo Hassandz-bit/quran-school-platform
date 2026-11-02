@@ -190,17 +190,21 @@ export default function NotificationComposerDialog({
     try {
       const recipientAudiences = Object.fromEntries(uniqueResolvedIds.map(profileId => {
         const recipient = recipients.find(item => item.profileId === profileId);
-        const selectedTypes = mode === "group" && groupMode === "audience"
-          ? [audience]
-          : recipient?.audienceTypes ?? [];
+        const actualContexts = recipient?.notificationContexts ?? [];
         const contexts = new Set<string>();
-        if (selectedTypes.includes("teachers")
-          || (selectedTypes.includes("staff") && recipient?.audienceTypes.includes("teachers"))) {
-          contexts.add("teacher");
-        } else if (selectedTypes.includes("staff")) {
-          contexts.add("staff");
+        if (mode === "group" && groupMode === "audience") {
+          if (audience === "staff") {
+            if (actualContexts.includes("staff")) contexts.add("staff");
+            else if (actualContexts.includes("teacher")) contexts.add("teacher");
+          } else if (audience === "teachers" && actualContexts.includes("teacher")) {
+            contexts.add("teacher");
+          } else if ((audience === "guardians" || audience === "students")
+            && actualContexts.includes("guardian")) {
+            contexts.add("guardian");
+          }
+        } else {
+          actualContexts.forEach(context => contexts.add(context));
         }
-        if (selectedTypes.includes("guardians") || selectedTypes.includes("students")) contexts.add("guardian");
         return [profileId, [...contexts]];
       }));
 
