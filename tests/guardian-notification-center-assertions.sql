@@ -137,6 +137,24 @@ $$;
 delete from public.app_notifications
 where source_type in ('test_teacher_module', 'test_student_module');
 
+-- The registrar fixture intentionally has a branch-scoped role. Grant the
+-- guardian-directory permissions needed by the following access assertions;
+-- these are test-only grants and do not change production role defaults.
+insert into public.role_permissions (school_id, role_id, permission_id)
+select
+  '10000000-0000-4000-8000-000000000001',
+  '40000000-0000-4000-8000-000000000005',
+  permission.id
+from public.permissions as permission
+where permission.code in (
+  'guardians.view',
+  'guardians.invite',
+  'guardians.link',
+  'guardians.view_contacts',
+  'guardians.revoke'
+)
+on conflict (role_id, permission_id) do nothing;
+
 -- Registrar is branch-scoped and must see only guardian-manageable students.
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002', false);
