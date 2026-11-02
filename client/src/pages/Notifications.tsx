@@ -14,6 +14,7 @@ import {
   type AppNotification,
   type NotificationBox,
   type NotificationCategory,
+  type NotificationContext,
   type NotificationSenderSchool,
 } from "@/lib/notifications";
 
@@ -45,24 +46,44 @@ export default function Notifications() {
   const en = locale === "en";
   const [location, setLocation] = useLocation();
   const parentMode = location.startsWith("/parent/");
+  const notificationContext: NotificationContext = parentMode
+    ? "guardian"
+    : senderSchools.some(item => item.senderKind === "staff")
+      ? "staff"
+      : senderSchools.some(item => item.senderKind === "teacher")
+        ? "teacher"
+        : "student";
   const [box, setBox] = useState<NotificationBox>("inbox");
   const [category, setCategory] = useState<NotificationCategory | "all">("all");
   const [rows, setRows] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [senderSchools, setSenderSchools] = useState<NotificationSenderSchool[]>([]);
+  const visibleCategories = parentMode
+    ? categories.filter(item => ["all", "administration", "learning", "attendance", "finance", "guardians"].includes(item.value))
+    : notificationContext === "teacher"
+      ? categories.filter(item => ["all", "administration", "teachers", "learning", "attendance", "guardians"].includes(item.value))
+      : categories;
+
+  useEffect(() => {
+    if (!visibleCategories.some(item => item.value === category)) setCategory("all");
+  }, [category, visibleCategories]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
     try {
-      setRows(await fetchMyNotifications(box, category === "all" ? null : category));
+      setRows(await fetchMyNotifications(
+        box,
+        category === "all" ? null : category,
+        notificationContext
+      ));
     } catch {
       setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, [box, category]);
+  }, [box, category, notificationContext]);
 
   useEffect(() => {
     void load();
@@ -83,7 +104,7 @@ export default function Notifications() {
   const openNotification = async (row: AppNotification) => {
     if (box !== "inbox") return;
     if (!row.readAt) {
-      const marked = await markNotificationRead(row.notificationId);
+      const marked = await markNotificationRead(row.notificationId, notificationContext);
       if (marked) {
         setRows(current => current.map(item =>
           item.notificationId === row.notificationId
@@ -125,7 +146,7 @@ export default function Notifications() {
       </Tabs>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {categories.map(item => (
+        {visibleCategories.map(item => (
           <Button
             key={item.value}
             size="sm"
