@@ -113,7 +113,7 @@ language plpgsql
 stable
 security definer
 set search_path = ''
-as $
+as $$
 declare
   available_contexts text[] := public.resolve_app_notification_audiences(
     target_school_id, target_profile_id, target_student_id
@@ -121,7 +121,17 @@ declare
 begin
   -- Legacy manual sends had no per-recipient audience map. Prefer the
   -- sender/recipient relationship to keep staff-only messages out of
-  -- dual-role guardian inboxes.
+  -- dual-role guardian inboxes. Unknown legacy senders default away from
+  -- the guardian context whenever a staff/teacher context exists.
+  if target_sender_kind is null then
+    if 'staff' = any(available_contexts) then
+      return array['staff']::text[];
+    elsif 'teacher' = any(available_contexts) then
+      return array['teacher']::text[];
+    elsif 'guardian' = any(available_contexts) then
+      return array['guardian']::text[];
+    end if;
+  end if;
   if target_sender_kind = 'teacher' and 'guardian' = any(available_contexts) then
     return array['guardian']::text[];
   end if;
@@ -139,7 +149,7 @@ begin
   end if;
   return coalesce(available_contexts, '{}'::text[]);
 end;
-$;
+$$;
 
 revoke all on function public.resolve_manual_notification_recipient_audiences(uuid, uuid, uuid, text)
   from public, anon, authenticated;
