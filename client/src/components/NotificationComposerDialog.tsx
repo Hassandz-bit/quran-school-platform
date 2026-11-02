@@ -182,7 +182,7 @@ export default function NotificationComposerDialog({
   };
 
   const submit = async () => {
-    if (!title.trim() || !body.trim() || uniqueResolvedIds.length === 0) {
+    if (!selectedSchool || !title.trim() || !body.trim() || uniqueResolvedIds.length === 0) {
       toast.error(en ? "Add a title, message and at least one recipient." : "أضف العنوان والنص وحدد مستلمًا واحدًا على الأقل.");
       return;
     }
