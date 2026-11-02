@@ -144,8 +144,8 @@ export default function Notifications() {
             <Bell className="size-6 text-[#17663B]" /> {en ? "Notification center" : "مركز الإشعارات"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {en ? "Notifications related to your role and responsibilities."
-              : "إشعارات مرتبطة بدورك ومهامك داخل المدرسة."}
+            {en ? "A unified log of received and sent notifications across QuranOS."
+              : "سجل موحد للإشعارات الواردة والمرسلة من وحدات QuranOS."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
