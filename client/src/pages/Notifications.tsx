@@ -46,6 +46,12 @@ export default function Notifications() {
   const en = locale === "en";
   const [location, setLocation] = useLocation();
   const parentMode = location.startsWith("/parent/");
+  const [box, setBox] = useState<NotificationBox>("inbox");
+  const [category, setCategory] = useState<NotificationCategory | "all">("all");
+  const [rows, setRows] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [senderSchools, setSenderSchools] = useState<NotificationSenderSchool[]>([]);
   const notificationContext: NotificationContext = parentMode
     ? "guardian"
     : senderSchools.some(item => item.senderKind === "staff")
@@ -53,12 +59,6 @@ export default function Notifications() {
       : senderSchools.some(item => item.senderKind === "teacher")
         ? "teacher"
         : "student";
-  const [box, setBox] = useState<NotificationBox>("inbox");
-  const [category, setCategory] = useState<NotificationCategory | "all">("all");
-  const [rows, setRows] = useState<AppNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [senderSchools, setSenderSchools] = useState<NotificationSenderSchool[]>([]);
   const visibleCategories = parentMode
     ? categories.filter(item => ["all", "administration", "learning", "attendance", "finance", "guardians"].includes(item.value))
     : notificationContext === "teacher"
