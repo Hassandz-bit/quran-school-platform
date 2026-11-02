@@ -3,18 +3,25 @@ name: Guardian Notification Center Validation
 on:
   pull_request:
     branches:
+      - main
       - develop/v2
     paths:
       - "supabase/025_guardian_directory_notification_center.sql"
       - "supabase/026_notification_center_module_categories.sql"
+      - "supabase/056_manual_notifications_and_staff_directory.sql"
+      - "supabase/063_teacher_guardian_notification_messaging.sql"
+      - "supabase/074_notification_role_isolation.sql"
       - "client/src/lib/guardians.ts"
       - "client/src/lib/notifications.ts"
       - "client/src/pages/Guardians.tsx"
       - "client/src/pages/Notifications.tsx"
       - "client/src/components/ParentShell.tsx"
+      - "client/src/components/NotificationComposerDialog.tsx"
       - "client/src/lib/app-navigation.ts"
       - "client/src/App.tsx"
       - "tests/guardian-notification-center*"
+      - "tests/notification-role-isolation.test.mjs"
+      - "tests/run-guardian-notification-center-migration-test.sh"
       - ".github/workflows/guardian-notification-center-validation.yml"
 
 permissions:
@@ -37,7 +44,7 @@ jobs:
         run: bash tests/run-guardian-notification-center-migration-test.sh
 
       - name: Validate client and role-isolation contracts
-        run: node --test tests/guardian-notification-center.test.mjs
+        run: node --test tests/guardian-notification-center.test.mjs tests/notification-role-isolation.test.mjs
 
       - name: Check whitespace
         run: git diff --check
