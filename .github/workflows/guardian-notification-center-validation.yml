@@ -33,10 +33,10 @@ jobs:
       - name: Verify Docker
         run: docker info
 
-      - name: Validate Migrations 025-026 on PostgreSQL 17
+      - name: Validate notification migrations 025-026, 056, 063 and 074 on PostgreSQL 17
         run: bash tests/run-guardian-notification-center-migration-test.sh
 
-      - name: Validate client safety and routing contracts
+      - name: Validate client and role-isolation contracts
         run: node --test tests/guardian-notification-center.test.mjs
 
       - name: Check whitespace
