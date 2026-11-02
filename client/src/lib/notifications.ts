@@ -85,6 +85,17 @@ export async function fetchMyNotificationSenderSchools(
   }));
 }
 
+export async function fetchMyNotificationContexts(
+  client: SupabaseClient = getSupabaseClient()
+): Promise<NotificationContext[]> {
+  const { data, error } = await client.rpc("get_my_notification_contexts");
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).filter(
+    (value): value is NotificationContext =>
+      ["staff", "teacher", "guardian", "student"].includes(String(value))
+  );
+}
+
 export async function fetchMyNotifications(
   box: NotificationBox,
   category: NotificationCategory | null = null,
