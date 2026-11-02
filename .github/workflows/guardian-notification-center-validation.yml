@@ -21,6 +21,7 @@ on:
       - "client/src/lib/app-navigation.ts"
       - "client/src/App.tsx"
       - "tests/guardian-notification-center*"
+      - "tests/notification-dual-role-finance-isolation.sql"
       - "tests/notification-role-isolation.test.mjs"
       - "tests/run-guardian-notification-center-migration-test.sh"
       - ".github/workflows/guardian-notification-center-validation.yml"
