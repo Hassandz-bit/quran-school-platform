@@ -64,9 +64,9 @@ export default function Notifications() {
           ? "guardian"
           : "student";
   const visibleCategories = parentMode
-    ? categories.filter(item => ["all", "administration", "learning", "attendance", "finance", "guardians"].includes(item.value))
+    ? categories.filter(item => ["all", "administration", "students", "learning", "attendance", "finance", "guardians"].includes(item.value))
     : notificationContext === "teacher"
-      ? categories.filter(item => ["all", "administration", "teachers", "learning", "attendance", "guardians"].includes(item.value))
+      ? categories.filter(item => ["all", "administration", "teachers", "students", "learning", "attendance", "guardians"].includes(item.value))
       : categories;
 
   useEffect(() => {
@@ -144,8 +144,8 @@ export default function Notifications() {
             <Bell className="size-6 text-[#17663B]" /> {en ? "Notification center" : "مركز الإشعارات"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {en ? "A unified log of received and sent notifications across QuranOS."
-              : "سجل موحد للإشعارات الواردة والمرسلة من وحدات QuranOS."}
+            {en ? "Notifications related to your role and responsibilities."
+              : "إشعارات مرتبطة بدورك ومهامك داخل المدرسة."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
