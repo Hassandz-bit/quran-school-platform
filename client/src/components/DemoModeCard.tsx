@@ -27,17 +27,19 @@ const EMPTY_STATUS: DemoStatus = {
 export default function DemoModeCard({ schoolId, onChanged }: DemoModeCardProps) {
   const [status, setStatus] = useState<DemoStatus>(EMPTY_STATUS);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [action, setAction] = useState<"create" | "clear" | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
   const load = useCallback(async () => {
     if (!schoolId) return;
     setIsLoading(true);
+    setLoadError(false);
     try {
       setStatus(await fetchDemoStatus(schoolId));
     } catch {
-      // Migration may not have been applied yet during a short deploy window.
-      setStatus(EMPTY_STATUS);
+      // Fail closed: an unknown demo state must never look like an inactive one.
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -93,6 +95,30 @@ export default function DemoModeCard({ schoolId, onChanged }: DemoModeCardProps)
           <Loader2 className="size-5 animate-spin text-[#2F855A]" />
           جارٍ التحقق من وضع العرض التجريبي...
         </div>
+      </section>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <section className="rounded-3xl border border-[#E8C9A8] bg-[#FFF9F2] p-5" role="alert">
+        <div className="flex items-start gap-3">
+          <TriangleAlert className="mt-0.5 size-5 shrink-0 text-[#A45A20]" />
+          <div>
+            <p className="font-bold text-[#70451F]">تعذر التحقق من حالة العرض التجريبي.</p>
+            <p className="mt-1 text-sm leading-6 text-[#80634A]">
+              لم نعرض خيار إنشاء بيانات جديدة لأن حالة البيانات الحالية غير مؤكدة. تحقق من الاتصال والصلاحيات ثم أعد المحاولة.
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 min-h-10 border-[#D7B18E] bg-white text-[#70451F]"
+          onClick={() => void load()}
+        >
+          إعادة المحاولة
+        </Button>
       </section>
     );
   }

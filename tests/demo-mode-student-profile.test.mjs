@@ -69,6 +69,30 @@ test("student profile privilege migration preserves column-level least privilege
   assert.doesNotMatch(sql, /grant\s+all/i);
 });
 
+test("demo status lookup fails closed instead of exposing demo creation", async () => {
+  const [card, helper] = await Promise.all([
+    read("client/src/components/DemoModeCard.tsx"),
+    read("client/src/lib/demo-mode.ts"),
+  ]);
+  assert.match(card, /const \[loadError, setLoadError\] = useState\(false\)/);
+  assert.match(card, /catch \{\s*\/\/ Fail closed:[\s\S]*?setLoadError\(true\)/);
+  assert.match(card, /if \(loadError\)/);
+  assert.match(card, /إعادة المحاولة/);
+  assert.doesNotMatch(card, /catch \{\s*\/\/ Migration may not have been applied[\s\S]*?setStatus\(EMPTY_STATUS\)/);
+  assert.match(helper, /if \(error\) throw error/);
+});
+
+test("demo cleanup errors expose actionable SQLSTATEs without logging backend payloads", async () => {
+  const helper = await read("client/src/lib/demo-mode.ts");
+  for (const code of ["42501", "23503", "23505", "23514", "57014"]) {
+    assert.ok(helper.includes(code), "missing SQLSTATE handling: " + code);
+  }
+  assert.match(helper, /console\.error\([^\n]+\{ code: code \|\| "unknown" \}\)/);
+  assert.doesNotMatch(helper, /console\.error\([^\n]*(message|details|hint)/i);
+  assert.match(helper, /demo_cleanup_blocked_guardian_link/);
+  assert.match(helper, /demo_cleanup_blocked_real_student_in_demo_class/);
+});
+
 test("demo controls are school-admin only in the dashboard", async () => {
   const dashboard = await read("client/src/pages/Dashboard.tsx");
   assert.match(dashboard, /isSchoolAdmin && school\?\.id/);
