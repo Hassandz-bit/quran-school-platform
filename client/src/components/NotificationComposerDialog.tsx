@@ -96,7 +96,7 @@ export default function NotificationComposerDialog({
       return;
     }
     void Promise.all([
-      fetchManualNotificationRecipients(schoolId),
+      fetchManualNotificationRecipients(schoolId, selectedSchool.senderKind),
       staffSender
         ? fetchNotificationScopes(schoolId)
         : Promise.resolve({ branches: [], classes: [] } as NotificationScopes),
@@ -218,7 +218,7 @@ export default function NotificationComposerDialog({
           scopeId: scopeId || null,
           recipientAudiences,
         },
-      });
+      }, selectedSchool.senderKind);
       toast.success(en
         ? `Notification sent to ${result.recipientCount} recipients.`
         : `تم إرسال الإشعار إلى ${result.recipientCount} مستلمًا.`);
