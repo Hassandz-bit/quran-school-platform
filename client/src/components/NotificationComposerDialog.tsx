@@ -203,7 +203,13 @@ export default function NotificationComposerDialog({
             contexts.add("guardian");
           }
         } else {
-          actualContexts.forEach(context => contexts.add(context));
+          const preferredContexts = selectedSchool.senderKind === "staff"
+            ? ["staff", "teacher", "guardian"]
+            : selectedSchool.senderKind === "teacher"
+              ? ["guardian", "staff", "teacher"]
+              : ["teacher", "staff", "guardian"];
+          const recipientContext = preferredContexts.find(context => actualContexts.includes(context));
+          if (recipientContext) contexts.add(recipientContext);
         }
         return [profileId, [...contexts]];
       }));
