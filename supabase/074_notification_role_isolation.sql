@@ -79,12 +79,8 @@ as $$
       where membership.school_id = target_school_id
         and membership.profile_id = target_profile_id
         and membership.status = 'active'
-        and role.code in (
-          'school_admin','branch_manager','academic_supervisor',
-          'registrar','finance_officer'
-        )
-    ) or public.has_school_permission(target_school_id, 'notifications.send')
-      then 'staff'::text end,
+        and role.code not in ('teacher','guardian','student')
+    ) then 'staff'::text end,
     case when exists (
       select 1
       from public.school_memberships membership
