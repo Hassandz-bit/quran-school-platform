@@ -73,9 +73,13 @@ export type NotificationScopes = {
 };
 
 export async function fetchMyNotificationSenderSchools(
+  context: NotificationContext = "staff",
   client: SupabaseClient = getSupabaseClient()
 ): Promise<NotificationSenderSchool[]> {
-  const { data, error } = await client.rpc("list_my_notification_sender_schools");
+  if (context === "student") return [];
+  const { data, error } = await client.rpc("list_my_notification_sender_schools_for_context", {
+    target_sender_context: context,
+  });
   if (error) throw error;
   return ((data ?? []) as Record<string, unknown>[]).map(row => ({
     schoolId: String(row.school_id),
@@ -164,10 +168,12 @@ export async function canSendSchoolNotifications(
 
 export async function fetchManualNotificationRecipients(
   schoolId: string,
+  senderContext: Exclude<NotificationContext, "student">,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<NotificationRecipient[]> {
-  const { data, error } = await client.rpc("list_manual_notification_recipients", {
+  const { data, error } = await client.rpc("list_manual_notification_recipients_for_context", {
     target_school_id: schoolId,
+    target_sender_context: senderContext,
   });
   if (error) throw error;
   return ((data ?? []) as Record<string, unknown>[]).map(row => ({
@@ -205,9 +211,10 @@ export async function fetchNotificationScopes(
 
 export async function sendManualNotification(
   input: ManualNotificationInput,
+  senderContext: Exclude<NotificationContext, "student">,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<ManualNotificationResult> {
-  const { data, error } = await client.rpc("send_manual_app_notification", {
+  const { data, error } = await client.rpc("send_manual_app_notification_for_context", {
     target_school_id: input.schoolId,
     target_recipient_profile_ids: [...new Set(input.recipientProfileIds)],
     target_category: input.category,
@@ -215,6 +222,7 @@ export async function sendManualNotification(
     target_body: input.body.trim(),
     target_path: input.targetPath?.trim() || null,
     target_targeting_summary: input.targetingSummary,
+    target_sender_context: senderContext,
   });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
