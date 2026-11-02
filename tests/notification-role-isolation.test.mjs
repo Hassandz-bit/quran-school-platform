@@ -9,6 +9,12 @@ const lib = read("client/src/lib/notifications.ts");
 const composer = read("client/src/components/NotificationComposerDialog.tsx");
 const parentShell = read("client/src/components/ParentShell.tsx");
 
+test("portal context is resolved from active school relationships", () => {
+  assert.match(migration, /create or replace function public\.get_my_notification_contexts\(\)/i);
+  assert.match(lib, /rpc\(["']get_my_notification_contexts["']\)/);
+  assert.match(page, /fetchMyNotificationContexts\(\)/);
+});
+
 test("notification rows carry a validated recipient and sender portal context", () => {
   assert.match(migration, /add column if not exists recipient_audiences text\[\]/i);
   assert.match(migration, /add column if not exists sender_audiences text\[\]/i);
