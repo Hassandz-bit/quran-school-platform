@@ -951,6 +951,8 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تم مسح بيانات العرض التجريبية ( طالب).": "Demo data cleared.",
   "تأكيد بدء الاستخدام الفعلي": "Confirm start of live use",
   "ابدأ الاستخدام الفعلي": "Start live use",
+  "تعذر التحقق من حالة العرض التجريبي.": "Could not verify the demo status.",
+  "لم نعرض خيار إنشاء بيانات جديدة لأن حالة البيانات الحالية غير مؤكدة. تحقق من الاتصال والصلاحيات ثم أعد المحاولة.": "The current data state is unknown, so creating new demo data is disabled. Check the connection and permissions, then try again.",
   "تعذر تعيين كلمة المرور. قد يكون رابط الدعوة منتهيًا أو غير صالح.": "Could not set the password. The invitation link may be expired or invalid.",
   "حفظ كلمة المرور والدخول": "Save password and sign in",
   "تعذر إرسال رابط الاستعادة حاليًا. تحقق من البريد وحاول مرة أخرى.": "Could not send the recovery link. Check the email and try again.",
