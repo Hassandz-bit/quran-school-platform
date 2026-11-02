@@ -319,3 +319,46 @@ begin
   end if;
 end;
 $$;
+
+-- A profile that is both a teacher and a guardian must resolve its sender
+-- capabilities independently for each portal, never by a global role priority.
+insert into public.student_guardians (
+  id, school_id, student_id, guardian_profile_id, relationship_type,
+  is_primary, status, created_by, activated_at
+) values (
+  '70000000-0000-4000-8000-000000000089',
+  '10000000-0000-4000-8000-000000000001',
+  '50000000-0000-4000-8000-000000000001',
+  '60000000-0000-4000-8000-000000000003',
+  'mother', false, 'active',
+  '60000000-0000-4000-8000-000000000001', now()
+);
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000003', false);
+create temporary table dual_role_contexts as
+select public.get_my_notification_contexts() as contexts;
+create temporary table dual_role_teacher_sender as
+select * from public.list_my_notification_sender_schools_for_context('teacher');
+create temporary table dual_role_guardian_sender as
+select * from public.list_my_notification_sender_schools_for_context('guardian');
+reset role;
+
+do $$
+begin
+  if not ((select contexts from dual_role_contexts) @> array['teacher','guardian']::text[]) then
+    raise exception 'dual-role profile did not resolve both portal contexts';
+  end if;
+  if (select count(*) from dual_role_teacher_sender) <> 1
+    or (select sender_kind from dual_role_teacher_sender limit 1) <> 'teacher'
+  then
+    raise exception 'dual-role teacher sender scope was not isolated';
+  end if;
+  if (select count(*) from dual_role_guardian_sender) <> 1
+    or (select sender_kind from dual_role_guardian_sender limit 1) <> 'guardian'
+  then
+    raise exception 'dual-role guardian sender scope was not isolated';
+  end if;
+end;
+$$;
+
