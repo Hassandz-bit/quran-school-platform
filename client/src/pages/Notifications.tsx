@@ -95,7 +95,11 @@ export default function Notifications() {
 
   useEffect(() => {
     let active = true;
-    void fetchMyNotificationSenderSchools()
+    if (notificationContext === "student") {
+      setSenderSchools([]);
+      return () => { active = false; };
+    }
+    void fetchMyNotificationSenderSchools(notificationContext)
       .then(result => {
         if (active) setSenderSchools(result);
       })
@@ -103,7 +107,7 @@ export default function Notifications() {
         if (active) setSenderSchools([]);
       });
     return () => { active = false; };
-  }, []);
+  }, [notificationContext]);
 
   useEffect(() => {
     let active = true;
