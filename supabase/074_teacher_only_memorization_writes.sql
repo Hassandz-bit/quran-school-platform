@@ -174,20 +174,18 @@ begin
         message = 'MEMORIZATION_IDENTITY_FIELDS_IMMUTABLE';
     end if;
 
-    begin
-      select teacher.profile_id
-        into resolved_teacher_profile_id
-      from public.teachers as teacher
-      where teacher.id = old.teacher_id
-        and teacher.school_id = old.school_id
-        and teacher.branch_id = old.branch_id
-        and teacher.status = 'active';
+    select teacher.profile_id
+      into resolved_teacher_profile_id
+    from public.teachers as teacher
+    where teacher.id = old.teacher_id
+      and teacher.school_id = old.school_id
+      and teacher.branch_id = old.branch_id
+      and teacher.status = 'active';
 
-      if resolved_teacher_profile_id is distinct from (select auth.uid()) then
-        raise exception using
-          errcode = '42501',
-          message = 'MEMORIZATION_TEACHER_UPDATE_FORBIDDEN';
-      end if;
+    if resolved_teacher_profile_id is distinct from (select auth.uid()) then
+      raise exception using
+        errcode = '42501',
+        message = 'MEMORIZATION_TEACHER_UPDATE_FORBIDDEN';
     end if;
 
     new.last_modified_by := (select auth.uid());
