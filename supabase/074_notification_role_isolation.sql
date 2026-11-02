@@ -102,6 +102,48 @@ $$;
 revoke all on function public.resolve_app_notification_audiences(uuid, uuid, uuid)
   from public, anon, authenticated;
 
+create or replace function public.resolve_manual_notification_recipient_audiences(
+  target_school_id uuid,
+  target_profile_id uuid,
+  target_student_id uuid,
+  target_sender_kind text
+)
+returns text[]
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $
+declare
+  available_contexts text[] := public.resolve_app_notification_audiences(
+    target_school_id, target_profile_id, target_student_id
+  );
+begin
+  -- Legacy manual sends had no per-recipient audience map. Prefer the
+  -- sender/recipient relationship to keep staff-only messages out of
+  -- dual-role guardian inboxes.
+  if target_sender_kind = 'teacher' and 'guardian' = any(available_contexts) then
+    return array['guardian']::text[];
+  end if;
+  if target_sender_kind = 'guardian' and 'teacher' = any(available_contexts) then
+    return array['teacher']::text[];
+  end if;
+  if target_sender_kind = 'guardian' and 'staff' = any(available_contexts) then
+    return array['staff']::text[];
+  end if;
+  if target_sender_kind = 'staff' and 'staff' = any(available_contexts) then
+    return array['staff']::text[];
+  end if;
+  if target_sender_kind = 'staff' and 'teacher' = any(available_contexts) then
+    return array['teacher']::text[];
+  end if;
+  return coalesce(available_contexts, '{}'::text[]);
+end;
+$;
+
+revoke all on function public.resolve_manual_notification_recipient_audiences(uuid, uuid, uuid, text)
+  from public, anon, authenticated;
+
 create or replace function public.get_my_notification_contexts()
 returns text[]
 language plpgsql
@@ -194,7 +236,11 @@ begin
   end if;
 
   if cardinality(coalesce(new.recipient_audiences, '{}'::text[])) = 0 then
-    if new.source_type = 'guardian_attendance'
+    if new.source_type = 'manual_campaign' then
+      new.recipient_audiences := public.resolve_manual_notification_recipient_audiences(
+        new.school_id, new.recipient_profile_id, new.student_id, campaign_sender_kind
+      );
+    elsif new.source_type = 'guardian_attendance'
       or new.event_type in ('fee_due_soon','fee_overdue')
     then
       new.recipient_audiences := array['guardian']::text[];
@@ -251,6 +297,17 @@ for each row execute function public.set_app_notification_audiences();
 -- Backfill old rows without deleting or changing their notification content.
 update public.app_notifications notification
 set recipient_audiences = case
+      when notification.source_type = 'manual_campaign' then
+        public.resolve_manual_notification_recipient_audiences(
+          notification.school_id,
+          notification.recipient_profile_id,
+          notification.student_id,
+          (
+            select campaign.targeting_summary->>'senderKind'
+            from public.notification_campaigns campaign
+            where campaign.id = notification.source_id
+          )
+        )
       when notification.source_type = 'guardian_attendance'
         or notification.event_type in ('fee_due_soon','fee_overdue')
         then array['guardian']::text[]
