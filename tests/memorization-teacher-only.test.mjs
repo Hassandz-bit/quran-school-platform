@@ -28,7 +28,11 @@ test("school administrators and branch managers retain view access only", () => 
   assert.match(access, /target_permission_code = 'memorization\.view'/);
   assert.match(access, /permission\.code = 'memorization\.view'/);
   assert.match(access, /target_permission_code = 'memorization\.manage'[\s\S]*?role\.code = 'teacher'/);
-  assert.doesNotMatch(access, /role\.code <> 'teacher'[\s\S]*?permission\.code = 'memorization\.manage'/);
+  const manage = access.split(/target_permission_code = 'memorization\\.manage'/i).slice(1).join("target_permission_code = 'memorization.manage'");
+  assert.ok(manage);
+  assert.match(manage, /role\.code = 'teacher'/);
+  assert.match(manage, /permission\.code = 'memorization\.manage'/);
+  assert.doesNotMatch(manage, /role\.code <> 'teacher'/);
 });
 
 test("insert trigger rejects records attributed to another teacher", () => {
