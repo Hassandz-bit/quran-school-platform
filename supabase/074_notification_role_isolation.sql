@@ -102,6 +102,51 @@ $$;
 revoke all on function public.resolve_app_notification_audiences(uuid, uuid, uuid)
   from public, anon, authenticated;
 
+create or replace function public.get_my_notification_contexts()
+returns text[]
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $
+declare
+  current_user_id uuid := (select auth.uid());
+  resolved_contexts text[];
+begin
+  if current_user_id is null or not public.current_profile_is_active() then
+    raise exception using errcode = '42501', message = 'authentication required';
+  end if;
+
+  select coalesce(array_agg(distinct context_value), '{}'::text[])
+  into resolved_contexts
+  from (
+    select unnest(public.resolve_app_notification_audiences(
+      scoped_school.school_id, current_user_id, null
+    )) as context_value
+    from (
+      select membership.school_id
+      from public.school_memberships membership
+      where membership.profile_id = current_user_id and membership.status = 'active'
+      union
+      select relationship.school_id
+      from public.student_guardians relationship
+      where relationship.guardian_profile_id = current_user_id and relationship.status = 'active'
+      union
+      select teacher.school_id
+      from public.teachers teacher
+      where teacher.profile_id = current_user_id and teacher.status = 'active'
+    ) scoped_school
+  ) contexts;
+
+  return resolved_contexts;
+end;
+$;
+
+revoke all on function public.get_my_notification_contexts()
+  from public, anon;
+grant execute on function public.get_my_notification_contexts()
+  to authenticated;
+
 create or replace function public.set_app_notification_audiences()
 returns trigger
 language plpgsql
