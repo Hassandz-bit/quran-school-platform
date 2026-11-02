@@ -149,9 +149,15 @@ begin
   end if;
 
   if cardinality(coalesce(new.recipient_audiences, '{}'::text[])) = 0 then
-    new.recipient_audiences := public.resolve_app_notification_audiences(
-      new.school_id, new.recipient_profile_id, new.student_id
-    );
+    if new.source_type = 'guardian_attendance'
+      or new.event_type in ('fee_due_soon','fee_overdue')
+    then
+      new.recipient_audiences := array['guardian']::text[];
+    else
+      new.recipient_audiences := public.resolve_app_notification_audiences(
+        new.school_id, new.recipient_profile_id, new.student_id
+      );
+    end if;
   end if;
 
   if cardinality(coalesce(new.recipient_audiences, '{}'::text[])) = 0 then
@@ -199,9 +205,14 @@ for each row execute function public.set_app_notification_audiences();
 
 -- Backfill old rows without deleting or changing their notification content.
 update public.app_notifications notification
-set recipient_audiences = public.resolve_app_notification_audiences(
-      notification.school_id, notification.recipient_profile_id, notification.student_id
-    ),
+set recipient_audiences = case
+      when notification.source_type = 'guardian_attendance'
+        or notification.event_type in ('fee_due_soon','fee_overdue')
+        then array['guardian']::text[]
+      else public.resolve_app_notification_audiences(
+        notification.school_id, notification.recipient_profile_id, notification.student_id
+      )
+    end,
     sender_audiences = case
       when notification.source_type = 'manual_campaign' then
         case (
