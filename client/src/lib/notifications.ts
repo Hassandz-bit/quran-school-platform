@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase";
 
 export type NotificationBox = "inbox" | "sent";
+export type NotificationContext = "staff" | "teacher" | "guardian" | "student";
 export type NotificationCategory =
   | "administration"
   | "teachers"
@@ -87,6 +88,7 @@ export async function fetchMyNotificationSenderSchools(
 export async function fetchMyNotifications(
   box: NotificationBox,
   category: NotificationCategory | null = null,
+  context: NotificationContext = "staff",
   limit = 100,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<AppNotification[]> {
@@ -94,6 +96,7 @@ export async function fetchMyNotifications(
     target_box: box,
     target_category: category,
     target_limit: limit,
+    target_context: context,
   });
   if (error) throw error;
   return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -115,19 +118,24 @@ export async function fetchMyNotifications(
 }
 
 export async function fetchUnreadNotificationCount(
+  context?: NotificationContext,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<number> {
-  const { data, error } = await client.rpc("get_my_unread_notification_count");
+  const { data, error } = context
+    ? await client.rpc("get_my_unread_notification_count", { target_context: context })
+    : await client.rpc("get_my_unread_notification_count");
   if (error) return 0;
   return typeof data === "number" && Number.isFinite(data) ? data : 0;
 }
 
 export async function markNotificationRead(
   notificationId: string,
+  context: NotificationContext = "staff",
   client: SupabaseClient = getSupabaseClient()
 ): Promise<boolean> {
   const { data, error } = await client.rpc("mark_my_app_notification_read", {
     target_notification_id: notificationId,
+    target_context: context,
   });
   return !error && data === true;
 }
