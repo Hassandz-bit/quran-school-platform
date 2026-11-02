@@ -9,6 +9,7 @@ import NotificationComposerDialog from "@/components/NotificationComposerDialog"
 import { useLocale } from "@/contexts/LocaleContext";
 import {
   fetchMyNotificationSenderSchools,
+  fetchMyNotificationContexts,
   fetchMyNotifications,
   markNotificationRead,
   type AppNotification,
@@ -52,13 +53,16 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [senderSchools, setSenderSchools] = useState<NotificationSenderSchool[]>([]);
+  const [notificationContexts, setNotificationContexts] = useState<NotificationContext[]>([]);
   const notificationContext: NotificationContext = parentMode
     ? "guardian"
-    : senderSchools.some(item => item.senderKind === "staff")
+    : notificationContexts.includes("staff")
       ? "staff"
-      : senderSchools.some(item => item.senderKind === "teacher")
+      : notificationContexts.includes("teacher")
         ? "teacher"
-        : "student";
+        : notificationContexts.includes("guardian")
+          ? "guardian"
+          : "student";
   const visibleCategories = parentMode
     ? categories.filter(item => ["all", "administration", "learning", "attendance", "finance", "guardians"].includes(item.value))
     : notificationContext === "teacher"
@@ -97,6 +101,18 @@ export default function Notifications() {
       })
       .catch(() => {
         if (active) setSenderSchools([]);
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void fetchMyNotificationContexts()
+      .then(result => {
+        if (active) setNotificationContexts(result);
+      })
+      .catch(() => {
+        if (active) setNotificationContexts([]);
       });
     return () => { active = false; };
   }, []);
