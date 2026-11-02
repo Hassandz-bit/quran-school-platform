@@ -40,9 +40,9 @@ begin
   ) then
     raise exception 'service_role cannot use the validated internal notification writer';
   end if;
-  if not has_function_privilege('authenticated', 'public.list_my_app_notifications(text,text,integer)', 'EXECUTE')
+  if not has_function_privilege('authenticated', 'public.list_my_app_notifications(text,text,integer,text)', 'EXECUTE')
     or not has_function_privilege('authenticated', 'public.get_my_unread_notification_count()', 'EXECUTE')
-    or not has_function_privilege('authenticated', 'public.mark_my_app_notification_read(uuid)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.mark_my_app_notification_read(uuid,text)', 'EXECUTE')
   then
     raise exception 'authenticated notification self-service RPC grants are incomplete';
   end if;
@@ -207,16 +207,17 @@ $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000006', false);
 create temporary table guardian_inbox as
-select * from public.list_my_app_notifications('inbox', null, 100);
+select * from public.list_my_app_notifications('inbox', null, 100, 'guardian');
 create temporary table guardian_sent as
-select * from public.list_my_app_notifications('sent', null, 100);
+select * from public.list_my_app_notifications('sent', null, 100, 'guardian');
 create temporary table guardian_unread_before as
-select public.get_my_unread_notification_count() as count;
+select public.get_my_unread_notification_count('guardian') as count;
 select public.mark_my_app_notification_read(
-  (select notification_id from guardian_inbox limit 1)
+  (select notification_id from guardian_inbox limit 1),
+  'guardian'
 );
 create temporary table guardian_unread_after as
-select public.get_my_unread_notification_count() as count;
+select public.get_my_unread_notification_count('guardian') as count;
 reset role;
 
 do $$
@@ -238,9 +239,9 @@ $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', false);
 create temporary table admin_sent as
-select * from public.list_my_app_notifications('sent', 'attendance', 100);
+select * from public.list_my_app_notifications('sent', 'attendance', 100, 'staff');
 create temporary table admin_inbox as
-select * from public.list_my_app_notifications('inbox', null, 100);
+select * from public.list_my_app_notifications('inbox', null, 100, 'staff');
 reset role;
 
 do $$
