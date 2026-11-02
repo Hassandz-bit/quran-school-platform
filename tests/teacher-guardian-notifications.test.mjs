@@ -4,6 +4,7 @@ import test from "node:test";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const migration = read("supabase/063_teacher_guardian_notification_messaging.sql");
+const roleIsolation = read("supabase/074_notification_role_isolation.sql");
 const notifications = read("client/src/lib/notifications.ts");
 const page = read("client/src/pages/Notifications.tsx");
 const composer = read("client/src/components/NotificationComposerDialog.tsx");
@@ -14,9 +15,19 @@ test("teacher and guardian sender schools are resolved server-side", () => {
   assert.match(migration, /'guardian'/);
   assert.match(migration, /public\.student_guardians/);
   assert.match(migration, /public\.class_teachers/);
-  assert.match(notifications, /rpc\("list_my_notification_sender_schools"\)/);
+  assert.match(notifications, /rpc\("list_my_notification_sender_schools_for_context"/);
   assert.match(page, /senderSchools\.length > 0/);
   assert.doesNotMatch(page, /parentMode \|\| !school\?\.id/);
+});
+
+test("dual-role senders must use the active portal context for recipient resolution and sending", () => {
+  assert.match(roleIsolation, /quranos\.notification_sender_context/);
+  assert.match(roleIsolation, /list_my_notification_sender_schools_for_context/);
+  assert.match(roleIsolation, /list_manual_notification_recipients_for_context/);
+  assert.match(roleIsolation, /send_manual_app_notification_for_context/);
+  assert.match(roleIsolation, /revoke all on function public\.send_manual_app_notification[\s\S]*from public, anon, authenticated/i);
+  assert.match(notifications, /rpc\("send_manual_app_notification_for_context"/);
+  assert.match(notifications, /rpc\("list_manual_notification_recipients_for_context"/);
 });
 
 test("guardian recipients are limited to administration and assigned teachers", () => {
