@@ -44,7 +44,7 @@ jobs:
         run: bash tests/run-guardian-notification-center-migration-test.sh
 
       - name: Validate client and role-isolation contracts
-        run: node --test tests/guardian-notification-center.test.mjs tests/notification-role-isolation.test.mjs
+        run: node --test tests/guardian-notification-center.test.mjs tests/notification-role-isolation.test.mjs tests/teacher-guardian-notifications.test.mjs tests/manual-notifications-staff-and-session-notes.test.mjs
 
       - name: Check whitespace
         run: git diff --check
