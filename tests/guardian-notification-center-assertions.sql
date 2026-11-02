@@ -42,12 +42,58 @@ begin
   end if;
   if not has_function_privilege('authenticated', 'public.list_my_app_notifications(text,text,integer,text)', 'EXECUTE')
     or not has_function_privilege('authenticated', 'public.get_my_unread_notification_count()', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.get_my_unread_notification_count(text)', 'EXECUTE')
     or not has_function_privilege('authenticated', 'public.mark_my_app_notification_read(uuid,text)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.get_my_notification_contexts()', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.list_my_notification_sender_schools_for_context(text)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.list_manual_notification_recipients_for_context(uuid,text)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.send_manual_app_notification_for_context(uuid,uuid[],text,text,text,text,jsonb,text)', 'EXECUTE')
   then
-    raise exception 'authenticated notification self-service RPC grants are incomplete';
+    raise exception 'authenticated context-scoped notification RPC grants are incomplete';
+  end if;
+  if has_function_privilege('authenticated', 'public.list_my_notification_sender_schools()', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.list_manual_notification_recipients(uuid)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.send_manual_app_notification(uuid,uuid[],text,text,text,text,jsonb)', 'EXECUTE')
+  then
+    raise exception 'authenticated can still call a context-free notification compose RPC';
   end if;
 end;
 $$;
+
+-- The guardian's sender context must not inherit the teacher context even
+-- if the same profile is later assigned a staff or teacher membership.
+set role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000006', false);
+create temporary table guardian_sender_context as
+select * from public.list_my_notification_sender_schools_for_context('guardian');
+create temporary table guardian_compose_recipients as
+select * from public.list_manual_notification_recipients_for_context(
+  '10000000-0000-4000-8000-000000000001', 'guardian'
+);
+do $
+begin
+  begin
+    perform * from public.list_my_notification_sender_schools_for_context('teacher');
+    raise exception 'guardian unexpectedly entered teacher sender context';
+  exception
+    when insufficient_privilege then null;
+  end;
+end;
+$;
+reset role;
+
+do $
+begin
+  if (select count(*) from guardian_sender_context) <> 1
+    or (select sender_kind from guardian_sender_context limit 1) <> 'guardian'
+  then
+    raise exception 'guardian sender context was not isolated';
+  end if;
+  if not exists (select 1 from guardian_compose_recipients) then
+    raise exception 'guardian compose recipients were not resolved';
+  end if;
+end;
+$;
 
 -- Explicit module categories must accept teacher/student server notifications.
 set role service_role;
