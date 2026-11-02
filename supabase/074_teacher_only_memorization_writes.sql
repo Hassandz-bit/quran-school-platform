@@ -221,7 +221,7 @@ exception
       errcode = '23503',
       message = 'MEMORIZATION_ACTIVE_CLASS_NOT_FOUND';
 end;
-$;
+$$;
 revoke all on function public.prepare_memorization_record() from public;
 revoke execute on function public.prepare_memorization_record() from anon, authenticated;
 commit;
