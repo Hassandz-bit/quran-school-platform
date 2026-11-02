@@ -46,6 +46,8 @@ test("guardian and teacher portals expose only relevant category filters", () =>
 test("manual sends attach intended audience to each recipient and guardian badge is scoped", () => {
   assert.match(composer, /recipientAudiences/);
   assert.match(composer, /targetingSummary:[\s\S]*recipientAudiences/);
+  assert.match(lib, /notificationContexts: \(Array\.isArray\(row\.notification_contexts\)/);
+  assert.match(composer, /actualContexts = recipient\?\.notificationContexts/);
   assert.match(composer, /fetchManualNotificationRecipients\(schoolId, selectedSchool\.senderKind\)/);
   assert.match(composer, /selectedSchool\.senderKind\);/);
   assert.match(parentShell, /fetchUnreadNotificationCount\("guardian"\)/);
