@@ -83,7 +83,8 @@ as $$
           'school_admin','branch_manager','academic_supervisor',
           'registrar','finance_officer'
         )
-    ) then 'staff'::text end,
+    ) or public.has_school_permission(target_school_id, 'notifications.send')
+      then 'staff'::text end,
     case when exists (
       select 1
       from public.school_memberships membership
