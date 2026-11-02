@@ -204,10 +204,10 @@ export default function NotificationComposerDialog({
           }
         } else {
           const preferredContexts = selectedSchool.senderKind === "staff"
-            ? ["staff", "teacher", "guardian"]
+            ? ["staff", "teacher", "guardian"] as const
             : selectedSchool.senderKind === "teacher"
-              ? ["guardian", "staff", "teacher"]
-              : ["teacher", "staff", "guardian"];
+              ? ["guardian", "staff", "teacher"] as const
+              : ["teacher", "staff", "guardian"] as const;
           const recipientContext = preferredContexts.find(context => actualContexts.includes(context));
           if (recipientContext) contexts.add(recipientContext);
         }
