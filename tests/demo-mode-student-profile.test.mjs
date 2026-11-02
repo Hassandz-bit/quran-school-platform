@@ -85,7 +85,7 @@ test("demo status lookup fails closed instead of exposing demo creation", async 
 test("demo cleanup errors expose actionable SQLSTATEs without logging backend payloads", async () => {
   const helper = await read("client/src/lib/demo-mode.ts");
   for (const code of ["42501", "23503", "23505", "23514", "57014"]) {
-    assert.ok(helper.includes(code), \`missing SQLSTATE handling: \${code}\`);
+    assert.ok(helper.includes(code), "missing SQLSTATE handling: " + code);
   }
   assert.match(helper, /console\.error\([^\n]+\{ code: code \|\| "unknown" \}\)/);
   assert.doesNotMatch(helper, /console\.error\([^\n]*(message|details|hint)/i);
