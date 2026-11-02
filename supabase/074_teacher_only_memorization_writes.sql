@@ -194,6 +194,12 @@ begin
     select teacher.profile_id
       into resolved_teacher_profile_id
     from public.teachers as teacher
+    join public.class_teachers as class_teacher
+      on class_teacher.school_id = teacher.school_id
+     and class_teacher.branch_id = teacher.branch_id
+     and class_teacher.teacher_id = teacher.id
+     and class_teacher.class_id = old.class_id
+     and class_teacher.status = 'active'
     where teacher.id = old.teacher_id
       and teacher.school_id = old.school_id
       and teacher.branch_id = old.branch_id
