@@ -40,11 +40,57 @@ begin
   ) then
     raise exception 'service_role cannot use the validated internal notification writer';
   end if;
-  if not has_function_privilege('authenticated', 'public.list_my_app_notifications(text,text,integer)', 'EXECUTE')
+  if not has_function_privilege('authenticated', 'public.list_my_app_notifications(text,text,integer,text)', 'EXECUTE')
     or not has_function_privilege('authenticated', 'public.get_my_unread_notification_count()', 'EXECUTE')
-    or not has_function_privilege('authenticated', 'public.mark_my_app_notification_read(uuid)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.get_my_unread_notification_count(text)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.mark_my_app_notification_read(uuid,text)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.get_my_notification_contexts()', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.list_my_notification_sender_schools_for_context(text)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.list_manual_notification_recipients_for_context(uuid,text)', 'EXECUTE')
+    or not has_function_privilege('authenticated', 'public.send_manual_app_notification_for_context(uuid,uuid[],text,text,text,text,jsonb,text)', 'EXECUTE')
   then
-    raise exception 'authenticated notification self-service RPC grants are incomplete';
+    raise exception 'authenticated context-scoped notification RPC grants are incomplete';
+  end if;
+  if has_function_privilege('authenticated', 'public.list_my_notification_sender_schools()', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.list_manual_notification_recipients(uuid)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.send_manual_app_notification(uuid,uuid[],text,text,text,text,jsonb)', 'EXECUTE')
+  then
+    raise exception 'authenticated can still call a context-free notification compose RPC';
+  end if;
+end;
+$$;
+
+-- The guardian's sender context must not inherit the teacher context even
+-- if the same profile is later assigned a staff or teacher membership.
+set role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000006', false);
+create temporary table guardian_sender_context as
+select * from public.list_my_notification_sender_schools_for_context('guardian');
+create temporary table guardian_compose_recipients as
+select * from public.list_manual_notification_recipients_for_context(
+  '10000000-0000-4000-8000-000000000001', 'guardian'
+);
+do $$
+begin
+  begin
+    perform * from public.list_my_notification_sender_schools_for_context('teacher');
+    raise exception 'guardian unexpectedly entered teacher sender context';
+  exception
+    when insufficient_privilege then null;
+  end;
+end;
+$$;
+reset role;
+
+do $$
+begin
+  if (select count(*) from guardian_sender_context) <> 1
+    or (select sender_kind from guardian_sender_context limit 1) <> 'guardian'
+  then
+    raise exception 'guardian sender context was not isolated';
+  end if;
+  if not exists (select 1 from guardian_compose_recipients) then
+    raise exception 'guardian compose recipients were not resolved';
   end if;
 end;
 $$;
@@ -90,6 +136,24 @@ $$;
 -- Remove server-contract fixture rows so following inbox assertions stay exact.
 delete from public.app_notifications
 where source_type in ('test_teacher_module', 'test_student_module');
+
+-- The registrar fixture intentionally has a branch-scoped role. Grant the
+-- guardian-directory permissions needed by the following access assertions;
+-- these are test-only grants and do not change production role defaults.
+insert into public.role_permissions (school_id, role_id, permission_id)
+select
+  '10000000-0000-4000-8000-000000000001',
+  '40000000-0000-4000-8000-000000000005',
+  permission.id
+from public.permissions as permission
+where permission.code in (
+  'guardians.view',
+  'guardians.invite',
+  'guardians.link',
+  'guardians.view_contacts',
+  'guardians.revoke'
+)
+on conflict (role_id, permission_id) do nothing;
 
 -- Registrar is branch-scoped and must see only guardian-manageable students.
 set role authenticated;
@@ -207,16 +271,17 @@ $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000006', false);
 create temporary table guardian_inbox as
-select * from public.list_my_app_notifications('inbox', null, 100);
+select * from public.list_my_app_notifications('inbox', null, 100, 'guardian');
 create temporary table guardian_sent as
-select * from public.list_my_app_notifications('sent', null, 100);
+select * from public.list_my_app_notifications('sent', null, 100, 'guardian');
 create temporary table guardian_unread_before as
-select public.get_my_unread_notification_count() as count;
+select public.get_my_unread_notification_count('guardian') as count;
 select public.mark_my_app_notification_read(
-  (select notification_id from guardian_inbox limit 1)
+  (select notification_id from guardian_inbox limit 1),
+  'guardian'
 );
 create temporary table guardian_unread_after as
-select public.get_my_unread_notification_count() as count;
+select public.get_my_unread_notification_count('guardian') as count;
 reset role;
 
 do $$
@@ -238,9 +303,9 @@ $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', false);
 create temporary table admin_sent as
-select * from public.list_my_app_notifications('sent', 'attendance', 100);
+select * from public.list_my_app_notifications('sent', 'attendance', 100, 'staff');
 create temporary table admin_inbox as
-select * from public.list_my_app_notifications('inbox', null, 100);
+select * from public.list_my_app_notifications('inbox', null, 100, 'staff');
 reset role;
 
 do $$
@@ -272,3 +337,46 @@ begin
   end if;
 end;
 $$;
+
+-- A profile that is both a teacher and a guardian must resolve its sender
+-- capabilities independently for each portal, never by a global role priority.
+insert into public.student_guardians (
+  id, school_id, student_id, guardian_profile_id, relationship_type,
+  is_primary, status, created_by, activated_at
+) values (
+  '70000000-0000-4000-8000-000000000089',
+  '10000000-0000-4000-8000-000000000001',
+  '50000000-0000-4000-8000-000000000001',
+  '60000000-0000-4000-8000-000000000003',
+  'mother', false, 'active',
+  '60000000-0000-4000-8000-000000000001', now()
+);
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000003', false);
+create temporary table dual_role_contexts as
+select public.get_my_notification_contexts() as contexts;
+create temporary table dual_role_teacher_sender as
+select * from public.list_my_notification_sender_schools_for_context('teacher');
+create temporary table dual_role_guardian_sender as
+select * from public.list_my_notification_sender_schools_for_context('guardian');
+reset role;
+
+do $$
+begin
+  if not ((select contexts from dual_role_contexts) @> array['teacher','guardian']::text[]) then
+    raise exception 'dual-role profile did not resolve both portal contexts';
+  end if;
+  if (select count(*) from dual_role_teacher_sender) <> 1
+    or (select sender_kind from dual_role_teacher_sender limit 1) <> 'teacher'
+  then
+    raise exception 'dual-role teacher sender scope was not isolated';
+  end if;
+  if (select count(*) from dual_role_guardian_sender) <> 1
+    or (select sender_kind from dual_role_guardian_sender limit 1) <> 'guardian'
+  then
+    raise exception 'dual-role guardian sender scope was not isolated';
+  end if;
+end;
+$$;
+

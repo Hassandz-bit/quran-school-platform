@@ -96,7 +96,7 @@ export default function NotificationComposerDialog({
       return;
     }
     void Promise.all([
-      fetchManualNotificationRecipients(schoolId),
+      fetchManualNotificationRecipients(schoolId, selectedSchool.senderKind),
       staffSender
         ? fetchNotificationScopes(schoolId)
         : Promise.resolve({ branches: [], classes: [] } as NotificationScopes),
@@ -123,12 +123,12 @@ export default function NotificationComposerDialog({
   const visibleCategories = useMemo(() => {
     if (selectedSchool?.senderKind === "guardian") {
       return categoryOptions.filter(option =>
-        ["administration", "learning", "attendance", "guardians"].includes(option.value)
+        ["administration", "students", "learning", "attendance", "guardians"].includes(option.value)
       );
     }
     if (selectedSchool?.senderKind === "teacher") {
       return categoryOptions.filter(option =>
-        ["administration", "teachers", "learning", "attendance", "guardians"].includes(option.value)
+        ["administration", "teachers", "students", "learning", "attendance", "guardians"].includes(option.value)
       );
     }
     return categoryOptions;
@@ -182,12 +182,38 @@ export default function NotificationComposerDialog({
   };
 
   const submit = async () => {
-    if (!title.trim() || !body.trim() || uniqueResolvedIds.length === 0) {
+    if (!selectedSchool || !title.trim() || !body.trim() || uniqueResolvedIds.length === 0) {
       toast.error(en ? "Add a title, message and at least one recipient." : "أضف العنوان والنص وحدد مستلمًا واحدًا على الأقل.");
       return;
     }
     setSending(true);
     try {
+      const recipientAudiences = Object.fromEntries(uniqueResolvedIds.map(profileId => {
+        const recipient = recipients.find(item => item.profileId === profileId);
+        const actualContexts = recipient?.notificationContexts ?? [];
+        const contexts = new Set<string>();
+        if (mode === "group" && groupMode === "audience") {
+          if (audience === "staff") {
+            if (actualContexts.includes("staff")) contexts.add("staff");
+            else if (actualContexts.includes("teacher")) contexts.add("teacher");
+          } else if (audience === "teachers" && actualContexts.includes("teacher")) {
+            contexts.add("teacher");
+          } else if ((audience === "guardians" || audience === "students")
+            && actualContexts.includes("guardian")) {
+            contexts.add("guardian");
+          }
+        } else {
+          const preferredContexts = selectedSchool.senderKind === "staff"
+            ? ["staff", "teacher", "guardian"] as const
+            : selectedSchool.senderKind === "teacher"
+              ? ["guardian", "staff", "teacher"] as const
+              : ["teacher", "staff", "guardian"] as const;
+          const recipientContext = preferredContexts.find(context => actualContexts.includes(context));
+          if (recipientContext) contexts.add(recipientContext);
+        }
+        return [profileId, [...contexts]];
+      }));
+
       const result = await sendManualNotification({
         schoolId,
         recipientProfileIds: uniqueResolvedIds,
@@ -195,8 +221,14 @@ export default function NotificationComposerDialog({
         title,
         body,
         targetPath,
-        targetingSummary: { mode, groupMode: mode === "group" ? groupMode : null, audience, scopeId: scopeId || null },
-      });
+        targetingSummary: {
+          mode,
+          groupMode: mode === "group" ? groupMode : null,
+          audience,
+          scopeId: scopeId || null,
+          recipientAudiences,
+        },
+      }, selectedSchool.senderKind);
       toast.success(en
         ? `Notification sent to ${result.recipientCount} recipients.`
         : `تم إرسال الإشعار إلى ${result.recipientCount} مستلمًا.`);

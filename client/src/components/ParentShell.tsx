@@ -16,7 +16,7 @@ export default function ParentShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    void fetchUnreadNotificationCount().then(count => {
+    void fetchUnreadNotificationCount("guardian").then(count => {
       if (active) setUnreadCount(count);
     });
     return () => {

@@ -34,8 +34,8 @@ test("composer supports individual, group, audience, branch, class and explicit 
   assert.match(composer, /uniqueResolvedIds\.length/);
   assert.match(composer, /عدد المستلمين قبل الإرسال/);
   assert.match(composer, /sendManualNotification/);
-  assert.match(notifications, /rpc\("send_manual_app_notification"/);
-  assert.match(notifications, /rpc\("list_manual_notification_recipients"/);
+  assert.match(notifications, /rpc\("send_manual_app_notification_for_context"/);
+  assert.match(notifications, /rpc\("list_manual_notification_recipients_for_context"/);
 });
 
 test("staff titles are independent from authorization roles and allow a custom job", () => {
