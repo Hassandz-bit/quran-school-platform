@@ -196,7 +196,7 @@ revoke all on function public.set_app_notification_audiences()
 
 drop trigger if exists app_notifications_set_audiences on public.app_notifications;
 create trigger app_notifications_set_audiences
-before insert or update of recipient_audiences, sender_audiences
+before insert or update
 on public.app_notifications
 for each row execute function public.set_app_notification_audiences();
 
