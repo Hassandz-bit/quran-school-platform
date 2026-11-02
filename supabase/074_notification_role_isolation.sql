@@ -129,12 +129,12 @@ begin
       and jsonb_typeof(campaign_summary->'recipientAudiences') = 'object'
       and jsonb_typeof(campaign_summary->'recipientAudiences'->new.recipient_profile_id::text) = 'array'
     then
-      select coalesce(array_agg(distinct audience), '{}'::text[])
+      select coalesce(array_agg(distinct item.value), '{}'::text[])
       into requested_audiences
       from jsonb_array_elements_text(
         campaign_summary->'recipientAudiences'->new.recipient_profile_id::text
-      ) audience
-      where audience in ('staff','teacher','guardian','student');
+      ) as item(value)
+      where item.value in ('staff','teacher','guardian','student');
 
       allowed_audiences := public.resolve_app_notification_audiences(
         new.school_id, new.recipient_profile_id, new.student_id
