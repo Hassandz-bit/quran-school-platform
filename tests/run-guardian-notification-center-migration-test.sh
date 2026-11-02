@@ -82,3 +82,4 @@ run_sql supabase/074_notification_role_isolation.sql
 run_sql supabase/075_guardian_finance_notification_context.sql
 run_sql tests/guardian-notification-center-assertions.sql
 run_sql tests/guardian-notification-center-tenant-assertions.sql
+run_sql tests/notification-dual-role-finance-isolation.sql
