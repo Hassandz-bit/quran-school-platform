@@ -72,6 +72,14 @@ for _ in 1 2; do
     < supabase/022_student_profile_column_privileges.sql
 done
 
+# Model the restrictive guardian-event FK and verify the cleanup trigger is replay-safe.
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+  < tests/demo-notification-cleanup-bootstrap.sql
+for _ in 1 2; do
+  docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+    < supabase/074_demo_cleanup_notification_dependencies.sql
+done
+
 if ! docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/demo-mode-student-profile-assertions.sql; then
   echo "Demo migration assertions failed. Diagnostic student education rows:" >&2
