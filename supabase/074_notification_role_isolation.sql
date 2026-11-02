@@ -606,7 +606,8 @@ returns table (
   audience_types text[],
   branch_ids uuid[],
   class_ids uuid[],
-  related_students text[]
+  related_students text[],
+  notification_contexts text[]
 )
 language plpgsql
 security definer
@@ -620,7 +621,18 @@ begin
   end if;
 
   perform set_config('quranos.notification_sender_context', target_sender_context, true);
-  return query select * from public.list_manual_notification_recipients(target_school_id);
+  return query
+    select
+      recipient.profile_id,
+      recipient.full_name,
+      recipient.audience_types,
+      recipient.branch_ids,
+      recipient.class_ids,
+      recipient.related_students,
+      public.resolve_app_notification_audiences(
+        target_school_id, recipient.profile_id, null
+      ) as notification_contexts
+    from public.list_manual_notification_recipients(target_school_id) recipient;
 end;
 $$;
 
