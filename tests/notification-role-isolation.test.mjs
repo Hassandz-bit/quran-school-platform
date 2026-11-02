@@ -37,8 +37,8 @@ test("unscoped list and read RPCs are removed in favor of portal-scoped RPCs", (
 });
 
 test("guardian and teacher portals expose only relevant category filters", () => {
-  assert.match(page, /parentMode[\\s\\S]*\\["all", "administration", "students", "learning", "attendance", "finance", "guardians"\\]/);
-  assert.match(page, /notificationContext === "teacher"[\\s\\S]*\\["all", "administration", "teachers", "students", "learning", "attendance", "guardians"\\]/);
+  assert.match(page, /parentMode[\s\S]*\["all", "administration", "students", "learning", "attendance", "finance", "guardians"\]/);
+  assert.match(page, /notificationContext === "teacher"[\s\S]*\["all", "administration", "teachers", "students", "learning", "attendance", "guardians"\]/);
   assert.match(page, /fetchMyNotifications\([\s\S]*notificationContext/);
   assert.match(page, /markNotificationRead\(row\.notificationId, notificationContext\)/);
 });
