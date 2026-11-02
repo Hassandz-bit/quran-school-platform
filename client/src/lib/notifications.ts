@@ -39,6 +39,7 @@ export type NotificationRecipient = {
   branchIds: string[];
   classIds: string[];
   relatedStudents: string[];
+  notificationContexts: NotificationContext[];
 };
 
 export type ManualNotificationInput = {
@@ -186,6 +187,10 @@ export async function fetchManualNotificationRecipients(
     branchIds: (Array.isArray(row.branch_ids) ? row.branch_ids : []).map(String),
     classIds: (Array.isArray(row.class_ids) ? row.class_ids : []).map(String),
     relatedStudents: (Array.isArray(row.related_students) ? row.related_students : []).map(String),
+    notificationContexts: (Array.isArray(row.notification_contexts) ? row.notification_contexts : [])
+      .filter((value): value is NotificationContext =>
+        ["staff", "teacher", "guardian", "student"].includes(String(value))
+      ),
   }));
 }
 
