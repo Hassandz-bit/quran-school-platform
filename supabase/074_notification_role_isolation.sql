@@ -447,4 +447,242 @@ revoke all on function public.mark_my_app_notification_read(uuid, text)
 grant execute on function public.mark_my_app_notification_read(uuid, text)
   to authenticated;
 
+
+-- Sender-side context is also explicit. This prevents a profile that is both
+-- teacher and guardian from accidentally composing from the other portal.
+create or replace function public.list_my_notification_sender_schools()
+returns table (
+  school_id uuid,
+  school_name text,
+  sender_kind text,
+  can_group_send boolean
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $
+declare
+  current_user_id uuid := (select auth.uid());
+  sender_context text := nullif(current_setting('quranos.notification_sender_context', true), '');
+begin
+  if current_user_id is null or not public.current_profile_is_active() then
+    raise exception using errcode = '42501', message = 'authentication required';
+  end if;
+
+  if sender_context is not null and sender_context not in ('staff','teacher','guardian') then
+    raise exception using errcode = '22023', message = 'invalid notification sender context';
+  end if;
+
+  return query
+  with membership_access as (
+    select
+      school.id as school_id,
+      school.name as school_name,
+      case
+        when sender_context = 'teacher' then 'teacher'
+        when sender_context = 'staff' then 'staff'
+        when public.has_school_permission(school.id, 'notifications.send') then 'staff'
+        else 'teacher'
+      end as sender_kind,
+      true as can_group_send,
+      case
+        when sender_context = 'staff'
+          or (sender_context is null and public.has_school_permission(school.id, 'notifications.send')) then 1
+        else 2
+      end as sender_rank
+    from public.school_memberships membership
+    join public.schools school
+      on school.id = membership.school_id
+     and school.status = 'active'
+    where membership.profile_id = current_user_id
+      and membership.status = 'active'
+      and (
+        (sender_context is null and (
+          public.has_school_permission(school.id, 'notifications.send')
+          or exists (
+            select 1 from public.teachers teacher
+            where teacher.school_id = school.id
+              and teacher.profile_id = current_user_id
+              and teacher.status = 'active'
+          )
+          or exists (
+            select 1
+            from public.membership_roles membership_role
+            join public.roles role
+              on role.id = membership_role.role_id
+             and role.school_id = membership_role.school_id
+             and role.status = 'active'
+            where membership_role.school_id = school.id
+              and membership_role.membership_id = membership.id
+              and role.code = 'teacher'
+          )
+        ))
+        or (sender_context = 'staff'
+          and public.has_school_permission(school.id, 'notifications.send'))
+        or (sender_context = 'teacher' and (
+          exists (
+            select 1 from public.teachers teacher
+            where teacher.school_id = school.id
+              and teacher.profile_id = current_user_id
+              and teacher.status = 'active'
+          )
+          or exists (
+            select 1
+            from public.membership_roles membership_role
+            join public.roles role
+              on role.id = membership_role.role_id
+             and role.school_id = membership_role.school_id
+             and role.status = 'active'
+            where membership_role.school_id = school.id
+              and membership_role.membership_id = membership.id
+              and role.code = 'teacher'
+          )
+        ))
+      )
+  ), guardian_access as (
+    select distinct
+      school.id as school_id,
+      school.name as school_name,
+      'guardian'::text as sender_kind,
+      false as can_group_send,
+      3 as sender_rank
+    from public.student_guardians relationship
+    join public.schools school
+      on school.id = relationship.school_id
+     and school.status = 'active'
+    join public.students student
+      on student.id = relationship.student_id
+     and student.school_id = relationship.school_id
+     and student.status = 'active'
+    where relationship.guardian_profile_id = current_user_id
+      and relationship.status = 'active'
+      and (sender_context is null or sender_context = 'guardian')
+  ), combined as (
+    select * from membership_access
+    union all
+    select * from guardian_access
+  )
+  select distinct on (combined.school_id)
+    combined.school_id, combined.school_name,
+    combined.sender_kind, combined.can_group_send
+  from combined
+  order by combined.school_id, combined.sender_rank;
+end;
+$;
+
+create or replace function public.list_my_notification_sender_schools_for_context(
+  target_sender_context text
+)
+returns table (
+  school_id uuid,
+  school_name text,
+  sender_kind text,
+  can_group_send boolean
+)
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if target_sender_context not in ('staff','teacher','guardian')
+    or not (public.get_my_notification_contexts() @> array[target_sender_context]::text[])
+  then
+    raise exception using errcode = '42501', message = 'NOTIFICATION_SENDER_CONTEXT_REQUIRED';
+  end if;
+
+  perform set_config('quranos.notification_sender_context', target_sender_context, true);
+  return query select * from public.list_my_notification_sender_schools();
+end;
+$;
+
+create or replace function public.list_manual_notification_recipients_for_context(
+  target_school_id uuid,
+  target_sender_context text
+)
+returns table (
+  profile_id uuid,
+  full_name text,
+  audience_types text[],
+  branch_ids uuid[],
+  class_ids uuid[],
+  related_students text[]
+)
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if target_sender_context not in ('staff','teacher','guardian')
+    or not (public.get_my_notification_contexts() @> array[target_sender_context]::text[])
+  then
+    raise exception using errcode = '42501', message = 'NOTIFICATION_SENDER_CONTEXT_REQUIRED';
+  end if;
+
+  perform set_config('quranos.notification_sender_context', target_sender_context, true);
+  return query select * from public.list_manual_notification_recipients(target_school_id);
+end;
+$;
+
+create or replace function public.send_manual_app_notification_for_context(
+  target_school_id uuid,
+  target_recipient_profile_ids uuid[],
+  target_category text,
+  target_title text,
+  target_body text,
+  target_path text,
+  target_targeting_summary jsonb,
+  target_sender_context text
+)
+returns table (campaign_id uuid, recipient_count integer)
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if target_sender_context not in ('staff','teacher','guardian')
+    or not (public.get_my_notification_contexts() @> array[target_sender_context]::text[])
+  then
+    raise exception using errcode = '42501', message = 'NOTIFICATION_SENDER_CONTEXT_REQUIRED';
+  end if;
+
+  perform set_config('quranos.notification_sender_context', target_sender_context, true);
+  return query
+    select * from public.send_manual_app_notification(
+      target_school_id,
+      target_recipient_profile_ids,
+      target_category,
+      target_title,
+      target_body,
+      target_path,
+      target_targeting_summary
+    );
+end;
+$;
+
+-- The old context-free composer RPCs are not a public path around the new
+-- sender-context wrappers. Nested calls still work as the SECURITY DEFINER owner.
+revoke all on function public.list_my_notification_sender_schools()
+  from public, anon, authenticated;
+revoke all on function public.list_manual_notification_recipients(uuid)
+  from public, anon, authenticated;
+revoke all on function public.send_manual_app_notification(uuid, uuid[], text, text, text, text, jsonb)
+  from public, anon, authenticated;
+
+revoke all on function public.list_my_notification_sender_schools_for_context(text)
+  from public, anon;
+revoke all on function public.list_manual_notification_recipients_for_context(uuid, text)
+  from public, anon;
+revoke all on function public.send_manual_app_notification_for_context(
+  uuid, uuid[], text, text, text, text, jsonb, text
+) from public, anon;
+
+grant execute on function public.list_my_notification_sender_schools_for_context(text)
+  to authenticated;
+grant execute on function public.list_manual_notification_recipients_for_context(uuid, text)
+  to authenticated;
+grant execute on function public.send_manual_app_notification_for_context(
+  uuid, uuid[], text, text, text, text, jsonb, text
+) to authenticated;
+
 commit;
