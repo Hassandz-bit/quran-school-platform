@@ -208,6 +208,7 @@ begin
     into campaign_summary
     from public.notification_campaigns campaign
     where campaign.id = new.source_id;
+    campaign_sender_kind := campaign_summary->>'senderKind';
 
     if campaign_summary is not null
       and jsonb_typeof(campaign_summary->'recipientAudiences') = 'object'
