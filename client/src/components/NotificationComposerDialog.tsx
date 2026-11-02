@@ -123,12 +123,12 @@ export default function NotificationComposerDialog({
   const visibleCategories = useMemo(() => {
     if (selectedSchool?.senderKind === "guardian") {
       return categoryOptions.filter(option =>
-        ["administration", "learning", "attendance", "guardians"].includes(option.value)
+        ["administration", "students", "learning", "attendance", "guardians"].includes(option.value)
       );
     }
     if (selectedSchool?.senderKind === "teacher") {
       return categoryOptions.filter(option =>
-        ["administration", "teachers", "learning", "attendance", "guardians"].includes(option.value)
+        ["administration", "teachers", "students", "learning", "attendance", "guardians"].includes(option.value)
       );
     }
     return categoryOptions;
