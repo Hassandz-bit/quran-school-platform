@@ -13,6 +13,10 @@ test("portal context is resolved from active school relationships", () => {
   assert.match(migration, /create or replace function public\.get_my_notification_contexts\(\)/i);
   assert.match(lib, /rpc\(["']get_my_notification_contexts["']\)/);
   assert.match(page, /fetchMyNotificationContexts\(\)/);
+  assert.match(page, /fetchMyNotificationSenderSchools\(notificationContext\)/);
+  assert.match(migration, /list_my_notification_sender_schools_for_context/);
+  assert.match(migration, /list_manual_notification_recipients_for_context/);
+  assert.match(migration, /send_manual_app_notification_for_context/);
 });
 
 test("notification rows carry a validated recipient and sender portal context", () => {
@@ -42,5 +46,7 @@ test("guardian and teacher portals expose only relevant category filters", () =>
 test("manual sends attach intended audience to each recipient and guardian badge is scoped", () => {
   assert.match(composer, /recipientAudiences/);
   assert.match(composer, /targetingSummary:[\s\S]*recipientAudiences/);
+  assert.match(composer, /fetchManualNotificationRecipients\(schoolId, selectedSchool\.senderKind\)/);
+  assert.match(composer, /selectedSchool\.senderKind\);/);
   assert.match(parentShell, /fetchUnreadNotificationCount\("guardian"\)/);
 });
