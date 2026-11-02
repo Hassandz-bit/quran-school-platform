@@ -47,6 +47,8 @@ test("update trigger permits only the original assigned teacher", () => {
   )?.[0];
   assert.ok(trigger);
   assert.match(trigger, /teacher\.id = old\.teacher_id/);
+  assert.match(trigger, /class_teacher\.class_id = old\.class_id/);
+  assert.match(trigger, /class_teacher\.status = 'active'/);
   assert.match(trigger, /resolved_teacher_profile_id is distinct from \(select auth\.uid\(\)\)/);
   assert.match(trigger, /MEMORIZATION_TEACHER_UPDATE_FORBIDDEN/);
   assert.doesNotMatch(trigger, /caller_has_non_teacher_manage/);
