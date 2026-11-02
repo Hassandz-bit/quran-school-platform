@@ -72,9 +72,9 @@ test("student profile privilege migration preserves column-level least privilege
 test("demo cleanup removes notification events derived from demo attendance", async () => {
   const migration = await read("supabase/074_demo_cleanup_notification_dependencies.sql");
   const assertions = await read("tests/demo-mode-student-profile-assertions.sql");
-  assert.match(migration, /before delete on public\\.attendance_records/i);
+  assert.match(migration, /before delete on public\.attendance_records/i);
   assert.match(migration, /entity_type = 'attendance_record'/);
-  assert.match(migration, /delete from public\\.guardian_notification_events/i);
+  assert.match(migration, /delete from public\.guardian_notification_events/i);
   assert.match(assertions, /demo_absence_notification_events_created/);
   assert.match(assertions, /demo_cleanup_removes_derived_guardian_notification_events/);
   assert.match(assertions, /demo_cleanup_cascades_guardian_notification_deliveries/);
@@ -82,11 +82,11 @@ test("demo cleanup removes notification events derived from demo attendance", as
 
 test("demo status lookup failures do not expose create-demo actions", async () => {
   const card = await read("client/src/components/DemoModeCard.tsx");
-  assert.match(card, /const \\[loadError, setLoadError\\] = useState\\(false\\)/);
-  assert.match(card, /catch \\{\\s*\\/\\/ Fail closed:[\\s\\S]*?setLoadError\\(true\\)/);
-  assert.match(card, /if \\(loadError\\)/);
+  assert.match(card, /const \[loadError, setLoadError\] = useState\(false\)/);
+  assert.match(card, /catch \{\s*\/\/ Fail closed:[\s\S]*?setLoadError\(true\)/);
+  assert.match(card, /if \(loadError\)/);
   assert.match(card, /إعادة المحاولة/);
-  assert.doesNotMatch(card, /catch \\{\\s*\\/\\/ Migration may not have been applied[\\s\\S]*?setStatus\\(EMPTY_STATUS\\)/);
+  assert.doesNotMatch(card, /catch \{\s*\/\/ Migration may not have been applied[\s\S]*?setStatus\(EMPTY_STATUS\)/);
 });
 
 test("demo controls are school-admin only in the dashboard", async () => {
