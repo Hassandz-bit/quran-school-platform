@@ -117,6 +117,33 @@ begin
 end
 $$;
 
+-- The attendance notification trigger creates events for demo absences.
+-- Model those derived rows so cleanup proves it removes them before attendance.
+insert into public.guardian_notification_events (
+  school_id, student_id, attendance_session_id, attendance_record_id
+)
+select
+  ar.school_id, ar.student_id, ar.session_id, ar.id
+from public.attendance_records as ar
+join public.demo_seed_records as tracked
+  on tracked.batch_id = :'demo_batch_id'::uuid
+ and tracked.school_id = ar.school_id
+ and tracked.entity_type = 'attendance_record'
+ and tracked.record_id = ar.id
+where ar.status = 'absent';
+
+insert into public.guardian_notification_deliveries (event_id)
+select id from public.guardian_notification_events;
+
+select pg_temp.assert_true(
+  (select count(*) > 0 from public.guardian_notification_events),
+  'demo_absence_notification_events_created'
+);
+select pg_temp.assert_true(
+  (select count(*) > 0 from public.guardian_notification_deliveries),
+  'demo_absence_notification_deliveries_created'
+);
+
 -- Cleanup refuses to delete a real student that was placed into a demo class.
 select record_id as demo_class_id
 from public.demo_seed_records
@@ -152,6 +179,14 @@ select pg_temp.assert_true(
   (select status = 'cleared' and cleared_at is not null
    from public.demo_seed_batches where id = :'demo_batch_id'::uuid),
   'demo_batch_cleared_status'
+);
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.guardian_notification_events),
+  'demo_cleanup_removes_derived_guardian_notification_events'
+);
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.guardian_notification_deliveries),
+  'demo_cleanup_cascades_guardian_notification_deliveries'
 );
 select pg_temp.assert_true(
   (select not active and student_count = 0 and teacher_count = 0 and class_count = 0
