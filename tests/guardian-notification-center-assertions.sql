@@ -70,7 +70,7 @@ create temporary table guardian_compose_recipients as
 select * from public.list_manual_notification_recipients_for_context(
   '10000000-0000-4000-8000-000000000001', 'guardian'
 );
-do $
+do $$
 begin
   begin
     perform * from public.list_my_notification_sender_schools_for_context('teacher');
@@ -79,10 +79,10 @@ begin
     when insufficient_privilege then null;
   end;
 end;
-$;
+$$;
 reset role;
 
-do $
+do $$
 begin
   if (select count(*) from guardian_sender_context) <> 1
     or (select sender_kind from guardian_sender_context limit 1) <> 'guardian'
@@ -93,7 +93,7 @@ begin
     raise exception 'guardian compose recipients were not resolved';
   end if;
 end;
-$;
+$$;
 
 -- Explicit module categories must accept teacher/student server notifications.
 set role service_role;
