@@ -194,8 +194,12 @@ export default function NotificationComposerDialog({
           ? [audience]
           : recipient?.audienceTypes ?? [];
         const contexts = new Set<string>();
-        if (selectedTypes.includes("teachers")) contexts.add("teacher");
-        else if (selectedTypes.includes("staff")) contexts.add("staff");
+        if (selectedTypes.includes("teachers")
+          || (selectedTypes.includes("staff") && recipient?.audienceTypes.includes("teachers"))) {
+          contexts.add("teacher");
+        } else if (selectedTypes.includes("staff")) {
+          contexts.add("staff");
+        }
         if (selectedTypes.includes("guardians") || selectedTypes.includes("students")) contexts.add("guardian");
         return [profileId, [...contexts]];
       }));
