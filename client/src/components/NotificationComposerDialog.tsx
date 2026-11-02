@@ -188,6 +188,18 @@ export default function NotificationComposerDialog({
     }
     setSending(true);
     try {
+      const recipientAudiences = Object.fromEntries(uniqueResolvedIds.map(profileId => {
+        const recipient = recipients.find(item => item.profileId === profileId);
+        const selectedTypes = mode === "group" && groupMode === "audience"
+          ? [audience]
+          : recipient?.audienceTypes ?? [];
+        const contexts = new Set<string>();
+        if (selectedTypes.includes("teachers")) contexts.add("teacher");
+        else if (selectedTypes.includes("staff")) contexts.add("staff");
+        if (selectedTypes.includes("guardians") || selectedTypes.includes("students")) contexts.add("guardian");
+        return [profileId, [...contexts]];
+      }));
+
       const result = await sendManualNotification({
         schoolId,
         recipientProfileIds: uniqueResolvedIds,
@@ -195,7 +207,13 @@ export default function NotificationComposerDialog({
         title,
         body,
         targetPath,
-        targetingSummary: { mode, groupMode: mode === "group" ? groupMode : null, audience, scopeId: scopeId || null },
+        targetingSummary: {
+          mode,
+          groupMode: mode === "group" ? groupMode : null,
+          audience,
+          scopeId: scopeId || null,
+          recipientAudiences,
+        },
       });
       toast.success(en
         ? `Notification sent to ${result.recipientCount} recipients.`
