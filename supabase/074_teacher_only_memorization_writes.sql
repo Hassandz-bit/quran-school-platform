@@ -46,6 +46,23 @@ as $$
             and membership.status = 'active'
             and permission.code = 'memorization.view'
             and (membership_role.branch_id is null or membership_role.branch_id = target_branch_id)
+            and (
+              role.code <> 'teacher'
+              or exists (
+                select 1
+                from public.teachers as assigned_teacher
+                join public.class_teachers as assigned_class_teacher
+                  on assigned_class_teacher.school_id = assigned_teacher.school_id
+                 and assigned_class_teacher.branch_id = assigned_teacher.branch_id
+                 and assigned_class_teacher.teacher_id = assigned_teacher.id
+                 and assigned_class_teacher.status = 'active'
+                where assigned_teacher.school_id = target_school_id
+                  and assigned_teacher.branch_id = target_branch_id
+                  and assigned_teacher.profile_id = (select auth.uid())
+                  and assigned_teacher.status = 'active'
+                  and assigned_class_teacher.class_id = target_class_id
+              )
+            )
         )
       )
       or
