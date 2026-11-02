@@ -108,7 +108,7 @@ language plpgsql
 stable
 security definer
 set search_path = ''
-as $
+as $$
 declare
   current_user_id uuid := (select auth.uid());
   resolved_contexts text[];
@@ -140,7 +140,7 @@ begin
 
   return resolved_contexts;
 end;
-$;
+$$;
 
 revoke all on function public.get_my_notification_contexts()
   from public, anon;
@@ -461,7 +461,7 @@ language plpgsql
 stable
 security definer
 set search_path = ''
-as $
+as $$
 declare
   current_user_id uuid := (select auth.uid());
   sender_context text := nullif(current_setting('quranos.notification_sender_context', true), '');
@@ -569,7 +569,7 @@ begin
   from combined
   order by combined.school_id, combined.sender_rank;
 end;
-$;
+$$;
 
 create or replace function public.list_my_notification_sender_schools_for_context(
   target_sender_context text
@@ -583,7 +583,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   if target_sender_context not in ('staff','teacher','guardian')
     or not (public.get_my_notification_contexts() @> array[target_sender_context]::text[])
@@ -594,7 +594,7 @@ begin
   perform set_config('quranos.notification_sender_context', target_sender_context, true);
   return query select * from public.list_my_notification_sender_schools();
 end;
-$;
+$$;
 
 create or replace function public.list_manual_notification_recipients_for_context(
   target_school_id uuid,
@@ -611,7 +611,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   if target_sender_context not in ('staff','teacher','guardian')
     or not (public.get_my_notification_contexts() @> array[target_sender_context]::text[])
@@ -622,7 +622,7 @@ begin
   perform set_config('quranos.notification_sender_context', target_sender_context, true);
   return query select * from public.list_manual_notification_recipients(target_school_id);
 end;
-$;
+$$;
 
 create or replace function public.send_manual_app_notification_for_context(
   target_school_id uuid,
@@ -638,7 +638,7 @@ returns table (campaign_id uuid, recipient_count integer)
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   if target_sender_context not in ('staff','teacher','guardian')
     or not (public.get_my_notification_contexts() @> array[target_sender_context]::text[])
@@ -658,7 +658,7 @@ begin
       target_targeting_summary
     );
 end;
-$;
+$$;
 
 -- The old context-free composer RPCs are not a public path around the new
 -- sender-context wrappers. Nested calls still work as the SECURITY DEFINER owner.
