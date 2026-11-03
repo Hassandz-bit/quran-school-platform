@@ -23,6 +23,7 @@ import {
   getSurahByNumber,
 } from "@/lib/memorization";
 import { formatEducation, translateStudentStatus } from "@/lib/students";
+import { StudentAlertSummary } from "@/components/StudentAlertSummary";
 import {
   evaluateSchoolTrackScore,
   getSchoolTrackEvaluationLabel,
@@ -308,6 +309,8 @@ export default function Student360() {
           </div>
         </dl>
       </section>
+
+      <StudentAlertSummary attendance={attendance} memorization={memorization} />
 
       <section>
         <SectionHeader title="ملخص سريع" />
