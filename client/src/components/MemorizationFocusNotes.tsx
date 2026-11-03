@@ -89,7 +89,7 @@ function formatDate(value: string): string {
 function priorityClass(priority: MemorizationFollowUpPriority): string {
   if (priority === 1) return "border-red-200 bg-red-50 text-red-700";
   if (priority === 2) return "border-amber-200 bg-amber-50 text-amber-800";
-  return "border-gray-200 bg-gray-50 text-gray-600";
+  return "border-blue-200 bg-blue-50 text-blue-700";
 }
 
 function statusClass(status: MemorizationFollowUpStatus): string {
@@ -118,7 +118,7 @@ function FollowUpCard({
   const surah = getSurahByNumber(note.surahNumber);
 
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+    <div className={`rounded-xl border border-gray-100 border-r-4 bg-white p-3 shadow-sm ${note.priority === 1 ? "border-r-red-600" : note.priority === 2 ? "border-r-amber-500" : "border-r-blue-500"}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
