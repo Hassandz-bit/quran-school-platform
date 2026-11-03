@@ -7,6 +7,7 @@ test("student alert summary uses explicit severity levels and guards against tre
   assert.match(source, /absent >= 4 \? "critical"/);
   assert.match(source, /excused > 0 \? "info"/);
   assert.match(source, /late >= 4 \? "high"/);
+  assert.match(source, /firstStrongRecord = recent.findIndex/);
   assert.match(source, /weakStreak >= 3/);
   assert.match(source, /لا يصدر حكمًا نهائيًا على الطالب/);
 });
