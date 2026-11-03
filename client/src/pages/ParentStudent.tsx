@@ -24,6 +24,7 @@ import {
   type ParentStudentAcademicData,
   type ParentStudentFinanceData,
 } from "@/lib/parent-portal";
+import { StudentAlertSummary } from "@/components/StudentAlertSummary";
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -243,6 +244,8 @@ export default function ParentStudent() {
           {student.branchName} · {student.className ?? "غير مسند إلى حلقة حاليًا"}
         </p>
       </header>
+
+      <StudentAlertSummary attendance={data.attendanceRecords} memorization={data.memorizationRecords} />
 
       <section className="space-y-4">
         <div className="flex items-center gap-2">
