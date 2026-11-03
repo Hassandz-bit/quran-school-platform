@@ -221,6 +221,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "أدخل بيانات المتابعة ثم احفظ.": "Enter the follow-up information, then save.",
 
   // Student educational alert severity
+  "التنبيهات التربوية": "Educational alerts",
   "خطر — تدخل عاجل": "Critical — urgent intervention",
   "مرتفع — متابعة قريبة": "High — close follow-up",
   "متوسط — يحتاج انتباهًا": "Medium — attention needed",
