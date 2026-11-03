@@ -31,13 +31,19 @@ const LEVELS: Record<Level, { label: string; className: string; icon: typeof Ale
 
 function attendanceAlerts(records: AttendanceItem[]): AlertItem[] {
   const recent = records.slice(0, 12);
+  if (recent.length === 0) {
+    return [
+      { key: "absence", title: "الغيابات", level: "info", description: "لا توجد سجلات حضور كافية لتقييم الغياب.", action: "ابدأ بتسجيل الحضور حتى تظهر مؤشرات موثوقة." },
+      { key: "commitment", title: "الالتزام بالمواعيد", level: "info", description: "لا توجد سجلات حضور كافية لتقييم الالتزام بالمواعيد.", action: "تابع تسجيل الحضور والتأخر في الحصص القادمة." },
+    ];
+  }
   const absent = recent.filter(item => item.status === "absent").length;
   const late = recent.filter(item => item.status === "late").length;
   const excused = recent.filter(item => item.status === "excused_absence").length;
   const absenceLevel: Level =
     absent >= 4 ? "critical" : absent >= 2 ? "high" : absent === 1 ? "medium" : excused > 0 ? "info" : "positive";
   const commitmentLevel: Level =
-    late >= 4 ? "high" : late >= 2 ? "medium" : late === 1 ? "info" : "positive";
+    late >= 6 ? "critical" : late >= 4 ? "high" : late >= 2 ? "medium" : late === 1 ? "info" : "positive";
 
   return [
     {
@@ -65,6 +71,9 @@ function attendanceAlerts(records: AttendanceItem[]): AlertItem[] {
 
 function memorizationAlert(records: MemorizationRecord[]): AlertItem {
   const recent = records.slice(0, 5);
+  if (recent.length === 0) {
+    return { key: "memorization", title: "الحفظ والمراجعة", level: "info", description: "لا توجد سجلات حفظ كافية لتقييم المستوى.", action: "سجّل متابعة الحفظ والمراجعة لبدء قياس التقدم." };
+  }
   const firstStrongRecord = recent.findIndex(item => item.rating > 2);
   const weakStreak = firstStrongRecord === -1 ? recent.length : firstStrongRecord;
   const average = recent.length
