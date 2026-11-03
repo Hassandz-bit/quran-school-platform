@@ -65,7 +65,8 @@ function attendanceAlerts(records: AttendanceItem[]): AlertItem[] {
 
 function memorizationAlert(records: MemorizationRecord[]): AlertItem {
   const recent = records.slice(0, 5);
-  const weakStreak = recent.reduce((count, item) => item.rating <= 2 ? count + 1 : count, 0);
+  const firstStrongRecord = recent.findIndex(item => item.rating > 2);
+  const weakStreak = firstStrongRecord === -1 ? recent.length : firstStrongRecord;
   const average = recent.length
     ? recent.reduce((total, item) => total + item.rating, 0) / recent.length
     : 0;
