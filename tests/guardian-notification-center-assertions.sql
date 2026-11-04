@@ -41,7 +41,7 @@ begin
     raise exception 'service_role cannot use the validated internal notification writer';
   end if;
   if not has_function_privilege('authenticated', 'public.list_my_app_notifications(text,text,integer,text)', 'EXECUTE')
-    or not has_function_privilege('authenticated', 'public.get_my_unread_notification_count()', 'EXECUTE')
+    or to_regprocedure('public.get_my_unread_notification_count()') is not null
     or not has_function_privilege('authenticated', 'public.get_my_unread_notification_count(text)', 'EXECUTE')
     or not has_function_privilege('authenticated', 'public.mark_my_app_notification_read(uuid,text)', 'EXECUTE')
     or not has_function_privilege('authenticated', 'public.get_my_notification_contexts()', 'EXECUTE')
