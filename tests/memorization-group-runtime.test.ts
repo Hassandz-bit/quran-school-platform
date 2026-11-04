@@ -90,7 +90,7 @@ describe("atomic group memorization saves", () => {
       ayah_end: 15,
       rating: 5,
       recitation_result: "memorized",
-      recitation_accuracy: "no_errors",
+      recitation_accuracy: null,
       focus_words: null,
       notes: "إتقان جيد",
     });

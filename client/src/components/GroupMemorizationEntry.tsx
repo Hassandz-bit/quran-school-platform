@@ -107,10 +107,6 @@ export default function GroupMemorizationEntry({
     const selectedEntries = entries.filter(entry => entry.selected);
     const invalidEntry = selectedEntries.some(entry =>
       !Number.isInteger(entry.rating) || entry.rating < 1 || entry.rating > 5 ||
-      !entry.recitationResult || !entry.recitationAccuracy ||
-      entry.focusWords.trim().length > 500 ||
-      (entry.recitationAccuracy === "focus_words" && !entry.focusWords.trim()) ||
-      (entry.recitationAccuracy !== "focus_words" && Boolean(entry.focusWords.trim())) ||
       !Number.isInteger(entry.errorsCount) || entry.errorsCount < 0 || entry.errorsCount > 100 ||
       entry.notes.trim().length > 1000 || entry.nextAssignment.trim().length > 1000
     );
@@ -139,8 +135,8 @@ export default function GroupMemorizationEntry({
             rating: entry.rating,
             errorsCount: entry.errorsCount,
             recitationResult: entry.recitationResult,
-            recitationAccuracy: entry.recitationAccuracy,
-            focusWords: entry.focusWords,
+            recitationAccuracy: null,
+            focusWords: "",
             notes: entry.notes,
             nextAssignment: entry.nextAssignment,
           };
@@ -189,7 +185,7 @@ export default function GroupMemorizationEntry({
             حفظ جماعي للحلقة
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">
-            أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة التسميع ودرجة الأداء ودقته لكل طالب على حدة. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.
+            أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة الجلسة ودرجة الأداء وعدد الأخطاء وملاحظات كل طالب. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.
           </p>
         </div>
         {groupSaved && (
@@ -362,16 +358,6 @@ export default function GroupMemorizationEntry({
                         {(sessionType === "near_revision" || sessionType === "distant_revision" ? [{ value: "revised", label: "راجع" }, { value: "not_revised", label: "لم يراجع" }] : [{ value: "memorized", label: "استظهر" }, { value: "not_memorized", label: "لم يستظهر" }]).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
                     </label>
-                    <label className="space-y-1.5">
-                      <span className="text-xs font-semibold text-gray-600">دقة التسميع</span>
-                      <select value={entry.recitationAccuracy} disabled={controlsDisabled} onChange={event => updateEntry(student.id, { recitationAccuracy: event.target.value as MemorizationAccuracy, focusWords: event.target.value === "focus_words" ? entry.focusWords : "" })} className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm">
-                        <option value="no_errors">دون أخطاء</option><option value="focus_words">كلمات تحتاج إلى تركيز</option><option value="repeated_errors">أخطاء متكررة</option><option value="needs_repetition">يحتاج إلى إعادة التسميع</option>
-                      </select>
-                    </label>
-                    {entry.recitationAccuracy === "focus_words" && <label className="space-y-1.5 sm:col-span-2">
-                      <span className="text-xs font-semibold text-gray-600">الكلمات التي تحتاج إلى تركيز</span>
-                      <Textarea value={entry.focusWords} maxLength={500} rows={2} disabled={controlsDisabled} onChange={event => updateEntry(student.id, { focusWords: event.target.value })} placeholder="سجّل الكلمات أو المواضع التي تحتاج إلى تكرار" className="min-h-16 resize-y" />
-                    </label>}
                     <label className="space-y-1.5">
                       <span className="text-xs font-semibold text-gray-600">ملاحظة الطالب</span>
                       <Textarea

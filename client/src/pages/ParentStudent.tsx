@@ -58,7 +58,8 @@ function attendanceTone(status: string): string {
 function sessionLabel(value: string): string {
   return (
     {
-      new_memorization: "حفظ جديد",
+      new_memorization: "التسميع الجديد",
+      new_hifz: "حفظ الجديد",
       near_revision: "مراجعة قريبة",
       distant_revision: "مراجعة بعيدة",
       assessment: "تقييم",
@@ -68,10 +69,6 @@ function sessionLabel(value: string): string {
 
 function recitationResultLabel(value: string | null): string {
   return ({ memorized: "استظهر", not_memorized: "لم يستظهر", revised: "راجع", not_revised: "لم يراجع" }[value ?? ""] ?? "غير مسجل");
-}
-
-function recitationAccuracyLabel(value: string | null): string {
-  return ({ no_errors: "دون أخطاء", focus_words: "كلمات تحتاج إلى تركيز", repeated_errors: "أخطاء متكررة", needs_repetition: "يحتاج إلى إعادة التسميع" }[value ?? ""] ?? "غير مسجل");
 }
 
 function memorizationGradeLabel(value: number): string {
@@ -329,9 +326,7 @@ export default function ParentStudent() {
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                       <span className="rounded-full bg-[#E8F3EC] px-2.5 py-1 font-bold text-[#17663B]">{recitationResultLabel(record.recitationResult)}</span>
                       <span className="rounded-full bg-[#EAF3FA] px-2.5 py-1 font-bold text-[#256D95]">{memorizationGradeLabel(record.rating)}</span>
-                      <span className="rounded-full bg-[#F1F4F2] px-2.5 py-1 font-bold text-[#607368]">{recitationAccuracyLabel(record.recitationAccuracy)}</span>
                     </div>
-                    {record.focusWords && <p className="mt-2 text-xs leading-6 text-[#A76009]">مواضع التركيز: {record.focusWords}</p>}
                   </div>
                   <span className="flex items-center gap-1 rounded-full bg-[#FFF7E7] px-2.5 py-1 text-xs font-bold text-[#8A6A2E]">
                     <Star size={13} /> {memorizationGradeLabel(record.rating)} · {record.rating}/5

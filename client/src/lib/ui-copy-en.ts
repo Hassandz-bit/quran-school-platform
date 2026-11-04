@@ -747,6 +747,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تذكيرات قريبة جديدة": "New upcoming reminders",
   "تذكيرات تأخير جديدة": "New overdue reminders",
   "حفظ جديد": "New memorization",
+  "حفظ الجديد": "New Hifz",
   "تقييم": "Rating",
   "سورة": "Surah",
   "مستحق": "Due",
