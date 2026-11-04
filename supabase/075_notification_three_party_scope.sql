@@ -94,6 +94,9 @@ begin
     if 'teacher' = any(available_contexts) then return array['teacher']::text[]; end if;
     if 'guardian' = any(available_contexts) then return array['guardian']::text[]; end if;
   end if;
+  if target_sender_kind = 'teacher' and 'staff' = any(available_contexts) then
+    return array['staff']::text[];
+  end if;
   if target_sender_kind = 'teacher' and 'guardian' = any(available_contexts) then
     return array['guardian']::text[];
   end if;
