@@ -77,7 +77,7 @@ export async function fetchMyNotificationSenderSchools(
   context: NotificationContext = "staff",
   client: SupabaseClient = getSupabaseClient()
 ): Promise<NotificationSenderSchool[]> {
-  if (context === "student") return [];
+
   const { data, error } = await client.rpc("list_my_notification_sender_schools_for_context", {
     target_sender_context: context,
   });
