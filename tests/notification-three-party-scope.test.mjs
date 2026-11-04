@@ -4,6 +4,7 @@ import test from "node:test";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const migration = read("supabase/075_notification_three_party_scope.sql");
+const legacyCountMigration = read("supabase/077_notification_remove_unscoped_unread_count.sql");
 const contextMigration = read("supabase/074_notification_role_isolation.sql");
 const page = read("client/src/pages/Notifications.tsx");
 const lib = read("client/src/lib/notifications.ts");
@@ -45,4 +46,11 @@ test("teacher, guardian and administration portals use separate notification con
   assert.match(composer, /value: "teachers"/);
   assert.match(composer, /value: "guardians"/);
   assert.doesNotMatch(composer, /value: "students", ar: "أولياء الطلاب"/);
+});
+
+test("unread notification counts always require an explicit authorized role context", () => {
+  assert.match(legacyCountMigration, /drop function if exists public\.get_my_unread_notification_count\(\)/i);
+  assert.match(lib, /fetchUnreadNotificationCount\(\s*context: NotificationContext/);
+  assert.match(lib, /rpc\(["']get_my_unread_notification_count["'], \{\s*target_context: context/);
+  assert.doesNotMatch(lib, /rpc\(["']get_my_unread_notification_count["']\s*\)/);
 });

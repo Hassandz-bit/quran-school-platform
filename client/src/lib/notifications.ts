@@ -134,12 +134,12 @@ export async function fetchMyNotifications(
 }
 
 export async function fetchUnreadNotificationCount(
-  context?: NotificationContext,
+  context: NotificationContext,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<number> {
-  const { data, error } = context
-    ? await client.rpc("get_my_unread_notification_count", { target_context: context })
-    : await client.rpc("get_my_unread_notification_count");
+  const { data, error } = await client.rpc("get_my_unread_notification_count", {
+    target_context: context,
+  });
   if (error) return 0;
   return typeof data === "number" && Number.isFinite(data) ? data : 0;
 }
