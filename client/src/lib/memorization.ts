@@ -43,21 +43,23 @@ export function getMemorizationRatingLabel(rating: number): string {
 }
 
 export function getMemorizationResultLabel(result: MemorizationSessionResult | null): string {
+  if (!result) return "غير مسجل";
   return ({
     memorized: "استظهر",
     not_memorized: "لم يستظهر",
     revised: "راجع",
     not_revised: "لم يراجع",
-  } as const)[result ?? "memorized"];
+  } as const)[result];
 }
 
 export function getMemorizationAccuracyLabel(accuracy: MemorizationAccuracy | null): string {
+  if (!accuracy) return "غير مسجل";
   return ({
     no_errors: "دون أخطاء",
     focus_words: "كلمات تحتاج إلى تركيز",
     repeated_errors: "أخطاء متكررة",
     needs_repetition: "يحتاج إلى إعادة التسميع",
-  } as const)[accuracy ?? "no_errors"];
+  } as const)[accuracy];
 }
 
 export function getDefaultMemorizationResult(
