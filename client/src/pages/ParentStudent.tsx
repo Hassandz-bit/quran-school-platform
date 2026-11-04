@@ -75,7 +75,7 @@ function recitationAccuracyLabel(value: string | null): string {
 }
 
 function memorizationGradeLabel(value: number): string {
-  return ({ 5: "ممتاز", 4: "جيد", 3: "حسن", 2: "متوسط", 1: "يعيد" }[value] ?? "غير محدد");
+  return ({ 5: "ممتاز", 4: "جيد", 3: "حسن", 2: "متوسط الأداء", 1: "يعيد" }[value] ?? "غير محدد");
 }
 
 function surahName(number: number): string {
