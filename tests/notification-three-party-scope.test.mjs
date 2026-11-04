@@ -49,8 +49,8 @@ test("teacher, guardian and administration portals use separate notification con
 });
 
 test("unread notification counts always require an explicit authorized role context", () => {
-  assert.match(legacyCountMigration, /drop function if exists public\\.get_my_unread_notification_count\\(\\)/i);
-  assert.match(lib, /fetchUnreadNotificationCount\\(\\s*context: NotificationContext/);
-  assert.match(lib, /rpc\\(["']get_my_unread_notification_count["'], \\{\\s*target_context: context/);
-  assert.doesNotMatch(lib, /rpc\\(["']get_my_unread_notification_count["']\\s*\\)/);
+  assert.match(legacyCountMigration, /drop function if exists public\.get_my_unread_notification_count\(\)/i);
+  assert.match(lib, /fetchUnreadNotificationCount\(\s*context: NotificationContext/);
+  assert.match(lib, /rpc\(["']get_my_unread_notification_count["'], \{\s*target_context: context/);
+  assert.doesNotMatch(lib, /rpc\(["']get_my_unread_notification_count["']\s*\)/);
 });
