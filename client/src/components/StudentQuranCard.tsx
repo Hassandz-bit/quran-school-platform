@@ -8,7 +8,6 @@ import {
   getMemorizationSessionLabel,
   getMemorizationRatingLabel,
   getMemorizationResultLabel,
-  getMemorizationAccuracyLabel,
   type MemorizationRecord,
 } from "@/lib/memorization";
 
@@ -29,7 +28,7 @@ function daysBetween(older: string, newer: string): number {
 function uniqueMemorizedAyat(records: MemorizationRecord[]): number {
   const ranges = new Map<number, Array<[number, number]>>();
   for (const record of records) {
-    if (record.sessionType !== "new_memorization" || record.recitationResult === "not_memorized") continue;
+    if ((record.sessionType !== "new_memorization" && record.sessionType !== "new_hifz") || record.recitationResult === "not_memorized") continue;
     const items = ranges.get(record.surahNumber) ?? [];
     items.push([record.ayahStart, record.ayahEnd]);
     ranges.set(record.surahNumber, items);
@@ -81,7 +80,7 @@ export default function StudentQuranCard({ studentName, records, loading = false
     }
     for (const [number, items] of bySurah) {
       const memorization = items
-        .filter(item => item.sessionType === "new_memorization")
+        .filter(item => item.sessionType === "new_memorization" || item.sessionType === "new_hifz")
         .sort((a, b) => b.recordDate.localeCompare(a.recordDate))[0];
       if (!memorization) continue;
       const revision = items
@@ -159,7 +158,7 @@ export default function StudentQuranCard({ studentName, records, loading = false
 
       <section className="space-y-2">
         <h3 className="flex items-center gap-2 text-sm font-bold text-[#2C3E50]"><TrendingDown size={16} /> تفاصيل السجلات بعد الفلترة</h3>
-        {filtered.length ? <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-sm"><thead><tr className="border-b text-right text-xs text-gray-500"><th className="p-2">التاريخ</th><th className="p-2">السورة والآيات</th><th className="p-2">النوع</th><th className="p-2">النتيجة</th><th className="p-2">الدرجة</th><th className="p-2">دقة التسميع</th><th className="p-2">الأخطاء</th></tr></thead><tbody>{filtered.map(item => <tr key={item.id} className="border-b border-gray-100"><td className="p-2" dir="ltr">{item.recordDate}</td><td className="p-2">{QURAN_SURAHS[item.surahNumber - 1]?.name ?? "—"} · {item.ayahStart}–{item.ayahEnd}</td><td className="p-2">{getMemorizationSessionLabel(item.sessionType)}</td><td className="p-2">{item.recitationResult ? getMemorizationResultLabel(item.recitationResult) : "—"}</td><td className="p-2">{getMemorizationRatingLabel(item.rating)}</td><td className="p-2">{item.recitationAccuracy ? getMemorizationAccuracyLabel(item.recitationAccuracy) : "—"}{item.focusWords && <span className="block max-w-48 text-xs text-amber-700">{item.focusWords}</span>}</td><td className="p-2">{item.errorsCount}</td></tr>)}</tbody></table></div> : <p className="text-sm text-gray-500">لا توجد سجلات تطابق الفلاتر.</p>}
+        {filtered.length ? <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm"><thead><tr className="border-b text-right text-xs text-gray-500"><th className="p-2">التاريخ</th><th className="p-2">السورة والآيات</th><th className="p-2">النوع</th><th className="p-2">النتيجة</th><th className="p-2">الدرجة</th><th className="p-2">الأخطاء</th></tr></thead><tbody>{filtered.map(item => <tr key={item.id} className="border-b border-gray-100"><td className="p-2" dir="ltr">{item.recordDate}</td><td className="p-2">{QURAN_SURAHS[item.surahNumber - 1]?.name ?? "—"} · {item.ayahStart}–{item.ayahEnd}</td><td className="p-2">{getMemorizationSessionLabel(item.sessionType)}</td><td className="p-2">{item.recitationResult ? getMemorizationResultLabel(item.recitationResult) : "—"}</td><td className="p-2">{getMemorizationRatingLabel(item.rating)}</td><td className="p-2">{item.errorsCount}</td></tr>)}</tbody></table></div> : <p className="text-sm text-gray-500">لا توجد سجلات تطابق الفلاتر.</p>}
       </section>
     </Card>
   );
