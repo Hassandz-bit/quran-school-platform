@@ -29,6 +29,18 @@ alter table public.memorization_records
         'needs_repetition'
       )
     ),
+  add constraint memorization_records_session_result_matches_type_check
+    check (
+      recitation_result is null
+      or (
+        session_type in ('new_memorization', 'assessment')
+        and recitation_result in ('memorized', 'not_memorized')
+      )
+      or (
+        session_type in ('near_revision', 'distant_revision')
+        and recitation_result in ('revised', 'not_revised')
+      )
+    ),
   add constraint memorization_records_focus_words_check
     check (
       (recitation_accuracy = 'focus_words'
