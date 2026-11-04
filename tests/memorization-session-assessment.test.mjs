@@ -23,6 +23,7 @@ test("session outcome and recitation accuracy are constrained and audited", () =
     assert.match(migration, new RegExp(`old\\.${field}`));
   }
   assert.match(migration, /char_length\(btrim\(focus_words\)\) between 1 and 500/i);
+  assert.match(migration, /memorization_records_session_result_matches_type_check/i);
 });
 
 test("memorization client validates and persists the structured session details", () => {
