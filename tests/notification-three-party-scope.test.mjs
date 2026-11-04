@@ -11,6 +11,7 @@ const composer = read("client/src/components/NotificationComposerDialog.tsx");
 
 test("only administration, teachers and guardians resolve as notification participants", () => {
   assert.match(migration, /permission\.code = 'notifications\.send'/);
+  assert.match(migration, /membership_role\.branch_id is null/);
   assert.match(migration, /then 'staff'::text end/);
   assert.match(migration, /then 'teacher'::text end/);
   assert.match(migration, /then 'guardian'::text end/);
