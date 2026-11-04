@@ -46,7 +46,8 @@ export default function Notifications() {
   const { locale, direction } = useLocale();
   const en = locale === "en";
   const [location, setLocation] = useLocation();
-  const parentMode = location.startsWith("/parent/");\n  const teacherMode = location.startsWith("/teacher/");
+  const parentMode = location.startsWith("/parent/");
+  const teacherMode = location.startsWith("/teacher/");
   const [box, setBox] = useState<NotificationBox>("inbox");
   const [category, setCategory] = useState<NotificationCategory | "all">("all");
   const [rows, setRows] = useState<AppNotification[]>([]);
