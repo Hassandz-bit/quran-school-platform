@@ -291,6 +291,9 @@ export type MemorizationDraft = {
   ayahEnd: number;
   rating: number;
   errorsCount: number;
+  recitationResult: MemorizationSessionResult;
+  recitationAccuracy: MemorizationAccuracy;
+  focusWords: string;
   notes: string;
   nextAssignment: string;
 };
@@ -726,7 +729,7 @@ export async function fetchAllStudentMemorizationRecords(
     const { data, error } = await client
       .from("memorization_records")
       .select(
-        "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, notes, next_assignment, created_at, updated_at"
+        "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, recitation_result, recitation_accuracy, focus_words, notes, next_assignment, created_at, updated_at"
       )
       .eq("school_id", schoolId)
       .eq("branch_id", branchId)
