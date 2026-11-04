@@ -1906,4 +1906,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "حلقة مرتبطة": "assigned classes",
   "دون دوام": "No duwam",
   "لا توجد دوامات في هذا الفرع بعد.": "No duwams have been created for this branch yet.",
+  "تواصل بين إدارة المدرسة والمعلمين وأولياء الأمور.": "Communication between school administration, teachers and guardians.",
+  "أولياء الأمور": "Guardians",
+  "ابحث باسم الإداري أو المعلم أو ولي الأمر": "Search by administrator, teacher or guardian",
 };

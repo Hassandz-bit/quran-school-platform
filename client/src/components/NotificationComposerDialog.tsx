@@ -42,10 +42,9 @@ const categoryOptions: Array<{ value: NotificationCategory; ar: string; en: stri
 ];
 
 const audienceOptions: Array<{ value: NotificationAudience; ar: string; en: string }> = [
-  { value: "staff", ar: "الموظفون", en: "Staff" },
+  { value: "staff", ar: "الإدارة", en: "Administration" },
   { value: "teachers", ar: "المعلمون", en: "Teachers" },
-  { value: "students", ar: "أولياء الطلاب", en: "Student guardians" },
-  { value: "guardians", ar: "الأولياء", en: "Guardians" },
+  { value: "guardians", ar: "أولياء الأمور", en: "Guardians" },
 ];
 
 const selectClass = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm";
@@ -198,16 +197,15 @@ export default function NotificationComposerDialog({
             else if (actualContexts.includes("teacher")) contexts.add("teacher");
           } else if (audience === "teachers" && actualContexts.includes("teacher")) {
             contexts.add("teacher");
-          } else if ((audience === "guardians" || audience === "students")
-            && actualContexts.includes("guardian")) {
+          } else if (audience === "guardians" && actualContexts.includes("guardian")) {
             contexts.add("guardian");
           }
         } else {
           const preferredContexts = selectedSchool.senderKind === "staff"
             ? ["staff", "teacher", "guardian"] as const
             : selectedSchool.senderKind === "teacher"
-              ? ["guardian", "staff", "teacher"] as const
-              : ["teacher", "staff", "guardian"] as const;
+              ? ["staff", "guardian", "teacher"] as const
+              : ["staff", "teacher", "guardian"] as const;
           const recipientContext = preferredContexts.find(context => actualContexts.includes(context));
           if (recipientContext) contexts.add(recipientContext);
         }
@@ -340,7 +338,7 @@ export default function NotificationComposerDialog({
               <div className="relative">
                 <Search className={`absolute top-1/2 size-4 -translate-y-1/2 text-muted-foreground ${en ? "left-3" : "right-3"}`} />
                 <Input value={query} onChange={event => setQuery(event.target.value)}
-                  placeholder={en ? "Search by member, guardian or student name" : "ابحث باسم الموظف أو الولي أو الطالب"}
+                  placeholder={en ? "Search administration, teacher or guardian" : "ابحث باسم الإداري أو المعلم أو ولي الأمر"}
                   className={en ? "pl-9" : "pr-9"} />
               </div>
               <div className="max-h-52 space-y-1 overflow-y-auto">

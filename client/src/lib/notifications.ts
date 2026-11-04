@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase";
 
 export type NotificationBox = "inbox" | "sent";
-export type NotificationContext = "staff" | "teacher" | "guardian" | "student";
+export type NotificationContext = "staff" | "teacher" | "guardian";
 export type NotificationCategory =
   | "administration"
   | "teachers"
@@ -30,7 +30,7 @@ export type AppNotification = {
   readAt: string | null;
 };
 
-export type NotificationAudience = "staff" | "teachers" | "students" | "guardians";
+export type NotificationAudience = "staff" | "teachers" | "guardians";
 
 export type NotificationRecipient = {
   profileId: string;
@@ -77,7 +77,7 @@ export async function fetchMyNotificationSenderSchools(
   context: NotificationContext = "staff",
   client: SupabaseClient = getSupabaseClient()
 ): Promise<NotificationSenderSchool[]> {
-  if (context === "student") return [];
+
   const { data, error } = await client.rpc("list_my_notification_sender_schools_for_context", {
     target_sender_context: context,
   });
@@ -97,7 +97,7 @@ export async function fetchMyNotificationContexts(
   if (error) throw error;
   return (Array.isArray(data) ? data : []).filter(
     (value): value is NotificationContext =>
-      ["staff", "teacher", "guardian", "student"].includes(String(value))
+      ["staff", "teacher", "guardian"].includes(String(value))
   );
 }
 
@@ -169,7 +169,7 @@ export async function canSendSchoolNotifications(
 
 export async function fetchManualNotificationRecipients(
   schoolId: string,
-  senderContext: Exclude<NotificationContext, "student">,
+  senderContext: NotificationContext,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<NotificationRecipient[]> {
   const { data, error } = await client.rpc("list_manual_notification_recipients_for_context", {
@@ -182,14 +182,14 @@ export async function fetchManualNotificationRecipients(
     fullName: String(row.full_name),
     audienceTypes: (Array.isArray(row.audience_types) ? row.audience_types : [])
       .filter((value): value is NotificationAudience =>
-        ["staff", "teachers", "students", "guardians"].includes(String(value))
+        ["staff", "teachers", "guardians"].includes(String(value))
       ),
     branchIds: (Array.isArray(row.branch_ids) ? row.branch_ids : []).map(String),
     classIds: (Array.isArray(row.class_ids) ? row.class_ids : []).map(String),
     relatedStudents: (Array.isArray(row.related_students) ? row.related_students : []).map(String),
     notificationContexts: (Array.isArray(row.notification_contexts) ? row.notification_contexts : [])
       .filter((value): value is NotificationContext =>
-        ["staff", "teacher", "guardian", "student"].includes(String(value))
+        ["staff", "teacher", "guardian"].includes(String(value))
       ),
   }));
 }
@@ -216,7 +216,7 @@ export async function fetchNotificationScopes(
 
 export async function sendManualNotification(
   input: ManualNotificationInput,
-  senderContext: Exclude<NotificationContext, "student">,
+  senderContext: NotificationContext,
   client: SupabaseClient = getSupabaseClient()
 ): Promise<ManualNotificationResult> {
   const { data, error } = await client.rpc("send_manual_app_notification_for_context", {

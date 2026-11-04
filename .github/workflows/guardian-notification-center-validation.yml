@@ -11,6 +11,7 @@ on:
       - "supabase/056_manual_notifications_and_staff_directory.sql"
       - "supabase/063_teacher_guardian_notification_messaging.sql"
       - "supabase/074_notification_role_isolation.sql"
+      - "supabase/075_notification_three_party_scope.sql"
       - "client/src/lib/guardians.ts"
       - "client/src/lib/notifications.ts"
       - "client/src/pages/Guardians.tsx"
