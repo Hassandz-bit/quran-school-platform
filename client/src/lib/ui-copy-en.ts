@@ -182,6 +182,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة التسميع ودرجة الأداء ودقته لكل طالب على حدة. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.": "Enter the shared portion and session type once, then record each student’s own outcome, grade, and recitation accuracy. Group records are saved together or not at all.",
   "درجة الحفظ أو المراجعة": "Memorization or revision grade",
   "حسن": "Fairly good",
+  "متوسط الأداء": "Average",
   "يعيد": "Repeat required",
   "نتيجة الجلسة": "Session outcome",
   "نتيجة التسميع": "Recitation outcome",
