@@ -55,7 +55,7 @@ describe("group memorization entry", () => {
     fireEvent.change(screen.getByLabelText("بداية الآيات المشتركة"), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText("نهاية الآيات المشتركة"), { target: { value: "15" } });
 
-    fireEvent.click(screen.getAllByRole("button", { name: "5" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "ممتاز" })[0]);
     const notes = screen.getAllByLabelText("ملاحظة الطالب");
     fireEvent.change(notes[0], { target: { value: "إتقان" } });
     fireEvent.change(notes[1], { target: { value: "مراجعة" } });
@@ -78,6 +78,9 @@ describe("group memorization entry", () => {
         ayahStart: 10,
         ayahEnd: 15,
         rating: 5,
+        recitationResult: "memorized",
+        recitationAccuracy: "no_errors",
+        focusWords: "",
         notes: "إتقان",
       },
     });
