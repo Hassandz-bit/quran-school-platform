@@ -32,7 +32,7 @@ test("memorization client validates and persists the structured session details"
   }
   assert.match(lib, /recitation_result: draft\.recitationResult/);
   assert.match(lib, /recitation_accuracy: draft\.recitationAccuracy/);
-  assert.match(lib, /focus_words: draft\.focusWords/);
+  assert.match(lib, /focus_words: draft\.recitationAccuracy === "focus_words" \? draft\.focusWords\.trim\(\) : null/);
   assert.match(lib, /getMemorizationRatingLabel/);
   assert.match(lib, /if \\(!result\\) return "غير مسجل"/);
   assert.match(lib, /if \\(!accuracy\\) return "غير مسجل"/);
