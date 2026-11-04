@@ -6,6 +6,10 @@ const migration = readFileSync(
   new URL("../supabase/014_memorization_module.sql", import.meta.url),
   "utf8",
 );
+const sessionTypeMigration = readFileSync(
+  new URL("../supabase/076_add_new_hifz_session_type.sql", import.meta.url),
+  "utf8",
+);
 const teacherRpcMigration = readFileSync(
   new URL("../supabase/016_memorization_class_teachers_rpc.sql", import.meta.url),
   "utf8",
@@ -61,7 +65,6 @@ test("surah verse counts use all 114 chapters and exact boundaries", () => {
 test("memorization session types and score fields are constrained", () => {
   for (const type of [
     "new_memorization",
-    "new_hifz",
     "near_revision",
     "distant_revision",
     "assessment",
@@ -308,4 +311,13 @@ test("migration avoids forbidden patterns and adds covering foreign-key indexes"
   ]) {
     assert.match(migration, new RegExp(`create index ${index}`, "i"));
   }
+});
+
+
+test("new hifz is added as a distinct session type and accepts memorization outcomes", () => {
+  assert.match(sessionTypeMigration, /\x27new_memorization\x27,[\s\S]*\x27new_hifz\x27/);
+  assert.match(sessionTypeMigration, /session_type in \(\x27new_memorization\x27, \x27new_hifz\x27, \x27assessment\x27\)/);
+  assert.match(sessionTypeMigration, /recitation_result in \(\x27memorized\x27, \x27not_memorized\x27\)/);
+  assert.match(sessionTypeMigration, /drop constraint memorization_records_session_type_check/i);
+  assert.match(sessionTypeMigration, /drop constraint memorization_records_session_result_matches_type_check/i);
 });
