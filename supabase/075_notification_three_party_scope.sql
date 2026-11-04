@@ -351,17 +351,22 @@ begin
     select
       recipient.profile_id,
       recipient.full_name,
-      recipient.audience_types,
+      array_remove(array[
+        case when 'staff' = any(resolved.contexts) then 'staff'::text end,
+        case when 'teacher' = any(resolved.contexts) then 'teachers'::text end,
+        case when 'guardian' = any(resolved.contexts) then 'guardians'::text end
+      ], null),
       recipient.branch_ids,
       recipient.class_ids,
       recipient.related_students,
-      public.resolve_app_notification_audiences(
-        target_school_id, recipient.profile_id, null
-      ) as notification_contexts
+      resolved.contexts as notification_contexts
     from public.list_manual_notification_recipients(target_school_id) recipient
-    where cardinality(public.resolve_app_notification_audiences(
-      target_school_id, recipient.profile_id, null
-    )) > 0;
+    cross join lateral (
+      select public.resolve_app_notification_audiences(
+        target_school_id, recipient.profile_id, null
+      ) as contexts
+    ) resolved
+    where cardinality(resolved.contexts) > 0;
 end;
 $$;
 
