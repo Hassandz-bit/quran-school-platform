@@ -79,5 +79,6 @@ run_sql supabase/026_notification_center_module_categories.sql
 run_sql supabase/056_manual_notifications_and_staff_directory.sql
 run_sql supabase/063_teacher_guardian_notification_messaging.sql
 run_sql supabase/074_notification_role_isolation.sql
+run_sql supabase/075_notification_three_party_scope.sql
 run_sql tests/guardian-notification-center-assertions.sql
 run_sql tests/guardian-notification-center-tenant-assertions.sql
