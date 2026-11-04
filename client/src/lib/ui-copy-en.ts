@@ -179,6 +179,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
 
   // Structured memorization session assessment
   "غير مسجل": "Not recorded",
+  "أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة التسميع ودرجة الأداء ودقته لكل طالب على حدة. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.": "Enter the shared portion and session type once, then record each student’s own outcome, grade, and recitation accuracy. Group records are saved together or not at all.",
   "درجة الحفظ أو المراجعة": "Memorization or revision grade",
   "حسن": "Fairly good",
   "يعيد": "Repeat required",
@@ -207,8 +208,6 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "التقييم": "Assessment",
   "الواجب القادم": "Next assignment",
   "ملاحظة عامة للجلسة": "General session note",
-  "الجزء المشترك وبيانات الحصة": "Shared portion and session details",
-  "علامات الطلاب وملاحظاتهم": "Student outcomes and notes",
 
   // Memorization workspace
   "بداية الآيات": "Starting verse",
