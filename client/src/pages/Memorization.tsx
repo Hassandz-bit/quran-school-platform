@@ -46,7 +46,6 @@ import {
   getDefaultMemorizationResult,
   getMemorizationRatingLabel,
   getMemorizationResultLabel,
-  getMemorizationAccuracyLabel,
   QURAN_SURAHS,
   createMemorizationDraft,
   draftFromMemorizationRecord,
@@ -81,8 +80,6 @@ const auditFieldLabels: Record<string, string> = {
   rating: "درجة الأداء",
   errors_count: "عدد الأخطاء",
   recitation_result: "نتيجة الجلسة",
-  recitation_accuracy: "دقة التسميع",
-  focus_words: "كلمات تحتاج إلى تركيز",
   notes: "الملاحظات",
   next_assignment: "الواجب القادم",
 };
@@ -984,33 +981,6 @@ export default function Memorization() {
                       ).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
-                  <label className="space-y-2">
-                    <span className="text-sm font-semibold text-[#2C3E50]">دقة التسميع</span>
-                    <select
-                      value={draft.recitationAccuracy ?? ""}
-                      onChange={event => updateDraft({ recitationAccuracy: event.target.value ? event.target.value as NonNullable<MemorizationDraft["recitationAccuracy"]> : null, focusWords: event.target.value === "focus_words" ? draft.focusWords : "" })}
-                      className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
-                    >
-                      <option value="">اختر دقة التسميع</option>
-                      <option value="no_errors">دون أخطاء</option>
-                      <option value="focus_words">يحتاج إلى التركيز على كلمات محددة</option>
-                      <option value="repeated_errors">أخطاء متكررة</option>
-                      <option value="needs_repetition">يحتاج إلى إعادة التسميع</option>
-                    </select>
-                  </label>
-                  {draft.recitationAccuracy === "focus_words" && (
-                    <label className="space-y-2 md:col-span-2">
-                      <span className="text-sm font-semibold text-[#2C3E50]">الكلمات التي تحتاج إلى تركيز</span>
-                      <Textarea
-                        value={draft.focusWords}
-                        maxLength={500}
-                        rows={2}
-                        placeholder="اكتب الكلمات أو المواضع التي يكثر فيها الخطأ، ويمكن الفصل بينها بفاصلة"
-                        onChange={event => updateDraft({ focusWords: event.target.value })}
-                        className="resize-none"
-                      />
-                    </label>
-                  )}
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -1220,21 +1190,10 @@ export default function Memorization() {
                         </div>
                       </div>
 
-                      {(record.recitationResult || record.recitationAccuracy) && (
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          {record.recitationResult && (
-                            <div className="rounded-xl border border-[#DCE9E0] bg-[#F5FAF6] p-3 text-sm">
-                              <strong className="block text-xs text-[#607368]">نتيجة الجلسة</strong>
-                              <span className="mt-1 block font-bold text-[#17663B]">{getMemorizationResultLabel(record.recitationResult)}</span>
-                            </div>
-                          )}
-                          {record.recitationAccuracy && (
-                            <div className="rounded-xl border border-[#E5EDE7] bg-gray-50 p-3 text-sm">
-                              <strong className="block text-xs text-[#607368]">دقة التسميع</strong>
-                              <span className="mt-1 block font-bold text-[#244E3B]">{getMemorizationAccuracyLabel(record.recitationAccuracy)}</span>
-                              {record.focusWords && <p className="mt-2 leading-6 text-[#607368]">{record.focusWords}</p>}
-                            </div>
-                          )}
+                      {record.recitationResult && (
+                        <div className="mt-3 rounded-xl border border-[#DCE9E0] bg-[#F5FAF6] p-3 text-sm">
+                          <strong className="block text-xs text-[#607368]">نتيجة الجلسة</strong>
+                          <span className="mt-1 block font-bold text-[#17663B]">{getMemorizationResultLabel(record.recitationResult)}</span>
                         </div>
                       )}
 
