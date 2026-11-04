@@ -97,11 +97,11 @@ begin
   if target_sender_kind = 'teacher' and 'guardian' = any(available_contexts) then
     return array['guardian']::text[];
   end if;
-  if target_sender_kind = 'guardian' and 'teacher' = any(available_contexts) then
-    return array['teacher']::text[];
-  end if;
   if target_sender_kind = 'guardian' and 'staff' = any(available_contexts) then
     return array['staff']::text[];
+  end if;
+  if target_sender_kind = 'guardian' and 'teacher' = any(available_contexts) then
+    return array['teacher']::text[];
   end if;
   if target_sender_kind = 'staff' and 'staff' = any(available_contexts) then
     return array['staff']::text[];
