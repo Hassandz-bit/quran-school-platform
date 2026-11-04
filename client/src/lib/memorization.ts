@@ -291,8 +291,8 @@ export type MemorizationDraft = {
   ayahEnd: number;
   rating: number;
   errorsCount: number;
-  recitationResult: MemorizationSessionResult;
-  recitationAccuracy: MemorizationAccuracy;
+  recitationResult: MemorizationSessionResult | null;
+  recitationAccuracy: MemorizationAccuracy | null;
   focusWords: string;
   notes: string;
   nextAssignment: string;
@@ -845,8 +845,8 @@ export function draftFromMemorizationRecord(
     ayahEnd: record.ayahEnd,
     rating: record.rating,
     errorsCount: record.errorsCount,
-    recitationResult: record.recitationResult ?? getDefaultMemorizationResult(record.sessionType),
-    recitationAccuracy: record.recitationAccuracy ?? "no_errors",
+    recitationResult: record.recitationResult,
+    recitationAccuracy: record.recitationAccuracy,
     focusWords: record.focusWords,
     notes: record.notes,
     nextAssignment: record.nextAssignment,
