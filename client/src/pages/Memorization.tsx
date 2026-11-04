@@ -939,7 +939,7 @@ export default function Memorization() {
 
                 <div className="mt-4 space-y-2">
                   <span className="text-sm font-semibold text-[#2C3E50]">
-                    التقييم
+                    درجة الحفظ أو المراجعة
                   </span>
                   <div
                     className="grid grid-cols-2 gap-2 sm:grid-cols-5"
@@ -973,10 +973,11 @@ export default function Memorization() {
                   <label className="space-y-2">
                     <span className="text-sm font-semibold text-[#2C3E50]">نتيجة الجلسة</span>
                     <select
-                      value={draft.recitationResult}
-                      onChange={event => updateDraft({ recitationResult: event.target.value as MemorizationDraft["recitationResult"] })}
+                      value={draft.recitationResult ?? ""}
+                      onChange={event => updateDraft({ recitationResult: event.target.value ? event.target.value as MemorizationDraft["recitationResult"] : null })}
                       className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
                     >
+                      <option value="">اختر نتيجة الجلسة</option>
                       {(draft.sessionType === "near_revision" || draft.sessionType === "distant_revision"
                         ? [{ value: "revised", label: "راجع" }, { value: "not_revised", label: "لم يراجع" }]
                         : [{ value: "memorized", label: "استظهر" }, { value: "not_memorized", label: "لم يستظهر" }]
@@ -986,10 +987,11 @@ export default function Memorization() {
                   <label className="space-y-2">
                     <span className="text-sm font-semibold text-[#2C3E50]">دقة التسميع</span>
                     <select
-                      value={draft.recitationAccuracy}
-                      onChange={event => updateDraft({ recitationAccuracy: event.target.value as MemorizationDraft["recitationAccuracy"], focusWords: event.target.value === "focus_words" ? draft.focusWords : "" })}
+                      value={draft.recitationAccuracy ?? ""}
+                      onChange={event => updateDraft({ recitationAccuracy: event.target.value ? event.target.value as NonNullable<MemorizationDraft["recitationAccuracy"]> : null, focusWords: event.target.value === "focus_words" ? draft.focusWords : "" })}
                       className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
                     >
+                      <option value="">اختر دقة التسميع</option>
                       <option value="no_errors">دون أخطاء</option>
                       <option value="focus_words">يحتاج إلى التركيز على كلمات محددة</option>
                       <option value="repeated_errors">أخطاء متكررة</option>
