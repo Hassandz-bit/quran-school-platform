@@ -64,6 +64,7 @@ as $$
       where membership.school_id = target_school_id
         and membership.profile_id = target_profile_id
         and membership.status = 'active'
+        and membership_role.branch_id is null
     ) then 'staff'::text end
   ], null);
 $$;
