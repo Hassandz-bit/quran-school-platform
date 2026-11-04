@@ -771,7 +771,8 @@ const attendanceStatusLabels: Record<AttendanceStatus, string> = {
   excused_absence: "بعذر",
 };
 const sessionTypeLabels: Record<MemorizationSessionType, string> = {
-  new_memorization: "حفظ جديد",
+  new_memorization: "التسميع الجديد",
+  new_hifz: "حفظ الجديد",
   near_revision: "مراجعة قريبة",
   distant_revision: "مراجعة بعيدة",
   assessment: "تقييم",
