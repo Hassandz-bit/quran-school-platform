@@ -115,6 +115,10 @@ $$;
 revoke all on function public.resolve_manual_notification_recipient_audiences(uuid, uuid, uuid, text)
   from public, anon, authenticated;
 
+-- Disable only the audience trigger during this one-time backfill so rows belonging
+-- to excluded employee/student accounts can be safely assigned an empty audience.
+alter table public.app_notifications disable trigger app_notifications_set_audiences;
+
 -- Remove stale audiences from old rows without deleting notification history.
 update public.app_notifications notification
 set recipient_audiences = array(
@@ -134,6 +138,8 @@ set recipient_audiences = array(
         ))
       )
     end;
+
+alter table public.app_notifications enable trigger app_notifications_set_audiences;
 
 alter table public.app_notifications
   drop constraint if exists app_notifications_recipient_audiences_check;
