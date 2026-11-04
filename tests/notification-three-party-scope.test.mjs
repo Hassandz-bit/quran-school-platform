@@ -21,7 +21,9 @@ test("only administration, teachers and guardians resolve as notification partic
 });
 
 test("non-administrative employees and students are excluded from the manual recipient directory", () => {
-  assert.match(migration, /cross join lateral \([\s\S]*?resolve_app_notification_audiences\([\s\S]*?\) as contexts\)[\s\S]*?where cardinality\(resolved\.contexts\) > 0/i);
+  assert.match(migration, /cross join lateral \(/i);
+  assert.match(migration, /resolve_app_notification_audiences\(\s*target_school_id, recipient\.profile_id, null\s*\) as contexts/i);
+  assert.match(migration, /where cardinality\(resolved\.contexts\) > 0/i);
   assert.match(migration, /notification_contexts text\[\]/);
   assert.match(migration, /case when 'staff' = any\(resolved\.contexts\) then 'staff'::text end/);
   assert.doesNotMatch(migration, /recipient\.audience_types/);
