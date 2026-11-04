@@ -11,6 +11,64 @@ export const MEMORIZATION_SESSION_TYPES = [
 
 export type MemorizationSessionType =
   (typeof MEMORIZATION_SESSION_TYPES)[number];
+
+export const MEMORIZATION_SESSION_RESULTS = [
+  "memorized",
+  "not_memorized",
+  "revised",
+  "not_revised",
+] as const;
+export type MemorizationSessionResult =
+  (typeof MEMORIZATION_SESSION_RESULTS)[number];
+
+export const MEMORIZATION_ACCURACY_TYPES = [
+  "no_errors",
+  "focus_words",
+  "repeated_errors",
+  "needs_repetition",
+] as const;
+export type MemorizationAccuracy =
+  (typeof MEMORIZATION_ACCURACY_TYPES)[number];
+
+export const MEMORIZATION_RATING_OPTIONS = [
+  { value: 5, label: "ممتاز" },
+  { value: 4, label: "جيد" },
+  { value: 3, label: "حسن" },
+  { value: 2, label: "متوسط الأداء" },
+  { value: 1, label: "يعيد" },
+] as const;
+
+export function getMemorizationRatingLabel(rating: number): string {
+  return MEMORIZATION_RATING_OPTIONS.find(option => option.value === rating)?.label ?? "غير محدد";
+}
+
+export function getMemorizationResultLabel(result: MemorizationSessionResult | null): string {
+  if (!result) return "غير مسجل";
+  return ({
+    memorized: "استظهر",
+    not_memorized: "لم يستظهر",
+    revised: "راجع",
+    not_revised: "لم يراجع",
+  } as const)[result];
+}
+
+export function getMemorizationAccuracyLabel(accuracy: MemorizationAccuracy | null): string {
+  if (!accuracy) return "غير مسجل";
+  return ({
+    no_errors: "دون أخطاء",
+    focus_words: "كلمات تحتاج إلى تركيز",
+    repeated_errors: "أخطاء متكررة",
+    needs_repetition: "يحتاج إلى إعادة التسميع",
+  } as const)[accuracy];
+}
+
+export function getDefaultMemorizationResult(
+  sessionType: MemorizationSessionType
+): MemorizationSessionResult {
+  return sessionType === "near_revision" || sessionType === "distant_revision"
+    ? "revised"
+    : "memorized";
+}
 export type MemorizationPermissionCode =
   | "memorization.view"
   | "memorization.manage";
@@ -207,6 +265,9 @@ export type MemorizationRecord = {
   ayahEnd: number;
   rating: number;
   errorsCount: number;
+  recitationResult: MemorizationSessionResult | null;
+  recitationAccuracy: MemorizationAccuracy | null;
+  focusWords: string;
   notes: string;
   nextAssignment: string;
   createdAt: string;
@@ -232,6 +293,9 @@ export type MemorizationDraft = {
   ayahEnd: number;
   rating: number;
   errorsCount: number;
+  recitationResult: MemorizationSessionResult | null;
+  recitationAccuracy: MemorizationAccuracy | null;
+  focusWords: string;
   notes: string;
   nextAssignment: string;
 };
@@ -292,6 +356,9 @@ type RecordRow = {
   ayah_end: number;
   rating: number;
   errors_count: number;
+  recitation_result: MemorizationSessionResult | null;
+  recitation_accuracy: MemorizationAccuracy | null;
+  focus_words: string | null;
   notes: string | null;
   next_assignment: string | null;
   created_at: string;
@@ -632,7 +699,7 @@ export async function fetchStudentMemorizationRecords(
   let query = client
     .from("memorization_records")
     .select(
-      "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, notes, next_assignment, created_at, updated_at"
+      "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, recitation_result, recitation_accuracy, focus_words, notes, next_assignment, created_at, updated_at"
     )
     .eq("school_id", schoolId)
     .eq("branch_id", branchId)
@@ -664,7 +731,7 @@ export async function fetchAllStudentMemorizationRecords(
     const { data, error } = await client
       .from("memorization_records")
       .select(
-        "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, notes, next_assignment, created_at, updated_at"
+        "id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, recitation_result, recitation_accuracy, focus_words, notes, next_assignment, created_at, updated_at"
       )
       .eq("school_id", schoolId)
       .eq("branch_id", branchId)
@@ -694,6 +761,9 @@ function mapMemorizationRecordRow(row: RecordRow): MemorizationRecord {
     ayahEnd: row.ayah_end,
     rating: row.rating,
     errorsCount: row.errors_count,
+    recitationResult: row.recitation_result,
+    recitationAccuracy: row.recitation_accuracy,
+    focusWords: row.focus_words ?? "",
     notes: row.notes ?? "",
     nextAssignment: row.next_assignment ?? "",
     createdAt: row.created_at,
@@ -756,6 +826,9 @@ export function createMemorizationDraft(
     ayahEnd: 1,
     rating: 3,
     errorsCount: 0,
+    recitationResult: "memorized",
+    recitationAccuracy: "no_errors",
+    focusWords: "",
     notes: "",
     nextAssignment: "",
   };
@@ -774,6 +847,9 @@ export function draftFromMemorizationRecord(
     ayahEnd: record.ayahEnd,
     rating: record.rating,
     errorsCount: record.errorsCount,
+    recitationResult: record.recitationResult,
+    recitationAccuracy: record.recitationAccuracy,
+    focusWords: record.focusWords,
     notes: record.notes,
     nextAssignment: record.nextAssignment,
   };
@@ -801,6 +877,13 @@ function validateDraft(input: SaveMemorizationInput): void {
     draft.rating < 1 ||
     draft.rating > 5 ||
     !Number.isInteger(draft.errorsCount) ||
+    !draft.recitationResult ||
+    !MEMORIZATION_SESSION_RESULTS.includes(draft.recitationResult) ||
+    !draft.recitationAccuracy ||
+    !MEMORIZATION_ACCURACY_TYPES.includes(draft.recitationAccuracy) ||
+    draft.focusWords.trim().length > 500 ||
+    (draft.recitationAccuracy === "focus_words" && draft.focusWords.trim().length === 0) ||
+    (draft.recitationAccuracy !== "focus_words" && draft.focusWords.trim().length > 0) ||
     draft.errorsCount < 0 ||
     draft.errorsCount > 100 ||
     draft.notes.trim().length > 1000 ||
@@ -853,6 +936,9 @@ function normalizedWritePayload(draft: MemorizationDraft) {
     ayah_end: draft.ayahEnd,
     rating: draft.rating,
     errors_count: draft.errorsCount,
+    recitation_result: draft.recitationResult,
+    recitation_accuracy: draft.recitationAccuracy,
+    focus_words: draft.recitationAccuracy === "focus_words" ? draft.focusWords.trim() : null,
     notes: draft.notes.trim() || null,
     next_assignment: draft.nextAssignment.trim() || null,
   };

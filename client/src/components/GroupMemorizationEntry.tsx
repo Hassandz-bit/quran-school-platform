@@ -12,6 +12,8 @@ import {
 } from "@/lib/app-version";
 import {
   MEMORIZATION_SESSION_TYPES,
+  MEMORIZATION_RATING_OPTIONS,
+  getDefaultMemorizationResult,
   QURAN_SURAHS,
   getMemorizationErrorMessage,
   getMemorizationSessionLabel,
@@ -19,6 +21,8 @@ import {
   saveMemorizationGroup,
   type MemorizationDraft,
   type MemorizationSessionType,
+  type MemorizationSessionResult,
+  type MemorizationAccuracy,
   type MemorizationStudent,
   type MemorizationTeacher,
 } from "@/lib/memorization";
@@ -28,6 +32,9 @@ type GroupEntry = {
   selected: boolean;
   rating: number;
   errorsCount: number;
+  recitationResult: MemorizationSessionResult;
+  recitationAccuracy: MemorizationAccuracy;
+  focusWords: string;
   notes: string;
   nextAssignment: string;
 };
@@ -70,6 +77,9 @@ export default function GroupMemorizationEntry({
     selected: true,
     rating: 3,
     errorsCount: 0,
+    recitationResult: "memorized",
+    recitationAccuracy: "no_errors",
+    focusWords: "",
     notes: "",
     nextAssignment: "",
   })));
@@ -97,6 +107,10 @@ export default function GroupMemorizationEntry({
     const selectedEntries = entries.filter(entry => entry.selected);
     const invalidEntry = selectedEntries.some(entry =>
       !Number.isInteger(entry.rating) || entry.rating < 1 || entry.rating > 5 ||
+      !entry.recitationResult || !entry.recitationAccuracy ||
+      entry.focusWords.trim().length > 500 ||
+      (entry.recitationAccuracy === "focus_words" && !entry.focusWords.trim()) ||
+      (entry.recitationAccuracy !== "focus_words" && Boolean(entry.focusWords.trim())) ||
       !Number.isInteger(entry.errorsCount) || entry.errorsCount < 0 || entry.errorsCount > 100 ||
       entry.notes.trim().length > 1000 || entry.nextAssignment.trim().length > 1000
     );
@@ -124,6 +138,9 @@ export default function GroupMemorizationEntry({
             ayahEnd,
             rating: entry.rating,
             errorsCount: entry.errorsCount,
+            recitationResult: entry.recitationResult,
+            recitationAccuracy: entry.recitationAccuracy,
+            focusWords: entry.focusWords,
             notes: entry.notes,
             nextAssignment: entry.nextAssignment,
           };
@@ -152,6 +169,9 @@ export default function GroupMemorizationEntry({
       selected: true,
       rating: 3,
       errorsCount: 0,
+      recitationResult: getDefaultMemorizationResult(sessionType),
+      recitationAccuracy: "no_errors",
+      focusWords: "",
       notes: "",
       nextAssignment: "",
     })));
@@ -169,7 +189,7 @@ export default function GroupMemorizationEntry({
             حفظ جماعي للحلقة
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">
-            أدخل الجزء مرة واحدة، ثم سجّل تقييمًا وعدد أخطاء وملاحظة مستقلة لكل طالب. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.
+            أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة التسميع ودرجة الأداء ودقته لكل طالب على حدة. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.
           </p>
         </div>
         {groupSaved && (
@@ -203,7 +223,11 @@ export default function GroupMemorizationEntry({
             <select
               aria-label="نوع متابعة المجموعة"
               value={sessionType}
-              onChange={event => setSessionType(event.target.value as MemorizationSessionType)}
+              onChange={event => {
+                const nextType = event.target.value as MemorizationSessionType;
+                setSessionType(nextType);
+                setEntries(current => current.map(entry => ({ ...entry, recitationResult: getDefaultMemorizationResult(nextType) })));
+              }}
               disabled={controlsDisabled}
               className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm disabled:bg-gray-100"
             >
@@ -302,18 +326,18 @@ export default function GroupMemorizationEntry({
                 <div className="grid gap-3 md:grid-cols-[minmax(12rem,0.8fr)_minmax(0,2fr)]">
                   <div className="space-y-3">
                     <fieldset className="space-y-2">
-                      <legend className="text-xs font-semibold text-gray-600">التقييم (1–5)</legend>
-                      <div className="grid grid-cols-5 gap-1.5" role="group">
-                        {[1, 2, 3, 4, 5].map(rating => (
+                      <legend className="text-xs font-semibold text-gray-600">درجة الحفظ أو المراجعة</legend>
+                      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                        {MEMORIZATION_RATING_OPTIONS.map(option => (
                           <button
-                            key={rating}
+                            key={option.value}
                             type="button"
-                            aria-pressed={entry.rating === rating}
+                            aria-pressed={entry.rating === option.value}
                             disabled={controlsDisabled}
-                            onClick={() => updateEntry(student.id, { rating })}
-                            className={`min-h-10 rounded-lg border text-sm font-bold ${entry.rating === rating ? "border-[#C8A26A] bg-[#C8A26A] text-[#0B4738]" : "border-gray-200 bg-white text-gray-600"}`}
+                            onClick={() => updateEntry(student.id, { rating: option.value })}
+                            className={entry.rating === option.value ? "min-h-10 rounded-lg border border-[#C8A26A] bg-[#C8A26A] px-2 text-xs font-bold text-[#0B4738]" : "min-h-10 rounded-lg border border-gray-200 bg-white px-2 text-xs font-bold text-gray-600"}
                           >
-                            {rating}
+                            {option.label}
                           </button>
                         ))}
                       </div>
@@ -332,6 +356,22 @@ export default function GroupMemorizationEntry({
                     </label>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5">
+                      <span className="text-xs font-semibold text-gray-600">نتيجة التسميع</span>
+                      <select value={entry.recitationResult} disabled={controlsDisabled} onChange={event => updateEntry(student.id, { recitationResult: event.target.value as MemorizationSessionResult })} className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm">
+                        {(sessionType === "near_revision" || sessionType === "distant_revision" ? [{ value: "revised", label: "راجع" }, { value: "not_revised", label: "لم يراجع" }] : [{ value: "memorized", label: "استظهر" }, { value: "not_memorized", label: "لم يستظهر" }]).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="space-y-1.5">
+                      <span className="text-xs font-semibold text-gray-600">دقة التسميع</span>
+                      <select value={entry.recitationAccuracy} disabled={controlsDisabled} onChange={event => updateEntry(student.id, { recitationAccuracy: event.target.value as MemorizationAccuracy, focusWords: event.target.value === "focus_words" ? entry.focusWords : "" })} className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm">
+                        <option value="no_errors">دون أخطاء</option><option value="focus_words">كلمات تحتاج إلى تركيز</option><option value="repeated_errors">أخطاء متكررة</option><option value="needs_repetition">يحتاج إلى إعادة التسميع</option>
+                      </select>
+                    </label>
+                    {entry.recitationAccuracy === "focus_words" && <label className="space-y-1.5 sm:col-span-2">
+                      <span className="text-xs font-semibold text-gray-600">الكلمات التي تحتاج إلى تركيز</span>
+                      <Textarea value={entry.focusWords} maxLength={500} rows={2} disabled={controlsDisabled} onChange={event => updateEntry(student.id, { focusWords: event.target.value })} placeholder="سجّل الكلمات أو المواضع التي تحتاج إلى تكرار" className="min-h-16 resize-y" />
+                    </label>}
                     <label className="space-y-1.5">
                       <span className="text-xs font-semibold text-gray-600">ملاحظة الطالب</span>
                       <Textarea

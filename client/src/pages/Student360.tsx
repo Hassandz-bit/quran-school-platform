@@ -20,6 +20,9 @@ import {
 } from "@/lib/student-360";
 import {
   getMemorizationSessionLabel,
+  getMemorizationRatingLabel,
+  getMemorizationResultLabel,
+  getMemorizationAccuracyLabel,
   getSurahByNumber,
 } from "@/lib/memorization";
 import { formatEducation, translateStudentStatus } from "@/lib/students";
@@ -441,9 +444,15 @@ export default function Student360() {
                         <p className="mt-1 text-xs text-[#718377]">
                           {getMemorizationSessionLabel(record.sessionType)} · {formatDate(record.recordDate)}
                         </p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          {record.recitationResult && <span className="rounded-full bg-[#E8F3EC] px-2.5 py-1 font-bold text-[#17663B]">{getMemorizationResultLabel(record.recitationResult)}</span>}
+                          <span className="rounded-full bg-[#EAF3FA] px-2.5 py-1 font-bold text-[#256D95]">{getMemorizationRatingLabel(record.rating)}</span>
+                          {record.recitationAccuracy && <span className="rounded-full bg-[#F1F4F2] px-2.5 py-1 font-bold text-[#607368]">{getMemorizationAccuracyLabel(record.recitationAccuracy)}</span>}
+                        </div>
+                        {record.focusWords && <p className="mt-2 text-xs leading-6 text-[#A76009]">مواضع التركيز: {record.focusWords}</p>}
                       </div>
                       <span className="shrink-0 rounded-full bg-[#EAF3FA] px-2.5 py-1 text-xs font-bold text-[#256D95]">
-                        التقييم {record.rating}/5
+                        {getMemorizationRatingLabel(record.rating)} · {record.rating}/5
                       </span>
                     </div>
                     {record.notes && (

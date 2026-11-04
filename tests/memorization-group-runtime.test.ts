@@ -17,6 +17,9 @@ const sharedDraft = (overrides: Partial<MemorizationDraft> = {}): MemorizationDr
   ayahEnd: 15,
   rating: 3,
   errorsCount: 0,
+  recitationResult: "memorized",
+  recitationAccuracy: "no_errors",
+  focusWords: "",
   notes: "",
   nextAssignment: "",
   ...overrides,
@@ -86,6 +89,9 @@ describe("atomic group memorization saves", () => {
       ayah_start: 10,
       ayah_end: 15,
       rating: 5,
+      recitation_result: "memorized",
+      recitation_accuracy: "no_errors",
+      focus_words: null,
       notes: "إتقان جيد",
     });
     expect(insertedRows[1]).toMatchObject({
