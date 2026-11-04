@@ -334,7 +334,7 @@ export default function ParentStudent() {
                     {record.focusWords && <p className="mt-2 text-xs leading-6 text-[#A76009]">مواضع التركيز: {record.focusWords}</p>}
                   </div>
                   <span className="flex items-center gap-1 rounded-full bg-[#FFF7E7] px-2.5 py-1 text-xs font-bold text-[#8A6A2E]">
-                    <Star size={13} /> {record.rating}/5
+                    <Star size={13} /> {memorizationGradeLabel(record.rating)} · {record.rating}/5
                   </span>
                 </div>
                 <div className="mt-3 flex items-center gap-2 text-xs text-[#607368]">
