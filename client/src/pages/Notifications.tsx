@@ -56,13 +56,13 @@ export default function Notifications() {
   const [notificationContexts, setNotificationContexts] = useState<NotificationContext[]>([]);
   const notificationContext: NotificationContext = parentMode
     ? "guardian"
-    : notificationContexts.includes("staff")
-      ? "staff"
-      : notificationContexts.includes("teacher")
-        ? "teacher"
-        : notificationContexts.includes("guardian")
-          ? "guardian"
-          : "student";
+    : teacherMode
+      ? "teacher"
+      : notificationContexts.includes("staff")
+        ? "staff"
+        : notificationContexts.includes("teacher")
+          ? "teacher"
+          : "guardian";
   const visibleCategories = parentMode
     ? categories.filter(item => ["all", "administration", "students", "learning", "attendance", "finance", "guardians"].includes(item.value))
     : notificationContext === "teacher"
@@ -95,10 +95,6 @@ export default function Notifications() {
 
   useEffect(() => {
     let active = true;
-    if (notificationContext === "student") {
-      setSenderSchools([]);
-      return () => { active = false; };
-    }
     void fetchMyNotificationSenderSchools(notificationContext)
       .then(result => {
         if (active) setSenderSchools(result);
@@ -144,8 +140,8 @@ export default function Notifications() {
             <Bell className="size-6 text-[#17663B]" /> {en ? "Notification center" : "مركز الإشعارات"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {en ? "A unified log of received and sent notifications across QuranOS."
-              : "سجل موحد للإشعارات الواردة والمرسلة من وحدات QuranOS."}
+            {en ? "Messages between school administration, teachers and guardians."
+              : "تواصل بين إدارة المدرسة والمعلمين وأولياء الأمور."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
