@@ -452,7 +452,7 @@ export default function Student360() {
                         {record.focusWords && <p className="mt-2 text-xs leading-6 text-[#A76009]">مواضع التركيز: {record.focusWords}</p>}
                       </div>
                       <span className="shrink-0 rounded-full bg-[#EAF3FA] px-2.5 py-1 text-xs font-bold text-[#256D95]">
-                        التقييم {record.rating}/5
+                        {getMemorizationRatingLabel(record.rating)} · {record.rating}/5
                       </span>
                     </div>
                     {record.notes && (
