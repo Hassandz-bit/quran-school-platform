@@ -4,6 +4,7 @@ import { createStudentPhotoUrlMap } from "./students.ts";
 
 export const MEMORIZATION_SESSION_TYPES = [
   "new_memorization",
+  "new_hifz",
   "near_revision",
   "distant_revision",
   "assessment",
@@ -879,11 +880,6 @@ function validateDraft(input: SaveMemorizationInput): void {
     !Number.isInteger(draft.errorsCount) ||
     !draft.recitationResult ||
     !MEMORIZATION_SESSION_RESULTS.includes(draft.recitationResult) ||
-    !draft.recitationAccuracy ||
-    !MEMORIZATION_ACCURACY_TYPES.includes(draft.recitationAccuracy) ||
-    draft.focusWords.trim().length > 500 ||
-    (draft.recitationAccuracy === "focus_words" && draft.focusWords.trim().length === 0) ||
-    (draft.recitationAccuracy !== "focus_words" && draft.focusWords.trim().length > 0) ||
     draft.errorsCount < 0 ||
     draft.errorsCount > 100 ||
     draft.notes.trim().length > 1000 ||
@@ -937,8 +933,8 @@ function normalizedWritePayload(draft: MemorizationDraft) {
     rating: draft.rating,
     errors_count: draft.errorsCount,
     recitation_result: draft.recitationResult,
-    recitation_accuracy: draft.recitationAccuracy,
-    focus_words: draft.recitationAccuracy === "focus_words" ? draft.focusWords.trim() : null,
+    recitation_accuracy: null,
+    focus_words: null,
     notes: draft.notes.trim() || null,
     next_assignment: draft.nextAssignment.trim() || null,
   };
@@ -1076,6 +1072,7 @@ export function getMemorizationSessionLabel(
 ): string {
   return {
     new_memorization: "التسميع الجديد",
+    new_hifz: "حفظ الجديد",
     near_revision: "مراجعة قريبة",
     distant_revision: "مراجعة بعيدة",
     assessment: "اختبار",
