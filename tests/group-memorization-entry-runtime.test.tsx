@@ -79,7 +79,7 @@ describe("group memorization entry", () => {
         ayahEnd: 15,
         rating: 5,
         recitationResult: "memorized",
-        recitationAccuracy: "no_errors",
+        recitationAccuracy: null,
         focusWords: "",
         notes: "إتقان",
       },
