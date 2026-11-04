@@ -23,6 +23,8 @@ test("only administration, teachers and guardians resolve as notification partic
 test("non-administrative employees and students are excluded from the manual recipient directory", () => {
   assert.match(migration, /where cardinality\(public\.resolve_app_notification_audiences\([\s\S]*?\)\) > 0/i);
   assert.match(migration, /notification_contexts text\[\]/);
+  assert.match(migration, /case when 'staff' = any\(resolved\.contexts\) then 'staff'::text end/);
+  assert.doesNotMatch(migration, /recipient\.audience_types/);
   assert.match(lib, /NotificationContext = "staff" \| "teacher" \| "guardian"/);
   assert.match(lib, /NotificationAudience = "staff" \| "teachers" \| "guardians"/);
   assert.doesNotMatch(lib, /"student"\]\s*\.includes/);
