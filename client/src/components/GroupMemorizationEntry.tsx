@@ -189,7 +189,7 @@ export default function GroupMemorizationEntry({
             حفظ جماعي للحلقة
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">
-            أدخل الجزء مرة واحدة، ثم سجّل تقييمًا وعدد أخطاء وملاحظة مستقلة لكل طالب. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.
+            أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة التسميع ودرجة الأداء ودقته لكل طالب على حدة. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.
           </p>
         </div>
         {groupSaved && (
@@ -326,7 +326,7 @@ export default function GroupMemorizationEntry({
                 <div className="grid gap-3 md:grid-cols-[minmax(12rem,0.8fr)_minmax(0,2fr)]">
                   <div className="space-y-3">
                     <fieldset className="space-y-2">
-                      <legend className="text-xs font-semibold text-gray-600">التقييم (1–5)</legend>
+                      <legend className="text-xs font-semibold text-gray-600">درجة الحفظ أو المراجعة</legend>
                       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                         {MEMORIZATION_RATING_OPTIONS.map(option => (
                           <button
