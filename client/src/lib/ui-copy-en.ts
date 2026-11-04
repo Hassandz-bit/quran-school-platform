@@ -178,6 +178,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "جارٍ تحميل الوثائق...": "Loading documents...",
 
   // Structured memorization session assessment
+  "غير مسجل": "Not recorded",
   "درجة الحفظ أو المراجعة": "Memorization or revision grade",
   "حسن": "Fairly good",
   "يعيد": "Repeat required",
