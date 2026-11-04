@@ -42,6 +42,11 @@ import {
 } from "@/lib/memorization-manager-scope";
 import {
   MEMORIZATION_SESSION_TYPES,
+  MEMORIZATION_RATING_OPTIONS,
+  getDefaultMemorizationResult,
+  getMemorizationRatingLabel,
+  getMemorizationResultLabel,
+  getMemorizationAccuracyLabel,
   QURAN_SURAHS,
   createMemorizationDraft,
   draftFromMemorizationRecord,
@@ -73,8 +78,11 @@ const auditFieldLabels: Record<string, string> = {
   surah_number: "السورة",
   ayah_start: "بداية الآيات",
   ayah_end: "نهاية الآيات",
-  rating: "التقييم",
+  rating: "درجة الأداء",
   errors_count: "عدد الأخطاء",
+  recitation_result: "نتيجة الجلسة",
+  recitation_accuracy: "دقة التسميع",
+  focus_words: "كلمات تحتاج إلى تركيز",
   notes: "الملاحظات",
   next_assignment: "الواجب القادم",
 };
@@ -841,12 +849,13 @@ export default function Memorization() {
                     </span>
                     <select
                       value={draft.sessionType}
-                      onChange={event =>
+                      onChange={event => {
+                        const sessionType = event.target.value as MemorizationDraft["sessionType"];
                         updateDraft({
-                          sessionType: event.target
-                            .value as MemorizationDraft["sessionType"],
-                        })
-                      }
+                          sessionType,
+                          recitationResult: getDefaultMemorizationResult(sessionType),
+                        });
+                      }}
                       className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#0B4738] focus:ring-2 focus:ring-[#0B4738]/15"
                     >
                       {sessionOptions.map(option => (
@@ -933,27 +942,73 @@ export default function Memorization() {
                     التقييم
                   </span>
                   <div
-                    className="grid grid-cols-5 gap-2"
+                    className="grid grid-cols-2 gap-2 sm:grid-cols-5"
                     role="group"
-                    aria-label="تقييم المتابعة"
+                    aria-label="درجة الحفظ أو المراجعة"
                   >
-                    {[1, 2, 3, 4, 5].map(rating => (
+                    {MEMORIZATION_RATING_OPTIONS.map(option => (
                       <button
-                        key={rating}
+                        key={option.value}
                         type="button"
-                        aria-pressed={draft.rating === rating}
-                        onClick={() => updateDraft({ rating })}
-                        className={`flex min-h-11 items-center justify-center gap-1 rounded-xl border text-sm font-bold transition active:scale-[0.98] ${
-                          draft.rating === rating
-                            ? "border-[#C8A26A] bg-[#C8A26A] text-[#0B4738]"
+                        aria-pressed={draft.rating === option.value}
+                        onClick={() => updateDraft({ rating: option.value })}
+                        className={`flex min-h-12 flex-col items-center justify-center rounded-xl border px-2 text-sm font-bold transition active:scale-[0.98] ${
+                          draft.rating === option.value
+                            ? option.value <= 2
+                              ? "border-red-300 bg-red-50 text-red-800"
+                              : option.value === 3
+                                ? "border-amber-300 bg-amber-50 text-amber-800"
+                                : "border-emerald-300 bg-emerald-50 text-emerald-800"
                             : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                         }`}
                       >
-                        <Star size={15} />
-                        {rating}
+                        <span>{option.label}</span>
+                        <span className="text-[11px] opacity-70">{option.value} / 5</span>
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-sm font-semibold text-[#2C3E50]">نتيجة الجلسة</span>
+                    <select
+                      value={draft.recitationResult}
+                      onChange={event => updateDraft({ recitationResult: event.target.value as MemorizationDraft["recitationResult"] })}
+                      className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                    >
+                      {(draft.sessionType === "near_revision" || draft.sessionType === "distant_revision"
+                        ? [{ value: "revised", label: "راجع" }, { value: "not_revised", label: "لم يراجع" }]
+                        : [{ value: "memorized", label: "استظهر" }, { value: "not_memorized", label: "لم يستظهر" }]
+                      ).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-semibold text-[#2C3E50]">دقة التسميع</span>
+                    <select
+                      value={draft.recitationAccuracy}
+                      onChange={event => updateDraft({ recitationAccuracy: event.target.value as MemorizationDraft["recitationAccuracy"], focusWords: event.target.value === "focus_words" ? draft.focusWords : "" })}
+                      className="h-11 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                    >
+                      <option value="no_errors">دون أخطاء</option>
+                      <option value="focus_words">يحتاج إلى التركيز على كلمات محددة</option>
+                      <option value="repeated_errors">أخطاء متكررة</option>
+                      <option value="needs_repetition">يحتاج إلى إعادة التسميع</option>
+                    </select>
+                  </label>
+                  {draft.recitationAccuracy === "focus_words" && (
+                    <label className="space-y-2 md:col-span-2">
+                      <span className="text-sm font-semibold text-[#2C3E50]">الكلمات التي تحتاج إلى تركيز</span>
+                      <Textarea
+                        value={draft.focusWords}
+                        maxLength={500}
+                        rows={2}
+                        placeholder="اكتب الكلمات أو المواضع التي يكثر فيها الخطأ، ويمكن الفصل بينها بفاصلة"
+                        onChange={event => updateDraft({ focusWords: event.target.value })}
+                        className="resize-none"
+                      />
+                    </label>
+                  )}
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -1146,7 +1201,7 @@ export default function Memorization() {
                         <div className="rounded-xl bg-gray-50 p-3">
                           <p className="text-xs text-gray-500">التقييم</p>
                           <p className="mt-1 font-bold text-[#2C3E50]">
-                            {record.rating} / 5
+                            {getMemorizationRatingLabel(record.rating)} · {record.rating} / 5
                           </p>
                         </div>
                         <div className="rounded-xl bg-gray-50 p-3">
@@ -1162,6 +1217,24 @@ export default function Memorization() {
                           </p>
                         </div>
                       </div>
+
+                      {(record.recitationResult || record.recitationAccuracy) && (
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          {record.recitationResult && (
+                            <div className="rounded-xl border border-[#DCE9E0] bg-[#F5FAF6] p-3 text-sm">
+                              <strong className="block text-xs text-[#607368]">نتيجة الجلسة</strong>
+                              <span className="mt-1 block font-bold text-[#17663B]">{getMemorizationResultLabel(record.recitationResult)}</span>
+                            </div>
+                          )}
+                          {record.recitationAccuracy && (
+                            <div className="rounded-xl border border-[#E5EDE7] bg-gray-50 p-3 text-sm">
+                              <strong className="block text-xs text-[#607368]">دقة التسميع</strong>
+                              <span className="mt-1 block font-bold text-[#244E3B]">{getMemorizationAccuracyLabel(record.recitationAccuracy)}</span>
+                              {record.focusWords && <p className="mt-2 leading-6 text-[#607368]">{record.focusWords}</p>}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {(record.notes || record.nextAssignment) && (
                         <div className="mt-3 grid gap-3 md:grid-cols-2">
