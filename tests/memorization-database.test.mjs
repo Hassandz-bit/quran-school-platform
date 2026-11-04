@@ -61,6 +61,7 @@ test("surah verse counts use all 114 chapters and exact boundaries", () => {
 test("memorization session types and score fields are constrained", () => {
   for (const type of [
     "new_memorization",
+    "new_hifz",
     "near_revision",
     "distant_revision",
     "assessment",
