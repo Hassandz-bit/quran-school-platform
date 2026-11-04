@@ -34,7 +34,7 @@ export const MEMORIZATION_RATING_OPTIONS = [
   { value: 5, label: "ممتاز" },
   { value: 4, label: "جيد" },
   { value: 3, label: "حسن" },
-  { value: 2, label: "متوسط" },
+  { value: 2, label: "متوسط الأداء" },
   { value: 1, label: "يعيد" },
 ] as const;
 
