@@ -47,6 +47,9 @@ export type ParentMemorizationRecord = {
   ayahEnd: number;
   rating: number;
   errorsCount: number;
+  recitationResult: string | null;
+  recitationAccuracy: string | null;
+  focusWords: string | null;
   nextAssignment: string | null;
 };
 
@@ -206,6 +209,9 @@ export async function fetchParentStudentAcademic(
       ayahEnd: asNumber(row.ayah_end),
       rating: asNumber(row.rating),
       errorsCount: asNumber(row.errors_count),
+      recitationResult: row.recitation_result ?? null,
+      recitationAccuracy: row.recitation_accuracy ?? null,
+      focusWords: row.focus_words ?? null,
       nextAssignment: row.next_assignment ?? null,
     })),
   };
