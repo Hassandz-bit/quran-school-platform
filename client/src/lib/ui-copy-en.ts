@@ -179,10 +179,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
 
   // Structured memorization session assessment
   "درجة الحفظ أو المراجعة": "Memorization or revision grade",
-  "ممتاز": "Excellent",
-  "جيد": "Good",
   "حسن": "Fairly good",
-  "متوسط": "Average",
   "يعيد": "Repeat required",
   "نتيجة الجلسة": "Session outcome",
   "نتيجة التسميع": "Recitation outcome",
