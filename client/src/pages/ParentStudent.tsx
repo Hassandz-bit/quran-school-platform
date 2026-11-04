@@ -66,6 +66,18 @@ function sessionLabel(value: string): string {
   );
 }
 
+function recitationResultLabel(value: string | null): string {
+  return ({ memorized: "استظهر", not_memorized: "لم يستظهر", revised: "راجع", not_revised: "لم يراجع" }[value ?? ""] ?? "غير مسجل");
+}
+
+function recitationAccuracyLabel(value: string | null): string {
+  return ({ no_errors: "دون أخطاء", focus_words: "كلمات تحتاج إلى تركيز", repeated_errors: "أخطاء متكررة", needs_repetition: "يحتاج إلى إعادة التسميع" }[value ?? ""] ?? "غير مسجل");
+}
+
+function memorizationGradeLabel(value: number): string {
+  return ({ 5: "ممتاز", 4: "جيد", 3: "حسن", 2: "متوسط", 1: "يعيد" }[value] ?? "غير محدد");
+}
+
 function surahName(number: number): string {
   return QURAN_SURAHS.find(surah => surah.number === number)?.name ?? `سورة ${number}`;
 }
@@ -314,6 +326,12 @@ export default function ParentStudent() {
                       سورة {surahName(record.surahNumber)} · الآيات {record.ayahStart}–{record.ayahEnd}
                     </h3>
                     <p className="mt-1 text-xs text-[#718279]">{formatDate(record.date)}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-[#E8F3EC] px-2.5 py-1 font-bold text-[#17663B]">{recitationResultLabel(record.recitationResult)}</span>
+                      <span className="rounded-full bg-[#EAF3FA] px-2.5 py-1 font-bold text-[#256D95]">{memorizationGradeLabel(record.rating)}</span>
+                      <span className="rounded-full bg-[#F1F4F2] px-2.5 py-1 font-bold text-[#607368]">{recitationAccuracyLabel(record.recitationAccuracy)}</span>
+                    </div>
+                    {record.focusWords && <p className="mt-2 text-xs leading-6 text-[#A76009]">مواضع التركيز: {record.focusWords}</p>}
                   </div>
                   <span className="flex items-center gap-1 rounded-full bg-[#FFF7E7] px-2.5 py-1 text-xs font-bold text-[#8A6A2E]">
                     <Star size={13} /> {record.rating}/5
