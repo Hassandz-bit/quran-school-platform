@@ -13,6 +13,7 @@ const [
   managerScope,
   dashboard,
   migration,
+  sessionTypeMigration,
   teacherRpcMigration,
 ] = await Promise.all([
   read("client/src/App.tsx"),
@@ -22,6 +23,7 @@ const [
   read("client/src/lib/memorization-manager-scope.ts"),
   read("client/src/pages/Dashboard.tsx"),
   read("supabase/014_memorization_module.sql"),
+  read("supabase/076_add_new_hifz_session_type.sql"),
   read("supabase/016_memorization_class_teachers_rpc.sql"),
 ]);
 
@@ -161,15 +163,28 @@ test("retries workspace loading with an explicit reload token", () => {
   assert.match(page, /workspaceReload,/);
 });
 
-test("supports the four memorization session types", () => {
+test("supports five distinct memorization session types", () => {
   for (const [value, label] of [
     ["new_memorization", "التسميع الجديد"],
+    ["new_hifz", "حفظ الجديد"],
     ["near_revision", "مراجعة قريبة"],
     ["distant_revision", "مراجعة بعيدة"],
     ["assessment", "اختبار"],
   ]) {
     assert.match(data, new RegExp(`"${value}"`));
     assert.match(data, new RegExp(label));
+  }
+  assert.match(sessionTypeMigration, /\x27new_hifz\x27/);
+});
+
+test("does not render recitation accuracy fields in teacher or guardian interfaces", async () => {
+  const [group, parent, card] = await Promise.all([
+    read("client/src/components/GroupMemorizationEntry.tsx"),
+    read("client/src/pages/ParentStudent.tsx"),
+    read("client/src/components/StudentQuranCard.tsx"),
+  ]);
+  for (const source of [page, group, parent, card]) {
+    assert.doesNotMatch(source, /دقة التسميع|مواضع التركيز|الكلمات التي تحتاج إلى تركيز/);
   }
 });
 
