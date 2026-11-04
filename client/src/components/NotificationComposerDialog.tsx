@@ -340,7 +340,7 @@ export default function NotificationComposerDialog({
               <div className="relative">
                 <Search className={`absolute top-1/2 size-4 -translate-y-1/2 text-muted-foreground ${en ? "left-3" : "right-3"}`} />
                 <Input value={query} onChange={event => setQuery(event.target.value)}
-                  placeholder={en ? "Search by member, guardian or student name" : "ابحث باسم الموظف أو الولي أو الطالب"}
+                  placeholder={en ? "Search administration, teacher or guardian" : "ابحث باسم الإداري أو المعلم أو ولي الأمر"}
                   className={en ? "pl-9" : "pr-9"} />
               </div>
               <div className="max-h-52 space-y-1 overflow-y-auto">
