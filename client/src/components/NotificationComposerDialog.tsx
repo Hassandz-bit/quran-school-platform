@@ -383,7 +383,7 @@ export default function NotificationComposerDialog({
             </label>
             {staffSender && <div>
               <Label htmlFor="notification-target-path">{en ? "Internal link (optional)" : "رابط داخلي (اختياري)"}</Label>
-              <Input id="notification-target-path" value={targetPath} onChange={event => setTargetPath(event.target.value)} placeholder="/attendance" dir="ltr" />
+              <Input id="notification-target-path" value={targetPath} onChange={event => setTargetPath(event.target.value)} placeholder="/dashboard" dir="ltr" />
             </div>}
           </div>
           <div>
