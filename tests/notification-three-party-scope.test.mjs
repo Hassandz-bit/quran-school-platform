@@ -5,6 +5,7 @@ import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const migration = read("supabase/075_notification_three_party_scope.sql");
 const legacyCountMigration = read("supabase/077_notification_remove_unscoped_unread_count.sql");
+const retiredNotificationMigration = read("supabase/078_remove_student_learning_attendance_notifications.sql");
 const contextMigration = read("supabase/074_notification_role_isolation.sql");
 const page = read("client/src/pages/Notifications.tsx");
 const lib = read("client/src/lib/notifications.ts");
@@ -51,7 +52,11 @@ test("teacher, guardian and administration portals use separate notification con
 test("student, learning and attendance notification categories are removed from every notification surface", () => {
   assert.doesNotMatch(lib, /"students"|"learning"|"attendance"|التعليم والحفظ|الحضور/);
   assert.doesNotMatch(page, /"students"|"learning"|"attendance"|الطالب/);
-  assert.doesNotMatch(composer, /"students"|"learning"|"attendance"|التعليم والحفظ|الحضور|relatedStudents/);
+  assert.doesNotMatch(composer, /"students"|"learning"|"attendance"|التعليم والحفظ|الحضور|relatedStudents|\\/attendance/);
+  assert.doesNotMatch(lib, /studentId|studentName|relatedStudents/);
+  assert.match(retiredNotificationMigration, /drop trigger if exists guardian_notification_events_app_center/i);
+  assert.match(retiredNotificationMigration, /delete from public\\.app_notifications[\\s\\S]*category in \\(\x27students\x27, \x27learning\x27, \x27attendance\x27\\)/i);
+  assert.match(retiredNotificationMigration, /\x27administration\x27, \x27teachers\x27, \x27finance\x27, \x27guardians\x27, \x27system\x27/);
   assert.match(page, /"administration", "finance", "guardians"/);
   assert.match(composer, /"administration", "guardians"/);
 });
