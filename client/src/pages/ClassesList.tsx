@@ -54,7 +54,7 @@ const ClassesList: React.FC = () => {
       school: "المدرسة القرآنية",
       students: "الطلاب",
       teachers: "المعلمون",
-      classes: "الحلقات",
+      classes: "الفروع والحلقات",
       finance: "المالية",
       settings: "الإعدادات",
       logout: "تسجيل الخروج",
@@ -82,7 +82,7 @@ const ClassesList: React.FC = () => {
       school: "Quran School",
       students: "Students",
       teachers: "Teachers",
-      classes: "Classes",
+      classes: "Branches & Classes",
       finance: "Finance",
       settings: "Settings",
       logout: "Sign Out",
@@ -266,7 +266,7 @@ const ClassesList: React.FC = () => {
     if (classes.length === 0) {
       return (
         <>
-          {school?.id && <ManagedDuwams schoolId={school.id} branches={branches} classes={classes} />}
+          {school?.id && <ManagedDuwams schoolId={school.id} branches={branches} classes={classes} onBranchesChanged={() => void loadClasses()} />}
           <Card className="p-10 text-center text-gray-500 border border-gray-100">
             {t.empty}
           </Card>
