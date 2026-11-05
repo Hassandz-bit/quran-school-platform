@@ -23,9 +23,6 @@ const categories: Array<{ value: NotificationCategory | "all"; ar: string; en: s
   { value: "all", ar: "الكل", en: "All" },
   { value: "administration", ar: "الإدارة", en: "Administration" },
   { value: "teachers", ar: "المعلمون", en: "Teachers" },
-  { value: "students", ar: "الطلاب", en: "Students" },
-  { value: "learning", ar: "التعليم والحفظ", en: "Learning" },
-  { value: "attendance", ar: "الحضور", en: "Attendance" },
   { value: "finance", ar: "المالية", en: "Finance" },
   { value: "guardians", ar: "الأولياء", en: "Guardians" },
   { value: "system", ar: "النظام", en: "System" },
@@ -65,9 +62,9 @@ export default function Notifications() {
           ? "teacher"
           : "guardian";
   const visibleCategories = parentMode
-    ? categories.filter(item => ["all", "administration", "students", "learning", "attendance", "finance", "guardians"].includes(item.value))
+    ? categories.filter(item => ["all", "administration", "finance", "guardians"].includes(item.value))
     : notificationContext === "teacher"
-      ? categories.filter(item => ["all", "administration", "teachers", "students", "learning", "attendance", "guardians"].includes(item.value))
+      ? categories.filter(item => ["all", "administration", "teachers", "guardians"].includes(item.value))
       : categories;
 
   useEffect(() => {
@@ -209,7 +206,6 @@ export default function Notifications() {
                     <p className="mt-2 text-sm leading-6 text-[#40564B]">{row.body}</p>
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span>{en ? "School" : "المدرسة"}: {row.schoolName}</span>
-                      {row.studentName && <span>{en ? "Student" : "الطالب"}: {row.studentName}</span>}
                       {box === "inbox" ? (
                         <span>{en ? "Sender" : "المرسل"}: {row.senderName ?? (en ? "System" : "النظام")}</span>
                       ) : (
