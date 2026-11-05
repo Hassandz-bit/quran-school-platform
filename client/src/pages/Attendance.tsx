@@ -34,7 +34,6 @@ import {
   type AttendanceScope,
   type AttendanceStatus,
 } from "@/lib/attendance";
-import { dispatchGuardianAttendanceNotifications } from "@/lib/guardian-notification-dispatch";
 
 const statusOptions: Array<{
   value: AttendanceStatus;
@@ -281,15 +280,6 @@ export default function Attendance() {
       setSaveSuccess(message);
       toast.success(message);
 
-      // Attendance is already committed at this point. Dispatching guardian
-      // notifications is deliberately best-effort so Push/provider outages can
-      // never turn a successful attendance save into an attendance failure.
-      void dispatchGuardianAttendanceNotifications({
-        schoolId: school.id,
-        branchId,
-        classId,
-        sessionId: result.sessionId,
-      });
     } catch (error) {
       const message = getAttendanceErrorMessage(error);
       setRosterError(message);
