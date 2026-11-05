@@ -6,6 +6,7 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"
 
 const migration = read("supabase/025_guardian_directory_notification_center.sql");
 const categoryMigration = read("supabase/026_notification_center_module_categories.sql");
+const retiredCategoryMigration = read("supabase/078_remove_student_learning_attendance_notifications.sql");
 const guardiansLib = read("client/src/lib/guardians.ts");
 const notificationsLib = read("client/src/lib/notifications.ts");
 const guardiansPage = read("client/src/pages/Guardians.tsx");
@@ -55,23 +56,17 @@ test("V2 navigation and routes expose guardians and notifications to staff and p
   assert.match(parentShell, /\/parent\/notifications/);
 });
 
-test("notification center includes sent, received and all requested module filters", () => {
+test("notification center keeps only the approved administration, teacher, finance, guardian and system filters", () => {
   assert.match(notificationsPage, /value="inbox"/);
   assert.match(notificationsPage, /value="sent"/);
-  for (const label of [
-    "الإدارة",
-    "المعلمون",
-    "الطلاب",
-    "التعليم والحفظ",
-    "الحضور",
-    "المالية",
-    "الأولياء",
-    "النظام",
-  ]) {
-    assert.match(notificationsPage, new RegExp(label));
+  for (const label of ["الإدارة", "المعلمون", "المالية", "الأولياء", "النظام"]) {
+    assert.ok(notificationsPage.includes(label), `missing notification category: ${label}`);
+  }
+  for (const retired of ["الطلاب", "التعليم والحفظ", "الحضور", '"students"', '"learning"', '"attendance"']) {
+    assert.ok(!notificationsPage.includes(retired), `retired notification category remains: ${retired}`);
   }
   assert.match(categoryMigration, /'teachers'/);
-  assert.match(categoryMigration, /'students'/);
+  assert.match(retiredCategoryMigration, /'administration', 'teachers', 'finance', 'guardians', 'system'/);
   assert.match(notificationsPage, /markNotificationRead/);
   assert.match(notificationsPage, /row\.targetPath/);
 });

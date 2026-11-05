@@ -6,9 +6,6 @@ export type NotificationContext = "staff" | "teacher" | "guardian";
 export type NotificationCategory =
   | "administration"
   | "teachers"
-  | "students"
-  | "learning"
-  | "attendance"
   | "finance"
   | "guardians"
   | "system";
@@ -19,8 +16,6 @@ export type AppNotification = {
   schoolName: string;
   recipientName: string;
   senderName: string | null;
-  studentId: string | null;
-  studentName: string | null;
   category: NotificationCategory;
   eventType: string;
   title: string;
@@ -38,7 +33,6 @@ export type NotificationRecipient = {
   audienceTypes: NotificationAudience[];
   branchIds: string[];
   classIds: string[];
-  relatedStudents: string[];
   notificationContexts: NotificationContext[];
 };
 
@@ -121,8 +115,6 @@ export async function fetchMyNotifications(
     schoolName: String(row.school_name),
     recipientName: String(row.recipient_name),
     senderName: row.sender_name ? String(row.sender_name) : null,
-    studentId: row.student_id ? String(row.student_id) : null,
-    studentName: row.student_name ? String(row.student_name) : null,
     category: row.category as NotificationCategory,
     eventType: String(row.event_type),
     title: String(row.title),
@@ -186,7 +178,6 @@ export async function fetchManualNotificationRecipients(
       ),
     branchIds: (Array.isArray(row.branch_ids) ? row.branch_ids : []).map(String),
     classIds: (Array.isArray(row.class_ids) ? row.class_ids : []).map(String),
-    relatedStudents: (Array.isArray(row.related_students) ? row.related_students : []).map(String),
     notificationContexts: (Array.isArray(row.notification_contexts) ? row.notification_contexts : [])
       .filter((value): value is NotificationContext =>
         ["staff", "teacher", "guardian"].includes(String(value))
@@ -242,9 +233,6 @@ export async function sendManualNotification(
 export const notificationCategoryLabels: Record<NotificationCategory, string> = {
   administration: "الإدارة",
   teachers: "المعلمون",
-  students: "الطلاب",
-  learning: "التعليم والحفظ",
-  attendance: "الحضور",
   finance: "المالية",
   guardians: "الأولياء",
   system: "النظام",

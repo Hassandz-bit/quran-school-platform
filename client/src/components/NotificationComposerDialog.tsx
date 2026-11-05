@@ -33,9 +33,6 @@ type GroupMode = "all" | "audience" | "branch" | "class";
 const categoryOptions: Array<{ value: NotificationCategory; ar: string; en: string }> = [
   { value: "administration", ar: "الإدارة", en: "Administration" },
   { value: "teachers", ar: "المعلمون", en: "Teachers" },
-  { value: "students", ar: "الطلاب", en: "Students" },
-  { value: "learning", ar: "التعليم والحفظ", en: "Learning and memorization" },
-  { value: "attendance", ar: "الحضور", en: "Attendance" },
   { value: "finance", ar: "المالية", en: "Finance" },
   { value: "guardians", ar: "الأولياء", en: "Guardians" },
   { value: "system", ar: "النظام", en: "System" },
@@ -122,12 +119,12 @@ export default function NotificationComposerDialog({
   const visibleCategories = useMemo(() => {
     if (selectedSchool?.senderKind === "guardian") {
       return categoryOptions.filter(option =>
-        ["administration", "students", "learning", "attendance", "guardians"].includes(option.value)
+        ["administration", "guardians"].includes(option.value)
       );
     }
     if (selectedSchool?.senderKind === "teacher") {
       return categoryOptions.filter(option =>
-        ["administration", "teachers", "students", "learning", "attendance", "guardians"].includes(option.value)
+        ["administration", "teachers", "guardians"].includes(option.value)
       );
     }
     return categoryOptions;
@@ -143,7 +140,7 @@ export default function NotificationComposerDialog({
     const normalized = query.trim().toLocaleLowerCase(locale);
     if (!normalized) return recipients;
     return recipients.filter(recipient =>
-      `${recipient.fullName} ${recipient.relatedStudents.join(" ")}`
+      recipient.fullName
         .toLocaleLowerCase(locale)
         .includes(normalized)
     );
@@ -354,7 +351,6 @@ export default function NotificationComposerDialog({
                       <strong className="block truncate text-sm">{recipient.fullName}</strong>
                       <small className="block truncate text-muted-foreground">
                         {recipient.audienceTypes.map(type => audienceOptions.find(option => option.value === type)?.[en ? "en" : "ar"] ?? type).join(" • ")}
-                        {recipient.relatedStudents.length > 0 ? ` — ${recipient.relatedStudents.join("، ")}` : ""}
                       </small>
                     </span>
                   );
@@ -387,7 +383,7 @@ export default function NotificationComposerDialog({
             </label>
             {staffSender && <div>
               <Label htmlFor="notification-target-path">{en ? "Internal link (optional)" : "رابط داخلي (اختياري)"}</Label>
-              <Input id="notification-target-path" value={targetPath} onChange={event => setTargetPath(event.target.value)} placeholder="/attendance" dir="ltr" />
+              <Input id="notification-target-path" value={targetPath} onChange={event => setTargetPath(event.target.value)} placeholder="/dashboard" dir="ltr" />
             </div>}
           </div>
           <div>

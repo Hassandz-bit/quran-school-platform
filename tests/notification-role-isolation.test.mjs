@@ -6,6 +6,7 @@ import test from "node:test";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const migration = read("supabase/074_notification_role_isolation.sql");
+const retiredCategories = read("supabase/078_remove_student_learning_attendance_notifications.sql");
 const page = read("client/src/pages/Notifications.tsx");
 const lib = read("client/src/lib/notifications.ts");
 const composer = read("client/src/components/NotificationComposerDialog.tsx");
@@ -38,9 +39,13 @@ test("unscoped list and read RPCs are removed in favor of portal-scoped RPCs", (
   assert.match(lib, /target_notification_id: notificationId,[\s\S]*target_context: context/);
 });
 
-test("guardian and teacher portals expose only relevant category filters", () => {
-  assert.match(page, /parentMode[\s\S]*\["all", "administration", "students", "learning", "attendance", "finance", "guardians"\]/);
-  assert.match(page, /notificationContext === "teacher"[\s\S]*\["all", "administration", "teachers", "students", "learning", "attendance", "guardians"\]/);
+test("guardian and teacher portals expose only their remaining relevant notification filters", () => {
+  assert.ok(page.includes('["all", "administration", "finance", "guardians"]'));
+  assert.ok(page.includes('["all", "administration", "teachers", "guardians"]'));
+  for (const retired of ['"students"', '"learning"', '"attendance"']) {
+    assert.ok(!page.includes(retired));
+  }
+  assert.ok(retiredCategories.includes("'administration', 'teachers', 'finance', 'guardians', 'system'"));
   assert.match(page, /fetchMyNotifications\([\s\S]*notificationContext/);
   assert.match(page, /markNotificationRead\(row\.notificationId, notificationContext\)/);
 });
