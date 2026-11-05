@@ -54,8 +54,9 @@ test("student, learning and attendance notification categories are removed from 
   assert.doesNotMatch(page, /"students"|"learning"|"attendance"|الطالب/);
   assert.doesNotMatch(composer, /"students"|"learning"|"attendance"|التعليم والحفظ|الحضور|relatedStudents|\\/attendance/);
   assert.doesNotMatch(lib, /studentId|studentName|relatedStudents/);
-  assert.match(retiredNotificationMigration, /drop trigger if exists guardian_notification_events_app_center/i);
-  assert.match(retiredNotificationMigration, /delete from public\\.app_notifications[\\s\\S]*category in \\(\x27students\x27, \x27learning\x27, \x27attendance\x27\\)/i);
+  assert.ok(retiredNotificationMigration.includes("drop trigger if exists guardian_notification_events_app_center"));
+  assert.ok(retiredNotificationMigration.includes("delete from public.app_notifications"));
+  assert.ok(retiredNotificationMigration.includes("category in ('students', 'learning', 'attendance')"));
   assert.match(retiredNotificationMigration, /\x27administration\x27, \x27teachers\x27, \x27finance\x27, \x27guardians\x27, \x27system\x27/);
   assert.match(page, /"administration", "finance", "guardians"/);
   assert.match(composer, /"administration", "guardians"/);
