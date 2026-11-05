@@ -139,4 +139,6 @@ revoke all on function public.list_manual_notification_recipients_for_context(uu
 grant execute on function public.list_manual_notification_recipients_for_context(uuid, text)
   to authenticated;
 
+notify pgrst, 'reload schema';
+
 commit;
