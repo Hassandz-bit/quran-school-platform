@@ -48,6 +48,14 @@ test("teacher, guardian and administration portals use separate notification con
   assert.doesNotMatch(composer, /value: "students", ar: "أولياء الطلاب"/);
 });
 
+test("student, learning and attendance notification categories are removed from every notification surface", () => {
+  assert.doesNotMatch(lib, /"students"|"learning"|"attendance"|التعليم والحفظ|الحضور/);
+  assert.doesNotMatch(page, /"students"|"learning"|"attendance"|الطالب/);
+  assert.doesNotMatch(composer, /"students"|"learning"|"attendance"|التعليم والحفظ|الحضور|relatedStudents/);
+  assert.match(page, /"administration", "finance", "guardians"/);
+  assert.match(composer, /"administration", "guardians"/);
+});
+
 test("unread notification counts always require an explicit authorized role context", () => {
   assert.match(legacyCountMigration, /drop function if exists public\.get_my_unread_notification_count\(\)/i);
   assert.match(lib, /fetchUnreadNotificationCount\(\s*context: NotificationContext/);
