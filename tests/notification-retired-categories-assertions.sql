@@ -61,3 +61,26 @@ begin
   end if;
 end;
 $$;
+
+
+-- The notification RPC payloads no longer return student identifiers or names.
+do $$
+declare
+  inbox_result text;
+  recipients_result text;
+begin
+  inbox_result := pg_get_function_result(
+    'public.list_my_app_notifications(text,text,integer,text)'::regprocedure
+  );
+  recipients_result := pg_get_function_result(
+    'public.list_manual_notification_recipients_for_context(uuid,text)'::regprocedure
+  );
+
+  if inbox_result like '%student_id%' or inbox_result like '%student_name%' then
+    raise exception 'notification inbox RPC still returns student metadata';
+  end if;
+  if recipients_result like '%related_students%' then
+    raise exception 'notification recipient directory still returns student names';
+  end if;
+end;
+$$;
