@@ -6,9 +6,6 @@ export type NotificationContext = "staff" | "teacher" | "guardian";
 export type NotificationCategory =
   | "administration"
   | "teachers"
-  | "students"
-  | "learning"
-  | "attendance"
   | "finance"
   | "guardians"
   | "system";
@@ -242,9 +239,6 @@ export async function sendManualNotification(
 export const notificationCategoryLabels: Record<NotificationCategory, string> = {
   administration: "الإدارة",
   teachers: "المعلمون",
-  students: "الطلاب",
-  learning: "التعليم والحفظ",
-  attendance: "الحضور",
   finance: "المالية",
   guardians: "الأولياء",
   system: "النظام",
