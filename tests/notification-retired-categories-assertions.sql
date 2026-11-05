@@ -84,3 +84,30 @@ begin
   end if;
 end;
 $$;
+
+
+-- Attendance notifications are disabled in both the app inbox and push outbox.
+do $$
+begin
+  if exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.attendance_records'::regclass
+      and tgname = 'attendance_records_guardian_notification'
+      and not tgisinternal
+  ) then
+    raise exception 'attendance still queues guardian notification events';
+  end if;
+
+  if exists (select 1 from public.guardian_notification_events)
+    or exists (select 1 from public.guardian_notification_deliveries)
+  then
+    raise exception 'attendance notification events or deliveries remain queued';
+  end if;
+
+  if to_regprocedure('public.queue_guardian_attendance_notification()') is not null
+    or to_regprocedure('public.queue_guardian_attendance_app_notification()') is not null
+  then
+    raise exception 'retired attendance notification trigger functions remain';
+  end if;
+end;
+$$;
