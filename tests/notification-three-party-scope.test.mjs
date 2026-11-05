@@ -50,16 +50,20 @@ test("teacher, guardian and administration portals use separate notification con
 });
 
 test("student, learning and attendance notification categories are removed from every notification surface", () => {
-  assert.doesNotMatch(lib, /"students"|"learning"|"attendance"|التعليم والحفظ|الحضور/);
-  assert.doesNotMatch(page, /"students"|"learning"|"attendance"|الطالب/);
-  assert.doesNotMatch(composer, /"students"|"learning"|"attendance"|التعليم والحفظ|الحضور|relatedStudents|\\/attendance/);
-  assert.doesNotMatch(lib, /studentId|studentName|relatedStudents/);
+  for (const retired of ["students", "learning", "attendance", "التعليم والحفظ", "الحضور"]) {
+    assert.ok(!lib.includes(retired), `notification library still contains retired category: ${retired}`);
+    assert.ok(!page.includes(retired), `notification inbox still contains retired category: ${retired}`);
+    assert.ok(!composer.includes(retired), `notification composer still contains retired category: ${retired}`);
+  }
+  assert.ok(!page.includes("الطالب"));
+  assert.ok(!lib.includes("studentId") && !lib.includes("studentName") && !lib.includes("relatedStudents"));
+  assert.ok(!composer.includes("relatedStudents") && !composer.includes("/attendance"));
   assert.ok(retiredNotificationMigration.includes("drop trigger if exists guardian_notification_events_app_center"));
   assert.ok(retiredNotificationMigration.includes("delete from public.app_notifications"));
   assert.ok(retiredNotificationMigration.includes("category in ('students', 'learning', 'attendance')"));
-  assert.match(retiredNotificationMigration, /\x27administration\x27, \x27teachers\x27, \x27finance\x27, \x27guardians\x27, \x27system\x27/);
-  assert.match(page, /"administration", "finance", "guardians"/);
-  assert.match(composer, /"administration", "guardians"/);
+  assert.ok(retiredNotificationMigration.includes("'administration', 'teachers', 'finance', 'guardians', 'system'"));
+  assert.ok(page.includes('"administration", "finance", "guardians"'));
+  assert.ok(composer.includes('"administration", "guardians"'));
 });
 
 test("unread notification counts always require an explicit authorized role context", () => {
