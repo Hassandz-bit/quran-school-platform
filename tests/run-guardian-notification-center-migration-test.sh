@@ -84,4 +84,5 @@ run_sql supabase/077_notification_remove_unscoped_unread_count.sql
 run_sql tests/guardian-notification-center-assertions.sql
 run_sql tests/guardian-notification-center-tenant-assertions.sql
 run_sql supabase/078_remove_student_learning_attendance_notifications.sql
+run_sql supabase/079_remove_student_metadata_from_notification_rpcs.sql
 run_sql tests/notification-retired-categories-assertions.sql
