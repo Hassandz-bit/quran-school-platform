@@ -6,6 +6,7 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"
 const migration = read("supabase/075_notification_three_party_scope.sql");
 const legacyCountMigration = read("supabase/077_notification_remove_unscoped_unread_count.sql");
 const retiredNotificationMigration = read("supabase/078_remove_student_learning_attendance_notifications.sql");
+const studentMetadataMigration = read("supabase/079_remove_student_metadata_from_notification_rpcs.sql");
 const contextMigration = read("supabase/074_notification_role_isolation.sql");
 const page = read("client/src/pages/Notifications.tsx");
 const lib = read("client/src/lib/notifications.ts");
@@ -57,6 +58,9 @@ test("student, learning and attendance notification categories are removed from 
   }
   assert.ok(!page.includes("الطالب"));
   assert.ok(!lib.includes("studentId") && !lib.includes("studentName") && !lib.includes("relatedStudents"));
+  assert.ok(!studentMetadataMigration.includes("student_id"));
+  assert.ok(!studentMetadataMigration.includes("student_name"));
+  assert.ok(!studentMetadataMigration.includes("related_students"));
   assert.ok(!composer.includes("relatedStudents") && !composer.includes("/attendance"));
   assert.ok(retiredNotificationMigration.includes("drop trigger if exists guardian_notification_events_app_center"));
   assert.ok(retiredNotificationMigration.includes("delete from public.app_notifications"));
