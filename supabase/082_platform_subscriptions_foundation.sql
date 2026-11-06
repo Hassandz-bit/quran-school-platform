@@ -214,6 +214,51 @@ $$;
 revoke all on function private.school_subscription_can_operate(uuid) from public, anon, authenticated;
 
 -- All tenant-owned writes are blocked after trial/grace expiry; reads remain available.
+create or replace function private.resolve_school_id_from_tenant_row(
+  target_table_name text,
+  target_row jsonb
+)
+returns uuid
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+declare
+  v_school_id uuid;
+  v_parent_id uuid;
+begin
+  v_school_id := nullif(target_row ->> 'school_id', '')::uuid;
+  if v_school_id is not null then return v_school_id; end if;
+
+  case target_table_name
+    when 'schools' then
+      v_school_id := nullif(target_row ->> 'id', '')::uuid;
+    when 'guardian_import_rows' then
+      v_parent_id := nullif(target_row ->> 'batch_id', '')::uuid;
+      select batch.school_id into v_school_id
+      from public.guardian_import_batches as batch
+      where batch.id = v_parent_id;
+    when 'student_import_rows' then
+      v_parent_id := nullif(target_row ->> 'batch_id', '')::uuid;
+      select batch.school_id into v_school_id
+      from public.student_import_batches as batch
+      where batch.id = v_parent_id;
+    when 'guardian_notification_deliveries' then
+      v_parent_id := nullif(target_row ->> 'event_id', '')::uuid;
+      select event.school_id into v_school_id
+      from public.guardian_notification_events as event
+      where event.id = v_parent_id;
+    else
+      v_school_id := null;
+  end case;
+
+  return v_school_id;
+end;
+$$;
+revoke all on function private.resolve_school_id_from_tenant_row(text, jsonb)
+  from public, anon, authenticated;
+
 create or replace function private.enforce_school_subscription_write()
 returns trigger
 language plpgsql
@@ -221,55 +266,23 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_school_id uuid;
-  v_row jsonb;
-  v_batch_id uuid;
-  v_event_id uuid;
+  v_old_school_id uuid;
+  v_new_school_id uuid;
 begin
   if public.is_platform_owner() then
     if tg_op = 'DELETE' then return old; end if;
     return new;
   end if;
 
-  if tg_op = 'DELETE' then
-    v_row := to_jsonb(old);
-  else
-    v_row := to_jsonb(new);
+  if tg_op <> 'INSERT' then
+    v_old_school_id := private.resolve_school_id_from_tenant_row(tg_table_name, to_jsonb(old));
+  end if;
+  if tg_op <> 'DELETE' then
+    v_new_school_id := private.resolve_school_id_from_tenant_row(tg_table_name, to_jsonb(new));
   end if;
 
-  v_school_id := nullif(v_row ->> 'school_id', '')::uuid;
-
-  -- Resolve tenant ownership for root and child tables without a school_id column.
-  if v_school_id is null then
-    case tg_table_name
-      when 'schools' then
-        v_school_id := nullif(v_row ->> 'id', '')::uuid;
-      when 'guardian_import_rows' then
-        v_batch_id := nullif(v_row ->> 'batch_id', '')::uuid;
-        select batch.school_id into v_school_id
-        from public.guardian_import_batches as batch
-        where batch.id = v_batch_id;
-      when 'student_import_rows' then
-        v_batch_id := nullif(v_row ->> 'batch_id', '')::uuid;
-        select batch.school_id into v_school_id
-        from public.student_import_batches as batch
-        where batch.id = v_batch_id;
-      when 'guardian_notification_deliveries' then
-        v_event_id := nullif(v_row ->> 'event_id', '')::uuid;
-        select event.school_id into v_school_id
-        from public.guardian_notification_events as event
-        where event.id = v_event_id;
-      else
-        v_school_id := null;
-    end case;
-  end if;
-
-  if v_school_id is null then
-    if tg_op = 'DELETE' then return old; end if;
-    return new;
-  end if;
-
-  if not private.school_subscription_can_operate(v_school_id) then
+  if (v_old_school_id is not null and not private.school_subscription_can_operate(v_old_school_id))
+     or (v_new_school_id is not null and not private.school_subscription_can_operate(v_new_school_id)) then
     raise exception using
       errcode = 'P0001',
       message = 'SCHOOL_SUBSCRIPTION_READ_ONLY',
