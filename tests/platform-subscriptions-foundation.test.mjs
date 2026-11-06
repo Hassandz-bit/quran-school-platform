@@ -40,6 +40,12 @@ test("expired subscriptions become read-only without deleting tenant data", () =
   assert.doesNotMatch(migration, /delete from public\.(schools|students|branches)/i);
 });
 
+test("service-role edge workflows remain subject to subscription enforcement, including child import rows", () => {
+  assert.match(migration, /batch\\.school_id/);
+  assert.match(migration, /guardian_import_rows/);
+  assert.doesNotMatch(migration, /service_role/);
+});
+
 test("approval and manual annual renewal require the platform owner", () => {
   assert.match(migration, /approve_school_registration/);
   assert.match(migration, /record_subscription_payment_and_renew/);
