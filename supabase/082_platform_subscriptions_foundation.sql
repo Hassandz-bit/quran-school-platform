@@ -218,9 +218,9 @@ set search_path = ''
 as $$
 declare
   v_school_id uuid;
+  v_batch_id uuid;
 begin
-  if public.is_platform_owner()
-     or coalesce(auth.jwt() ->> 'role', '') = 'service_role' then
+  if public.is_platform_owner() then
     if tg_op = 'DELETE' then return old; end if;
     return new;
   end if;
@@ -229,6 +229,19 @@ begin
     v_school_id := (to_jsonb(old) ->> 'school_id')::uuid;
   else
     v_school_id := (to_jsonb(new) ->> 'school_id')::uuid;
+  end if;
+
+  if v_school_id is null then
+    if tg_op = 'DELETE' then
+      v_batch_id := (to_jsonb(old) ->> 'batch_id')::uuid;
+    else
+      v_batch_id := (to_jsonb(new) ->> 'batch_id')::uuid;
+    end if;
+    if v_batch_id is not null then
+      select batch.school_id into v_school_id
+      from public.guardian_import_batches as batch
+      where batch.id = v_batch_id;
+    end if;
   end if;
 
   if v_school_id is null then
@@ -275,6 +288,14 @@ begin
       v_table.table_name
     );
   end loop;
+
+  -- This child table inherits its tenant from guardian_import_batches.batch_id.
+  if to_regclass('public.guardian_import_rows') is not null then
+    execute 'drop trigger if exists school_subscription_write_guard on public.guardian_import_rows';
+    execute 'create trigger school_subscription_write_guard
+      before insert or update or delete on public.guardian_import_rows
+      for each row execute function public.enforce_school_subscription_write()';
+  end if;
 end;
 $install_subscription_write_guards$;
 
@@ -294,8 +315,7 @@ declare
 begin
   v_school_id := new.school_id;
 
-  if public.is_platform_owner()
-     or coalesce(auth.jwt() ->> 'role', '') = 'service_role' then
+  if public.is_platform_owner() then
     return new;
   end if;
 
