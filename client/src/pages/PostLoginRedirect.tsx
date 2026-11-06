@@ -93,6 +93,18 @@ export default function PostLoginRedirect() {
           return;
         }
 
+        const { data: pendingSchoolRequest } = await getSupabaseClient()
+          .from("school_registration_requests")
+          .select("id")
+          .eq("applicant_profile_id", session.user.id)
+          .eq("status", "pending")
+          .maybeSingle();
+        if (cancelled) return;
+        if (pendingSchoolRequest) {
+          setLocation("/school-registration");
+          return;
+        }
+
         const students = await listMyGuardianStudents();
         if (cancelled) return;
         if (students.length > 0) {
