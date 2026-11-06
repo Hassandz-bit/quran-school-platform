@@ -248,8 +248,8 @@ export default function PlatformOwnerDashboard() {
       });
       if (error) throw error;
       toast.success(Number(selected.trialDays) > 0
-        ? "تمت الموافقة وبدء التجربة وإنشاء حساب مدير المدرسة."
-        : "تمت الموافقة، والمدرسة بانتظار تسجيل أول دفعة قبل تفعيل الاستخدام.");
+        ? "تمت الموافقة وبدء التجربة وربط حساب المسؤول بالمدرسة."
+        : "تمت الموافقة وربط حساب المسؤول، وستبقى المدرسة بانتظار تسجيل أول دفعة قبل تفعيل الاستخدام.");
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذرت الموافقة على الطلب.");
