@@ -200,7 +200,7 @@ as $$
         subscription.status = 'legacy'
         or (
           subscription.status = 'trial'
-          and subscription.trial_ends_at >= now()
+          and greatest(subscription.trial_ends_at, coalesce(subscription.grace_ends_at, subscription.trial_ends_at)) >= now()
         )
         or (
           subscription.status in ('active', 'grace', 'expired')
@@ -603,7 +603,9 @@ begin
     case when v_trial_days > 0 then v_now else null end,
     null,
     case when v_trial_days > 0 then v_now + make_interval(days => v_trial_days) else null end,
-    null,
+    case when v_trial_days > 0
+      then v_now + make_interval(days => v_trial_days + v_grace_days)
+      else null end,
     v_plan.max_active_students, v_plan.max_active_branches,
     greatest(v_plan.annual_price - target_discount_amount, 0),
     target_discount_amount, v_plan.currency_code, auth.uid(), target_review_note
@@ -814,7 +816,7 @@ begin
     v_event_type := 'school_trial_expiring_' || new.reminder_days || 'd';
     v_body := 'تنتهي الفترة التجريبية لمدرستكم في '
       || to_char(new.due_at at time zone 'Africa/Algiers', 'DD/MM/YYYY')
-      || '. يرجى التواصل مع إدارة المنصة لاختيار الاشتراك السنوي.';
+      || '. يمكنكم استكمال التجديد خلال فترة السماح المحددة من إدارة المنصة.';
   else
     v_title := case when new.reminder_days = 30
       then 'ينتهي اشتراك المدرسة خلال 30 يومًا'
