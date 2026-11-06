@@ -44,7 +44,11 @@ export default function SchoolSubscriptionPage() {
     if (requestResult.error) setError(requestResult.error.message);
     else setRequest(requestResult.data as RenewalRequest | null);
     if (reminderResult.error) setError(reminderResult.error.message);
-    else setReminders((reminderResult.data ?? []) as Reminder[]);
+    else {
+      const currentEnd = subResult.data?.trial_ends_at ?? subResult.data?.ends_at;
+      const rows = (reminderResult.data ?? []) as Reminder[];
+      setReminders(rows.filter(item => currentEnd && Date.parse(item.due_at) === Date.parse(currentEnd)));
+    }
     if (subResult.data?.id) {
       const paymentResult = await client.from("subscription_payments").select("id,amount,currency_code,paid_at,payment_method,reference").eq("subscription_id", subResult.data.id).order("paid_at", { ascending: false });
       if (!paymentResult.error) setPayments((paymentResult.data ?? []) as Payment[]);
