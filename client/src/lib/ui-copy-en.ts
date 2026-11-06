@@ -1997,4 +1997,9 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "إيقاف الباقة": "Disable plan",
   "تفعيل الباقة": "Enable plan",
   "حفظ تعديلات الباقة": "Save plan changes",
+  "اختر تاريخًا مستقبليًا لتمديد التجربة.": "Choose a future date to extend the trial.",
+  "تم تمديد الفترة التجريبية.": "The trial period was extended.",
+  "تعذر تمديد الفترة التجريبية.": "Could not extend the trial period.",
+  "تاريخ نهاية التجربة": "Trial end date",
+  "تمديد التجربة": "Extend trial",
 };
