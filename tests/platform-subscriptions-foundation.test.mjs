@@ -67,10 +67,6 @@ test("internal trigger and status helpers are not callable by browser roles", ()
   }
 });
 
-test("all subscription tables enable RLS and audit records are read-only to clients", () => {")} from public, anon, authenticated`));
-  }
-});
-
 test("all subscription tables enable RLS and audit records are read-only to clients", () => {
   for (const table of [
     "subscription_plans",
