@@ -6,11 +6,11 @@ import { useLocale } from "@/contexts/LocaleContext";
 
 function slugifySchoolName(value: string): string {
   const map: Record<string, string> = {
-    ا: "a", أ: "a", إ: "i", آ: "a", ب: "b", ت: "t", ث: "th", ج: "j",
-    ح: "h", خ: "kh", د: "d", ذ: "dh", ر: "r", ز: "z", س: "s", ش: "sh",
-    ص: "s", ض: "d", ط: "t", ظ: "z", ع: "a", غ: "gh", ف: "f", ق: "q",
-    ك: "k", ل: "l", م: "m", ن: "n", ه: "h", و: "w", ي: "y", ى: "a",
-    ة: "h", ء: "", ئ: "y", ؤ: "w",
+    "\u0627": "a", "\u0623": "a", "\u0625": "i", "\u0622": "a", "\u0628": "b", "\u062A": "t", "\u062B": "th", "\u062C": "j",
+    "\u062D": "h", "\u062E": "kh", "\u062F": "d", "\u0630": "dh", "\u0631": "r", "\u0632": "z", "\u0633": "s", "\u0634": "sh",
+    "\u0635": "s", "\u0636": "d", "\u0637": "t", "\u0638": "z", "\u0639": "a", "\u063A": "gh", "\u0641": "f", "\u0642": "q",
+    "\u0643": "k", "\u0644": "l", "\u0645": "m", "\u0646": "n", "\u0647": "h", "\u0648": "w", "\u064A": "y", "\u0649": "a",
+    "\u0629": "h", "\u0621": "", "\u0626": "y", "\u0624": "w",
   };
   const normalized = value.normalize("NFKD").replace(/[\u064B-\u065F\u0670]/g, "");
   return [...normalized].map(char => map[char] ?? char).join("")
