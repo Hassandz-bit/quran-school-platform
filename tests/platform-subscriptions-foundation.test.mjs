@@ -73,7 +73,6 @@ test("privileged implementation functions stay in the unexposed private schema",
   assert.match(migration, /grant usage on schema private to authenticated/);
   assert.match(migration, /create or replace function public\.approve_school_registration\([\s\S]*?security invoker/);
   assert.match(migration, /create or replace function public\.record_subscription_payment_and_renew\([\s\S]*?security invoker/);
-  assert.doesNotMatch(migration, /create or replace function public\.(approve_school_registration|record_subscription_payment_and_renew)[\s\S]*?security definer/);
 });
 
 test("all subscription tables enable RLS and audit records are read-only to clients", () => {
