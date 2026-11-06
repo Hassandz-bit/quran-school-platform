@@ -61,10 +61,19 @@ test("internal trigger and status helpers are not callable by browser roles", ()
     "write_platform_audit_log()",
   ]) {
     assert.ok(
-      migration.includes(`revoke all on function public.${functionName} from public, anon, authenticated`),
+      migration.includes(`revoke all on function private.${functionName} from public, anon, authenticated`),
       `Expected ${functionName} to be revoked from browser roles`
     );
   }
+});
+
+test("privileged implementation functions stay in the unexposed private schema", () => {
+  assert.match(migration, /create schema if not exists private/);
+  assert.match(migration, /revoke all on schema private from public, anon, authenticated/);
+  assert.match(migration, /grant usage on schema private to authenticated/);
+  assert.match(migration, /create or replace function public\.approve_school_registration\([\s\S]*?security invoker/);
+  assert.match(migration, /create or replace function public\.record_subscription_payment_and_renew\([\s\S]*?security invoker/);
+  assert.doesNotMatch(migration, /create or replace function public\.(approve_school_registration|record_subscription_payment_and_renew)[\s\S]*?security definer/);
 });
 
 test("all subscription tables enable RLS and audit records are read-only to clients", () => {
