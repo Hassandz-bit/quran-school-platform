@@ -77,6 +77,18 @@ export default function SchoolSubscriptionPage() {
     setBusy(false);
   };
 
+  const effectiveStatus = (() => {
+    if (!subscription) return "";
+    const now = Date.now();
+    if (subscription.status === "trial" && subscription.trial_ends_at
+      && new Date(subscription.trial_ends_at).getTime() < now) return "expired";
+    if (["active", "grace", "expired"].includes(subscription.status)
+      && subscription.ends_at && new Date(subscription.ends_at).getTime() < now) {
+      if (subscription.grace_ends_at && new Date(subscription.grace_ends_at).getTime() >= now) return "grace";
+      return "expired";
+    }
+    return subscription.status;
+  })();
   const date = (value: string | null | undefined) => value ? new Date(value).toLocaleDateString(ar ? "ar-DZ-u-nu-latn" : "en-GB") : "—";
   const endDate = subscription?.trial_ends_at ?? subscription?.ends_at;
   const daysLeft = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000) : null;
@@ -114,7 +126,7 @@ export default function SchoolSubscriptionPage() {
       {subscription ? <>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div><p className="text-xs text-slate-500">{ar ? "الباقة" : "Plan"}</p><p className="mt-1 font-bold">{subscription.plan_name_snapshot}</p></div>
-          <div><p className="text-xs text-slate-500">{ar ? "الحالة" : "Status"}</p><p className="mt-1 font-bold">{labels[subscription.status] ?? subscription.status}</p></div>
+          <div><p className="text-xs text-slate-500">{ar ? "الحالة" : "Status"}</p><p className="mt-1 font-bold">{labels[effectiveStatus] ?? effectiveStatus}</p></div>
           <div><p className="text-xs text-slate-500">{ar ? "نهاية الاشتراك / التجربة" : "Subscription / trial end"}</p><p className="mt-1 font-bold">{date(endDate)}</p></div>
           <div><p className="text-xs text-slate-500">{ar ? "المتبقي" : "Remaining"}</p><p className="mt-1 font-bold">{daysLeft === null ? "—" : daysLeft < 0 ? (ar ? "انتهى" : "Expired") : `${daysLeft} ${ar ? "يومًا" : "days"}`}</p></div>
           <div><p className="text-xs text-slate-500">{ar ? "حد التلاميذ" : "Student limit"}</p><p className="mt-1 font-bold">{subscription.max_active_students ?? "∞"}</p></div>
@@ -123,7 +135,7 @@ export default function SchoolSubscriptionPage() {
           <div><p className="text-xs text-slate-500">{ar ? "السعر السنوي" : "Annual price"}</p><p className="mt-1 font-bold">{subscription.agreed_annual_price?.toLocaleString(ar ? "en-US" : "en-GB")} {subscription.currency_code}</p></div>
         </div>
       </> : <p className="mt-3 text-sm text-slate-500">{ar ? "لم يُسجل اشتراك لهذه المدرسة بعد. تواصل مع إدارة المنصة." : "No subscription has been recorded yet. Contact the platform owner."}</p>}
-      {subscription && ["expired", "suspended", "cancelled"].includes(subscription.status) && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{ar ? "البيانات محفوظة. قد تكون عمليات الإضافة والتعديل مقيدة حتى تجديد الاشتراك." : "Your data is preserved. Create and update operations may be restricted until renewal."}</p>}
+      {subscription && ["expired", "suspended", "cancelled"].includes(effectiveStatus) && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{ar ? "البيانات محفوظة. قد تكون عمليات الإضافة والتعديل مقيدة حتى تجديد الاشتراك." : "Your data is preserved. Create and update operations may be restricted until renewal."}</p>}
     </section>
 
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
