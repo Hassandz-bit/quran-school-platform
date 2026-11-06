@@ -21,6 +21,7 @@ type Subscription = {
 };
 type PlanDraft = { name_ar: string; max_active_students: string; max_active_branches: string; annual_price: string; currency_code: string };
 type SchoolName = { id: string; name: string };
+type RenewalRequest = { id: string; school_id: string; requested_by: string; message: string | null; created_at: string };
 type AuditRow = { id: number; actor_user_id: string | null; action: string; entity_type: string; created_at: string };
 
 const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#17663B] focus:ring-2 focus:ring-[#17663B]/10";
@@ -32,6 +33,7 @@ export default function PlatformOwnerDashboard() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [planEdits, setPlanEdits] = useState<Record<string, PlanDraft>>({});
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
+  const [renewalRequests, setRenewalRequests] = useState<RenewalRequest[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [schools, setSchools] = useState<Record<string, string>>({});
   const [audit, setAudit] = useState<AuditRow[]>([]);
@@ -47,19 +49,21 @@ export default function PlatformOwnerDashboard() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [planResult, requestResult, subscriptionResult, settingsResult, auditResult] = await Promise.all([
+      const [planResult, requestResult, subscriptionResult, settingsResult, auditResult, renewalRequestResult] = await Promise.all([
         client.from("subscription_plans").select("id,code,name_ar,max_active_students,max_active_branches,annual_price,currency_code,is_active").order("annual_price"),
         client.from("school_registration_requests").select("id,applicant_profile_id,school_name,slug,contact_phone,contact_email,address,applicant_note,created_at").eq("status", "pending").order("created_at", { ascending: false }),
         client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,grace_ends_at,max_active_students,max_active_branches,agreed_annual_price,currency_code").order("created_at", { ascending: false }),
         client.from("platform_settings").select("trial_default_days,grace_period_days,default_currency_code").eq("singleton", true).maybeSingle(),
         client.from("platform_audit_log").select("id,actor_user_id,action,entity_type,created_at").order("created_at", { ascending: false }).limit(20),
+        client.from("school_subscription_renewal_requests").select("id,school_id,requested_by,message,created_at").eq("status", "pending").order("created_at", { ascending: false }),
       ]);
-      for (const result of [planResult, requestResult, subscriptionResult, settingsResult, auditResult]) {
+      for (const result of [planResult, requestResult, subscriptionResult, settingsResult, auditResult, renewalRequestResult]) {
         if (result.error) throw result.error;
       }
       const nextPlans = (planResult.data ?? []) as Plan[];
       const nextRequests = (requestResult.data ?? []) as RegistrationRequest[];
       const nextSubscriptions = (subscriptionResult.data ?? []) as Subscription[];
+      const nextRenewalRequests = (renewalRequestResult.data ?? []) as RenewalRequest[];
       setPlans(nextPlans);
       setPlanEdits(current => {
         const next = { ...current };
@@ -75,6 +79,7 @@ export default function PlatformOwnerDashboard() {
         return next;
       });
       setRequests(nextRequests);
+      setRenewalRequests(nextRenewalRequests);
       setSubscriptions(nextSubscriptions);
       setTrialExtensions(current => {
         const next = { ...current };
@@ -86,7 +91,7 @@ export default function PlatformOwnerDashboard() {
         return next;
       });
       if (settingsResult.data) setSettings(settingsResult.data as typeof settings);
-      const schoolIds = [...new Set(nextSubscriptions.map(item => item.school_id))];
+      const schoolIds = [...new Set([...nextSubscriptions.map(item => item.school_id), ...nextRenewalRequests.map(item => item.school_id)])];
       if (schoolIds.length) {
         const schoolResult = await client.from("schools").select("id,name").in("id", schoolIds);
         if (schoolResult.error) throw schoolResult.error;
@@ -227,6 +232,24 @@ export default function PlatformOwnerDashboard() {
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تجديد الاشتراك.");
+    } finally { setBusy(""); }
+  };
+
+  const rejectRenewalRequest = async (request: RenewalRequest) => {
+    if (!user?.id) return;
+    setBusy(`renewal:${request.id}`);
+    try {
+      const { error } = await client.from("school_subscription_renewal_requests").update({
+        status: "rejected",
+        reviewed_by: user.id,
+        reviewed_at: new Date().toISOString(),
+        review_note: "يرجى التواصل مع إدارة المنصة لاستكمال التجديد.",
+      }).eq("id", request.id).eq("status", "pending");
+      if (error) throw error;
+      toast.success("تم تحديث طلب التجديد.");
+      await reload();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تحديث طلب التجديد.");
     } finally { setBusy(""); }
   };
 
@@ -382,6 +405,16 @@ export default function PlatformOwnerDashboard() {
               <p className="mt-2 text-xs text-slate-500">أيام التجربة: {selected.trialDays} · الخصم: {selected.discount} · التجربة تشمل جميع وظائف المنصة.</p>
             </article>;
           })}
+        </div>}
+      </section>
+
+      <section className={cardClass}>
+        <div className="mb-4 flex items-center gap-2"><RefreshCw className="text-[#17663B]" size={19}/><h2 className="font-extrabold text-[#173B2D]">طلبات تجديد الاشتراك</h2></div>
+        {renewalRequests.length === 0 ? <p className="text-sm text-slate-500">لا توجد طلبات تجديد معلقة.</p> : <div className="space-y-2">
+          {renewalRequests.map(request => <article key={request.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+            <div><strong className="text-sm">{schools[request.school_id] ?? request.school_id.slice(0,8)}</strong><p className="text-xs text-slate-500">{request.message || "طلب تجديد دون ملاحظات"} · {new Date(request.created_at).toLocaleDateString("ar-DZ-u-nu-latn")}</p></div>
+            <button className="rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-700" disabled={busy === `renewal:${request.id}`} onClick={() => void rejectRenewalRequest(request)}>رفض الطلب</button>
+          </article>)}
         </div>}
       </section>
 
