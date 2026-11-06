@@ -4,6 +4,11 @@
 
 begin;
 
+-- Keep privileged implementation functions outside the exposed Data API schema.
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+grant usage on schema private to authenticated;
+
 create table public.platform_owners (
   user_id uuid primary key references auth.users(id) on delete restrict,
   created_at timestamptz not null default now(),
@@ -19,9 +24,9 @@ create or replace function public.is_platform_owner()
 returns boolean
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
-as $$
+as $
   select exists (
     select 1 from public.platform_owners po
     where po.user_id = (select auth.uid())
@@ -179,7 +184,7 @@ where not exists (
   where subscription.school_id = school.id
 );
 
-create or replace function public.school_subscription_can_operate(target_school_id uuid)
+create or replace function private.school_subscription_can_operate(target_school_id uuid)
 returns boolean
 language sql
 stable
@@ -206,10 +211,10 @@ as $$
       )
   );
 $$;
-revoke all on function public.school_subscription_can_operate(uuid) from public, anon, authenticated;
+revoke all on function private.school_subscription_can_operate(uuid) from public, anon, authenticated;
 
 -- All tenant-owned writes are blocked after trial/grace expiry; reads remain available.
-create or replace function public.enforce_school_subscription_write()
+create or replace function private.enforce_school_subscription_write()
 returns trigger
 language plpgsql
 security definer
@@ -248,7 +253,7 @@ begin
     return new;
   end if;
 
-  if not public.school_subscription_can_operate(v_school_id) then
+  if not private.school_subscription_can_operate(v_school_id) then
     raise exception using
       errcode = 'P0001',
       message = 'SCHOOL_SUBSCRIPTION_READ_ONLY',
@@ -259,7 +264,7 @@ begin
   return new;
 end;
 $;
-revoke all on function public.enforce_school_subscription_write() from public, anon, authenticated;
+revoke all on function private.enforce_school_subscription_write() from public, anon, authenticated;
 
 -- Install the subscription write guard on every existing tenant-owned table.
 do $install_subscription_write_guards$
@@ -284,7 +289,7 @@ begin
     execute format(
       'create trigger school_subscription_write_guard
        before insert or update or delete on public.%I
-       for each row execute function public.enforce_school_subscription_write()',
+       for each row execute function private.enforce_school_subscription_write()',
       v_table.table_name
     );
   end loop;
@@ -300,7 +305,7 @@ end;
 $install_subscription_write_guards$;
 
 -- Serialize limit checks per school to prevent concurrent inserts exceeding a plan.
-create or replace function public.enforce_school_subscription_limits()
+create or replace function private.enforce_school_subscription_limits()
 returns trigger
 language plpgsql
 security definer
@@ -370,17 +375,17 @@ begin
   return new;
 end;
 $;
-revoke all on function public.enforce_school_subscription_limits() from public, anon, authenticated;
+revoke all on function private.enforce_school_subscription_limits() from public, anon, authenticated;
 
 create trigger students_subscription_limit_guard
   before insert or update of status on public.students
-  for each row execute function public.enforce_school_subscription_limits();
+  for each row execute function private.enforce_school_subscription_limits();
 create trigger branches_subscription_limit_guard
   before insert or update of status on public.branches
   for each row execute function public.enforce_school_subscription_limits();
 
 -- Append-only audit trail for owner-managed billing and onboarding records.
-create or replace function public.write_platform_audit_log()
+create or replace function private.write_platform_audit_log()
 returns trigger
 language plpgsql
 security definer
@@ -406,11 +411,11 @@ begin
   return new;
 end;
 $;
-revoke all on function public.write_platform_audit_log() from public, anon, authenticated;
+revoke all on function private.write_platform_audit_log() from public, anon, authenticated;
 
 create trigger subscription_plans_audit
   after insert or update or delete on public.subscription_plans
-  for each row execute function public.write_platform_audit_log();
+  for each row execute function private.write_platform_audit_log();
 create trigger school_registration_requests_audit
   after insert or update or delete on public.school_registration_requests
   for each row execute function public.write_platform_audit_log();
@@ -425,7 +430,7 @@ create trigger platform_settings_audit
   for each row execute function public.write_platform_audit_log();
 
 -- Secure school approval: the owner provisions the tenant, initial branch and school admin atomically.
-create or replace function public.approve_school_registration(
+create or replace function private.approve_school_registration(
   target_request_id uuid,
   target_plan_id uuid,
   target_trial_days integer default null,
@@ -533,11 +538,32 @@ begin
   return v_school_id;
 end;
 $$;
+revoke all on function private.approve_school_registration(uuid, uuid, integer, numeric, text)
+  from public, anon, authenticated;
+grant execute on function private.approve_school_registration(uuid, uuid, integer, numeric, text)
+  to authenticated;
+
+create or replace function public.approve_school_registration(
+  target_request_id uuid,
+  target_plan_id uuid,
+  target_trial_days integer default null,
+  target_discount_amount numeric default 0,
+  target_review_note text default null
+)
+returns uuid
+language sql
+security invoker
+set search_path = ''
+as $
+  select private.approve_school_registration(
+    target_request_id, target_plan_id, target_trial_days, target_discount_amount, target_review_note
+  );
+$;
 revoke all on function public.approve_school_registration(uuid, uuid, integer, numeric, text) from public, anon;
 grant execute on function public.approve_school_registration(uuid, uuid, integer, numeric, text) to authenticated;
 
 -- Manual payment registration and one-year renewal; no payment gateway is introduced.
-create or replace function public.record_subscription_payment_and_renew(
+create or replace function private.record_subscription_payment_and_renew(
   target_school_id uuid,
   target_amount numeric,
   target_payment_method text,
@@ -632,6 +658,32 @@ begin
   return v_payment_id;
 end;
 $$;
+revoke all on function private.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
+  from public, anon, authenticated;
+grant execute on function private.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
+  to authenticated;
+
+create or replace function public.record_subscription_payment_and_renew(
+  target_school_id uuid,
+  target_amount numeric,
+  target_payment_method text,
+  target_paid_at timestamptz default now(),
+  target_reference text default null,
+  target_receipt_path text default null,
+  target_note text default null,
+  target_plan_id uuid default null,
+  target_discount_amount numeric default 0
+)
+returns uuid
+language sql
+security invoker
+set search_path = ''
+as $
+  select private.record_subscription_payment_and_renew(
+    target_school_id, target_amount, target_payment_method, target_paid_at,
+    target_reference, target_receipt_path, target_note, target_plan_id, target_discount_amount
+  );
+$;
 revoke all on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   from public, anon;
 grant execute on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
