@@ -206,8 +206,7 @@ as $$
       )
   );
 $$;
-revoke all on function public.school_subscription_can_operate(uuid) from public, anon;
-grant execute on function public.school_subscription_can_operate(uuid) to authenticated;
+revoke all on function public.school_subscription_can_operate(uuid) from public, anon, authenticated;
 
 -- All tenant-owned writes are blocked after trial/grace expiry; reads remain available.
 create or replace function public.enforce_school_subscription_write()
@@ -259,7 +258,8 @@ begin
   if tg_op = 'DELETE' then return old; end if;
   return new;
 end;
-$$;
+$;
+revoke all on function public.enforce_school_subscription_write() from public, anon, authenticated;
 
 -- Install the subscription write guard on every existing tenant-owned table.
 do $install_subscription_write_guards$
@@ -369,7 +369,8 @@ begin
 
   return new;
 end;
-$$;
+$;
+revoke all on function public.enforce_school_subscription_limits() from public, anon, authenticated;
 
 create trigger students_subscription_limit_guard
   before insert or update of status on public.students
@@ -404,7 +405,8 @@ begin
   if tg_op = 'DELETE' then return old; end if;
   return new;
 end;
-$$;
+$;
+revoke all on function public.write_platform_audit_log() from public, anon, authenticated;
 
 create trigger subscription_plans_audit
   after insert or update or delete on public.subscription_plans
