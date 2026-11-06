@@ -107,6 +107,7 @@ test("school renewal requests are tenant-scoped, owner-reviewed, and audited", (
   assert.match(migration, /school_renewal_requests_create_admin[\s\S]*?public\.has_school_permission\(school_id, 'school\.update'\)/);
   assert.match(migration, /school_renewal_requests_owner_update[\s\S]*?public\.is_platform_owner\(\)/);
   assert.match(migration, /school_subscription_renewal_requests_audit/);
+  assert.match(migration, /tg_table_name = 'school_subscription_renewal_requests' and tg_op = 'INSERT'/);
   assert.match(migration, /RENEWAL_PAYMENT_AMOUNT_MISMATCH/);
 });
 
