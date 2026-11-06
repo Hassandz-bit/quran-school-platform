@@ -60,7 +60,14 @@ test("internal trigger and status helpers are not callable by browser roles", ()
     "enforce_school_subscription_limits()",
     "write_platform_audit_log()",
   ]) {
-    assert.match(migration, new RegExp(`revoke all on function public\\.${functionName.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\test("all subscription tables enable RLS and audit records are read-only to clients", () => {")} from public, anon, authenticated`));
+    assert.ok(
+      migration.includes(`revoke all on function public.${functionName} from public, anon, authenticated`),
+      `Expected ${functionName} to be revoked from browser roles`
+    );
+  }
+});
+
+test("all subscription tables enable RLS and audit records are read-only to clients", () => {")} from public, anon, authenticated`));
   }
 });
 
