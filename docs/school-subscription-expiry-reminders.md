@@ -5,6 +5,11 @@ Migration 082 creates an idempotent reminder generator and a private reminder ta
 After migration 082 has been reviewed and applied, enable the already-available `pg_cron` extension in Supabase Dashboard → Database → Extensions, then create the daily job:
 
 ```sql
+-- Remove an earlier job with the same name so this setup is repeatable.
+select cron.unschedule(jobid)
+from cron.job
+where jobname = 'quranos-school-subscription-reminders';
+
 select cron.schedule(
   'quranos-school-subscription-reminders',
   '0 7 * * *',
