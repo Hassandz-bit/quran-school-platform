@@ -586,11 +586,22 @@ begin
   insert into public.membership_roles (school_id, membership_id, role_id, branch_id)
   values (v_school_id, v_membership_id, v_role_id, null);
 
-  -- Notification audience resolution requires this explicit grant for the staff context.
+  -- Match the complete system school_admin permission template used by existing tenants.
+  -- A newly approved school must not receive a crippled administrator role.
   insert into public.role_permissions (school_id, role_id, permission_id)
   select v_school_id, v_role_id, permission.id
   from public.permissions permission
-  where permission.code = 'notifications.send'
+  where exists (
+    select 1
+    from public.roles template_role
+    join public.role_permissions template_grant
+      on template_grant.school_id = template_role.school_id
+     and template_grant.role_id = template_role.id
+    where template_role.code = 'school_admin'
+      and template_role.is_system = true
+      and template_role.status = 'active'
+      and template_grant.permission_id = permission.id
+  )
   on conflict (role_id, permission_id) do nothing;
 
   insert into public.school_subscriptions (
