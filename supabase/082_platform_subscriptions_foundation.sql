@@ -268,6 +268,11 @@ declare
   v_old_school_id uuid;
   v_new_school_id uuid;
 begin
+  -- Expired schools must still be able to request renewal; RLS limits this insert to school admins.
+  if tg_table_name = 'school_subscription_renewal_requests' and tg_op = 'INSERT' then
+    return new;
+  end if;
+
   if public.is_platform_owner() or session_user = 'postgres' then
     if tg_op = 'DELETE' then return old; end if;
     return new;
