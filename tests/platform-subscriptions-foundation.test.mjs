@@ -32,6 +32,9 @@ test("active student and branch caps are enforced with per-school transaction lo
   assert.match(migration, /:active-branches/);
   assert.match(migration, /SUBSCRIPTION_STUDENT_LIMIT_REACHED/);
   assert.match(migration, /SUBSCRIPTION_BRANCH_LIMIT_REACHED/);
+  assert.match(migration, /v_old_school_id is not distinct from v_school_id/);
+  assert.match(migration, /update of status, school_id on public\.students/);
+  assert.match(migration, /update of status, school_id on public\.branches/);
 });
 
 test("expired subscriptions become read-only without deleting tenant data", () => {
