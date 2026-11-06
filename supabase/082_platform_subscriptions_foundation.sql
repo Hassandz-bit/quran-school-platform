@@ -26,7 +26,7 @@ language sql
 stable
 security invoker
 set search_path = ''
-as $
+as $$
   select exists (
     select 1 from public.platform_owners po
     where po.user_id = (select auth.uid())
@@ -420,7 +420,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 revoke all on function private.enforce_school_subscription_limits() from public, anon, authenticated;
 
 create trigger students_subscription_limit_guard
@@ -456,7 +456,7 @@ begin
   if tg_op = 'DELETE' then return old; end if;
   return new;
 end;
-$;
+$$;
 revoke all on function private.write_platform_audit_log() from public, anon, authenticated;
 
 create trigger subscription_plans_audit
@@ -600,11 +600,11 @@ returns uuid
 language sql
 security invoker
 set search_path = ''
-as $
+as $$
   select private.approve_school_registration(
     target_request_id, target_plan_id, target_trial_days, target_discount_amount, target_review_note
   );
-$;
+$$;
 revoke all on function public.approve_school_registration(uuid, uuid, integer, numeric, text) from public, anon;
 grant execute on function public.approve_school_registration(uuid, uuid, integer, numeric, text) to authenticated;
 
@@ -724,12 +724,12 @@ returns uuid
 language sql
 security invoker
 set search_path = ''
-as $
+as $$
   select private.record_subscription_payment_and_renew(
     target_school_id, target_amount, target_payment_method, target_paid_at,
     target_reference, target_receipt_path, target_note, target_plan_id, target_discount_amount
   );
-$;
+$$;
 revoke all on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   from public, anon;
 grant execute on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
