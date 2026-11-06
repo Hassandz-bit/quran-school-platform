@@ -53,3 +53,8 @@ test("subscription financial records are visible only to the platform owner or s
   assert.match(migration, /subscription_payments_read_school_or_owner[\s\S]*?public\.has_school_permission\(school_id, 'school\.update'\)/);
   assert.match(migration, /school_subscription_reminders_read_school_or_owner[\s\S]*?public\.has_school_permission\(school_id, 'school\.update'\)/);
 });
+
+
+test("trial expiry displays the configured grace period before read-only expiry", () => {
+  assert.match(subscription, /subscription\.status === "trial"[\s\S]*?subscription\.grace_ends_at[\s\S]*?return "grace"/);
+});
