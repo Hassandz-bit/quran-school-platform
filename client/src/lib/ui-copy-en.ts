@@ -2044,4 +2044,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "ستظهر هنا تنبيهات 30 و7 أيام قبل تاريخ الانتهاء.": "30-day and 7-day reminders will appear here before the expiry date.",
   "انتهاء الفترة التجريبية": "Trial ending",
   "انتهاء الاشتراك السنوي": "Annual subscription ending",
+  "يومًا": "days",
 };
