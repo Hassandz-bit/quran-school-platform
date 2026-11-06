@@ -94,14 +94,15 @@ export default function PostLoginRedirect() {
             return;
           }
   
-          const { data: pendingSchoolRequest } = await getSupabaseClient()
+          const { data: schoolRequest } = await getSupabaseClient()
             .from("school_registration_requests")
-            .select("id")
+            .select("id,status")
             .eq("applicant_profile_id", session.user.id)
-            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+            .limit(1)
             .maybeSingle();
           if (cancelled) return;
-          if (pendingSchoolRequest) {
+          if (schoolRequest && ["pending", "rejected"].includes(schoolRequest.status)) {
             setLocation("/school-registration");
             return;
           }
