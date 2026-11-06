@@ -2055,8 +2055,8 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "بانتظار الدفع": "Awaiting payment",
   "تحقق من اسم الباقة وحدودها وسعرها وعملتها.": "Check the plan name, limits, price, and currency.",
   "أدخل مبلغ الدفع والخصم بصورة صحيحة.": "Enter a valid payment amount and discount."
-  "تمت الموافقة وبدء التجربة وإنشاء حساب مدير المدرسة.": "The application was approved, the trial started, and the school administrator account was created.",
-  "تمت الموافقة، والمدرسة بانتظار تسجيل أول دفعة قبل تفعيل الاستخدام.": "The application was approved; the school will remain read-only until its first payment is recorded.",
+  "تمت الموافقة وبدء التجربة وربط حساب المسؤول بالمدرسة.": "The application was approved, the trial started, and the applicant account was assigned as school administrator.",
+  "تمت الموافقة وربط حساب المسؤول، وستبقى المدرسة بانتظار تسجيل أول دفعة قبل تفعيل الاستخدام.": "The application was approved and the applicant account was assigned; the school remains read-only until its first payment is recorded.",
   "موافقة وبدء التجربة": "Approve and start trial",
   "موافقة بانتظار الدفع": "Approve, awaiting payment"
 };
