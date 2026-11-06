@@ -965,14 +965,14 @@ create policy platform_settings_owner_update on public.platform_settings
 
 create policy school_subscriptions_read_school_or_owner on public.school_subscriptions
   for select to authenticated
-  using (public.is_platform_owner() or public.is_active_school_member(school_id));
+  using (public.is_platform_owner() or public.has_school_permission(school_id, 'school.update'));
 create policy school_subscriptions_owner_update on public.school_subscriptions
   for update to authenticated using (public.is_platform_owner())
   with check (public.is_platform_owner());
 
 create policy subscription_payments_read_school_or_owner on public.subscription_payments
   for select to authenticated
-  using (public.is_platform_owner() or public.is_active_school_member(school_id));
+  using (public.is_platform_owner() or public.has_school_permission(school_id, 'school.update'));
 create policy subscription_payments_owner_insert on public.subscription_payments
   for insert to authenticated with check (
     public.is_platform_owner() and recorded_by = (select auth.uid())
@@ -1120,14 +1120,14 @@ create policy platform_settings_owner_update on public.platform_settings
 
 create policy school_subscriptions_read_school_or_owner on public.school_subscriptions
   for select to authenticated
-  using (public.is_platform_owner() or public.is_active_school_member(school_id));
+  using (public.is_platform_owner() or public.has_school_permission(school_id, 'school.update'));
 create policy school_subscriptions_owner_update on public.school_subscriptions
   for update to authenticated using (public.is_platform_owner())
   with check (public.is_platform_owner());
 
 create policy subscription_payments_read_school_or_owner on public.subscription_payments
   for select to authenticated
-  using (public.is_platform_owner() or public.is_active_school_member(school_id));
+  using (public.is_platform_owner() or public.has_school_permission(school_id, 'school.update'));
 create policy subscription_payments_owner_insert on public.subscription_payments
   for insert to authenticated with check (
     public.is_platform_owner() and recorded_by = (select auth.uid())
@@ -1139,7 +1139,7 @@ create policy platform_audit_log_owner_read on public.platform_audit_log
 create policy school_renewal_requests_read_school_or_owner
   on public.school_subscription_renewal_requests
   for select to authenticated
-  using (public.is_platform_owner() or public.is_active_school_member(school_id));
+  using (public.is_platform_owner() or public.has_school_permission(school_id, 'school.update'));
 create policy school_renewal_requests_create_admin
   on public.school_subscription_renewal_requests
   for insert to authenticated
@@ -1161,6 +1161,6 @@ create policy schools_select_platform_owner on public.schools
 create policy school_subscription_reminders_read_school_or_owner
   on public.school_subscription_reminders
   for select to authenticated
-  using (public.is_platform_owner() or public.is_active_school_member(school_id));
+  using (public.is_platform_owner() or public.has_school_permission(school_id, 'school.update'));
 
 commit;
