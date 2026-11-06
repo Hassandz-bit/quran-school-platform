@@ -750,6 +750,118 @@ revoke all on function public.record_subscription_payment_and_renew(uuid, numeri
 grant execute on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   to authenticated;
 
+-- Daily 30-day and 7-day subscription/trial reminders use Supabase's built-in pg_cron.
+create extension if not exists pg_cron;
+
+create table public.school_subscription_reminders (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid not null references public.schools(id) on delete restrict,
+  subscription_id uuid not null references public.school_subscriptions(id) on delete restrict,
+  reminder_type text not null check (reminder_type in ('trial', 'subscription')),
+  reminder_days smallint not null check (reminder_days in (7, 30)),
+  due_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  constraint school_subscription_reminder_once unique
+    (subscription_id, reminder_type, reminder_days, due_at)
+);
+
+create or replace function private.notify_school_subscription_reminder()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_title text;
+  v_body text;
+  v_event_type text;
+begin
+  if new.reminder_type = 'trial' then
+    v_title := case when new.reminder_days = 30
+      then 'تنتهي الفترة التجريبية خلال 30 يومًا'
+      else 'تنتهي الفترة التجريبية خلال 7 أيام' end;
+    v_event_type := 'school_trial_expiring_' || new.reminder_days || 'd';
+    v_body := 'تنتهي الفترة التجريبية لمدرستكم في '
+      || to_char(new.due_at at time zone 'Africa/Algiers', 'DD/MM/YYYY')
+      || '. يرجى التواصل مع إدارة المنصة لاختيار الاشتراك السنوي.';
+  else
+    v_title := case when new.reminder_days = 30
+      then 'ينتهي اشتراك المدرسة خلال 30 يومًا'
+      else 'ينتهي اشتراك المدرسة خلال 7 أيام' end;
+    v_event_type := 'school_subscription_expiring_' || new.reminder_days || 'd';
+    v_body := 'ينتهي اشتراك مدرستكم في '
+      || to_char(new.due_at at time zone 'Africa/Algiers', 'DD/MM/YYYY')
+      || '. يرجى طلب التجديد قبل انتهاء فترة السماح.';
+  end if;
+
+  insert into public.app_notifications (
+    school_id, recipient_profile_id, category, event_type, title, body,
+    target_path, source_type, source_id, recipient_audiences, sender_audiences
+  )
+  select distinct new.school_id, membership.profile_id, 'system', v_event_type,
+         v_title, v_body, '/subscription', 'school_subscription', new.subscription_id,
+         array['staff']::text[], array[]::text[]
+  from public.school_memberships membership
+  join public.membership_roles membership_role
+    on membership_role.school_id = membership.school_id
+   and membership_role.membership_id = membership.id
+   and membership_role.branch_id is null
+  join public.roles role
+    on role.school_id = membership_role.school_id
+   and role.id = membership_role.role_id
+   and role.code = 'school_admin'
+   and role.status = 'active'
+  where membership.school_id = new.school_id
+    and membership.status = 'active';
+
+  return new;
+end;
+$;
+revoke all on function private.notify_school_subscription_reminder() from public, anon, authenticated;
+
+create trigger school_subscription_reminder_notify
+  after insert on public.school_subscription_reminders
+  for each row execute function private.notify_school_subscription_reminder();
+
+create or replace function private.generate_school_subscription_reminders()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_inserted integer;
+begin
+  insert into public.school_subscription_reminders (
+    school_id, subscription_id, reminder_type, reminder_days, due_at
+  )
+  select subscription.school_id,
+         subscription.id,
+         case when subscription.status = 'trial' then 'trial' else 'subscription' end,
+         reminder.reminder_days,
+         case when subscription.status = 'trial' then subscription.trial_ends_at else subscription.ends_at end
+  from public.school_subscriptions subscription
+  cross join (values (30::smallint), (7::smallint)) as reminder(reminder_days)
+  where subscription.status in ('trial', 'active', 'grace')
+    and (case when subscription.status = 'trial' then subscription.trial_ends_at else subscription.ends_at end) is not null
+    and (
+      (case when subscription.status = 'trial' then subscription.trial_ends_at else subscription.ends_at end)
+      at time zone 'Africa/Algiers'
+    )::date = (now() at time zone 'Africa/Algiers')::date + reminder.reminder_days
+  on conflict on constraint school_subscription_reminder_once do nothing;
+
+  get diagnostics v_inserted = row_count;
+  return v_inserted;
+end;
+$;
+revoke all on function private.generate_school_subscription_reminders() from public, anon, authenticated;
+
+select cron.schedule(
+  'quranos-school-subscription-reminders',
+  '0 7 * * *',
+  'select private.generate_school_subscription_reminders();'
+);
+
 -- Public school self-registration creates the profile and pending request atomically.
 create table public.school_subscription_renewal_requests (
   id uuid primary key default gen_random_uuid(),
