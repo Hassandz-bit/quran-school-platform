@@ -29,7 +29,7 @@ test("zero-trial approvals remain read-only until the first manual payment", () 
 });
 
 test("paid subscriptions are annual and trial subscriptions have a separate end date", () => {
-  assert.match(migration, /v_now \+ interval '1 year'/);
+  assert.match(migration, /ends_at = v_start \+ interval '1 year'/);
   assert.match(migration, /trial_ends_at/);
   assert.match(migration, /v_trial_days < 0 or v_trial_days > 365/);
 });
