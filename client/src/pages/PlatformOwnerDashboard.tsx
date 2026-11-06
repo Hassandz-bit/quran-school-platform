@@ -435,7 +435,7 @@ export default function PlatformOwnerDashboard() {
         <div className="mb-4 flex items-center gap-2"><CheckCircle2 className="text-[#17663B]" size={19}/><h2 className="font-extrabold text-[#173B2D]">طلبات تسجيل المدارس</h2></div>
         {requests.length === 0 ? <p className="text-sm text-slate-500">لا توجد طلبات معلقة حاليًا.</p> : <div className="space-y-3">
           {requests.map(request => {
-            const selected = approval[request.id] ?? { planId: plans[0]?.id ?? "", trialDays: String(settings.trial_default_days), discount: "0" };
+            const selected = approval[request.id] ?? { planId: plans.find(plan => plan.is_active)?.id ?? "", trialDays: String(settings.trial_default_days), discount: "0" };
             return <article key={request.id} className="rounded-xl border border-slate-200 p-4">
               <div className="flex flex-wrap justify-between gap-3">
                 <div><h3 className="font-bold text-[#173B2D]">{request.school_name}</h3><p className="text-xs text-slate-500" dir="ltr">{request.slug}</p></div>
@@ -477,7 +477,7 @@ export default function PlatformOwnerDashboard() {
           <table className="w-full min-w-[850px] text-sm">
             <thead><tr className="border-b text-right text-slate-500"><th className="p-2">المدرسة</th><th className="p-2">الباقة</th><th className="p-2">الحالة</th><th className="p-2">النهاية</th><th className="p-2">حدود الباقة</th><th className="p-2">تسجيل التجديد</th></tr></thead>
             <tbody>{subscriptions.map(subscription => {
-              const defaultPlanId = subscription.plan_id ?? plans[0]?.id ?? "";
+              const defaultPlanId = plans.find(plan => plan.id === subscription.plan_id && plan.is_active)?.id ?? plans.find(plan => plan.is_active)?.id ?? "";
               const form = renewal[subscription.id] ?? { planId: defaultPlanId, amount: String(plans.find(plan => plan.id === defaultPlanId)?.annual_price ?? subscription.agreed_annual_price ?? 0), method: "ccp", reference: "" };
               return <tr key={subscription.id} className="border-b last:border-0">
                 <td className="p-2 font-semibold">{schools[subscription.school_id] ?? subscription.school_id.slice(0,8)}</td>
