@@ -15,19 +15,20 @@ export default function PlatformOwnerRoute({ children }: { children: ReactNode }
       return () => { cancelled = true; };
     }
 
-    void getSupabaseClient()
-      .from("platform_owners")
-      .select("user_id")
-      .eq("user_id", session.user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    void (async () => {
+      try {
+        const { data, error } = await getSupabaseClient()
+          .from("platform_owners")
+          .select("user_id")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
         if (cancelled) return;
         if (error) setState("error");
         else setState(data?.user_id === session.user.id ? "allowed" : "denied");
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setState("error");
-      });
+      }
+    })();
 
     return () => { cancelled = true; };
   }, [loading, session?.user?.id]);
