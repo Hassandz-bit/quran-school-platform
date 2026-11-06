@@ -222,7 +222,9 @@ set search_path = ''
 as $$
 declare
   v_school_id uuid;
+  v_row jsonb;
   v_batch_id uuid;
+  v_event_id uuid;
 begin
   if public.is_platform_owner() then
     if tg_op = 'DELETE' then return old; end if;
@@ -230,22 +232,36 @@ begin
   end if;
 
   if tg_op = 'DELETE' then
-    v_school_id := (to_jsonb(old) ->> 'school_id')::uuid;
+    v_row := to_jsonb(old);
   else
-    v_school_id := (to_jsonb(new) ->> 'school_id')::uuid;
+    v_row := to_jsonb(new);
   end if;
 
+  v_school_id := nullif(v_row ->> 'school_id', '')::uuid;
+
+  -- Resolve tenant ownership for root and child tables without a school_id column.
   if v_school_id is null then
-    if tg_op = 'DELETE' then
-      v_batch_id := (to_jsonb(old) ->> 'batch_id')::uuid;
-    else
-      v_batch_id := (to_jsonb(new) ->> 'batch_id')::uuid;
-    end if;
-    if v_batch_id is not null then
-      select batch.school_id into v_school_id
-      from public.guardian_import_batches as batch
-      where batch.id = v_batch_id;
-    end if;
+    case tg_table_name
+      when 'schools' then
+        v_school_id := nullif(v_row ->> 'id', '')::uuid;
+      when 'guardian_import_rows' then
+        v_batch_id := nullif(v_row ->> 'batch_id', '')::uuid;
+        select batch.school_id into v_school_id
+        from public.guardian_import_batches as batch
+        where batch.id = v_batch_id;
+      when 'student_import_rows' then
+        v_batch_id := nullif(v_row ->> 'batch_id', '')::uuid;
+        select batch.school_id into v_school_id
+        from public.student_import_batches as batch
+        where batch.id = v_batch_id;
+      when 'guardian_notification_deliveries' then
+        v_event_id := nullif(v_row ->> 'event_id', '')::uuid;
+        select event.school_id into v_school_id
+        from public.guardian_notification_events as event
+        where event.id = v_event_id;
+      else
+        v_school_id := null;
+    end case;
   end if;
 
   if v_school_id is null then
@@ -263,7 +279,7 @@ begin
   if tg_op = 'DELETE' then return old; end if;
   return new;
 end;
-$;
+$$;
 revoke all on function private.enforce_school_subscription_write() from public, anon, authenticated;
 
 -- Install the subscription write guard on every existing tenant-owned table.
@@ -294,11 +310,29 @@ begin
     );
   end loop;
 
-  -- This child table inherits its tenant from guardian_import_batches.batch_id.
+  -- These root/child tables inherit their tenant from their own id or a parent FK.
+  if to_regclass('public.schools') is not null then
+    execute 'drop trigger if exists school_subscription_write_guard on public.schools';
+    execute 'create trigger school_subscription_write_guard
+      before insert or update or delete on public.schools
+      for each row execute function private.enforce_school_subscription_write()';
+  end if;
   if to_regclass('public.guardian_import_rows') is not null then
     execute 'drop trigger if exists school_subscription_write_guard on public.guardian_import_rows';
     execute 'create trigger school_subscription_write_guard
       before insert or update or delete on public.guardian_import_rows
+      for each row execute function private.enforce_school_subscription_write()';
+  end if;
+  if to_regclass('public.student_import_rows') is not null then
+    execute 'drop trigger if exists school_subscription_write_guard on public.student_import_rows';
+    execute 'create trigger school_subscription_write_guard
+      before insert or update or delete on public.student_import_rows
+      for each row execute function private.enforce_school_subscription_write()';
+  end if;
+  if to_regclass('public.guardian_notification_deliveries') is not null then
+    execute 'drop trigger if exists school_subscription_write_guard on public.guardian_notification_deliveries';
+    execute 'create trigger school_subscription_write_guard
+      before insert or update or delete on public.guardian_notification_deliveries
       for each row execute function private.enforce_school_subscription_write()';
   end if;
 end;
