@@ -189,7 +189,12 @@ function Router() {
         </Route>
         <Route path="/login">
           <LoginRoute>
-            <Login />
+            <div className="relative">
+              <Login />
+              <a href="/school-registration" className="fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-sm font-bold text-[#0F5132] shadow-lg underline underline-offset-4">
+                تسجيل مدرسة جديدة
+              </a>
+            </div>
           </LoginRoute>
         </Route>
         <Route path="/forgot-password" component={ForgotPassword} />
