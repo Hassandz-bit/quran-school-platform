@@ -522,7 +522,9 @@ create or replace function public.record_subscription_payment_and_renew(
   target_paid_at timestamptz default now(),
   target_reference text default null,
   target_receipt_path text default null,
-  target_note text default null
+  target_note text default null,
+  target_plan_id uuid default null,
+  target_discount_amount numeric default 0
 )
 returns uuid
 language plpgsql
@@ -534,6 +536,8 @@ declare
   v_payment_id uuid;
   v_start timestamptz;
   v_grace_days integer := 7;
+  v_plan public.subscription_plans%rowtype;
+  v_discount numeric := coalesce(target_discount_amount, 0);
 begin
   if not public.is_platform_owner() then
     raise exception using errcode = '42501', message = 'PLATFORM_OWNER_REQUIRED';
@@ -558,6 +562,17 @@ begin
     raise exception using errcode = 'P0001', message = 'SUBSCRIPTION_NOT_RENEWABLE';
   end if;
 
+  select * into v_plan
+  from public.subscription_plans
+  where id = coalesce(target_plan_id, v_subscription.plan_id)
+    and is_active = true;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'ACTIVE_PLAN_REQUIRED_FOR_RENEWAL';
+  end if;
+  if v_discount < 0 or v_discount > v_plan.annual_price then
+    raise exception using errcode = '22023', message = 'INVALID_RENEWAL_DISCOUNT';
+  end if;
+
   select grace_period_days into v_grace_days
   from public.platform_settings where singleton = true;
 
@@ -568,7 +583,14 @@ begin
   end;
 
   update public.school_subscriptions
-  set status = 'active',
+  set plan_id = v_plan.id,
+      plan_name_snapshot = v_plan.name_ar,
+      max_active_students = v_plan.max_active_students,
+      max_active_branches = v_plan.max_active_branches,
+      agreed_annual_price = greatest(v_plan.annual_price - v_discount, 0),
+      discount_amount = v_discount,
+      currency_code = v_plan.currency_code,
+      status = 'active',
       starts_at = v_start,
       ends_at = v_start + interval '1 year',
       trial_ends_at = null,
@@ -580,7 +602,7 @@ begin
     school_id, subscription_id, amount, currency_code, paid_at,
     payment_method, reference, receipt_path, note, recorded_by
   ) values (
-    target_school_id, v_subscription.id, target_amount, v_subscription.currency_code,
+    target_school_id, v_subscription.id, target_amount, v_plan.currency_code,
     coalesce(target_paid_at, now()), target_payment_method,
     target_reference, target_receipt_path, target_note, auth.uid()
   ) returning id into v_payment_id;
@@ -588,9 +610,9 @@ begin
   return v_payment_id;
 end;
 $$;
-revoke all on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text)
+revoke all on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   from public, anon;
-grant execute on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text)
+grant execute on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   to authenticated;
 
 -- RLS and least-privilege Data API grants for all new public tables.
