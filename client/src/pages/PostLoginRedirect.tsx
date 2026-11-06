@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDefaultAuthenticatedRoute } from "@/lib/default-route";
 import { listMyGuardianStudents } from "@/lib/parent-portal";
+import { getSupabaseClient } from "@/lib/supabase";
 
 function LoadingState({ message }: { message: string }) {
   return (
@@ -66,18 +67,30 @@ export default function PostLoginRedirect() {
     }
 
     setParentCheck("checking");
-    void listMyGuardianStudents()
-      .then(students => {
+    void (async () => {
+      try {
+        const { data: ownerRecord, error: ownerError } = await getSupabaseClient()
+          .from("platform_owners")
+          .select("user_id")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (!ownerError && ownerRecord?.user_id === session.user.id) {
+          setLocation("/platform-owner");
+          return;
+        }
+
+        const students = await listMyGuardianStudents();
         if (cancelled) return;
         if (students.length > 0) {
           setLocation("/parent");
           return;
         }
         setParentCheck("none");
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setParentCheck("error");
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
