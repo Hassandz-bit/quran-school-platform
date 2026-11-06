@@ -113,10 +113,12 @@ export default function PlatformOwnerDashboard() {
       setApproval(current => {
         const next = { ...current };
         for (const request of nextRequests) {
-          if (!next[request.id]) next[request.id] = {
-            planId: firstActivePlan?.id ?? "",
-            trialDays: String(defaultTrialDays),
-            discount: "0",
+          const existing = next[request.id];
+          const selectedPlan = nextPlans.find(plan => plan.id === existing?.planId && plan.is_active) ?? firstActivePlan;
+          next[request.id] = {
+            planId: selectedPlan?.id ?? "",
+            trialDays: existing?.trialDays ?? String(defaultTrialDays),
+            discount: existing?.discount ?? "0",
           };
         }
         return next;
@@ -124,15 +126,18 @@ export default function PlatformOwnerDashboard() {
       setRenewal(current => {
         const next = { ...current };
         for (const subscription of nextSubscriptions) {
-          if (!next[subscription.id]) {
-            const selectedPlan = nextPlans.find(plan => plan.id === subscription.plan_id && plan.is_active) ?? firstActivePlan;
-            next[subscription.id] = {
-              planId: selectedPlan?.id ?? "",
-              amount: String(selectedPlan?.annual_price ?? 0),
-              method: "ccp",
-              reference: "",
-            };
-          }
+          const existing = next[subscription.id];
+          const selectedPlan = nextPlans.find(plan => plan.id === existing?.planId && plan.is_active)
+            ?? nextPlans.find(plan => plan.id === subscription.plan_id && plan.is_active)
+            ?? firstActivePlan;
+          next[subscription.id] = {
+            planId: selectedPlan?.id ?? "",
+            amount: existing && selectedPlan?.id === existing.planId
+              ? existing.amount
+              : String(selectedPlan?.annual_price ?? 0),
+            method: existing?.method ?? "ccp",
+            reference: existing?.reference ?? "",
+          };
         }
         return next;
       });
