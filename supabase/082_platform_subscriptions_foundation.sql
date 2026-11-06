@@ -299,7 +299,7 @@ begin
     execute 'drop trigger if exists school_subscription_write_guard on public.guardian_import_rows';
     execute 'create trigger school_subscription_write_guard
       before insert or update or delete on public.guardian_import_rows
-      for each row execute function public.enforce_school_subscription_write()';
+      for each row execute function private.enforce_school_subscription_write()';
   end if;
 end;
 $install_subscription_write_guards$;
@@ -382,7 +382,7 @@ create trigger students_subscription_limit_guard
   for each row execute function private.enforce_school_subscription_limits();
 create trigger branches_subscription_limit_guard
   before insert or update of status on public.branches
-  for each row execute function public.enforce_school_subscription_limits();
+  for each row execute function private.enforce_school_subscription_limits();
 
 -- Append-only audit trail for owner-managed billing and onboarding records.
 create or replace function private.write_platform_audit_log()
@@ -418,16 +418,16 @@ create trigger subscription_plans_audit
   for each row execute function private.write_platform_audit_log();
 create trigger school_registration_requests_audit
   after insert or update or delete on public.school_registration_requests
-  for each row execute function public.write_platform_audit_log();
+  for each row execute function private.write_platform_audit_log();
 create trigger school_subscriptions_audit
   after insert or update or delete on public.school_subscriptions
-  for each row execute function public.write_platform_audit_log();
+  for each row execute function private.write_platform_audit_log();
 create trigger subscription_payments_audit
   after insert on public.subscription_payments
-  for each row execute function public.write_platform_audit_log();
+  for each row execute function private.write_platform_audit_log();
 create trigger platform_settings_audit
   after update on public.platform_settings
-  for each row execute function public.write_platform_audit_log();
+  for each row execute function private.write_platform_audit_log();
 
 -- Secure school approval: the owner provisions the tenant, initial branch and school admin atomically.
 create or replace function private.approve_school_registration(
