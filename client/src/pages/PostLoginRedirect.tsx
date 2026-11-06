@@ -116,6 +116,10 @@ export default function PostLoginRedirect() {
           setLocation("/parent");
           return;
         }
+        if (!school && !authorizationError) {
+          setLocation("/school-registration");
+          return;
+        }
         setParentCheck("none");
       } catch {
         if (!cancelled) setParentCheck("error");
