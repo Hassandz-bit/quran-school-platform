@@ -32,7 +32,8 @@ test("approval and renewal handlers use the same visible defaults as their forms
   assert.match(dashboard, /const selected = approval\[request\.id\] \?\?/);
   assert.match(dashboard, /const form = renewal\[subscription\.id\] \?\?/);
   assert.match(dashboard, /plans\.find\(plan => plan\.is_active\)\?\.id/);
-  assert.match(dashboard, /plans\.find\(plan => plan\.id === defaultPlanId\)\?\.annual_price \?\? subscription\.agreed_annual_price/);
+  assert.match(dashboard, /subscription\.agreed_annual_price \?\? selectedPlan\?\.annual_price \?\? 0/);
+  assert.match(dashboard, /subscription\.agreed_annual_price \?\? defaultPlan\?\.annual_price \?\? 0/);
   assert.match(dashboard, /target_discount_amount: Number\(form\.discount\)/);
   assert.match(dashboard, /pending_payment/);
 });
