@@ -129,6 +129,32 @@ export async function fetchSchoolBranches(
   return (data ?? []) as ClassBranch[];
 }
 
+export async function addSchoolBranch(
+  schoolId: string,
+  values: { name: string; code: string },
+): Promise<ClassBranch> {
+  const name = values.name.trim();
+  const code = values.code.trim().toUpperCase();
+  if (name.length < 2 || name.length > 150) throw new Error("branch_name_invalid");
+  if (!/^[A-Z0-9_-]{1,40}$/.test(code)) throw new Error("branch_code_invalid");
+
+  const client = getSupabaseClient();
+  const { data: allowed, error: permissionError } = await client.rpc("has_school_permission", {
+    target_school_id: schoolId,
+    target_permission_code: "branches.manage",
+  });
+  if (permissionError) throw permissionError;
+  if (allowed !== true) throw new Error("branch_permission_required");
+
+  const { data, error } = await client
+    .from("branches")
+    .insert({ school_id: schoolId, name, code, status: "active", is_main: false })
+    .select("id, name, is_main")
+    .single();
+  if (error) throw error;
+  return data as ClassBranch;
+}
+
 export async function addClass(
   schoolId: string,
   values: ClassFormValues

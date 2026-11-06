@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/contexts/LocaleContext";
 import { assignClassToDuwam, createBranchDuwam, fetchBranchDuwams, updateBranchDuwam, DUWAM_STUDY_DAYS, type Duwam, type DuwamStudyDay } from "@/lib/duwams";
-import type { ClassBranch, ClassRow } from "@/lib/classes";
+import { addSchoolBranch, type ClassBranch, type ClassRow } from "@/lib/classes";
 
 const DAY_LABELS: Record<DuwamStudyDay, string> = {
   sunday: "الأحد", monday: "الإثنين", tuesday: "الثلاثاء", wednesday: "الأربعاء",
@@ -13,7 +13,7 @@ const DAY_LABELS: Record<DuwamStudyDay, string> = {
 };
 const emptyForm = { name: "", studyDays: ["sunday", "tuesday", "thursday"] as DuwamStudyDay[], startTime: "16:00", endTime: "18:00" };
 
-export default function ManagedDuwams({ schoolId, branches, classes }: { schoolId: string; branches: ClassBranch[]; classes: ClassRow[] }) {
+export default function ManagedDuwams({ schoolId, branches, classes, onBranchesChanged }: { schoolId: string; branches: ClassBranch[]; classes: ClassRow[]; onBranchesChanged?: () => void }) {
   const { locale } = useLocale();
   const [branchId, setBranchId] = useState("");
   const [items, setItems] = useState<Duwam[]>([]);
@@ -21,6 +21,10 @@ export default function ManagedDuwams({ schoolId, branches, classes }: { schoolI
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  const [canManageBranches, setCanManageBranches] = useState(false);
+  const [branchName, setBranchName] = useState("");
+  const [branchCode, setBranchCode] = useState("");
+  const [branchBusy, setBranchBusy] = useState(false);
   const ar = locale === "ar";
   const branchClasses = useMemo(() => classes.filter(item => item.branch_id === branchId), [classes, branchId]);
 
@@ -42,6 +46,38 @@ export default function ManagedDuwams({ schoolId, branches, classes }: { schoolI
   }, [schoolId, branchId, ar]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const { getSupabaseClient } = await import("@/lib/supabase");
+        const { data, error } = await getSupabaseClient().rpc("has_school_permission", {
+          target_school_id: schoolId, target_permission_code: "branches.manage",
+        });
+        if (error) throw error;
+        if (active) setCanManageBranches(data === true);
+      } catch { if (active) setCanManageBranches(false); }
+    })();
+    return () => { active = false; };
+  }, [schoolId]);
+
+  const saveBranch = async () => {
+    setBranchBusy(true);
+    try {
+      const created = await addSchoolBranch(schoolId, { name: branchName, code: branchCode });
+      setBranchName(""); setBranchCode(""); setBranchId(created.id);
+      toast.success(ar ? "تمت إضافة الفرع بنجاح." : "Branch added successfully.");
+      onBranchesChanged?.();
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      const message = code === "branch_permission_required" ? (ar ? "ليست لديك صلاحية إضافة الفروع." : "You cannot add branches.")
+        : code === "branch_name_invalid" ? (ar ? "اسم الفرع يجب أن يتكون من حرفين إلى 150 حرفًا." : "Branch name must be 2–150 characters.")
+        : code === "branch_code_invalid" ? (ar ? "رمز الفرع يقبل الحروف الإنجليزية والأرقام والشرطة فقط." : "Branch code may contain uppercase letters, numbers, _ and - only.")
+        : (ar ? "تعذرت إضافة الفرع. قد يكون رمز الفرع مستخدمًا من قبل." : "Could not add branch. The code may already be in use.");
+      toast.error(message);
+    } finally { setBranchBusy(false); }
+  };
 
   const reset = () => { setForm(emptyForm); setEditing(null); };
   const save = async () => {
@@ -84,7 +120,15 @@ export default function ManagedDuwams({ schoolId, branches, classes }: { schoolI
   };
 
   return <section className="space-y-4">
-    <div><h2 className="text-lg font-bold text-[#173B2D]">{ar ? "إدارة الدوامات" : "Manage duwams"}</h2><p className="text-sm text-gray-500">{ar ? "أنشئ دوامًا لكل فرع واربط به عدة حلقات. لا تتغير بيانات الجدول القديم إلا عند الربط." : "Create schedules per branch and assign multiple classes."}</p></div>
+    <div><h2 className="text-lg font-bold text-[#173B2D]">{ar ? "إدارة الفروع والدوامات والحلقات" : "Manage branches, duwams and classes"}</h2><p className="text-sm text-gray-500">{ar ? "أضف الفروع، ثم أنشئ الدوامات داخل كل فرع واربط بها الحلقات التابعة له." : "Add branches, create duwams within each branch, and assign their classes."}</p></div>
+    {canManageBranches && <Card className="space-y-3 border border-[#DCE8E0] p-4">
+      <div><h3 className="font-semibold text-[#173B2D]">{ar ? "إضافة فرع" : "Add branch"}</h3><p className="text-xs text-gray-500">{ar ? "أدخل اسمًا ورمزًا فريدًا للفرع داخل المدرسة." : "Enter a name and a unique code for this school branch."}</p></div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">{ar ? "اسم الفرع" : "Branch name"}<Input value={branchName} onChange={event => setBranchName(event.target.value)} maxLength={150} placeholder={ar ? "مثال: فرع حي النصر" : "e.g. Al Nasr branch"} /></label>
+        <label className="text-sm">{ar ? "رمز الفرع" : "Branch code"}<Input value={branchCode} onChange={event => setBranchCode(event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))} maxLength={40} dir="ltr" placeholder="BRANCH-02" /></label>
+      </div>
+      <div><Button type="button" disabled={branchBusy || branchName.trim().length < 2 || !/^[A-Z0-9_-]{1,40}$/.test(branchCode)} onClick={() => void saveBranch()}>{branchBusy ? (ar ? "جارٍ الإضافة..." : "Adding...") : (ar ? "إضافة الفرع" : "Add branch")}</Button></div>
+    </Card>}
     <Card className="space-y-3 border border-gray-100 p-4">
       <label className="block text-sm font-medium">{ar ? "الفرع" : "Branch"}
         <select className="mt-1 h-10 w-full rounded-md border border-gray-200 bg-white px-3" value={branchId} onChange={event => setBranchId(event.target.value)}>
