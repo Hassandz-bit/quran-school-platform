@@ -1024,6 +1024,7 @@ alter table public.school_subscriptions enable row level security;
 alter table public.subscription_payments enable row level security;
 alter table public.platform_audit_log enable row level security;
 alter table public.school_subscription_renewal_requests enable row level security;
+alter table public.school_subscription_reminders enable row level security;
 
 revoke all on public.subscription_plans, public.school_registration_requests,
   public.platform_settings, public.school_subscriptions, public.subscription_payments,
@@ -1038,6 +1039,7 @@ grant select, update on public.school_subscriptions to authenticated;
 grant select, insert on public.subscription_payments to authenticated;
 grant select on public.platform_audit_log to authenticated;
 grant select, insert, update on public.school_subscription_renewal_requests to authenticated;
+grant select on public.school_subscription_reminders to authenticated;
 
 create policy subscription_plans_read_active on public.subscription_plans
   for select to authenticated using (is_active or public.is_platform_owner());
