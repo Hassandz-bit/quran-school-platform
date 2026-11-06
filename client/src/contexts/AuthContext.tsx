@@ -67,8 +67,10 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 function hasPasswordRecoveryIntent(): boolean {
   if (typeof window === "undefined") return false;
 
-  const queryType = new URLSearchParams(window.location.search).get("type");
-  if (queryType === "recovery") return true;
+  const searchParams = new URLSearchParams(window.location.search);
+  if (searchParams.get("type") === "recovery" || searchParams.has("code")) {
+    return true;
+  }
 
   const hash = window.location.hash.startsWith("#")
     ? window.location.hash.slice(1)
