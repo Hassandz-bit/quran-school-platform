@@ -93,10 +93,10 @@ export default function SchoolSubscriptionPage() {
   const endDate = subscription?.trial_ends_at ?? subscription?.ends_at;
   const daysLeft = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000) : null;
   const labels: Record<string, string> = ar ? {
-    legacy: "اشتراك سابق", trial: "فترة تجريبية", active: "نشط", grace: "فترة سماح",
+    legacy: "اشتراك سابق", trial: "فترة تجريبية", pending_payment: "بانتظار الدفع", active: "نشط", grace: "فترة سماح",
     expired: "منتهٍ", suspended: "موقوف", cancelled: "ملغى",
   } : {
-    legacy: "Legacy", trial: "Trial", active: "Active", grace: "Grace period",
+    legacy: "Legacy", trial: "Trial", pending_payment: "Awaiting payment", active: "Active", grace: "Grace period",
     expired: "Expired", suspended: "Suspended", cancelled: "Cancelled",
   };
   const paymentMethod = (method: string) => {
@@ -135,7 +135,7 @@ export default function SchoolSubscriptionPage() {
           <div><p className="text-xs text-slate-500">{ar ? "السعر السنوي" : "Annual price"}</p><p className="mt-1 font-bold">{subscription.agreed_annual_price?.toLocaleString(ar ? "en-US" : "en-GB")} {subscription.currency_code}</p></div>
         </div>
       </> : <p className="mt-3 text-sm text-slate-500">{ar ? "لم يُسجل اشتراك لهذه المدرسة بعد. تواصل مع إدارة المنصة." : "No subscription has been recorded yet. Contact the platform owner."}</p>}
-      {subscription && ["expired", "suspended", "cancelled"].includes(effectiveStatus) && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{ar ? "البيانات محفوظة. قد تكون عمليات الإضافة والتعديل مقيدة حتى تجديد الاشتراك." : "Your data is preserved. Create and update operations may be restricted until renewal."}</p>}
+      {subscription && ["pending_payment", "expired", "suspended", "cancelled"].includes(effectiveStatus) && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{ar ? "البيانات محفوظة. قد تكون عمليات الإضافة والتعديل مقيدة حتى تجديد الاشتراك." : "Your data is preserved. Create and update operations may be restricted until renewal."}</p>}
     </section>
 
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
