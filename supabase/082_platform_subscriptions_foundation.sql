@@ -735,6 +735,206 @@ revoke all on function public.record_subscription_payment_and_renew(uuid, numeri
 grant execute on function public.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   to authenticated;
 
+-- Public school self-registration creates the profile and pending request atomically.
+create table public.school_subscription_renewal_requests (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid not null references public.schools(id) on delete restrict,
+  requested_by uuid not null references public.profiles(id) on delete restrict,
+  message text,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected', 'withdrawn')),
+  reviewed_by uuid references auth.users(id) on delete set null,
+  reviewed_at timestamptz,
+  review_note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint school_renewal_review_consistency check (
+    (status = 'pending' and reviewed_by is null and reviewed_at is null)
+    or (status <> 'pending' and reviewed_by is not null and reviewed_at is not null)
+  )
+);
+create unique index school_renewal_one_pending_per_school_uidx
+  on public.school_subscription_renewal_requests (school_id) where status = 'pending';
+create trigger school_subscription_renewal_requests_set_updated_at
+  before update on public.school_subscription_renewal_requests
+  for each row execute function public.set_updated_at();
+
+create or replace function private.submit_school_registration_request(
+  target_full_name text,
+  target_school_name text,
+  target_slug text,
+  target_contact_phone text default null,
+  target_address text default null,
+  target_applicant_note text default null,
+  target_locale text default 'ar'
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_user_id uuid := (select auth.uid());
+  v_email text;
+  v_request_id uuid;
+begin
+  if v_user_id is null then
+    raise exception using errcode = '42501', message = 'AUTHENTICATION_REQUIRED';
+  end if;
+  if target_full_name is null or char_length(btrim(target_full_name)) not between 2 and 150
+     or target_school_name is null or char_length(btrim(target_school_name)) not between 2 and 150
+     or target_slug is null or target_slug <> lower(target_slug)
+     or target_slug !~ '^[a-z0-9]+(-[a-z0-9]+)*
+alter table public.subscription_plans enable row level security;
+alter table public.school_registration_requests enable row level security;
+alter table public.platform_settings enable row level security;
+alter table public.school_subscriptions enable row level security;
+alter table public.subscription_payments enable row level security;
+alter table public.platform_audit_log enable row level security;\nalter table public.school_subscription_renewal_requests enable row level security;
+
+revoke all on public.subscription_plans, public.school_registration_requests,
+  public.platform_settings, public.school_subscriptions, public.subscription_payments,
+  public.platform_audit_log, public.school_subscription_renewal_requests from public, anon, authenticated;
+
+grant select, insert, update on public.subscription_plans to authenticated;
+grant select, insert, update on public.school_registration_requests to authenticated;
+grant select, update on public.platform_settings to authenticated;
+grant select, update on public.school_subscriptions to authenticated;
+grant select, insert on public.subscription_payments to authenticated;
+grant select on public.platform_audit_log to authenticated;\ngrant select, insert, update on public.school_subscription_renewal_requests to authenticated;
+
+create policy subscription_plans_read_active on public.subscription_plans
+  for select to authenticated using (is_active or public.is_platform_owner());
+create policy subscription_plans_owner_insert on public.subscription_plans
+  for insert to authenticated with check (public.is_platform_owner());
+create policy subscription_plans_owner_update on public.subscription_plans
+  for update to authenticated using (public.is_platform_owner())
+  with check (public.is_platform_owner());
+
+create policy registration_requests_read_own_or_owner on public.school_registration_requests
+  for select to authenticated
+  using (applicant_profile_id = (select auth.uid()) or public.is_platform_owner());
+create policy registration_requests_create_own on public.school_registration_requests
+  for insert to authenticated
+  with check (applicant_profile_id = (select auth.uid()) and status = 'pending'
+    and reviewed_by is null and reviewed_at is null and approved_school_id is null);
+create policy registration_requests_owner_update on public.school_registration_requests
+  for update to authenticated using (public.is_platform_owner())
+  with check (public.is_platform_owner());
+
+create policy platform_settings_owner_read on public.platform_settings
+  for select to authenticated using (public.is_platform_owner());
+create policy platform_settings_owner_update on public.platform_settings
+  for update to authenticated using (public.is_platform_owner())
+  with check (public.is_platform_owner());
+
+create policy school_subscriptions_read_school_or_owner on public.school_subscriptions
+  for select to authenticated
+  using (public.is_platform_owner() or public.is_active_school_member(school_id));
+create policy school_subscriptions_owner_update on public.school_subscriptions
+  for update to authenticated using (public.is_platform_owner())
+  with check (public.is_platform_owner());
+
+create policy subscription_payments_read_school_or_owner on public.subscription_payments
+  for select to authenticated
+  using (public.is_platform_owner() or public.is_active_school_member(school_id));
+create policy subscription_payments_owner_insert on public.subscription_payments
+  for insert to authenticated with check (
+    public.is_platform_owner() and recorded_by = (select auth.uid())
+  );
+
+create policy platform_audit_log_owner_read on public.platform_audit_log
+  for select to authenticated using (public.is_platform_owner());
+
+commit;
+
+     or char_length(target_slug) not between 3 and 80
+     or coalesce(target_locale, 'ar') not in ('ar', 'en') then
+    raise exception using errcode = '22023', message = 'INVALID_REGISTRATION_DETAILS';
+  end if;
+
+  select auth_user.email into v_email
+  from auth.users as auth_user
+  where auth_user.id = v_user_id and auth_user.email_confirmed_at is not null;
+  if v_email is null then
+    raise exception using errcode = '42501', message = 'CONFIRMED_EMAIL_REQUIRED';
+  end if;
+
+  if exists (
+    select 1 from public.school_memberships membership
+    where membership.profile_id = v_user_id and membership.status = 'active'
+  ) then
+    raise exception using errcode = '23505', message = 'ACTIVE_SCHOOL_MEMBERSHIP_EXISTS';
+  end if;
+
+  select request.id into v_request_id
+  from public.school_registration_requests as request
+  where request.applicant_profile_id = v_user_id and request.status = 'pending'
+  order by request.created_at desc limit 1;
+  if v_request_id is not null then
+    return v_request_id;
+  end if;
+
+  if exists (select 1 from public.schools where slug = target_slug) then
+    raise exception using errcode = '23505', message = 'SCHOOL_SLUG_ALREADY_EXISTS';
+  end if;
+
+  insert into public.profiles (id, full_name, phone, locale, status)
+  values (v_user_id, btrim(target_full_name), nullif(btrim(target_contact_phone), ''),
+          coalesce(target_locale, 'ar'), 'active')
+  on conflict (id) do update
+    set full_name = excluded.full_name,
+        phone = coalesce(excluded.phone, public.profiles.phone)
+  where public.profiles.status = 'active';
+
+  if not exists (
+    select 1 from public.profiles profile
+    where profile.id = v_user_id and profile.status = 'active'
+  ) then
+    raise exception using errcode = '42501', message = 'PROFILE_DISABLED';
+  end if;
+
+  insert into public.school_registration_requests (
+    applicant_profile_id, school_name, slug, contact_phone,
+    contact_email, address, applicant_note
+  ) values (
+    v_user_id, btrim(target_school_name), target_slug,
+    nullif(btrim(target_contact_phone), ''), v_email,
+    nullif(btrim(target_address), ''), nullif(btrim(target_applicant_note), '')
+  ) returning id into v_request_id;
+
+  return v_request_id;
+end;
+$;
+revoke all on function private.submit_school_registration_request(text, text, text, text, text, text, text)
+  from public, anon, authenticated;
+grant execute on function private.submit_school_registration_request(text, text, text, text, text, text, text)
+  to authenticated;
+
+create or replace function public.submit_school_registration_request(
+  target_full_name text,
+  target_school_name text,
+  target_slug text,
+  target_contact_phone text default null,
+  target_address text default null,
+  target_applicant_note text default null,
+  target_locale text default 'ar'
+)
+returns uuid
+language sql
+security invoker
+set search_path = ''
+as $
+  select private.submit_school_registration_request(
+    target_full_name, target_school_name, target_slug,
+    target_contact_phone, target_address, target_applicant_note, target_locale
+  );
+$;
+revoke all on function public.submit_school_registration_request(text, text, text, text, text, text, text)
+  from public, anon;
+grant execute on function public.submit_school_registration_request(text, text, text, text, text, text, text)
+  to authenticated;
+
 -- RLS and least-privilege Data API grants for all new public tables.
 alter table public.subscription_plans enable row level security;
 alter table public.school_registration_requests enable row level security;
