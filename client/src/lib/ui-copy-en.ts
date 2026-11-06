@@ -2040,4 +2040,8 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "طلب تجديد دون ملاحظات": "Renewal request without a note",
   "طلبات تجديد الاشتراك": "Subscription renewal requests",
   "لا توجد طلبات تجديد معلقة.": "There are no pending renewal requests.",
+  "تنبيهات انتهاء الاشتراك": "Subscription expiry reminders",
+  "ستظهر هنا تنبيهات 30 و7 أيام قبل تاريخ الانتهاء.": "30-day and 7-day reminders will appear here before the expiry date.",
+  "انتهاء الفترة التجريبية": "Trial ending",
+  "انتهاء الاشتراك السنوي": "Annual subscription ending",
 };
