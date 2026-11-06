@@ -173,3 +173,8 @@ test("all subscription tables enable RLS and audit records are read-only to clie
   assert.match(migration, /grant select on public\.platform_audit_log to authenticated/);
   assert.doesNotMatch(migration, /grant[^;]*insert[^;]*platform_audit_log/i);
 });
+
+test("trial subscriptions retain access through the configured grace period", () => {
+  assert.match(migration, /subscription\.status = 'trial'[\s\S]*?greatest\(subscription\.trial_ends_at, coalesce\(subscription\.grace_ends_at, subscription\.trial_ends_at\)\) >= now\(\)/);
+  assert.match(migration, /then v_now \+ make_interval\(days => v_trial_days \+ v_grace_days\)/);
+});
