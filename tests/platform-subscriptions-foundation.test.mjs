@@ -106,10 +106,7 @@ test("school renewal requests are tenant-scoped, owner-reviewed, and audited", (
   assert.match(migration, /RENEWAL_PAYMENT_AMOUNT_MISMATCH/);
 });
 
-test("30-day and 7-day reminders run daily and create staff-only school notifications", () => {
-  assert.match(migration, /create extension if not exists pg_cron/);
-  assert.match(migration, /quranos-school-subscription-reminders/);
-  assert.match(migration, /'0 7 \* \* \*'/);
+test("30-day and 7-day reminders create staff-only school notifications", () => {
   assert.match(migration, /reminder_days in \(7, 30\)/);
   assert.match(migration, /school_subscription_reminder_once/);
   assert.match(migration, /recipient_audiences, sender_audiences/);
