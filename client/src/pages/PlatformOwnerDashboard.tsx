@@ -17,7 +17,7 @@ type Subscription = {
   id: string; school_id: string; plan_id: string | null; plan_name_snapshot: string; status: string;
   starts_at: string | null; ends_at: string | null; trial_ends_at: string | null; grace_ends_at: string | null;
   max_active_students: number | null; max_active_branches: number | null;
-  agreed_annual_price: number | null; currency_code: string;
+  agreed_annual_price: number | null; discount_amount: number; currency_code: string;
 };
 type PlanDraft = { name_ar: string; max_active_students: string; max_active_branches: string; annual_price: string; currency_code: string };
 type SchoolName = { id: string; name: string };
@@ -42,7 +42,7 @@ export default function PlatformOwnerDashboard() {
   const [busy, setBusy] = useState("");
   const [planForm, setPlanForm] = useState({ code: "", name_ar: "", max_active_students: "", max_active_branches: "", annual_price: "", currency_code: "DZD" });
   const [approval, setApproval] = useState<Record<string, { planId: string; trialDays: string; discount: string }>>({});
-  const [renewal, setRenewal] = useState<Record<string, { planId: string; amount: string; method: string; reference: string }>>({});
+  const [renewal, setRenewal] = useState<Record<string, { planId: string; amount: string; discount: string; method: string; reference: string }>>({});
   const [trialExtensions, setTrialExtensions] = useState<Record<string, string>>({});
   const [subscriptionExtensions, setSubscriptionExtensions] = useState<Record<string, string>>({});
   const client = getSupabaseClient();
@@ -53,7 +53,7 @@ export default function PlatformOwnerDashboard() {
       const [planResult, requestResult, subscriptionResult, settingsResult, auditResult, renewalRequestResult] = await Promise.all([
         client.from("subscription_plans").select("id,code,name_ar,max_active_students,max_active_branches,annual_price,currency_code,is_active").order("annual_price"),
         client.from("school_registration_requests").select("id,applicant_profile_id,school_name,slug,contact_phone,contact_email,address,applicant_note,created_at").eq("status", "pending").order("created_at", { ascending: false }),
-        client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,grace_ends_at,max_active_students,max_active_branches,agreed_annual_price,currency_code").order("created_at", { ascending: false }),
+        client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,grace_ends_at,max_active_students,max_active_branches,agreed_annual_price,discount_amount,currency_code").order("created_at", { ascending: false }),
         client.from("platform_settings").select("trial_default_days,grace_period_days,default_currency_code").eq("singleton", true).maybeSingle(),
         client.from("platform_audit_log").select("id,actor_user_id,action,entity_type,created_at").order("created_at", { ascending: false }).limit(20),
         client.from("school_subscription_renewal_requests").select("id,school_id,requested_by,message,created_at").eq("status", "pending").order("created_at", { ascending: false }),
@@ -130,11 +130,19 @@ export default function PlatformOwnerDashboard() {
           const selectedPlan = nextPlans.find(plan => plan.id === existing?.planId && plan.is_active)
             ?? nextPlans.find(plan => plan.id === subscription.plan_id && plan.is_active)
             ?? firstActivePlan;
+          const keepTrialDiscount = ["trial", "pending_payment"].includes(subscription.status)
+            && selectedPlan?.id === subscription.plan_id;
+          const defaultDiscount = keepTrialDiscount ? Number(subscription.discount_amount ?? 0) : 0;
           next[subscription.id] = {
             planId: selectedPlan?.id ?? "",
             amount: existing && selectedPlan?.id === existing.planId
               ? existing.amount
-              : String(selectedPlan?.annual_price ?? 0),
+              : String(keepTrialDiscount
+                ? subscription.agreed_annual_price ?? selectedPlan?.annual_price ?? 0
+                : selectedPlan?.annual_price ?? 0),
+            discount: existing && selectedPlan?.id === existing.planId
+              ? existing.discount
+              : String(defaultDiscount),
             method: existing?.method ?? "ccp",
             reference: existing?.reference ?? "",
           };
@@ -156,7 +164,7 @@ export default function PlatformOwnerDashboard() {
     if (!/^[a-z][a-z0-9_-]*$/.test(code)
       || !Number.isInteger(Number(planForm.max_active_students)) || Number(planForm.max_active_students) < 1
       || !Number.isInteger(Number(planForm.max_active_branches)) || Number(planForm.max_active_branches) < 1
-      || !Number.isFinite(Number(planForm.annual_price)) || Number(planForm.annual_price) < 0
+      || !Number.isFinite(Number(planForm.annual_price)) || Number(planForm.annual_price) <= 0
       || !/^[A-Z]{3}$/.test(planForm.currency_code.toUpperCase())) {
       toast.error("تحقق من رمز الباقة والحدود والسعر والعملة.");
       return;
@@ -255,13 +263,20 @@ export default function PlatformOwnerDashboard() {
 
   const renewSubscription = async (subscription: Subscription) => {
     const defaultPlanId = plans.find(plan => plan.id === subscription.plan_id && plan.is_active)?.id ?? plans.find(plan => plan.is_active)?.id ?? "";
+    const defaultPlan = plans.find(plan => plan.id === defaultPlanId);
+    const keepTrialDiscount = ["trial", "pending_payment"].includes(subscription.status)
+      && defaultPlanId === subscription.plan_id;
+    const defaultDiscount = keepTrialDiscount ? Number(subscription.discount_amount ?? 0) : 0;
     const form = renewal[subscription.id] ?? {
       planId: defaultPlanId,
-      amount: String(plans.find(plan => plan.id === defaultPlanId)?.annual_price ?? 0),
+      amount: String(keepTrialDiscount
+        ? subscription.agreed_annual_price ?? defaultPlan?.annual_price ?? 0
+        : defaultPlan?.annual_price ?? 0),
+      discount: String(defaultDiscount),
       method: "ccp",
       reference: "",
     };
-    if (!form || Number(form.amount) <= 0) { toast.error("أدخل مبلغ الدفع الصحيح."); return; }
+    if (!form || Number(form.amount) <= 0 || Number(form.discount) < 0) { toast.error("أدخل مبلغ الدفع والخصم بصورة صحيحة."); return; }
     setBusy(subscription.id);
     try {
       const { error } = await client.rpc("record_subscription_payment_and_renew", {
@@ -273,11 +288,12 @@ export default function PlatformOwnerDashboard() {
         target_receipt_path: null,
         target_note: null,
         target_plan_id: form.planId,
-        target_discount_amount: 0,
+        target_discount_amount: Number(form.discount),
       });
       if (error) throw error;
       toast.success("تم تسجيل الدفع وتجديد الاشتراك لمدة سنة.");
       setSubscriptionExtensions(current => ({ ...current, [subscription.id]: "" }));
+      setRenewal(current => { const next = { ...current }; delete next[subscription.id]; return next; });
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تجديد الاشتراك.");
@@ -373,6 +389,7 @@ export default function PlatformOwnerDashboard() {
     expired: "منتهٍ",
     suspended: "موقوف",
     cancelled: "ملغى",
+    pending_payment: "بانتظار الدفع",
   };
   const statusLabel = (subscription: Subscription) => {
     const now = Date.now();
@@ -438,7 +455,7 @@ export default function PlatformOwnerDashboard() {
                 <input className={inputClass} aria-label="حد التلاميذ" type="number" min="1" value={draft.max_active_students} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,max_active_students:e.target.value}}))}/>
                 <input className={inputClass} aria-label="حد الفروع" type="number" min="1" value={draft.max_active_branches} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,max_active_branches:e.target.value}}))}/>
                 <div className="flex gap-1">
-                  <input className={inputClass} aria-label="السعر السنوي" type="number" min="0" step="0.01" value={draft.annual_price} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,annual_price:e.target.value}}))}/>
+                  <input className={inputClass} aria-label="السعر السنوي" type="number" min="0.01" step="0.01" value={draft.annual_price} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,annual_price:e.target.value}}))}/>
                   <input className="w-20 rounded-xl border border-slate-200 px-2 text-sm uppercase" aria-label="العملة" maxLength={3} value={draft.currency_code} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,currency_code:e.target.value}}))}/>
                 </div>
               </div>
@@ -521,11 +538,12 @@ export default function PlatformOwnerDashboard() {
                       </div> : "غير محدد"}
                 </td>
                 <td className="p-2">{subscription.max_active_students ?? "∞"} تلميذ · {subscription.max_active_branches ?? "∞"} فرع</td>
-                <td className="p-2"><div className="flex min-w-[420px] gap-1">
-                  <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => { const nextPlan = plans.find(plan => plan.id === e.target.value); setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value,amount:String(nextPlan?.annual_price ?? form.amount)}})); }} aria-label="الباقة الجديدة">
+                <td className="p-2"><div className="flex min-w-[520px] gap-1">
+                  <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => { const nextPlan = plans.find(plan => plan.id === e.target.value); setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value,amount:String(nextPlan?.annual_price ?? form.amount),discount:"0"}})); }} aria-label="الباقة الجديدة">
                     {plans.filter(plan => plan.is_active).map(plan => <option key={plan.id} value={plan.id}>{plan.name_ar}</option>)}
                   </select>
-                  <input className="w-24 rounded-lg border px-2 py-1" type="number" min="1" step="0.01" value={form.amount} aria-label="مبلغ الدفع" onChange={e => setRenewal(v => ({...v,[subscription.id]:{...form,amount:e.target.value}}))}/>
+                  <input className="w-20 rounded-lg border px-2 py-1" type="number" min="0" step="0.01" value={form.discount} aria-label="قيمة الخصم" onChange={e => { const discount = e.target.value; const plan = plans.find(item => item.id === form.planId); setRenewal(v => ({...v,[subscription.id]:{...form,discount,amount:String(Math.max(0,(plan?.annual_price ?? 0)-Number(discount)))}})); }}/>
+                  <input className="w-24 rounded-lg border px-2 py-1" type="number" min="0.01" step="0.01" value={form.amount} aria-label="مبلغ الدفع" onChange={e => setRenewal(v => ({...v,[subscription.id]:{...form,amount:e.target.value}}))}/>
                   <select className="w-28 rounded-lg border px-2 py-1" value={form.method} onChange={e => setRenewal(v => ({...v,[subscription.id]:{...form,method:e.target.value}}))}>
                     <option value="ccp">بريد الجزائر</option><option value="cash">نقدًا</option><option value="bank_transfer">تحويل بنكي</option><option value="cheque">صك</option><option value="other">أخرى</option>
                   </select>
