@@ -42,7 +42,7 @@ create table public.subscription_plans (
   description text,
   max_active_students integer not null check (max_active_students > 0),
   max_active_branches integer not null check (max_active_branches > 0),
-  annual_price numeric(12,2) not null check (annual_price >= 0),
+  annual_price numeric(12,2) not null check (annual_price > 0),
   currency_code text not null default 'DZD' check (currency_code ~ '^[A-Z]{3}$'),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -103,7 +103,7 @@ create table public.school_subscriptions (
   plan_id uuid references public.subscription_plans(id) on delete restrict,
   plan_name_snapshot text not null,
   status text not null check (
-    status in ('legacy', 'trial', 'active', 'grace', 'expired', 'suspended', 'cancelled')
+    status in ('legacy', 'trial', 'pending_payment', 'active', 'grace', 'expired', 'suspended', 'cancelled')
   ),
   starts_at timestamptz,
   ends_at timestamptz,
@@ -122,13 +122,14 @@ create table public.school_subscriptions (
   constraint school_subscription_dates_check check (
     (status = 'legacy' and ends_at is null and trial_ends_at is null)
     or (status = 'trial' and trial_ends_at is not null and ends_at is null)
+    or (status = 'pending_payment' and starts_at is null and ends_at is null and trial_ends_at is null)
     or (status in ('active', 'grace', 'expired') and starts_at is not null and ends_at is not null)
     or status in ('suspended', 'cancelled')
   )
 );
 create unique index school_subscriptions_one_current_per_school_uidx
   on public.school_subscriptions (school_id)
-  where status in ('legacy', 'trial', 'active', 'grace', 'suspended');
+  where status in ('legacy', 'trial', 'pending_payment', 'active', 'grace', 'suspended');
 create index school_subscriptions_status_end_idx
   on public.school_subscriptions (status, ends_at);
 create trigger school_subscriptions_set_updated_at
@@ -544,7 +545,7 @@ begin
   if not found then
     raise exception using errcode = 'P0002', message = 'ACTIVE_PLAN_NOT_FOUND';
   end if;
-  if target_discount_amount > v_plan.annual_price then
+  if target_discount_amount >= v_plan.annual_price then
     raise exception using errcode = '22023', message = 'DISCOUNT_EXCEEDS_PLAN_PRICE';
   end if;
   if exists (select 1 from public.schools where slug = v_request.slug) then
@@ -590,12 +591,11 @@ begin
     agreed_annual_price, discount_amount, currency_code, created_by, admin_note
   ) values (
     v_school_id, v_plan.id, v_plan.name_ar,
-    case when v_trial_days > 0 then 'trial' else 'active' end,
-    v_now,
-    case when v_trial_days > 0 then null else v_now + interval '1 year' end,
+    case when v_trial_days > 0 then 'trial' else 'pending_payment' end,
+    case when v_trial_days > 0 then v_now else null end,
+    null,
     case when v_trial_days > 0 then v_now + make_interval(days => v_trial_days) else null end,
-    case when v_trial_days > 0 then null
-         else v_now + interval '1 year' + make_interval(days => v_grace_days) end,
+    null,
     v_plan.max_active_students, v_plan.max_active_branches,
     greatest(v_plan.annual_price - target_discount_amount, 0),
     target_discount_amount, v_plan.currency_code, auth.uid(), target_review_note
@@ -689,7 +689,7 @@ begin
   if not found then
     raise exception using errcode = 'P0002', message = 'ACTIVE_PLAN_REQUIRED_FOR_RENEWAL';
   end if;
-  if v_discount < 0 or v_discount > v_plan.annual_price then
+  if v_discount < 0 or v_discount >= v_plan.annual_price then
     raise exception using errcode = '22023', message = 'INVALID_RENEWAL_DISCOUNT';
   end if;
   v_expected_amount := greatest(v_plan.annual_price - v_discount, 0);
@@ -702,6 +702,8 @@ begin
   from public.platform_settings where singleton = true;
 
   v_start := case
+    when v_subscription.trial_ends_at is not null and v_subscription.trial_ends_at > now()
+      then v_subscription.trial_ends_at
     when v_subscription.ends_at is not null and v_subscription.ends_at > now()
       then v_subscription.ends_at
     else now()
