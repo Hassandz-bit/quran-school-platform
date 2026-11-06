@@ -78,7 +78,7 @@ export default function PlatformOwnerDashboard() {
       setRenewal(current => {
         const next = { ...current };
         for (const subscription of nextSubscriptions) {
-          if (!next[subscription.id]) next[subscription.id] = { planId: subscription.plan_id ?? nextPlans[0]?.id ?? "", amount: String(subscription.agreed_annual_price ?? nextPlans.find(plan => plan.id === subscription.plan_id)?.annual_price ?? 0), method: "ccp", reference: "" };
+          if (!next[subscription.id]) next[subscription.id] = { planId: subscription.plan_id ?? nextPlans[0]?.id ?? "", amount: String(subscription.agreed_annual_price ?? nextPlans.find(plan => plan.id === (subscription.plan_id ?? nextPlans[0]?.id))?.annual_price ?? 0), method: "ccp", reference: "" };
         }
         return next;
       });
@@ -274,7 +274,8 @@ export default function PlatformOwnerDashboard() {
           <table className="w-full min-w-[850px] text-sm">
             <thead><tr className="border-b text-right text-slate-500"><th className="p-2">المدرسة</th><th className="p-2">الباقة</th><th className="p-2">الحالة</th><th className="p-2">النهاية</th><th className="p-2">حدود الباقة</th><th className="p-2">تسجيل التجديد</th></tr></thead>
             <tbody>{subscriptions.map(subscription => {
-              const form = renewal[subscription.id] ?? { planId: subscription.plan_id ?? plans[0]?.id ?? "", amount: String(subscription.agreed_annual_price ?? 0), method: "ccp", reference: "" };
+              const defaultPlanId = subscription.plan_id ?? plans[0]?.id ?? "";
+              const form = renewal[subscription.id] ?? { planId: defaultPlanId, amount: String(subscription.agreed_annual_price ?? plans.find(plan => plan.id === defaultPlanId)?.annual_price ?? 0), method: "ccp", reference: "" };
               return <tr key={subscription.id} className="border-b last:border-0">
                 <td className="p-2 font-semibold">{schools[subscription.school_id] ?? subscription.school_id.slice(0,8)}</td>
                 <td className="p-2">{subscription.plan_name_snapshot}</td>
