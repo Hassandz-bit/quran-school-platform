@@ -95,6 +95,7 @@ export default function SchoolSubscriptionPage() {
   }[method] ?? method);
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center" dir={direction}><Loader2 className="animate-spin" /></div>;
+  if (school && !isSchoolAdmin) return <main dir={direction} className="p-8 text-center text-sm text-slate-600">{ar ? "تفاصيل الاشتراك متاحة لمدير المدرسة فقط." : "Subscription details are available to the school administrator only."}</main>;
   if (!school) return <main dir={direction} className="p-8 text-center"><p>{ar ? "لا توجد مدرسة مرتبطة بهذا الحساب." : "No school is linked to this account."}</p><Link href="/school-registration" className="mt-3 inline-block text-[#17663B] underline">{ar ? "تسجيل مدرسة" : "Register a school"}</Link></main>;
 
   return <main dir={direction} className="mx-auto max-w-5xl space-y-5 p-4 py-8 text-[#173B2D]">
