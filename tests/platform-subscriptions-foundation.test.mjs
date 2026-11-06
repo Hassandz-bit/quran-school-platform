@@ -33,6 +33,8 @@ test("active student and branch caps are enforced with per-school transaction lo
   assert.match(migration, /SUBSCRIPTION_STUDENT_LIMIT_REACHED/);
   assert.match(migration, /SUBSCRIPTION_BRANCH_LIMIT_REACHED/);
   assert.match(migration, /v_old_school_id is not distinct from v_school_id/);
+  assert.match(migration, /limit 1\\s+for update;/);
+  assert.match(migration, /v_old_school_id := old\\.school_id;[\\s\\S]*?if not v_new_active or \\(v_old_active and v_old_school_id is not distinct from v_school_id\\)/);
   assert.match(migration, /update of status, school_id on public\.students/);
   assert.match(migration, /update of status, school_id on public\.branches/);
 });
@@ -95,6 +97,17 @@ test("SQL function dollar quoting is balanced and wrappers are syntactically com
   assert.equal(guardDelimiters.length % 2, 0);
   assert.doesNotMatch(migration, /as \$\s/);
   assert.match(migration, /create or replace function public\.submit_school_registration_request\([\s\S]*?security invoker[\s\S]*?as \$reminder\$/);
+});
+
+test("migration is one complete transaction and school registration SQL is not truncated", () => {
+  assert.equal((migration.match(/\\bcommit;/g) ?? []).length, 1);
+  const commitIndex = migration.lastIndexOf("commit;");
+  assert.ok(commitIndex >= 0);
+  assert.equal(migration.slice(commitIndex + "commit;".length).trim(), "");
+  assert.equal((migration.match(/create or replace function private\\.submit_school_registration_request/g) ?? []).length, 1);
+  assert.equal((migration.match(/create or replace function public\\.submit_school_registration_request/g) ?? []).length, 1);
+  assert.match(migration, /target_slug !~ '\\^\\[a-z0-9\\]\\+\\(-\\[a-z0-9\\]\\+\\)\\*\\$'/);
+  assert.match(migration, /char_length\\(target_slug\\) not between 3 and 80/);
 });
 
 test("school registration requires a confirmed authenticated account and creates the profile server-side", () => {
