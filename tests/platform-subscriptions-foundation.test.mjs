@@ -81,6 +81,29 @@ test("privileged implementation functions stay in the unexposed private schema",
   assert.match(migration, /create or replace function public\.record_subscription_payment_and_renew\([\s\S]*?security invoker/);
 });
 
+test("SQL function dollar quoting is balanced and wrappers are syntactically complete", () => {
+  const delimiters = migration.match(/\$\$/g) ?? [];
+  assert.equal(delimiters.length % 2, 0);
+  assert.doesNotMatch(migration, /as \$\s/);
+  assert.match(migration, /create or replace function public\.submit_school_registration_request\([\s\S]*?security invoker[\s\S]*?as \$\$/);
+});
+
+test("school registration requires a confirmed authenticated account and creates the profile server-side", () => {
+  assert.match(migration, /auth_user\.email_confirmed_at is not null/);
+  assert.match(migration, /private\.submit_school_registration_request/);
+  assert.match(migration, /insert into public\.profiles \(id, full_name, phone, locale, status\)/);
+  assert.match(migration, /ACTIVE_SCHOOL_MEMBERSHIP_EXISTS/);
+  assert.doesNotMatch(migration, /raw_user_meta_data|user_metadata/);
+});
+
+test("school renewal requests are tenant-scoped, owner-reviewed, and audited", () => {
+  assert.match(migration, /create table public\.school_subscription_renewal_requests/);
+  assert.match(migration, /school_renewal_requests_create_admin[\s\S]*?public\.has_school_permission\(school_id, 'school\.update'\)/);
+  assert.match(migration, /school_renewal_requests_owner_update[\s\S]*?public\.is_platform_owner\(\)/);
+  assert.match(migration, /school_subscription_renewal_requests_audit/);
+  assert.match(migration, /RENEWAL_PAYMENT_AMOUNT_MISMATCH/);
+});
+
 test("all subscription tables enable RLS and audit records are read-only to clients", () => {
   for (const table of [
     "subscription_plans",
