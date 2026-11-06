@@ -21,6 +21,13 @@ test("legacy schools are grandfathered before write guards are installed", () =>
   assert.match(migration, /install_subscription_write_guards/);
 });
 
+test("zero-trial approvals remain read-only until the first manual payment", () => {
+  assert.match(migration, /pending_payment/);
+  assert.match(migration, /case when v_trial_days > 0 then 'trial' else 'pending_payment' end/);
+  assert.match(migration, /status = 'pending_payment' and starts_at is null and ends_at is null and trial_ends_at is null/);
+  assert.match(migration, /where status in \('legacy', 'trial', 'pending_payment', 'active', 'grace', 'suspended'\)/);
+});
+
 test("paid subscriptions are annual and trial subscriptions have a separate end date", () => {
   assert.match(migration, /v_now \+ interval '1 year'/);
   assert.match(migration, /trial_ends_at/);
