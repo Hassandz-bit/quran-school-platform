@@ -2058,5 +2058,6 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تمت الموافقة وبدء التجربة وربط حساب المسؤول بالمدرسة.": "The application was approved, the trial started, and the applicant account was assigned as school administrator.",
   "تمت الموافقة وربط حساب المسؤول، وستبقى المدرسة بانتظار تسجيل أول دفعة قبل تفعيل الاستخدام.": "The application was approved and the applicant account was assigned; the school remains read-only until its first payment is recorded.",
   "موافقة وبدء التجربة": "Approve and start trial",
+  "أنشئ حساب المسؤول أو سجّل الدخول بحسابك الحالي، ثم أرسل طلب مدرستك. لن تُفعّل المدرسة قبل موافقة مالك المنصة.": "Create an administrator account or sign in with your existing account, then submit your school application. The platform owner must approve it before activation.",
   "موافقة بانتظار الدفع": "Approve, awaiting payment"
 };
