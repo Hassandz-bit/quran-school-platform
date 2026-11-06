@@ -118,7 +118,7 @@ export default function PlatformOwnerDashboard() {
       setRenewal(current => {
         const next = { ...current };
         for (const subscription of nextSubscriptions) {
-          if (!next[subscription.id]) next[subscription.id] = { planId: subscription.plan_id ?? nextPlans[0]?.id ?? "", amount: String(nextPlans.find(plan => plan.id === (subscription.plan_id ?? nextPlans.find(item => item.is_active)?.id))?.annual_price ?? 0), method: "ccp", reference: "" };
+          if (!next[subscription.id]) next[subscription.id] = { planId: nextPlans.find(plan => plan.id === subscription.plan_id && plan.is_active)?.id ?? nextPlans.find(plan => plan.is_active)?.id ?? "", amount: String(nextPlans.find(plan => plan.id === (subscription.plan_id ?? nextPlans.find(item => item.is_active)?.id))?.annual_price ?? 0), method: "ccp", reference: "" };
         }
         return next;
       });
