@@ -636,6 +636,7 @@ declare
   v_grace_days integer := 7;
   v_plan public.subscription_plans%rowtype;
   v_discount numeric := coalesce(target_discount_amount, 0);
+  v_expected_amount numeric;
 begin
   if not public.is_platform_owner() then
     raise exception using errcode = '42501', message = 'PLATFORM_OWNER_REQUIRED';
@@ -669,6 +670,11 @@ begin
   end if;
   if v_discount < 0 or v_discount > v_plan.annual_price then
     raise exception using errcode = '22023', message = 'INVALID_RENEWAL_DISCOUNT';
+  end if;
+  v_expected_amount := greatest(v_plan.annual_price - v_discount, 0);
+  if abs(target_amount - v_expected_amount) > 0.01 then
+    raise exception using errcode = '22023', message = 'RENEWAL_PAYMENT_AMOUNT_MISMATCH',
+      detail = 'مبلغ الدفع يجب أن يساوي السعر السنوي بعد الخصم.';
   end if;
 
   select grace_period_days into v_grace_days
@@ -705,9 +711,14 @@ begin
     target_reference, target_receipt_path, target_note, auth.uid()
   ) returning id into v_payment_id;
 
+  update public.school_subscription_renewal_requests
+  set status = 'approved', reviewed_by = auth.uid(), reviewed_at = now(),
+      review_note = 'تم تسجيل الدفع وتجديد الاشتراك.'
+  where school_id = target_school_id and status = 'pending';
+
   return v_payment_id;
 end;
-$$;
+$;
 revoke all on function private.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   from public, anon, authenticated;
 grant execute on function private.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
