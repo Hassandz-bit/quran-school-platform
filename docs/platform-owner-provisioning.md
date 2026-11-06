@@ -44,22 +44,9 @@ from public.platform_owners
 where user_id = '__PLATFORM_OWNER_AUTH_USER_ID__'::uuid;
 ```
 
-## Schedule subscription expiry reminders
+## Expiry reminders
 
-The migration creates the reminder generator and the notification trigger, but it does not silently enable a database scheduler. After the migration is applied and reviewed:
-
-1. In Supabase Dashboard, open Database → Extensions and enable `pg_cron`.
-2. In the SQL Editor, schedule one daily run at 07:00 UTC (08:00 Algeria time):
-
-```sql
-select cron.schedule(
-  'quranos-school-subscription-reminders',
-  '0 7 * * *',
-  $select private.generate_school_subscription_reminders();$
-);
-```
-
-The generator inserts only reminders due exactly 30 or 7 days ahead, and a unique constraint prevents duplicate reminders. Verify the job in the Cron Jobs dashboard and inspect `cron.job_run_details` after its first run. Do not schedule it before migration 082 is successfully applied.
+After migration 082 is applied and validated, follow [`docs/school-subscription-expiry-reminders.md`](school-subscription-expiry-reminders.md) to enable `pg_cron` and schedule the daily 30-day and 7-day reminder generator.
 
 ## Security notes
 
