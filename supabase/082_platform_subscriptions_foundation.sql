@@ -559,8 +559,10 @@ begin
     name, slug, status, default_locale, timezone, currency_code,
     contact_phone, contact_email, address
   ) values (
-    v_request.school_name, v_request.slug, 'active', 'ar', 'Africa/Algiers',
-    v_plan.currency_code, v_request.contact_phone, v_request.contact_email, v_request.address
+    v_request.school_name, v_request.slug, 'active',
+    (select profile.locale from public.profiles profile where profile.id = v_request.applicant_profile_id),
+    'Africa/Algiers', v_plan.currency_code,
+    v_request.contact_phone, v_request.contact_email, v_request.address
   ) returning id into v_school_id;
 
   insert into public.branches (school_id, name, code, status, is_main)
