@@ -36,6 +36,7 @@ import PostLoginRedirect from "./pages/PostLoginRedirect";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PlatformOwnerDashboard = lazy(() => import("./pages/PlatformOwnerDashboard"));
 const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
+const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
 const StudentsList = lazy(() => import("./pages/StudentsList"));
 const AddStudentForm = lazy(() => import("./pages/AddStudentForm"));
 const EditStudentForm = lazy(() => import("./pages/EditStudentForm"));
@@ -168,6 +169,11 @@ function Router() {
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
+        <Route path="/school-registration">
+          <Suspense fallback={<FinancePageFallback />}>
+            <SchoolRegistration />
+          </Suspense>
+        </Route>
         <Route path="/school-registration">
           <Suspense fallback={<FinancePageFallback />}>
             <SchoolRegistration />
