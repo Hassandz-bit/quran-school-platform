@@ -19,6 +19,7 @@ type Subscription = {
   max_active_students: number | null; max_active_branches: number | null;
   agreed_annual_price: number | null; currency_code: string;
 };
+type PlanDraft = { name_ar: string; max_active_students: string; max_active_branches: string; annual_price: string; currency_code: string };
 type SchoolName = { id: string; name: string };
 type AuditRow = { id: number; actor_user_id: string | null; action: string; entity_type: string; created_at: string };
 
@@ -29,6 +30,7 @@ const cardClass = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 export default function PlatformOwnerDashboard() {
   const { user, signOut } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [planEdits, setPlanEdits] = useState<Record<string, PlanDraft>>({});
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [schools, setSchools] = useState<Record<string, string>>({});
@@ -58,6 +60,19 @@ export default function PlatformOwnerDashboard() {
       const nextRequests = (requestResult.data ?? []) as RegistrationRequest[];
       const nextSubscriptions = (subscriptionResult.data ?? []) as Subscription[];
       setPlans(nextPlans);
+      setPlanEdits(current => {
+        const next = { ...current };
+        for (const plan of nextPlans) {
+          if (!next[plan.id]) next[plan.id] = {
+            name_ar: plan.name_ar,
+            max_active_students: String(plan.max_active_students),
+            max_active_branches: String(plan.max_active_branches),
+            annual_price: String(plan.annual_price),
+            currency_code: plan.currency_code,
+          };
+        }
+        return next;
+      });
       setRequests(nextRequests);
       setSubscriptions(nextSubscriptions);
       if (settingsResult.data) setSettings(settingsResult.data as typeof settings);
@@ -110,6 +125,39 @@ export default function PlatformOwnerDashboard() {
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر إنشاء الباقة.");
+    } finally { setBusy(""); }
+  };
+
+  const savePlan = async (plan: Plan) => {
+    const draft = planEdits[plan.id];
+    if (!draft) return;
+    setBusy(`plan:${plan.id}`);
+    try {
+      const { error } = await client.from("subscription_plans").update({
+        name_ar: draft.name_ar.trim(),
+        max_active_students: Number(draft.max_active_students),
+        max_active_branches: Number(draft.max_active_branches),
+        annual_price: Number(draft.annual_price),
+        currency_code: draft.currency_code.toUpperCase(),
+      }).eq("id", plan.id);
+      if (error) throw error;
+      toast.success("تم تحديث الباقة.");
+      await reload();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تحديث الباقة.");
+    } finally { setBusy(""); }
+  };
+
+  const togglePlan = async (plan: Plan) => {
+    setBusy(`plan:${plan.id}`);
+    try {
+      const { error } = await client.from("subscription_plans")
+        .update({ is_active: !plan.is_active }).eq("id", plan.id);
+      if (error) throw error;
+      toast.success("تم تحديث حالة الباقة.");
+      await reload();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تحديث حالة الباقة.");
     } finally { setBusy(""); }
   };
 
@@ -243,11 +291,35 @@ export default function PlatformOwnerDashboard() {
           <button className={buttonClass} disabled={busy === "plan"}><Plus size={16}/> إضافة الباقة</button>
           <input className={inputClass} maxLength={3} placeholder="العملة" value={planForm.currency_code} onChange={e => setPlanForm(v => ({...v, currency_code:e.target.value}))} required />
         </form>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {plans.map(plan => <div key={plan.id} className="rounded-xl bg-slate-50 p-3 text-sm">
-            <div className="flex justify-between gap-2"><strong>{plan.name_ar}</strong><span>{plan.annual_price.toLocaleString("en-US")} {plan.currency_code}/سنة</span></div>
-            <p className="mt-1 text-xs text-slate-500">{plan.max_active_students} تلميذًا نشطًا · {plan.max_active_branches} فرعًا · {plan.is_active ? "متاحة" : "موقوفة"}</p>
-          </div>)}
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {plans.map(plan => {
+            const draft = planEdits[plan.id] ?? {
+              name_ar: plan.name_ar,
+              max_active_students: String(plan.max_active_students),
+              max_active_branches: String(plan.max_active_branches),
+              annual_price: String(plan.annual_price),
+              currency_code: plan.currency_code,
+            };
+            return <div key={plan.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <strong className="text-sm text-[#173B2D]">{plan.name_ar}</strong>
+                <span className="text-xs text-slate-500">{plan.is_active ? "متاحة" : "موقوفة"}</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input className={inputClass} aria-label="اسم الباقة" value={draft.name_ar} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,name_ar:e.target.value}}))}/>
+                <input className={inputClass} aria-label="حد التلاميذ" type="number" min="1" value={draft.max_active_students} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,max_active_students:e.target.value}}))}/>
+                <input className={inputClass} aria-label="حد الفروع" type="number" min="1" value={draft.max_active_branches} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,max_active_branches:e.target.value}}))}/>
+                <div className="flex gap-1">
+                  <input className={inputClass} aria-label="السعر السنوي" type="number" min="0" step="0.01" value={draft.annual_price} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,annual_price:e.target.value}}))}/>
+                  <input className="w-20 rounded-xl border border-slate-200 px-2 text-sm uppercase" aria-label="العملة" maxLength={3} value={draft.currency_code} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,currency_code:e.target.value}}))}/>
+                </div>
+              </div>
+              <div className="mt-2 flex gap-2">
+                <button className={buttonClass} disabled={busy === `plan:${plan.id}`} onClick={() => void savePlan(plan)}>حفظ تعديلات الباقة</button>
+                <button className="rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700" disabled={busy === `plan:${plan.id}`} onClick={() => void togglePlan(plan)}>{plan.is_active ? "إيقاف الباقة" : "تفعيل الباقة"}</button>
+              </div>
+            </div>;
+          })}
         </div>
       </section>
 
