@@ -364,6 +364,7 @@ set search_path = ''
 as $$
 declare
   v_school_id uuid;
+  v_old_school_id uuid;
   v_max integer;
   v_count bigint;
   v_new_active boolean;
@@ -377,8 +378,11 @@ begin
 
   if tg_table_name = 'students' then
     v_new_active := new.status = 'active';
-    if tg_op = 'UPDATE' then v_old_active := old.status = 'active'; end if;
-    if not v_new_active or v_old_active then return new; end if;
+    if tg_op = 'UPDATE' then
+      v_old_active := old.status = 'active';
+      v_old_school_id := old.school_id;
+    end if;
+    if not v_new_active or (v_old_active and v_old_school_id is not distinct from v_school_id) then return new; end if;
 
     perform pg_advisory_xact_lock(hashtextextended(v_school_id::text || ':active-students', 0));
     select subscription.max_active_students into v_max
@@ -429,10 +433,10 @@ $$;
 revoke all on function private.enforce_school_subscription_limits() from public, anon, authenticated;
 
 create trigger students_subscription_limit_guard
-  before insert or update of status on public.students
+  before insert or update of status, school_id on public.students
   for each row execute function private.enforce_school_subscription_limits();
 create trigger branches_subscription_limit_guard
-  before insert or update of status on public.branches
+  before insert or update of status, school_id on public.branches
   for each row execute function private.enforce_school_subscription_limits();
 
 -- Append-only audit trail for owner-managed billing and onboarding records.
