@@ -725,7 +725,7 @@ begin
 
   return v_payment_id;
 end;
-$;
+$$;
 revoke all on function private.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   from public, anon, authenticated;
 grant execute on function private.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
