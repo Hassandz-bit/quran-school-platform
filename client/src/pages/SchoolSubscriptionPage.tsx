@@ -81,7 +81,10 @@ export default function SchoolSubscriptionPage() {
     if (!subscription) return "";
     const now = Date.now();
     if (subscription.status === "trial" && subscription.trial_ends_at
-      && new Date(subscription.trial_ends_at).getTime() < now) return "expired";
+      && new Date(subscription.trial_ends_at).getTime() < now) {
+      if (subscription.grace_ends_at && new Date(subscription.grace_ends_at).getTime() >= now) return "grace";
+      return "expired";
+    }
     if (["active", "grace", "expired"].includes(subscription.status)
       && subscription.ends_at && new Date(subscription.ends_at).getTime() < now) {
       if (subscription.grace_ends_at && new Date(subscription.grace_ends_at).getTime() >= now) return "grace";
