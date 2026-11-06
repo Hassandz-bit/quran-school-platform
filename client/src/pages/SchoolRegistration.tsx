@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -65,7 +65,7 @@ export default function SchoolRegistration() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  const submit = async (event: React.FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true); setError(""); setMessage("");
     const client = getSupabaseClient();
