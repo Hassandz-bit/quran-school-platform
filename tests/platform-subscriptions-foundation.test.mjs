@@ -100,14 +100,14 @@ test("SQL function dollar quoting is balanced and wrappers are syntactically com
 });
 
 test("migration is one complete transaction and school registration SQL is not truncated", () => {
-  assert.equal((migration.match(/\\bcommit;/g) ?? []).length, 1);
+  assert.equal(migration.split("commit;").length - 1, 1);
   const commitIndex = migration.lastIndexOf("commit;");
   assert.ok(commitIndex >= 0);
   assert.equal(migration.slice(commitIndex + "commit;".length).trim(), "");
-  assert.equal((migration.match(/create or replace function private\\.submit_school_registration_request/g) ?? []).length, 1);
-  assert.equal((migration.match(/create or replace function public\\.submit_school_registration_request/g) ?? []).length, 1);
-  assert.match(migration, /target_slug !~ '\\^\\[a-z0-9\\]\\+\\(-\\[a-z0-9\\]\\+\\)\\*\\$'/);
-  assert.match(migration, /char_length\\(target_slug\\) not between 3 and 80/);
+  assert.equal(migration.split("create or replace function private.submit_school_registration_request").length - 1, 1);
+  assert.equal(migration.split("create or replace function public.submit_school_registration_request").length - 1, 1);
+  assert.ok(migration.includes("or target_slug !~ '^[a-z0-9]+(-[a-z0-9]+)*$'"));
+  assert.ok(migration.includes("char_length(target_slug) not between 3 and 80"));
 });
 
 test("school registration requires a confirmed authenticated account and creates the profile server-side", () => {
