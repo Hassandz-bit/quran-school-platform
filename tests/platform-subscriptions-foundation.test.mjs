@@ -34,6 +34,13 @@ test("paid subscriptions are annual and trial subscriptions have a separate end 
   assert.match(migration, /v_trial_days < 0 or v_trial_days > 365/);
 });
 
+test("annual plans require positive prices and owner discounts match the recorded payment", () => {
+  assert.ok(migration.includes("annual_price numeric(12,2) not null check (annual_price > 0)"));
+  assert.ok(migration.includes("if v_discount < 0 or v_discount >= v_plan.annual_price then"));
+  assert.ok(migration.includes("when v_subscription.trial_ends_at is not null and v_subscription.trial_ends_at > now()"));
+  assert.ok(migration.includes("target_amount - v_expected_amount"));
+});
+
 test("active student and branch caps are enforced with per-school transaction locks", () => {
   assert.match(migration, /:active-students/);
   assert.match(migration, /:active-branches/);
