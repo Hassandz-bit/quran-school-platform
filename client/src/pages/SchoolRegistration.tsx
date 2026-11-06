@@ -4,6 +4,19 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 
+function slugifySchoolName(value: string): string {
+  const map: Record<string, string> = {
+    ا: "a", أ: "a", إ: "i", آ: "a", ب: "b", ت: "t", ث: "th", ج: "j",
+    ح: "h", خ: "kh", د: "d", ذ: "dh", ر: "r", ز: "z", س: "s", ش: "sh",
+    ص: "s", ض: "d", ط: "t", ظ: "z", ع: "a", غ: "gh", ف: "f", ق: "q",
+    ك: "k", ل: "l", م: "m", ن: "n", ه: "h", و: "w", ي: "y", ى: "a",
+    ة: "h", ء: "", ئ: "y", ؤ: "w",
+  };
+  const normalized = value.normalize("NFKD").replace(/[\u064B-\u065F\u0670]/g, "");
+  return [...normalized].map(char => map[char] ?? char).join("")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+}
+
 export default function SchoolRegistration() {
   const { user, session } = useAuth();
   const { locale, direction } = useLocale();
@@ -11,6 +24,7 @@ export default function SchoolRegistration() {
   const [name, setName] = useState("");
   const [school, setSchool] = useState("");
   const [slug, setSlug] = useState("");
+  const [slugEdited, setSlugEdited] = useState(false);
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
@@ -30,6 +44,7 @@ export default function SchoolRegistration() {
         setEmail(String(draft.email ?? ""));
         setSchool(String(draft.school ?? ""));
         setSlug(String(draft.slug ?? ""));
+        setSlugEdited(Boolean(draft.slug));
         setPhone(String(draft.phone ?? ""));
         setAddress(String(draft.address ?? ""));
         setNote(String(draft.note ?? ""));
@@ -79,6 +94,7 @@ export default function SchoolRegistration() {
       });
       if (rpcError) throw rpcError;
       localStorage.removeItem("quranos-school-registration-draft");
+      setRequestStatus({ status: "pending", school_name: school, review_note: null });
       setMessage(ar ? "تم إرسال طلبك. سيظهر هنا بعد المراجعة." : "Application submitted. It will appear here after review.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : (ar ? "تعذر إرسال الطلب." : "Could not submit application."));
@@ -92,19 +108,19 @@ export default function SchoolRegistration() {
       {requestStatus?.status === "pending" && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>{ar ? "طلبك قيد المراجعة" : "Application pending"}</strong><p className="mt-1">{requestStatus.school_name}</p></div>}
       {requestStatus?.status === "approved" && <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900"><strong>{ar ? "تمت الموافقة على طلبك" : "Application approved"}</strong><p className="mt-1">{ar ? "سجّل الدخول مجددًا لفتح لوحة المدرسة." : "Sign in again to open the school dashboard."}</p></div>}
       {requestStatus?.status === "rejected" && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"><strong>{ar ? "تم رفض الطلب السابق" : "Previous application rejected"}</strong><p className="mt-1">{requestStatus.review_note ?? ""}</p></div>}
-      <form onSubmit={submit} className="mt-5 grid gap-3">
+      {requestStatus?.status !== "pending" && requestStatus?.status !== "approved" && <form onSubmit={submit} className="mt-5 grid gap-3">
         <label className="text-sm font-semibold">{ar ? "اسم المسؤول" : "Administrator name"}<input required minLength={2} value={name} onChange={e=>setName(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/></label>
         <label className="text-sm font-semibold">{ar ? "البريد الإلكتروني" : "Email"}<input required type="email" disabled={Boolean(session)} value={session?.user.email ?? email} onChange={e=>setEmail(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/></label>
         {!session && <label className="text-sm font-semibold">{ar ? "كلمة المرور (8 أحرف على الأقل)" : "Password (at least 8 characters)"}<input required minLength={8} type="password" value={password} onChange={e=>setPassword(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/></label>}
-        <label className="text-sm font-semibold">{ar ? "اسم المدرسة" : "School name"}<input required minLength={2} value={school} onChange={e=>setSchool(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/></label>
-        <label className="text-sm font-semibold">{ar ? "الرابط المختصر (بالأحرف اللاتينية)" : "School URL slug (Latin letters)"}<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={slug} onChange={e=>setSlug(e.target.value.toLowerCase())} className="mt-1 w-full rounded-lg border p-3"/></label>
+        <label className="text-sm font-semibold">{ar ? "اسم المدرسة" : "School name"}<input required minLength={2} value={school} onChange={e=>{const value=e.target.value;setSchool(value);if(!slugEdited)setSlug(slugifySchoolName(value));}} className="mt-1 w-full rounded-lg border p-3"/></label>
+        <label className="text-sm font-semibold">{ar ? "الرابط المختصر (بالأحرف اللاتينية)" : "School URL slug (Latin letters)"}<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={slug} onChange={e=>{setSlugEdited(true);setSlug(e.target.value.toLowerCase());}} className="mt-1 w-full rounded-lg border p-3"/></label>
         <label className="text-sm font-semibold">{ar ? "الهاتف" : "Phone"}<input value={phone} onChange={e=>setPhone(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/></label>
         <label className="text-sm font-semibold">{ar ? "العنوان" : "Address"}<input value={address} onChange={e=>setAddress(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/></label>
         <label className="text-sm font-semibold">{ar ? "ملاحظات" : "Notes"}<textarea value={note} onChange={e=>setNote(e.target.value)} className="mt-1 min-h-20 w-full rounded-lg border p-3"/></label>
         {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {message && <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">{message}</p>}
         <button disabled={busy} className="rounded-xl bg-[#17663B] p-3 font-bold text-white disabled:opacity-50">{busy ? (ar ? "جارٍ الإرسال..." : "Submitting...") : (ar ? "إرسال الطلب" : "Submit application")}</button>
-      </form>
+      </form>}
       <p className="mt-4 text-center text-sm"><Link className="text-[#17663B] underline" href="/login">{ar ? "لديك حساب؟ تسجيل الدخول" : "Already have an account? Sign in"}</Link></p>
     </section>
   </main>;
