@@ -6,6 +6,7 @@ import {
   BookOpen,
   BookOpenCheck,
   ChartNoAxesCombined,
+  CreditCard,
   CalendarDays,
   ClipboardList,
   DollarSign,
@@ -47,7 +48,8 @@ export type AppNavigationItem = {
     | "guardians"
     | "notifications"
     | "members"
-    | "backups";
+    | "backups"
+    | "subscription";
   label: string;
   path: string;
   group: "school" | "learning" | "management";
@@ -93,6 +95,13 @@ export function getAppNavigation({
             path: "/dashboard",
             group: "school" as const,
             icon: Home,
+          },
+          {
+            id: "subscription" as const,
+            label: translate(locale, "nav.subscription"),
+            path: "/subscription",
+            group: "management" as const,
+            icon: CreditCard,
           },
           {
             id: "students" as const,

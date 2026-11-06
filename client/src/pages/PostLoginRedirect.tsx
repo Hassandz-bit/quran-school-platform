@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDefaultAuthenticatedRoute } from "@/lib/default-route";
 import { listMyGuardianStudents } from "@/lib/parent-portal";
+import { getSupabaseClient } from "@/lib/supabase";
 
 function LoadingState({ message }: { message: string }) {
   return (
@@ -66,18 +67,64 @@ export default function PostLoginRedirect() {
     }
 
     setParentCheck("checking");
-    void listMyGuardianStudents()
-      .then(students => {
+    void (async () => {
+      try {
+        if (!school) {
+          const { data: ownerRecord, error: ownerError } = await getSupabaseClient()
+            .from("platform_owners")
+            .select("user_id")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          if (cancelled) return;
+          if (!ownerError && ownerRecord?.user_id === session.user.id) {
+            setLocation("/platform-owner");
+            return;
+          }
+        }
+
+        if (!school) {
+          const { data: profileRecord, error: profileLookupError } = await getSupabaseClient()
+            .from("profiles")
+            .select("id,status")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          if (cancelled) return;
+          if (!profileLookupError && !profileRecord) {
+            setLocation("/school-registration");
+            return;
+          }
+  
+          const { data: schoolRequest } = await getSupabaseClient()
+            .from("school_registration_requests")
+            .select("id,status")
+            .eq("applicant_profile_id", session.user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (cancelled) return;
+          if (schoolRequest && ["pending", "rejected"].includes(schoolRequest.status)) {
+            setLocation("/school-registration");
+            return;
+          }
+  
+  
+        }
+
+        const students = await listMyGuardianStudents();
         if (cancelled) return;
         if (students.length > 0) {
           setLocation("/parent");
           return;
         }
+        if (!school && !authorizationError) {
+          setLocation("/school-registration");
+          return;
+        }
         setParentCheck("none");
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setParentCheck("error");
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;

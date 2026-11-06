@@ -5,6 +5,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PlatformOwnerRoute from "./components/PlatformOwnerRoute";
 import StaffRoute from "./components/StaffRoute";
 import StudentsRoute from "./components/StudentsRoute";
 import RegistrationRoute from "./components/RegistrationRoute";
@@ -33,6 +34,9 @@ import ResetPassword from "./pages/ResetPassword";
 import PostLoginRedirect from "./pages/PostLoginRedirect";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const PlatformOwnerDashboard = lazy(() => import("./pages/PlatformOwnerDashboard"));
+const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
+const SchoolSubscriptionPage = lazy(() => import("./pages/SchoolSubscriptionPage"));
 const StudentsList = lazy(() => import("./pages/StudentsList"));
 const AddStudentForm = lazy(() => import("./pages/AddStudentForm"));
 const EditStudentForm = lazy(() => import("./pages/EditStudentForm"));
@@ -162,12 +166,30 @@ captureTeacherInviteSession();
 captureGuardianInviteSession();
 
 function Router() {
+  const { locale } = useLocale();
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
+        <Route path="/school-registration">
+          <Suspense fallback={<FinancePageFallback />}>
+            <SchoolRegistration />
+          </Suspense>
+        </Route>
+        <Route path="/platform-owner">
+          <PlatformOwnerRoute>
+            <Suspense fallback={<FinancePageFallback />}>
+              <PlatformOwnerDashboard />
+            </Suspense>
+          </PlatformOwnerRoute>
+        </Route>
         <Route path="/login">
           <LoginRoute>
-            <Login />
+            <div className="relative">
+              <Login />
+              <a href="/school-registration" className="fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-sm font-bold text-[#0F5132] shadow-lg underline underline-offset-4">
+                {locale === "ar" ? "تسجيل مدرسة جديدة" : "Register a new school"}
+              </a>
+            </div>
           </LoginRoute>
         </Route>
         <Route path="/forgot-password" component={ForgotPassword} />
@@ -209,6 +231,11 @@ function Router() {
               </Suspense>
             </ParentShell>
           </ParentRoute>
+        </Route>
+        <Route path="/subscription">
+          <ProtectedRoute>
+            <Shell><SchoolSubscriptionPage /></Shell>
+          </ProtectedRoute>
         </Route>
         <Route path="/dashboard">
           <ProtectedRoute><Shell><Dashboard /></Shell></ProtectedRoute>
