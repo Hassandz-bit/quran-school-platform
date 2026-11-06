@@ -196,7 +196,11 @@ export default function PlatformOwnerDashboard() {
   };
 
   const approveRequest = async (request: RegistrationRequest) => {
-    const selected = approval[request.id];
+    const selected = approval[request.id] ?? {
+      planId: plans[0]?.id ?? "",
+      trialDays: String(settings.trial_default_days),
+      discount: "0",
+    };
     if (!selected?.planId) { toast.error("اختر الباقة أولًا."); return; }
     setBusy(request.id);
     try {
@@ -231,7 +235,13 @@ export default function PlatformOwnerDashboard() {
   };
 
   const renewSubscription = async (subscription: Subscription) => {
-    const form = renewal[subscription.id];
+    const defaultPlanId = subscription.plan_id ?? plans[0]?.id ?? "";
+    const form = renewal[subscription.id] ?? {
+      planId: defaultPlanId,
+      amount: String(plans.find(plan => plan.id === defaultPlanId)?.annual_price ?? 0),
+      method: "ccp",
+      reference: "",
+    };
     if (!form || Number(form.amount) <= 0) { toast.error("أدخل مبلغ الدفع الصحيح."); return; }
     setBusy(subscription.id);
     try {
@@ -468,7 +478,7 @@ export default function PlatformOwnerDashboard() {
             <thead><tr className="border-b text-right text-slate-500"><th className="p-2">المدرسة</th><th className="p-2">الباقة</th><th className="p-2">الحالة</th><th className="p-2">النهاية</th><th className="p-2">حدود الباقة</th><th className="p-2">تسجيل التجديد</th></tr></thead>
             <tbody>{subscriptions.map(subscription => {
               const defaultPlanId = subscription.plan_id ?? plans[0]?.id ?? "";
-              const form = renewal[subscription.id] ?? { planId: defaultPlanId, amount: String(subscription.agreed_annual_price ?? plans.find(plan => plan.id === defaultPlanId)?.annual_price ?? 0), method: "ccp", reference: "" };
+              const form = renewal[subscription.id] ?? { planId: defaultPlanId, amount: String(plans.find(plan => plan.id === defaultPlanId)?.annual_price ?? subscription.agreed_annual_price ?? 0), method: "ccp", reference: "" };
               return <tr key={subscription.id} className="border-b last:border-0">
                 <td className="p-2 font-semibold">{schools[subscription.school_id] ?? subscription.school_id.slice(0,8)}</td>
                 <td className="p-2">{subscription.plan_name_snapshot}</td>
