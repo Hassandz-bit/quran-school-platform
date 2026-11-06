@@ -14,7 +14,7 @@ type RegistrationRequest = {
   applicant_note: string | null; created_at: string;
 };
 type Subscription = {
-  id: string; school_id: string; plan_name_snapshot: string; status: string;
+  id: string; school_id: string; plan_id: string | null; plan_name_snapshot: string; status: string;
   starts_at: string | null; ends_at: string | null; trial_ends_at: string | null;
   max_active_students: number | null; max_active_branches: number | null;
   agreed_annual_price: number | null; currency_code: string;
@@ -47,7 +47,7 @@ export default function PlatformOwnerDashboard() {
       const [planResult, requestResult, subscriptionResult, settingsResult, auditResult] = await Promise.all([
         client.from("subscription_plans").select("id,code,name_ar,max_active_students,max_active_branches,annual_price,currency_code,is_active").order("annual_price"),
         client.from("school_registration_requests").select("id,applicant_profile_id,school_name,slug,contact_phone,contact_email,address,applicant_note,created_at").eq("status", "pending").order("created_at", { ascending: false }),
-        client.from("school_subscriptions").select("id,school_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,max_active_students,max_active_branches,agreed_annual_price,currency_code").order("created_at", { ascending: false }),
+        client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,max_active_students,max_active_branches,agreed_annual_price,currency_code").order("created_at", { ascending: false }),
         client.from("platform_settings").select("trial_default_days,grace_period_days,default_currency_code").eq("singleton", true).maybeSingle(),
         client.from("platform_audit_log").select("id,actor_user_id,action,entity_type,created_at").order("created_at", { ascending: false }).limit(20),
       ]);
@@ -78,7 +78,7 @@ export default function PlatformOwnerDashboard() {
       setRenewal(current => {
         const next = { ...current };
         for (const subscription of nextSubscriptions) {
-          if (!next[subscription.id]) next[subscription.id] = { amount: String(subscription.agreed_annual_price ?? 0), method: "ccp", reference: "" };
+          if (!next[subscription.id]) next[subscription.id] = { planId: subscription.plan_id ?? nextPlans[0]?.id ?? "", amount: String(subscription.agreed_annual_price ?? nextPlans.find(plan => plan.id === subscription.plan_id)?.annual_price ?? 0), method: "ccp", reference: "" };
         }
         return next;
       });
@@ -161,6 +161,8 @@ export default function PlatformOwnerDashboard() {
         target_reference: form.reference.trim() || null,
         target_receipt_path: null,
         target_note: null,
+        target_plan_id: form.planId,
+        target_discount_amount: 0,
       });
       if (error) throw error;
       toast.success("تم تسجيل الدفع وتجديد الاشتراك لمدة سنة.");
@@ -272,14 +274,17 @@ export default function PlatformOwnerDashboard() {
           <table className="w-full min-w-[850px] text-sm">
             <thead><tr className="border-b text-right text-slate-500"><th className="p-2">المدرسة</th><th className="p-2">الباقة</th><th className="p-2">الحالة</th><th className="p-2">النهاية</th><th className="p-2">حدود الباقة</th><th className="p-2">تسجيل التجديد</th></tr></thead>
             <tbody>{subscriptions.map(subscription => {
-              const form = renewal[subscription.id] ?? { amount: String(subscription.agreed_annual_price ?? 0), method: "ccp", reference: "" };
+              const form = renewal[subscription.id] ?? { planId: subscription.plan_id ?? plans[0]?.id ?? "", amount: String(subscription.agreed_annual_price ?? 0), method: "ccp", reference: "" };
               return <tr key={subscription.id} className="border-b last:border-0">
                 <td className="p-2 font-semibold">{schools[subscription.school_id] ?? subscription.school_id.slice(0,8)}</td>
                 <td className="p-2">{subscription.plan_name_snapshot}</td>
                 <td className="p-2"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{statusLabel(subscription.status)}</span></td>
                 <td className="p-2">{subscription.trial_ends_at ? new Date(subscription.trial_ends_at).toLocaleDateString("ar-DZ") : subscription.ends_at ? new Date(subscription.ends_at).toLocaleDateString("ar-DZ") : "غير محدد"}</td>
                 <td className="p-2">{subscription.max_active_students ?? "∞"} تلميذ · {subscription.max_active_branches ?? "∞"} فرع</td>
-                <td className="p-2"><div className="flex min-w-[310px] gap-1">
+                <td className="p-2"><div className="flex min-w-[420px] gap-1">
+                  <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value}}))} aria-label="الباقة الجديدة">
+                    {plans.filter(plan => plan.is_active).map(plan => <option key={plan.id} value={plan.id}>{plan.name_ar}</option>)}
+                  </select>
                   <input className="w-24 rounded-lg border px-2 py-1" type="number" min="1" step="0.01" value={form.amount} aria-label="مبلغ الدفع" onChange={e => setRenewal(v => ({...v,[subscription.id]:{...form,amount:e.target.value}}))}/>
                   <select className="w-28 rounded-lg border px-2 py-1" value={form.method} onChange={e => setRenewal(v => ({...v,[subscription.id]:{...form,method:e.target.value}}))}>
                     <option value="ccp">بريد الجزائر</option><option value="cash">نقدًا</option><option value="bank_transfer">تحويل بنكي</option><option value="cheque">صك</option><option value="other">أخرى</option>
