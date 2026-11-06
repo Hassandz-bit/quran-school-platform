@@ -37,7 +37,6 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PlatformOwnerDashboard = lazy(() => import("./pages/PlatformOwnerDashboard"));
 const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
 const SchoolSubscriptionPage = lazy(() => import("./pages/SchoolSubscriptionPage"));
-const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
 const StudentsList = lazy(() => import("./pages/StudentsList"));
 const AddStudentForm = lazy(() => import("./pages/AddStudentForm"));
 const EditStudentForm = lazy(() => import("./pages/EditStudentForm"));
@@ -167,14 +166,10 @@ captureTeacherInviteSession();
 captureGuardianInviteSession();
 
 function Router() {
+  const { locale } = useLocale();
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
-        <Route path="/school-registration">
-          <Suspense fallback={<FinancePageFallback />}>
-            <SchoolRegistration />
-          </Suspense>
-        </Route>
         <Route path="/school-registration">
           <Suspense fallback={<FinancePageFallback />}>
             <SchoolRegistration />
@@ -192,7 +187,7 @@ function Router() {
             <div className="relative">
               <Login />
               <a href="/school-registration" className="fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-sm font-bold text-[#0F5132] shadow-lg underline underline-offset-4">
-                تسجيل مدرسة جديدة
+                {locale === "ar" ? "تسجيل مدرسة جديدة" : "Register a new school"}
               </a>
             </div>
           </LoginRoute>
