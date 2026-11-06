@@ -197,7 +197,7 @@ export default function PlatformOwnerDashboard() {
 
   const approveRequest = async (request: RegistrationRequest) => {
     const selected = approval[request.id] ?? {
-      planId: plans[0]?.id ?? "",
+      planId: plans.find(plan => plan.is_active)?.id ?? "",
       trialDays: String(settings.trial_default_days),
       discount: "0",
     };
@@ -235,7 +235,7 @@ export default function PlatformOwnerDashboard() {
   };
 
   const renewSubscription = async (subscription: Subscription) => {
-    const defaultPlanId = subscription.plan_id ?? plans[0]?.id ?? "";
+    const defaultPlanId = plans.find(plan => plan.id === subscription.plan_id && plan.is_active)?.id ?? plans.find(plan => plan.is_active)?.id ?? "";
     const form = renewal[subscription.id] ?? {
       planId: defaultPlanId,
       amount: String(plans.find(plan => plan.id === defaultPlanId)?.annual_price ?? 0),
