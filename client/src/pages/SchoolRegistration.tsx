@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,8 +17,38 @@ export default function SchoolRegistration() {
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [requestStatus, setRequestStatus] = useState<{status:string; school_name:string; review_note:string|null} | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("quranos-school-registration-draft");
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        setName(String(draft.name ?? ""));
+        setEmail(String(draft.email ?? ""));
+        setSchool(String(draft.school ?? ""));
+        setSlug(String(draft.slug ?? ""));
+        setPhone(String(draft.phone ?? ""));
+        setAddress(String(draft.address ?? ""));
+        setNote(String(draft.note ?? ""));
+      } catch { localStorage.removeItem("quranos-school-registration-draft"); }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    void getSupabaseClient().from("school_registration_requests")
+      .select("status,school_name,review_note")
+      .eq("applicant_profile_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancelled && data) setRequestStatus(data); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -26,6 +56,7 @@ export default function SchoolRegistration() {
     const client = getSupabaseClient();
     try {
       if (!session) {
+        localStorage.setItem("quranos-school-registration-draft", JSON.stringify({name, email, school, slug, phone, address, note}));
         const result = await client.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
@@ -47,6 +78,7 @@ export default function SchoolRegistration() {
         target_locale: locale,
       });
       if (rpcError) throw rpcError;
+      localStorage.removeItem("quranos-school-registration-draft");
       setMessage(ar ? "تم إرسال طلبك. سيظهر هنا بعد المراجعة." : "Application submitted. It will appear here after review.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : (ar ? "تعذر إرسال الطلب." : "Could not submit application."));
@@ -57,6 +89,9 @@ export default function SchoolRegistration() {
     <section className="mx-auto max-w-xl rounded-2xl border bg-white p-6 shadow-sm">
       <h1 className="text-2xl font-bold">{ar ? "تسجيل مدرسة جديدة" : "Register a school"}</h1>
       <p className="mt-2 text-sm leading-7 text-slate-600">{ar ? "أنشئ حساب المسؤول وأرسل طلب مدرستك. لن تُفعّل المدرسة قبل موافقة مالك المنصة." : "Create the administrator account and submit your school. The platform owner must approve it before activation."}</p>
+      {requestStatus?.status === "pending" && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>{ar ? "طلبك قيد المراجعة" : "Application pending"}</strong><p className="mt-1">{requestStatus.school_name}</p></div>}
+      {requestStatus?.status === "approved" && <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900"><strong>{ar ? "تمت الموافقة على طلبك" : "Application approved"}</strong><p className="mt-1">{ar ? "سجّل الدخول مجددًا لفتح لوحة المدرسة." : "Sign in again to open the school dashboard."}</p></div>}
+      {requestStatus?.status === "rejected" && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"><strong>{ar ? "تم رفض الطلب السابق" : "Previous application rejected"}</strong><p className="mt-1">{requestStatus.review_note ?? ""}</p></div>}
       <form onSubmit={submit} className="mt-5 grid gap-3">
         <label className="text-sm font-semibold">{ar ? "اسم المسؤول" : "Administrator name"}<input required minLength={2} value={name} onChange={e=>setName(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/></label>
         <label className="text-sm font-semibold">{ar ? "البريد الإلكتروني" : "Email"}<input required type="email" disabled={Boolean(session)} value={session?.user.email ?? email} onChange={e=>setEmail(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/></label>
