@@ -28,6 +28,12 @@ test("dashboard uses secured owner RPCs for approval and annual renewal", () => 
   assert.match(dashboard, /platform_audit_log/);
 });
 
+test("approval and renewal handlers use the same visible defaults as their forms", () => {
+  assert.match(dashboard, /const selected = approval\[request\.id\] \?\?/);
+  assert.match(dashboard, /const form = renewal\[subscription\.id\] \?\?/);
+  assert.match(dashboard, /plans\.find\(plan => plan\.id === defaultPlanId\)\?\.annual_price \?\? subscription\.agreed_annual_price/);
+});
+
 test("subscription plan creation exposes limits and one annual price without feature tiers", () => {
   assert.match(dashboard, /max_active_students/);
   assert.match(dashboard, /max_active_branches/);
