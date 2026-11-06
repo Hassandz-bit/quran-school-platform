@@ -246,7 +246,7 @@ export default function PlatformOwnerDashboard() {
             return <article key={request.id} className="rounded-xl border border-slate-200 p-4">
               <div className="flex flex-wrap justify-between gap-3">
                 <div><h3 className="font-bold text-[#173B2D]">{request.school_name}</h3><p className="text-xs text-slate-500" dir="ltr">{request.slug}</p></div>
-                <span className="text-xs text-slate-500">{new Date(request.created_at).toLocaleDateString("ar-DZ")}</span>
+                <span className="text-xs text-slate-500">{new Date(request.created_at).toLocaleDateString("ar-DZ-u-nu-latn")}</span>
               </div>
               <p className="mt-2 text-sm text-slate-600">{request.contact_phone ?? "دون هاتف"} · {request.contact_email ?? "دون بريد"}</p>
               {request.address && <p className="text-sm text-slate-600">{request.address}</p>}
@@ -280,7 +280,7 @@ export default function PlatformOwnerDashboard() {
                 <td className="p-2 font-semibold">{schools[subscription.school_id] ?? subscription.school_id.slice(0,8)}</td>
                 <td className="p-2">{subscription.plan_name_snapshot}</td>
                 <td className="p-2"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{statusLabel(subscription.status)}</span></td>
-                <td className="p-2">{subscription.trial_ends_at ? new Date(subscription.trial_ends_at).toLocaleDateString("ar-DZ") : subscription.ends_at ? new Date(subscription.ends_at).toLocaleDateString("ar-DZ") : "غير محدد"}</td>
+                <td className="p-2">{subscription.trial_ends_at ? new Date(subscription.trial_ends_at).toLocaleDateString("ar-DZ-u-nu-latn") : subscription.ends_at ? new Date(subscription.ends_at).toLocaleDateString("ar-DZ-u-nu-latn") : "غير محدد"}</td>
                 <td className="p-2">{subscription.max_active_students ?? "∞"} تلميذ · {subscription.max_active_branches ?? "∞"} فرع</td>
                 <td className="p-2"><div className="flex min-w-[420px] gap-1">
                   <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => { const nextPlan = plans.find(plan => plan.id === e.target.value); setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value,amount:String(nextPlan?.annual_price ?? form.amount)}})); }} aria-label="الباقة الجديدة">
@@ -314,7 +314,7 @@ export default function PlatformOwnerDashboard() {
           <div className="max-h-64 space-y-2 overflow-auto">
             {audit.map(row => <div key={row.id} className="flex justify-between gap-3 border-b pb-2 text-xs last:border-0">
               <span>{row.action === "insert" ? "إضافة" : row.action === "update" ? "تعديل" : "حذف"} · {row.entity_type}</span>
-              <time className="shrink-0 text-slate-500">{new Date(row.created_at).toLocaleString("ar-DZ")}</time>
+              <time className="shrink-0 text-slate-500">{new Date(row.created_at).toLocaleString("ar-DZ-u-nu-latn")}</time>
             </div>)}
             {audit.length === 0 && <p className="text-sm text-slate-500">لا توجد عمليات مسجلة بعد.</p>}
           </div>
