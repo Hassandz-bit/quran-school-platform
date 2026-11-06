@@ -725,7 +725,7 @@ begin
 
   return v_payment_id;
 end;
-$;
+$reminder$;
 revoke all on function private.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
   from public, anon, authenticated;
 grant execute on function private.record_subscription_payment_and_renew(uuid, numeric, text, timestamptz, text, text, text, uuid, numeric)
@@ -758,7 +758,7 @@ grant execute on function public.record_subscription_payment_and_renew(uuid, num
   to authenticated;
 
 -- Daily 30-day and 7-day subscription/trial reminders use Supabase's built-in pg_cron.
-create extension if not exists pg_cron;
+-- Enable pg_cron in Supabase Database > Extensions after migration review.
 
 create table public.school_subscription_reminders (
   id uuid primary key default gen_random_uuid(),
@@ -777,7 +777,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $reminder$
 declare
   v_title text;
   v_body text;
@@ -824,7 +824,7 @@ begin
 
   return new;
 end;
-$;
+$reminder$;
 revoke all on function private.notify_school_subscription_reminder() from public, anon, authenticated;
 
 create trigger school_subscription_reminder_notify
@@ -836,7 +836,7 @@ returns integer
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $reminder$
 declare
   v_inserted integer;
 begin
@@ -861,14 +861,9 @@ begin
   get diagnostics v_inserted = row_count;
   return v_inserted;
 end;
-$;
+$reminder$;
 revoke all on function private.generate_school_subscription_reminders() from public, anon, authenticated;
 
-select cron.schedule(
-  'quranos-school-subscription-reminders',
-  '0 7 * * *',
-  'select private.generate_school_subscription_reminders();'
-);
 
 -- Public school self-registration creates the profile and pending request atomically.
 create table public.school_subscription_renewal_requests (
@@ -907,7 +902,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $reminder$
 declare
   v_user_id uuid := (select auth.uid());
   v_email text;
@@ -931,7 +926,8 @@ alter table public.school_subscription_reminders enable row level security;
 
 revoke all on public.subscription_plans, public.school_registration_requests,
   public.platform_settings, public.school_subscriptions, public.subscription_payments,
-  public.platform_audit_log, public.school_subscription_renewal_requests from public, anon, authenticated;
+  public.platform_audit_log, public.school_subscription_renewal_requests,
+  public.school_subscription_reminders from public, anon, authenticated;
 
 grant select, insert, update on public.subscription_plans to authenticated;
 grant select, insert, update on public.school_registration_requests to authenticated;
@@ -1044,7 +1040,7 @@ commit;
 
   return v_request_id;
 end;
-$;
+$reminder$;
 revoke all on function private.submit_school_registration_request(text, text, text, text, text, text, text)
   from public, anon, authenticated;
 grant execute on function private.submit_school_registration_request(text, text, text, text, text, text, text)
@@ -1063,12 +1059,12 @@ returns uuid
 language sql
 security invoker
 set search_path = ''
-as $
+as $reminder$
   select private.submit_school_registration_request(
     target_full_name, target_school_name, target_slug,
     target_contact_phone, target_address, target_applicant_note, target_locale
   );
-$;
+$reminder$;
 revoke all on function public.submit_school_registration_request(text, text, text, text, text, text, text)
   from public, anon;
 grant execute on function public.submit_school_registration_request(text, text, text, text, text, text, text)
