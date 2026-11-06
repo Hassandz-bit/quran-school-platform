@@ -406,7 +406,7 @@ create trigger platform_settings_audit
 create or replace function public.approve_school_registration(
   target_request_id uuid,
   target_plan_id uuid,
-  target_trial_days integer default 0,
+  target_trial_days integer default null,
   target_discount_amount numeric default 0,
   target_review_note text default null
 )
@@ -423,11 +423,16 @@ declare
   v_membership_id uuid;
   v_now timestamptz := now();
   v_grace_days integer := 7;
+  v_trial_days integer;
 begin
   if not public.is_platform_owner() then
     raise exception using errcode = '42501', message = 'PLATFORM_OWNER_REQUIRED';
   end if;
-  if target_trial_days is null or target_trial_days < 0 or target_trial_days > 365 then
+  select trial_default_days, grace_period_days
+    into v_trial_days, v_grace_days
+  from public.platform_settings where singleton = true;
+  if target_trial_days is not null then v_trial_days := target_trial_days; end if;
+  if v_trial_days is null or v_trial_days < 0 or v_trial_days > 365 then
     raise exception using errcode = '22023', message = 'INVALID_TRIAL_DAYS';
   end if;
   if target_discount_amount is null or target_discount_amount < 0 then
@@ -487,11 +492,11 @@ begin
     agreed_annual_price, discount_amount, currency_code, created_by, admin_note
   ) values (
     v_school_id, v_plan.id, v_plan.name_ar,
-    case when target_trial_days > 0 then 'trial' else 'active' end,
+    case when v_trial_days > 0 then 'trial' else 'active' end,
     v_now,
-    case when target_trial_days > 0 then null else v_now + interval '1 year' end,
-    case when target_trial_days > 0 then v_now + make_interval(days => target_trial_days) else null end,
-    case when target_trial_days > 0 then null
+    case when v_trial_days > 0 then null else v_now + interval '1 year' end,
+    case when v_trial_days > 0 then v_now + make_interval(days => v_trial_days) else null end,
+    case when v_trial_days > 0 then null
          else v_now + interval '1 year' + make_interval(days => v_grace_days) end,
     v_plan.max_active_students, v_plan.max_active_branches,
     greatest(v_plan.annual_price - target_discount_amount, 0),
