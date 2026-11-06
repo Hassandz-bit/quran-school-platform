@@ -1888,6 +1888,8 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تفاصيل السجلات بعد الفلترة": "Filtered record details",
   "لا توجد سجلات تطابق الفلاتر.": "No records match the filters.",
 
+  "الفروع والحلقات": "Branches & Classes",
+  "إضافة الفرع": "Add branch",
   // Additional fixed labels discovered by localization coverage
   "تمت إضافة الفرع بنجاح.": "Branch added successfully.",
   "ليست لديك صلاحية إضافة الفروع.": "You do not have permission to add branches.",
