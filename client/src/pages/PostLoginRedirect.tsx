@@ -82,27 +82,31 @@ export default function PostLoginRedirect() {
           }
         }
 
-        const { data: profileRecord, error: profileLookupError } = await getSupabaseClient()
-          .from("profiles")
-          .select("id,status")
-          .eq("id", session.user.id)
-          .maybeSingle();
-        if (cancelled) return;
-        if (!profileLookupError && !profileRecord) {
-          setLocation("/school-registration");
-          return;
-        }
-
-        const { data: pendingSchoolRequest } = await getSupabaseClient()
-          .from("school_registration_requests")
-          .select("id")
-          .eq("applicant_profile_id", session.user.id)
-          .eq("status", "pending")
-          .maybeSingle();
-        if (cancelled) return;
-        if (pendingSchoolRequest) {
-          setLocation("/school-registration");
-          return;
+        if (!school) {
+          const { data: profileRecord, error: profileLookupError } = await getSupabaseClient()
+            .from("profiles")
+            .select("id,status")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          if (cancelled) return;
+          if (!profileLookupError && !profileRecord) {
+            setLocation("/school-registration");
+            return;
+          }
+  
+          const { data: pendingSchoolRequest } = await getSupabaseClient()
+            .from("school_registration_requests")
+            .select("id")
+            .eq("applicant_profile_id", session.user.id)
+            .eq("status", "pending")
+            .maybeSingle();
+          if (cancelled) return;
+          if (pendingSchoolRequest) {
+            setLocation("/school-registration");
+            return;
+          }
+  
+  
         }
 
         const students = await listMyGuardianStudents();
