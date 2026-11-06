@@ -108,17 +108,31 @@ export default function PlatformOwnerDashboard() {
         setSchools(Object.fromEntries(((schoolResult.data ?? []) as SchoolName[]).map(item => [item.id, item.name])));
       } else setSchools({});
       setAudit((auditResult.data ?? []) as AuditRow[]);
+      const firstActivePlan = nextPlans.find(plan => plan.is_active);
+      const defaultTrialDays = settingsResult.data?.trial_default_days ?? settings.trial_default_days;
       setApproval(current => {
         const next = { ...current };
         for (const request of nextRequests) {
-          if (!next[request.id]) next[request.id] = { planId: nextPlans[0]?.id ?? "", trialDays: String(settings.trial_default_days), discount: "0" };
+          if (!next[request.id]) next[request.id] = {
+            planId: firstActivePlan?.id ?? "",
+            trialDays: String(defaultTrialDays),
+            discount: "0",
+          };
         }
         return next;
       });
       setRenewal(current => {
         const next = { ...current };
         for (const subscription of nextSubscriptions) {
-          if (!next[subscription.id]) next[subscription.id] = { planId: nextPlans.find(plan => plan.id === subscription.plan_id && plan.is_active)?.id ?? nextPlans.find(plan => plan.is_active)?.id ?? "", amount: String(nextPlans.find(plan => plan.id === (subscription.plan_id ?? nextPlans.find(item => item.is_active)?.id))?.annual_price ?? 0), method: "ccp", reference: "" };
+          if (!next[subscription.id]) {
+            const selectedPlan = nextPlans.find(plan => plan.id === subscription.plan_id && plan.is_active) ?? firstActivePlan;
+            next[subscription.id] = {
+              planId: selectedPlan?.id ?? "",
+              amount: String(selectedPlan?.annual_price ?? 0),
+              method: "ccp",
+              reference: "",
+            };
+          }
         }
         return next;
       });
