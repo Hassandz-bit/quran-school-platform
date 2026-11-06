@@ -38,7 +38,7 @@ export default function PlatformOwnerDashboard() {
   const [busy, setBusy] = useState("");
   const [planForm, setPlanForm] = useState({ code: "", name_ar: "", max_active_students: "100", max_active_branches: "1", annual_price: "10000", currency_code: "DZD" });
   const [approval, setApproval] = useState<Record<string, { planId: string; trialDays: string; discount: string }>>({});
-  const [renewal, setRenewal] = useState<Record<string, { amount: string; method: string; reference: string }>>({});
+  const [renewal, setRenewal] = useState<Record<string, { planId: string; amount: string; method: string; reference: string }>>({});
   const client = getSupabaseClient();
 
   const reload = useCallback(async () => {
@@ -282,7 +282,7 @@ export default function PlatformOwnerDashboard() {
                 <td className="p-2">{subscription.trial_ends_at ? new Date(subscription.trial_ends_at).toLocaleDateString("ar-DZ") : subscription.ends_at ? new Date(subscription.ends_at).toLocaleDateString("ar-DZ") : "غير محدد"}</td>
                 <td className="p-2">{subscription.max_active_students ?? "∞"} تلميذ · {subscription.max_active_branches ?? "∞"} فرع</td>
                 <td className="p-2"><div className="flex min-w-[420px] gap-1">
-                  <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value}}))} aria-label="الباقة الجديدة">
+                  <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => { const nextPlan = plans.find(plan => plan.id === e.target.value); setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value,amount:String(nextPlan?.annual_price ?? form.amount)}})); }} aria-label="الباقة الجديدة">
                     {plans.filter(plan => plan.is_active).map(plan => <option key={plan.id} value={plan.id}>{plan.name_ar}</option>)}
                   </select>
                   <input className="w-24 rounded-lg border px-2 py-1" type="number" min="1" step="0.01" value={form.amount} aria-label="مبلغ الدفع" onChange={e => setRenewal(v => ({...v,[subscription.id]:{...form,amount:e.target.value}}))}/>
