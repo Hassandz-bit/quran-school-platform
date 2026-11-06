@@ -5,6 +5,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PlatformOwnerRoute from "./components/PlatformOwnerRoute";
 import StaffRoute from "./components/StaffRoute";
 import StudentsRoute from "./components/StudentsRoute";
 import RegistrationRoute from "./components/RegistrationRoute";
@@ -33,6 +34,7 @@ import ResetPassword from "./pages/ResetPassword";
 import PostLoginRedirect from "./pages/PostLoginRedirect";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const PlatformOwnerDashboard = lazy(() => import("./pages/PlatformOwnerDashboard"));
 const StudentsList = lazy(() => import("./pages/StudentsList"));
 const AddStudentForm = lazy(() => import("./pages/AddStudentForm"));
 const EditStudentForm = lazy(() => import("./pages/EditStudentForm"));
@@ -165,6 +167,13 @@ function Router() {
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
+        <Route path="/platform-owner">
+          <PlatformOwnerRoute>
+            <Suspense fallback={<FinancePageFallback />}>
+              <PlatformOwnerDashboard />
+            </Suspense>
+          </PlatformOwnerRoute>
+        </Route>
         <Route path="/login">
           <LoginRoute>
             <Login />
