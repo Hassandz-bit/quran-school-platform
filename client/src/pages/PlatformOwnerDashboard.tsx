@@ -277,6 +277,7 @@ export default function PlatformOwnerDashboard() {
       });
       if (error) throw error;
       toast.success("تم تسجيل الدفع وتجديد الاشتراك لمدة سنة.");
+      setSubscriptionExtensions(current => ({ ...current, [subscription.id]: "" }));
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تجديد الاشتراك.");
