@@ -36,6 +36,7 @@ import PostLoginRedirect from "./pages/PostLoginRedirect";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PlatformOwnerDashboard = lazy(() => import("./pages/PlatformOwnerDashboard"));
 const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
+const SchoolSubscriptionPage = lazy(() => import("./pages/SchoolSubscriptionPage"));
 const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
 const StudentsList = lazy(() => import("./pages/StudentsList"));
 const AddStudentForm = lazy(() => import("./pages/AddStudentForm"));
@@ -230,6 +231,11 @@ function Router() {
               </Suspense>
             </ParentShell>
           </ParentRoute>
+        </Route>
+        <Route path="/subscription">
+          <ProtectedRoute>
+            <Shell><SchoolSubscriptionPage /></Shell>
+          </ProtectedRoute>
         </Route>
         <Route path="/dashboard">
           <ProtectedRoute><Shell><Dashboard /></Shell></ProtectedRoute>
