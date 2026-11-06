@@ -475,6 +475,10 @@ create trigger platform_settings_audit
   after update on public.platform_settings
   for each row execute function private.write_platform_audit_log();
 
+create trigger school_subscription_renewal_requests_audit
+  after insert or update or delete on public.school_subscription_renewal_requests
+  for each row execute function private.write_platform_audit_log();
+
 -- Secure school approval: the owner provisions the tenant, initial branch and school admin atomically.
 create or replace function private.approve_school_registration(
   target_request_id uuid,
