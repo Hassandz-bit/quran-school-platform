@@ -9,6 +9,8 @@ This is a one-time trusted-administrator operation. A platform owner is **not** 
 3. Open the SQL Editor for the production project and run the guarded statement below after migration `082_platform_subscriptions_foundation.sql` has been reviewed and applied.
 4. Sign in to QuranOS with that account and open `/platform-owner`. The post-login redirect will recognize the owner registry record.
 
+When approving a school, a trial longer than zero days grants full access for that period. If the owner sets the trial to zero, the school remains in **awaiting payment** (read-only) until the first annual payment is recorded; it is not activated as an unpaid paid subscription.
+
 ## Guarded SQL
 
 Replace the placeholder with the UUID copied from Auth Users. This statement does not create an Auth account and does not set or change a password.
