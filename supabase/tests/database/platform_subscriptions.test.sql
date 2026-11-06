@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(21);
 
 select has_table('public', 'platform_owners', 'platform owner registry exists');
 select has_table('public', 'subscription_plans', 'subscription plans table exists');
