@@ -2045,4 +2045,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "انتهاء الفترة التجريبية": "Trial ending",
   "انتهاء الاشتراك السنوي": "Annual subscription ending",
   "يومًا": "days",
+  "تحقق من رمز الباقة والحدود والسعر والعملة.": "Check the plan code, limits, price, and currency.",
 };
