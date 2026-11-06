@@ -15,7 +15,7 @@ type RegistrationRequest = {
 };
 type Subscription = {
   id: string; school_id: string; plan_id: string | null; plan_name_snapshot: string; status: string;
-  starts_at: string | null; ends_at: string | null; trial_ends_at: string | null;
+  starts_at: string | null; ends_at: string | null; trial_ends_at: string | null; grace_ends_at: string | null;
   max_active_students: number | null; max_active_branches: number | null;
   agreed_annual_price: number | null; currency_code: string;
 };
@@ -47,7 +47,7 @@ export default function PlatformOwnerDashboard() {
       const [planResult, requestResult, subscriptionResult, settingsResult, auditResult] = await Promise.all([
         client.from("subscription_plans").select("id,code,name_ar,max_active_students,max_active_branches,annual_price,currency_code,is_active").order("annual_price"),
         client.from("school_registration_requests").select("id,applicant_profile_id,school_name,slug,contact_phone,contact_email,address,applicant_note,created_at").eq("status", "pending").order("created_at", { ascending: false }),
-        client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,max_active_students,max_active_branches,agreed_annual_price,currency_code").order("created_at", { ascending: false }),
+        client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,grace_ends_at,max_active_students,max_active_branches,agreed_annual_price,currency_code").order("created_at", { ascending: false }),
         client.from("platform_settings").select("trial_default_days,grace_period_days,default_currency_code").eq("singleton", true).maybeSingle(),
         client.from("platform_audit_log").select("id,actor_user_id,action,entity_type,created_at").order("created_at", { ascending: false }).limit(20),
       ]);
@@ -198,7 +198,19 @@ export default function PlatformOwnerDashboard() {
     suspended: "موقوف",
     cancelled: "ملغى",
   };
-  const statusLabel = (status: string) => statusLabels[status] ?? status;
+  const statusLabel = (subscription: Subscription) => {
+    const now = Date.now();
+    if (subscription.status === "trial" && subscription.trial_ends_at
+      && new Date(subscription.trial_ends_at).getTime() < now) return statusLabels.expired;
+    if (["active", "grace", "expired"].includes(subscription.status)
+      && subscription.ends_at && new Date(subscription.ends_at).getTime() < now) {
+      if (subscription.grace_ends_at && new Date(subscription.grace_ends_at).getTime() >= now) {
+        return statusLabels.grace;
+      }
+      return statusLabels.expired;
+    }
+    return statusLabels[subscription.status] ?? subscription.status;
+  };
 
   return <main className="min-h-screen bg-[#F5F7F4] p-4 md:p-8" dir="rtl">
     <div className="mx-auto max-w-7xl space-y-6">
@@ -280,7 +292,7 @@ export default function PlatformOwnerDashboard() {
               return <tr key={subscription.id} className="border-b last:border-0">
                 <td className="p-2 font-semibold">{schools[subscription.school_id] ?? subscription.school_id.slice(0,8)}</td>
                 <td className="p-2">{subscription.plan_name_snapshot}</td>
-                <td className="p-2"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{statusLabel(subscription.status)}</span></td>
+                <td className="p-2"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{statusLabel(subscription)}</span></td>
                 <td className="p-2">{subscription.trial_ends_at ? new Date(subscription.trial_ends_at).toLocaleDateString("ar-DZ-u-nu-latn") : subscription.ends_at ? new Date(subscription.ends_at).toLocaleDateString("ar-DZ-u-nu-latn") : "غير محدد"}</td>
                 <td className="p-2">{subscription.max_active_students ?? "∞"} تلميذ · {subscription.max_active_branches ?? "∞"} فرع</td>
                 <td className="p-2"><div className="flex min-w-[420px] gap-1">
