@@ -85,7 +85,11 @@ test("privileged implementation functions stay in the unexposed private schema",
 
 test("SQL function dollar quoting is balanced and wrappers are syntactically complete", () => {
   const delimiters = migration.match(/\$\$/g) ?? [];
+  const reminderDelimiters = migration.match(/\$reminder\$/g) ?? [];
+  const guardDelimiters = migration.match(/\$install_subscription_write_guards\$/g) ?? [];
   assert.equal(delimiters.length % 2, 0);
+  assert.equal(reminderDelimiters.length % 2, 0);
+  assert.equal(guardDelimiters.length % 2, 0);
   assert.doesNotMatch(migration, /as \$\s/);
   assert.match(migration, /create or replace function public\.submit_school_registration_request\([\s\S]*?security invoker[\s\S]*?as \$\$/);
 });
