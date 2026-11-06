@@ -61,6 +61,11 @@ test("expired subscriptions become read-only without deleting tenant data", () =
   assert.doesNotMatch(migration, /delete from public\.(schools|students|branches)/i);
 });
 
+test("read-only schools can still mark existing notifications as read", () => {
+  assert.ok(migration.includes("tg_table_name = 'app_notifications' and tg_op = 'UPDATE'"));
+  assert.ok(migration.includes("(to_jsonb(old) - 'read_at') = (to_jsonb(new) - 'read_at')"));
+});
+
 test("service-role edge workflows remain subject to subscription enforcement, including child import rows", () => {
   assert.match(migration, /batch[.]school_id/);
   assert.match(migration, /guardian_import_rows/);
