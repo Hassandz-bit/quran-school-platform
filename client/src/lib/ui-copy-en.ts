@@ -2046,4 +2046,9 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "انتهاء الاشتراك السنوي": "Annual subscription ending",
   "يومًا": "days",
   "تحقق من رمز الباقة والحدود والسعر والعملة.": "Check the plan code, limits, price, and currency.",
+  "اختر تاريخ نهاية مستقبليًا.": "Choose a future end date.",
+  "تم تمديد الاشتراك يدويًا.": "The subscription was extended manually.",
+  "تعذر تمديد الاشتراك.": "Could not extend the subscription.",
+  "تاريخ نهاية الاشتراك": "Subscription end date",
+  "تمديد الاشتراك": "Extend subscription",
 };
