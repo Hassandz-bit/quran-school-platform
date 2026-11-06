@@ -4,7 +4,7 @@ This is a one-time trusted-administrator operation. A platform owner is **not** 
 
 ## Steps
 
-1. Create the dedicated owner account in Supabase Auth (Dashboard → Authentication → Users). Use an email controlled by the platform operator and enable the required account security controls.
+1. Create the dedicated owner account in Supabase Auth (Dashboard → Authentication → Users). Use a separate email controlled by the platform operator, confirm the email, and set a strong unique password. Do not reuse a school administrator account.
 2. Copy that Auth user's UUID.
 3. Open the SQL Editor for the production project and run the guarded statement below after migration `082_platform_subscriptions_foundation.sql` has been reviewed and applied.
 4. Sign in to QuranOS with that account and open `/platform-owner`. The post-login redirect will recognize the owner registry record.
