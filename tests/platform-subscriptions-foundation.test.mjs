@@ -59,6 +59,7 @@ test("approval and manual annual renewal require the platform owner", () => {
 test("internal trigger and status helpers are not callable by browser roles", () => {
   for (const functionName of [
     "school_subscription_can_operate(uuid)",
+    "resolve_school_id_from_tenant_row(text, jsonb)",
     "enforce_school_subscription_write()",
     "enforce_school_subscription_limits()",
     "write_platform_audit_log()",
