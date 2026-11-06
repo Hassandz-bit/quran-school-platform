@@ -91,7 +91,7 @@ test("SQL function dollar quoting is balanced and wrappers are syntactically com
   assert.equal(reminderDelimiters.length % 2, 0);
   assert.equal(guardDelimiters.length % 2, 0);
   assert.doesNotMatch(migration, /as \$\s/);
-  assert.match(migration, /create or replace function public\.submit_school_registration_request\([\s\S]*?security invoker[\s\S]*?as \$\$/);
+  assert.match(migration, /create or replace function public\.submit_school_registration_request\([\s\S]*?security invoker[\s\S]*?as \$reminder\$/);
 });
 
 test("school registration requires a confirmed authenticated account and creates the profile server-side", () => {
