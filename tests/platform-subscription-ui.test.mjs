@@ -33,6 +33,8 @@ test("school subscription screen shows plan, payment history, renewal requests a
   assert.match(subscription, /school_subscription_renewal_requests/);
   assert.match(subscription, /school_subscription_reminders/);
   assert.match(subscription, /isSchoolAdmin/);
+  assert.match(subscription, /pending_payment/);
+  assert.match(subscription, /effectiveStatus/);
 });
 
 test("platform owner can create plans, approve schools, extend trials and record renewals", () => {
