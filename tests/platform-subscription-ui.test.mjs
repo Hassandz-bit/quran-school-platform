@@ -14,6 +14,8 @@ test("school self-registration is reachable from login and from unassigned sign-
   assert.match(app, /path="\/school-registration"/);
   assert.match(app, /href="\/school-registration"/);
   assert.match(redirect, /setLocation\("\/school-registration"\)/);
+  assert.match(redirect, /if \(!school && !authorizationError\)/);
+  assert.match(registration, /existing account|حسابك الحالي/);
   assert.match(registration, /client\.auth\.signUp/);
   assert.match(registration, /submit_school_registration_request/);
   assert.match(registration, /emailRedirectTo/);
