@@ -65,6 +65,8 @@ test("internal trigger and status helpers are not callable by browser roles", ()
     "enforce_school_subscription_write()",
     "enforce_school_subscription_limits()",
     "write_platform_audit_log()",
+    "notify_school_subscription_reminder()",
+    "generate_school_subscription_reminders()",
   ]) {
     assert.ok(
       migration.includes(`revoke all on function private.${functionName} from public, anon, authenticated`),
@@ -104,6 +106,19 @@ test("school renewal requests are tenant-scoped, owner-reviewed, and audited", (
   assert.match(migration, /RENEWAL_PAYMENT_AMOUNT_MISMATCH/);
 });
 
+test("30-day and 7-day reminders run daily and create staff-only school notifications", () => {
+  assert.match(migration, /create extension if not exists pg_cron/);
+  assert.match(migration, /quranos-school-subscription-reminders/);
+  assert.match(migration, /'0 7 \* \* \*'/);
+  assert.match(migration, /reminder_days in \(7, 30\)/);
+  assert.match(migration, /school_subscription_reminder_once/);
+  assert.match(migration, /recipient_audiences, sender_audiences/);
+  assert.match(migration, /array\['staff'\]::text\[\]/);
+  assert.match(migration, /school_subscription_reminder_notify/);
+  assert.match(migration, /permission\.code = 'notifications\.send'/);
+  assert.match(migration, /source_type, source_id, recipient_audiences/);
+});
+
 test("all subscription tables enable RLS and audit records are read-only to clients", () => {
   for (const table of [
     "subscription_plans",
@@ -112,6 +127,8 @@ test("all subscription tables enable RLS and audit records are read-only to clie
     "school_subscriptions",
     "subscription_payments",
     "platform_audit_log",
+    "school_subscription_renewal_requests",
+    "school_subscription_reminders",
   ]) {
     assert.match(migration, new RegExp(`alter table public\\.${table} enable row level security`));
   }
