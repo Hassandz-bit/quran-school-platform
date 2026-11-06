@@ -32,5 +32,8 @@ test("subscription plan creation exposes limits and one annual price without fea
   assert.match(dashboard, /max_active_students/);
   assert.match(dashboard, /max_active_branches/);
   assert.match(dashboard, /annual_price/);
+  assert.match(dashboard, /savePlan/);
+  assert.match(dashboard, /togglePlan/);
+  assert.match(dashboard, /extendTrial/);
   assert.doesNotMatch(dashboard, /feature_flags|feature_tier|monthly_price|quarterly_price/);
 });
