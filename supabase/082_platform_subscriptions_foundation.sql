@@ -256,8 +256,7 @@ begin
   return v_school_id;
 end;
 $$;
-revoke all on function private.resolve_school_id_from_tenant_row(text, jsonb)
-  from public, anon, authenticated;
+revoke all on function private.resolve_school_id_from_tenant_row(text, jsonb) from public, anon, authenticated;
 
 create or replace function private.enforce_school_subscription_write()
 returns trigger
