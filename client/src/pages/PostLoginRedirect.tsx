@@ -69,15 +69,17 @@ export default function PostLoginRedirect() {
     setParentCheck("checking");
     void (async () => {
       try {
-        const { data: ownerRecord, error: ownerError } = await getSupabaseClient()
-          .from("platform_owners")
-          .select("user_id")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        if (cancelled) return;
-        if (!ownerError && ownerRecord?.user_id === session.user.id) {
-          setLocation("/platform-owner");
-          return;
+        if (!school) {
+          const { data: ownerRecord, error: ownerError } = await getSupabaseClient()
+            .from("platform_owners")
+            .select("user_id")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          if (cancelled) return;
+          if (!ownerError && ownerRecord?.user_id === session.user.id) {
+            setLocation("/platform-owner");
+            return;
+          }
         }
 
         const students = await listMyGuardianStudents();
