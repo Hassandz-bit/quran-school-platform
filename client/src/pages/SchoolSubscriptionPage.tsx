@@ -86,13 +86,16 @@ export default function SchoolSubscriptionPage() {
     legacy: "Legacy", trial: "Trial", active: "Active", grace: "Grace period",
     expired: "Expired", suspended: "Suspended", cancelled: "Cancelled",
   };
-  const paymentMethod = (method: string) => ({
-    ccp: ar ? "بريد الجزائر" : "CCP",
-    cash: ar ? "نقدًا" : "Cash",
-    bank_transfer: ar ? "تحويل بنكي" : "Bank transfer",
-    cheque: ar ? "صك" : "Cheque",
-    other: ar ? "أخرى" : "Other",
-  }[method] ?? method);
+  const paymentMethod = (method: string) => {
+    const methods: Record<string, string> = {
+      ccp: ar ? "بريد الجزائر" : "CCP",
+      cash: ar ? "نقدًا" : "Cash",
+      bank_transfer: ar ? "تحويل بنكي" : "Bank transfer",
+      cheque: ar ? "صك" : "Cheque",
+      other: ar ? "أخرى" : "Other",
+    };
+    return methods[method] ?? method;
+  };
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center" dir={direction}><Loader2 className="animate-spin" /></div>;
   if (school && !isSchoolAdmin) return <main dir={direction} className="p-8 text-center text-sm text-slate-600">{ar ? "الوصول غير مسموح" : "Subscription details are available to the school administrator only."}</main>;
