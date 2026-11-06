@@ -53,6 +53,17 @@ test("approval and manual annual renewal require the platform owner", () => {
   assert.match(migration, /payment_method in \('cash', 'bank_transfer', 'ccp', 'cheque', 'other'\)/);
 });
 
+test("internal trigger and status helpers are not callable by browser roles", () => {
+  for (const functionName of [
+    "school_subscription_can_operate(uuid)",
+    "enforce_school_subscription_write()",
+    "enforce_school_subscription_limits()",
+    "write_platform_audit_log()",
+  ]) {
+    assert.match(migration, new RegExp(`revoke all on function public\\.${functionName.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\test("all subscription tables enable RLS and audit records are read-only to clients", () => {")} from public, anon, authenticated`));
+  }
+});
+
 test("all subscription tables enable RLS and audit records are read-only to clients", () => {
   for (const table of [
     "subscription_plans",
