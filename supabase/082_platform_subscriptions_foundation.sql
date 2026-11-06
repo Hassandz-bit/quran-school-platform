@@ -279,6 +279,12 @@ begin
     return new;
   end if;
 
+  -- Marking an existing notification as read is non-operational and remains available in read-only mode.
+  if tg_table_name = 'app_notifications' and tg_op = 'UPDATE'
+     and (to_jsonb(old) - 'read_at') = (to_jsonb(new) - 'read_at') then
+    return new;
+  end if;
+
   if tg_op <> 'INSERT' then
     v_old_school_id := private.resolve_school_id_from_tenant_row(tg_table_name, to_jsonb(old));
   end if;
