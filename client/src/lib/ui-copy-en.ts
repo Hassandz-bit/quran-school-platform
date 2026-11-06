@@ -2051,4 +2051,8 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تعذر تمديد الاشتراك.": "Could not extend the subscription.",
   "تاريخ نهاية الاشتراك": "Subscription end date",
   "تمديد الاشتراك": "Extend subscription",
+  "قيمة الخصم": "Discount amount",
+  "بانتظار الدفع": "Awaiting payment",
+  "تحقق من اسم الباقة وحدودها وسعرها وعملتها.": "Check the plan name, limits, price, and currency.",
+  "أدخل مبلغ الدفع والخصم بصورة صحيحة.": "Enter a valid payment amount and discount."
 };
