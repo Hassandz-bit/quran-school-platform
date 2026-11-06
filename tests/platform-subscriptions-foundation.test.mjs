@@ -128,6 +128,7 @@ test("school registration requires a confirmed authenticated account and creates
   assert.match(migration, /auth_user\.email_confirmed_at is not null/);
   assert.match(migration, /private\.submit_school_registration_request/);
   assert.match(migration, /insert into public\.profiles \(id, full_name, phone, locale, status\)/);
+  assert.match(migration, /profile\.locale from public\.profiles profile where profile\.id = v_request\.applicant_profile_id/);
   assert.match(migration, /ACTIVE_SCHOOL_MEMBERSHIP_EXISTS/);
   assert.doesNotMatch(migration, /raw_user_meta_data|user_metadata/);
 });
