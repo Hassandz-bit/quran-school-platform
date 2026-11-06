@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { RefreshCw, Plus, CheckCircle2, XCircle, CreditCard, ShieldCheck, Settings2, ScrollText } from "lucide-react";
+import { RefreshCw, Plus, CheckCircle2, XCircle, CreditCard, Settings2, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -189,7 +189,7 @@ export default function PlatformOwnerDashboard() {
     } finally { setBusy(""); }
   };
 
-  const statusLabel = (status: string) => ({
+  const statusLabels: Record<string, string> = {
     legacy: "اشتراك سابق",
     trial: "تجريبي",
     active: "نشط",
@@ -197,7 +197,8 @@ export default function PlatformOwnerDashboard() {
     expired: "منتهٍ",
     suspended: "موقوف",
     cancelled: "ملغى",
-  }[status] ?? status);
+  };
+  const statusLabel = (status: string) => statusLabels[status] ?? status;
 
   return <main className="min-h-screen bg-[#F5F7F4] p-4 md:p-8" dir="rtl">
     <div className="mx-auto max-w-7xl space-y-6">
