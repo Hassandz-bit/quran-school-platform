@@ -82,6 +82,17 @@ export default function PostLoginRedirect() {
           }
         }
 
+        const { data: profileRecord, error: profileLookupError } = await getSupabaseClient()
+          .from("profiles")
+          .select("id,status")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (!profileLookupError && !profileRecord) {
+          setLocation("/school-registration");
+          return;
+        }
+
         const students = await listMyGuardianStudents();
         if (cancelled) return;
         if (students.length > 0) {
