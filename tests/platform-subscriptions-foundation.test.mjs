@@ -24,7 +24,7 @@ test("legacy schools are grandfathered before write guards are installed", () =>
 test("paid subscriptions are annual and trial subscriptions have a separate end date", () => {
   assert.match(migration, /v_now \+ interval '1 year'/);
   assert.match(migration, /trial_ends_at/);
-  assert.match(migration, /target_trial_days between 0 and 365/);
+  assert.match(migration, /v_trial_days < 0 or v_trial_days > 365/);
 });
 
 test("active student and branch caps are enforced with per-school transaction locks", () => {
