@@ -41,6 +41,7 @@ export default function PlatformOwnerDashboard() {
   const [planForm, setPlanForm] = useState({ code: "", name_ar: "", max_active_students: "100", max_active_branches: "1", annual_price: "10000", currency_code: "DZD" });
   const [approval, setApproval] = useState<Record<string, { planId: string; trialDays: string; discount: string }>>({});
   const [renewal, setRenewal] = useState<Record<string, { planId: string; amount: string; method: string; reference: string }>>({});
+  const [trialExtensions, setTrialExtensions] = useState<Record<string, string>>({});
   const client = getSupabaseClient();
 
   const reload = useCallback(async () => {
@@ -75,6 +76,15 @@ export default function PlatformOwnerDashboard() {
       });
       setRequests(nextRequests);
       setSubscriptions(nextSubscriptions);
+      setTrialExtensions(current => {
+        const next = { ...current };
+        for (const subscription of nextSubscriptions) {
+          if (subscription.trial_ends_at && !next[subscription.id]) {
+            next[subscription.id] = new Date(subscription.trial_ends_at).toISOString().slice(0, 10);
+          }
+        }
+        return next;
+      });
       if (settingsResult.data) setSettings(settingsResult.data as typeof settings);
       const schoolIds = [...new Set(nextSubscriptions.map(item => item.school_id))];
       if (schoolIds.length) {
@@ -217,6 +227,28 @@ export default function PlatformOwnerDashboard() {
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تجديد الاشتراك.");
+    } finally { setBusy(""); }
+  };
+
+  const extendTrial = async (subscription: Subscription) => {
+    const date = trialExtensions[subscription.id];
+    if (!date || subscription.status !== "trial") return;
+    const trialEnd = new Date(`${date}T23:59:59`).toISOString();
+    if (new Date(trialEnd).getTime() <= Date.now()) {
+      toast.error("اختر تاريخًا مستقبليًا لتمديد التجربة.");
+      return;
+    }
+    setBusy(`trial:${subscription.id}`);
+    try {
+      const { error } = await client.from("school_subscriptions")
+        .update({ trial_ends_at: trialEnd })
+        .eq("id", subscription.id)
+        .eq("status", "trial");
+      if (error) throw error;
+      toast.success("تم تمديد الفترة التجريبية.");
+      await reload();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تمديد الفترة التجريبية.");
     } finally { setBusy(""); }
   };
 
@@ -365,7 +397,17 @@ export default function PlatformOwnerDashboard() {
                 <td className="p-2 font-semibold">{schools[subscription.school_id] ?? subscription.school_id.slice(0,8)}</td>
                 <td className="p-2">{subscription.plan_name_snapshot}</td>
                 <td className="p-2"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{statusLabel(subscription)}</span></td>
-                <td className="p-2">{subscription.trial_ends_at ? new Date(subscription.trial_ends_at).toLocaleDateString("ar-DZ-u-nu-latn") : subscription.ends_at ? new Date(subscription.ends_at).toLocaleDateString("ar-DZ-u-nu-latn") : "غير محدد"}</td>
+                <td className="p-2">
+                  {subscription.trial_ends_at
+                    ? <div className="flex min-w-[220px] items-center gap-1">
+                        <span>{new Date(subscription.trial_ends_at).toLocaleDateString("ar-DZ-u-nu-latn")}</span>
+                        {subscription.status === "trial" && <>
+                          <input className="w-32 rounded-lg border px-2 py-1" type="date" min={new Date().toISOString().slice(0,10)} value={trialExtensions[subscription.id] ?? new Date(subscription.trial_ends_at).toISOString().slice(0,10)} onChange={e => setTrialExtensions(v => ({...v,[subscription.id]:e.target.value}))} aria-label="تاريخ نهاية التجربة"/>
+                          <button className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-bold" disabled={busy === `trial:${subscription.id}`} onClick={() => void extendTrial(subscription)}>تمديد التجربة</button>
+                        </>}
+                      </div>
+                    : subscription.ends_at ? new Date(subscription.ends_at).toLocaleDateString("ar-DZ-u-nu-latn") : "غير محدد"}
+                </td>
                 <td className="p-2">{subscription.max_active_students ?? "∞"} تلميذ · {subscription.max_active_branches ?? "∞"} فرع</td>
                 <td className="p-2"><div className="flex min-w-[420px] gap-1">
                   <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => { const nextPlan = plans.find(plan => plan.id === e.target.value); setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value,amount:String(nextPlan?.annual_price ?? form.amount)}})); }} aria-label="الباقة الجديدة">
