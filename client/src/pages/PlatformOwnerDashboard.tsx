@@ -247,7 +247,9 @@ export default function PlatformOwnerDashboard() {
         target_review_note: null,
       });
       if (error) throw error;
-      toast.success("تمت الموافقة وإنشاء المدرسة وتفعيل حساب مديرها.");
+      toast.success(Number(selected.trialDays) > 0
+        ? "تمت الموافقة وبدء التجربة وإنشاء حساب مدير المدرسة."
+        : "تمت الموافقة، والمدرسة بانتظار تسجيل أول دفعة قبل تفعيل الاستخدام.");
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذرت الموافقة على الطلب.");
@@ -496,7 +498,7 @@ export default function PlatformOwnerDashboard() {
                 <input className={inputClass} type="number" min="0" max="365" value={selected.trialDays} aria-label="أيام التجربة" onChange={e => setApproval(v => ({...v,[request.id]:{...selected,trialDays:e.target.value}}))}/>
                 <input className={inputClass} type="number" min="0" step="0.01" value={selected.discount} aria-label="الخصم" onChange={e => setApproval(v => ({...v,[request.id]:{...selected,discount:e.target.value}}))}/>
                 <div className="flex gap-2">
-                  <button className={buttonClass} disabled={busy === request.id || !selected.planId} onClick={() => void approveRequest(request)}>موافقة وتفعيل</button>
+                  <button className={buttonClass} disabled={busy === request.id || !selected.planId} onClick={() => void approveRequest(request)}>{Number(selected.trialDays) > 0 ? "موافقة وبدء التجربة" : "موافقة بانتظار الدفع"}</button>
                   <button className="rounded-xl border border-red-200 px-3 text-red-700" disabled={busy === request.id} onClick={() => void rejectRequest(request)} aria-label="رفض الطلب"><XCircle size={18}/></button>
                 </div>
               </div>
