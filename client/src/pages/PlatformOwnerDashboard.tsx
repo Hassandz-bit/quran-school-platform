@@ -192,6 +192,14 @@ export default function PlatformOwnerDashboard() {
   const savePlan = async (plan: Plan) => {
     const draft = planEdits[plan.id];
     if (!draft) return;
+    if (!draft.name_ar.trim()
+      || !Number.isInteger(Number(draft.max_active_students)) || Number(draft.max_active_students) < 1
+      || !Number.isInteger(Number(draft.max_active_branches)) || Number(draft.max_active_branches) < 1
+      || !Number.isFinite(Number(draft.annual_price)) || Number(draft.annual_price) <= 0
+      || !/^[A-Z]{3}$/.test(draft.currency_code.toUpperCase())) {
+      toast.error("تحقق من اسم الباقة وحدودها وسعرها وعملتها.");
+      return;
+    }
     setBusy(`plan:${plan.id}`);
     try {
       const { error } = await client.from("subscription_plans").update({
@@ -432,7 +440,7 @@ export default function PlatformOwnerDashboard() {
           <input className={inputClass} placeholder="اسم الباقة" value={planForm.name_ar} onChange={e => setPlanForm(v => ({...v, name_ar:e.target.value}))} required />
           <input className={inputClass} type="number" min="1" placeholder="حد التلاميذ" value={planForm.max_active_students} onChange={e => setPlanForm(v => ({...v, max_active_students:e.target.value}))} required />
           <input className={inputClass} type="number" min="1" placeholder="حد الفروع" value={planForm.max_active_branches} onChange={e => setPlanForm(v => ({...v, max_active_branches:e.target.value}))} required />
-          <input className={inputClass} type="number" min="0" step="0.01" placeholder="السعر السنوي" value={planForm.annual_price} onChange={e => setPlanForm(v => ({...v, annual_price:e.target.value}))} required />
+          <input className={inputClass} type="number" min="0.01" step="0.01" placeholder="السعر السنوي" value={planForm.annual_price} onChange={e => setPlanForm(v => ({...v, annual_price:e.target.value}))} required />
           <button className={buttonClass} disabled={busy === "plan"}><Plus size={16}/> إضافة الباقة</button>
           <input className={inputClass} maxLength={3} placeholder="العملة" value={planForm.currency_code} onChange={e => setPlanForm(v => ({...v, currency_code:e.target.value}))} required />
         </form>
@@ -515,7 +523,16 @@ export default function PlatformOwnerDashboard() {
             <thead><tr className="border-b text-right text-slate-500"><th className="p-2">المدرسة</th><th className="p-2">الباقة</th><th className="p-2">الحالة</th><th className="p-2">النهاية</th><th className="p-2">حدود الباقة</th><th className="p-2">تسجيل التجديد</th></tr></thead>
             <tbody>{subscriptions.map(subscription => {
               const defaultPlanId = plans.find(plan => plan.id === subscription.plan_id && plan.is_active)?.id ?? plans.find(plan => plan.is_active)?.id ?? "";
-              const form = renewal[subscription.id] ?? { planId: defaultPlanId, amount: String(plans.find(plan => plan.id === defaultPlanId)?.annual_price ?? subscription.agreed_annual_price ?? 0), method: "ccp", reference: "" };
+              const defaultPlan = plans.find(plan => plan.id === defaultPlanId);
+              const keepTrialDiscount = ["trial", "pending_payment"].includes(subscription.status) && defaultPlanId === subscription.plan_id;
+              const defaultDiscount = keepTrialDiscount ? Number(subscription.discount_amount ?? 0) : 0;
+              const form = renewal[subscription.id] ?? {
+                planId: defaultPlanId,
+                amount: String(keepTrialDiscount ? subscription.agreed_annual_price ?? defaultPlan?.annual_price ?? 0 : defaultPlan?.annual_price ?? 0),
+                discount: String(defaultDiscount),
+                method: "ccp",
+                reference: "",
+              };
               return <tr key={subscription.id} className="border-b last:border-0">
                 <td className="p-2 font-semibold">{schools[subscription.school_id] ?? subscription.school_id.slice(0,8)}</td>
                 <td className="p-2">{subscription.plan_name_snapshot}</td>
