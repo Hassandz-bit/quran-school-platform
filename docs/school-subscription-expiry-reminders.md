@@ -17,7 +17,7 @@ select cron.schedule(
 );
 ```
 
-The schedule runs at 07:00 UTC, which is 08:00 in Algeria (Africa/Algiers). It creates reminders exactly 30 and 7 calendar days before the trial or annual subscription end date. Each reminder is idempotent and creates an in-app notification for active school-wide `school_admin` members only. The notification opens `/subscription`.
+The schedule runs at 07:00 UTC, which is 08:00 in Algeria (Africa/Algiers). It creates reminders exactly 30 and 7 calendar days before the trial or annual subscription end date. Each reminder is idempotent and creates an in-app notification for active school-wide `school_admin` members only. Trial access continues through the configured grace period after `trial_ends_at`; the school becomes read-only only after `grace_ends_at`. The notification opens `/subscription`.
 
 Verify the job and recent runs:
 
