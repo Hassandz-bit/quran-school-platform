@@ -16,6 +16,17 @@ permissions:
   contents: read
 
 jobs:
+  runner-smoke:
+    name: Verify GitHub-hosted runner allocation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Confirm runner started
+        run: |
+          echo "GitHub-hosted runner started successfully."
+          uname -a
+          docker --version
+
   validate-platform-subscriptions:
     name: Apply migration 082 on isolated local Supabase
     runs-on: ubuntu-latest
