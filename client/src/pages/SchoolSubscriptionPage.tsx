@@ -76,7 +76,7 @@ export default function SchoolSubscriptionPage() {
     setBusy(false);
   };
 
-  const date = (value: string | null) => value ? new Date(value).toLocaleDateString(ar ? "ar-DZ-u-nu-latn" : "en-GB") : "—";
+  const date = (value: string | null | undefined) => value ? new Date(value).toLocaleDateString(ar ? "ar-DZ-u-nu-latn" : "en-GB") : "—";
   const endDate = subscription?.trial_ends_at ?? subscription?.ends_at;
   const daysLeft = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000) : null;
   const labels: Record<string, string> = ar ? {
