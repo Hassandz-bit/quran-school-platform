@@ -88,7 +88,7 @@ export default function PostLoginRedirect() {
           setLocation("/parent");
           return;
         }
-        setParentCheck("none");
+        setLocation("/school-registration");
       } catch {
         if (!cancelled) setParentCheck("error");
       }
