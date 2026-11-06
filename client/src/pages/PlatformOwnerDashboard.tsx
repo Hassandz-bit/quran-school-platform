@@ -40,7 +40,7 @@ export default function PlatformOwnerDashboard() {
   const [settings, setSettings] = useState({ trial_default_days: 14, grace_period_days: 7, default_currency_code: "DZD" });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
-  const [planForm, setPlanForm] = useState({ code: "", name_ar: "", max_active_students: "100", max_active_branches: "1", annual_price: "10000", currency_code: "DZD" });
+  const [planForm, setPlanForm] = useState({ code: "", name_ar: "", max_active_students: "", max_active_branches: "", annual_price: "", currency_code: "DZD" });
   const [approval, setApproval] = useState<Record<string, { planId: string; trialDays: string; discount: string }>>({});
   const [renewal, setRenewal] = useState<Record<string, { planId: string; amount: string; method: string; reference: string }>>({});
   const [trialExtensions, setTrialExtensions] = useState<Record<string, string>>({});
@@ -123,10 +123,19 @@ export default function PlatformOwnerDashboard() {
 
   const createPlan = async (event: FormEvent) => {
     event.preventDefault();
+    const code = planForm.code.trim().toLowerCase().replace(/\s+/g, "-");
+    if (!/^[a-z][a-z0-9_-]*$/.test(code)
+      || !Number.isInteger(Number(planForm.max_active_students)) || Number(planForm.max_active_students) < 1
+      || !Number.isInteger(Number(planForm.max_active_branches)) || Number(planForm.max_active_branches) < 1
+      || !Number.isFinite(Number(planForm.annual_price)) || Number(planForm.annual_price) < 0
+      || !/^[A-Z]{3}$/.test(planForm.currency_code.toUpperCase())) {
+      toast.error("تحقق من رمز الباقة والحدود والسعر والعملة.");
+      return;
+    }
     setBusy("plan");
     try {
       const { error } = await client.from("subscription_plans").insert({
-        code: planForm.code.trim().toLowerCase().replace(/\s+/g, "-"),
+        code,
         name_ar: planForm.name_ar.trim(),
         max_active_students: Number(planForm.max_active_students),
         max_active_branches: Number(planForm.max_active_branches),
@@ -136,7 +145,7 @@ export default function PlatformOwnerDashboard() {
       });
       if (error) throw error;
       toast.success("تم إنشاء الباقة.");
-      setPlanForm({ code: "", name_ar: "", max_active_students: "100", max_active_branches: "1", annual_price: "10000", currency_code: settings.default_currency_code });
+      setPlanForm({ code: "", name_ar: "", max_active_students: "", max_active_branches: "", annual_price: "", currency_code: settings.default_currency_code });
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر إنشاء الباقة.");
