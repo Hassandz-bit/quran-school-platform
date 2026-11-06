@@ -825,7 +825,7 @@ begin
    and role.status = 'active'
   where membership.school_id = new.school_id
     and membership.status = 'active'
-  on conflict (recipient_profile_id, source_type, source_id) do nothing;
+  on conflict do nothing;
 
   return new;
 end;
