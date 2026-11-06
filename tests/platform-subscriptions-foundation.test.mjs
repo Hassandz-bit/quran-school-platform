@@ -41,7 +41,7 @@ test("expired subscriptions become read-only without deleting tenant data", () =
 });
 
 test("service-role edge workflows remain subject to subscription enforcement, including child import rows", () => {
-  assert.match(migration, /batch\\.school_id/);
+  assert.match(migration, /batch[.]school_id/);
   assert.match(migration, /guardian_import_rows/);
   assert.doesNotMatch(migration, /service_role/);
 });
