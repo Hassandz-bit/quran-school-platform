@@ -268,7 +268,7 @@ declare
   v_old_school_id uuid;
   v_new_school_id uuid;
 begin
-  if public.is_platform_owner() then
+  if public.is_platform_owner() or session_user = 'postgres' then
     if tg_op = 'DELETE' then return old; end if;
     return new;
   end if;
@@ -366,7 +366,7 @@ declare
 begin
   v_school_id := new.school_id;
 
-  if public.is_platform_owner() then
+  if public.is_platform_owner() or session_user = 'postgres' then
     return new;
   end if;
 
