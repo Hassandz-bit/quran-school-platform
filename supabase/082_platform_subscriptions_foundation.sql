@@ -390,7 +390,8 @@ begin
     where subscription.school_id = v_school_id
       and subscription.status in ('legacy', 'trial', 'active', 'grace', 'expired')
     order by subscription.created_at desc
-    limit 1;
+    limit 1
+    for update;
 
     if v_max is null then return new; end if;
     select count(*) into v_count
@@ -404,8 +405,11 @@ begin
     end if;
   elsif tg_table_name = 'branches' then
     v_new_active := new.status = 'active';
-    if tg_op = 'UPDATE' then v_old_active := old.status = 'active'; end if;
-    if not v_new_active or v_old_active then return new; end if;
+    if tg_op = 'UPDATE' then
+      v_old_active := old.status = 'active';
+      v_old_school_id := old.school_id;
+    end if;
+    if not v_new_active or (v_old_active and v_old_school_id is not distinct from v_school_id) then return new; end if;
 
     perform pg_advisory_xact_lock(hashtextextended(v_school_id::text || ':active-branches', 0));
     select subscription.max_active_branches into v_max
@@ -413,7 +417,8 @@ begin
     where subscription.school_id = v_school_id
       and subscription.status in ('legacy', 'trial', 'active', 'grace', 'expired')
     order by subscription.created_at desc
-    limit 1;
+    limit 1
+    for update;
 
     if v_max is null then return new; end if;
     select count(*) into v_count
