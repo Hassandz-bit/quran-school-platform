@@ -563,6 +563,13 @@ begin
   insert into public.membership_roles (school_id, membership_id, role_id, branch_id)
   values (v_school_id, v_membership_id, v_role_id, null);
 
+  -- Notification audience resolution requires this explicit grant for the staff context.
+  insert into public.role_permissions (school_id, role_id, permission_id)
+  select v_school_id, v_role_id, permission.id
+  from public.permissions permission
+  where permission.code = 'notifications.send'
+  on conflict (role_id, permission_id) do nothing;
+
   insert into public.school_subscriptions (
     school_id, plan_id, plan_name_snapshot, status, starts_at, ends_at,
     trial_ends_at, grace_ends_at, max_active_students, max_active_branches,
@@ -799,7 +806,7 @@ begin
     target_path, source_type, source_id, recipient_audiences, sender_audiences
   )
   select distinct new.school_id, membership.profile_id, 'system', v_event_type,
-         v_title, v_body, '/subscription', 'school_subscription', new.subscription_id,
+         v_title, v_body, '/subscription', 'school_subscription_reminder', new.id,
          array['staff']::text[], array[]::text[]
   from public.school_memberships membership
   join public.membership_roles membership_role
@@ -812,7 +819,8 @@ begin
    and role.code = 'school_admin'
    and role.status = 'active'
   where membership.school_id = new.school_id
-    and membership.status = 'active';
+    and membership.status = 'active'
+  on conflict (recipient_profile_id, source_type, source_id) do nothing;
 
   return new;
 end;
