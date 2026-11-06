@@ -1990,4 +1990,11 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "هذا الحساب غير مخوّل لإدارة اشتراكات المدارس.": "This account is not authorized to manage school subscriptions.",
   "جارٍ التحقق من صلاحية مالك المنصة...": "Checking platform-owner authorization...",
   "منطقة مالك المنصة": "Platform owner area",
+  "تم تحديث الباقة.": "Plan updated.",
+  "تعذر تحديث الباقة.": "Could not update the plan.",
+  "تم تحديث حالة الباقة.": "Plan status updated.",
+  "تعذر تحديث حالة الباقة.": "Could not update plan status.",
+  "إيقاف الباقة": "Disable plan",
+  "تفعيل الباقة": "Enable plan",
+  "حفظ تعديلات الباقة": "Save plan changes",
 };
