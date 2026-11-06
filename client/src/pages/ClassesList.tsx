@@ -276,7 +276,7 @@ const ClassesList: React.FC = () => {
 
     return (
       <>
-        {school?.id && <ManagedDuwams schoolId={school.id} branches={branches} classes={classes} />}
+        {school?.id && <ManagedDuwams schoolId={school.id} branches={branches} classes={classes} onBranchesChanged={() => void loadClasses()} />}
         <Card className="p-4 border border-gray-100">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="relative">
