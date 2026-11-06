@@ -113,6 +113,7 @@ create table public.school_subscriptions (
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint school_subscriptions_school_id_id_unique unique (school_id, id),
   constraint school_subscription_dates_check check (
     (status = 'legacy' and ends_at is null and trial_ends_at is null)
     or (status = 'trial' and trial_ends_at is not null and ends_at is null)
@@ -397,6 +398,9 @@ create trigger school_subscriptions_audit
 create trigger subscription_payments_audit
   after insert on public.subscription_payments
   for each row execute function public.write_platform_audit_log();
+create trigger platform_settings_audit
+  after update on public.platform_settings
+  for each row execute function public.write_platform_audit_log();
 
 -- Secure school approval: the owner provisions the tenant, initial branch and school admin atomically.
 create or replace function public.approve_school_registration(
@@ -423,10 +427,10 @@ begin
   if not public.is_platform_owner() then
     raise exception using errcode = '42501', message = 'PLATFORM_OWNER_REQUIRED';
   end if;
-  if target_trial_days < 0 or target_trial_days > 365 then
+  if target_trial_days is null or target_trial_days < 0 or target_trial_days > 365 then
     raise exception using errcode = '22023', message = 'INVALID_TRIAL_DAYS';
   end if;
-  if target_discount_amount < 0 then
+  if target_discount_amount is null or target_discount_amount < 0 then
     raise exception using errcode = '22023', message = 'INVALID_DISCOUNT';
   end if;
 
