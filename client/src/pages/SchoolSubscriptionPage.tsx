@@ -16,6 +16,7 @@ type RenewalRequest = { id: string; status: string; message: string | null; revi
 type Payment = { id: string; amount: number; currency_code: string; paid_at: string; payment_method: string; reference: string | null };
 type Reminder = { id: string; reminder_type: "trial" | "subscription"; reminder_days: number; due_at: string; created_at: string };
 
+// School administrators can review the plan, payment history, renewal requests, and expiry reminders here.
 export default function SchoolSubscriptionPage() {
   const { user, school, isSchoolAdmin } = useAuth();
   const { locale, direction } = useLocale();
