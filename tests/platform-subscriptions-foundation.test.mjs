@@ -153,7 +153,7 @@ test("30-day and 7-day reminders create staff-only school notifications", () => 
   assert.match(migration, /recipient_audiences, sender_audiences/);
   assert.match(migration, /array\['staff'\]::text\[\]/);
   assert.match(migration, /school_subscription_reminder_notify/);
-  assert.match(migration, /permission\.code = 'notifications\.send'/);
+  assert.match(migration, /role\.code = 'school_admin'[\s\S]*?role\.status = 'active'/);
   assert.match(migration, /source_type, source_id, recipient_audiences/);
 });
 
