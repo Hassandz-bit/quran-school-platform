@@ -496,6 +496,32 @@ create trigger platform_settings_audit
   after update on public.platform_settings
   for each row execute function private.write_platform_audit_log();
 
+-- Public school self-registration creates the profile and pending request atomically.
+create table public.school_subscription_renewal_requests (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid not null references public.schools(id) on delete restrict,
+  requested_by uuid not null references public.profiles(id) on delete restrict,
+  message text,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected', 'withdrawn')),
+  reviewed_by uuid references auth.users(id) on delete set null,
+  reviewed_at timestamptz,
+  review_note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint school_renewal_review_consistency check (
+    (status = 'pending' and reviewed_by is null and reviewed_at is null)
+    or (status <> 'pending' and reviewed_by is not null and reviewed_at is not null)
+  )
+);
+create unique index school_renewal_one_pending_per_school_uidx
+  on public.school_subscription_renewal_requests (school_id) where status = 'pending';
+create trigger school_subscription_renewal_requests_set_updated_at
+  before update on public.school_subscription_renewal_requests
+  for each row execute function public.set_updated_at();
+
+
+
 create trigger school_subscription_renewal_requests_audit
   after insert or update or delete on public.school_subscription_renewal_requests
   for each row execute function private.write_platform_audit_log();
@@ -586,11 +612,22 @@ begin
   insert into public.membership_roles (school_id, membership_id, role_id, branch_id)
   values (v_school_id, v_membership_id, v_role_id, null);
 
-  -- Notification audience resolution requires this explicit grant for the staff context.
+  -- Match the complete system school_admin permission template used by existing tenants.
+  -- A newly approved school must not receive a crippled administrator role.
   insert into public.role_permissions (school_id, role_id, permission_id)
   select v_school_id, v_role_id, permission.id
   from public.permissions permission
-  where permission.code = 'notifications.send'
+  where exists (
+    select 1
+    from public.roles template_role
+    join public.role_permissions template_grant
+      on template_grant.school_id = template_role.school_id
+     and template_grant.role_id = template_role.id
+    where template_role.code = 'school_admin'
+      and template_role.is_system = true
+      and template_role.status = 'active'
+      and template_grant.permission_id = permission.id
+  )
   on conflict (role_id, permission_id) do nothing;
 
   insert into public.school_subscriptions (
@@ -891,29 +928,7 @@ $reminder$;
 revoke all on function private.generate_school_subscription_reminders() from public, anon, authenticated;
 
 
--- Public school self-registration creates the profile and pending request atomically.
-create table public.school_subscription_renewal_requests (
-  id uuid primary key default gen_random_uuid(),
-  school_id uuid not null references public.schools(id) on delete restrict,
-  requested_by uuid not null references public.profiles(id) on delete restrict,
-  message text,
-  status text not null default 'pending'
-    check (status in ('pending', 'approved', 'rejected', 'withdrawn')),
-  reviewed_by uuid references auth.users(id) on delete set null,
-  reviewed_at timestamptz,
-  review_note text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint school_renewal_review_consistency check (
-    (status = 'pending' and reviewed_by is null and reviewed_at is null)
-    or (status <> 'pending' and reviewed_by is not null and reviewed_at is not null)
-  )
-);
-create unique index school_renewal_one_pending_per_school_uidx
-  on public.school_subscription_renewal_requests (school_id) where status = 'pending';
-create trigger school_subscription_renewal_requests_set_updated_at
-  before update on public.school_subscription_renewal_requests
-  for each row execute function public.set_updated_at();
+
 
 create or replace function private.submit_school_registration_request(
   target_full_name text,

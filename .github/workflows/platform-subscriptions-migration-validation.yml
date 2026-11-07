@@ -1,0 +1,82 @@
+name: Platform Subscriptions Migration Validation
+
+on:
+  push:
+    branches:
+      - "test/**"
+    paths:
+      - "supabase/**"
+      - ".github/workflows/platform-subscriptions-migration-validation.yml"
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/platform-subscriptions-migration-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  runner-smoke:
+    name: Verify GitHub-hosted runner allocation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Confirm runner started
+        run: |
+          echo "GitHub-hosted runner started successfully."
+          uname -a
+          docker --version
+
+  validate-platform-subscriptions:
+    name: Apply migration 082 on isolated local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install pinned Supabase CLI v3
+        uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+
+      - name: Verify Docker runtime
+        run: docker info
+
+      - name: Stage ordered migrations 001–081
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p supabase/migrations
+          sequence=1
+          for file in supabase/[0-9][0-9][0-9]_*.sql; do
+            base="$(basename "$file")"
+            if [[ "$base" == 082_* ]]; then
+              cp "$file" /tmp/082_platform_subscriptions_foundation.sql
+              continue
+            fi
+            printf -v version '20261106%06d' "$sequence"
+            cp "$file" "supabase/migrations/${version}_${base}"
+            sequence=$((sequence + 1))
+          done
+          test -s /tmp/082_platform_subscriptions_foundation.sql
+          echo "Staged $((sequence - 1)) existing migrations; migration 082 is held for the post-seed backfill test."
+
+      - name: Start isolated local Supabase and apply baseline migrations plus seed
+        run: supabase start
+
+      - name: Apply migration 082 after seed data exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/082_platform_subscriptions_foundation.sql supabase/migrations/20261106000082_082_platform_subscriptions_foundation.sql
+          supabase migration up
+
+      - name: Run pgTAP migration and security assertions
+        run: supabase test db
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup
