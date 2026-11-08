@@ -2069,4 +2069,11 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "، وتعذر إرسال": ", failed to send",
   "وتُجاوز": "and skipped",
   "سجلًا مكررًا.": "duplicate records.",
+
+  // Bulk guardian invitations
+  "دعوة لربط": "invitation to link",
+  "طالبًا عبر": "students across",
+  "بريدًا إلكترونيًا.": "email addresses.",
+  "إذا كان البريد مرتبطًا بأكثر من طالب فقد تصله دعوة مستقلة لكل طالب. هل تريد المتابعة؟": "If an email is linked to more than one student, it may receive a separate invitation for each student. Continue?",
+
 };
