@@ -208,15 +208,21 @@ export default function Guardians() {
         (row.invitationStatus === null || row.invitationStatus === "failed" || row.invitationStatus === "expired");
       return inScope && inviteable && Boolean(row.guardianEmail?.trim());
     });
-    const uniqueByEmail = new Map<string, GuardianDirectoryRow>();
+    // Deduplicate repeated directory rows for the same guardian/student pair,
+    // but preserve one invitation for every student linked to a shared guardian email.
+    const uniqueTargets = new Map<string, GuardianDirectoryRow>();
     for (const row of candidates) {
       const normalizedEmail = row.guardianEmail!.trim().toLowerCase();
-      if (!uniqueByEmail.has(normalizedEmail)) uniqueByEmail.set(normalizedEmail, row);
+      const targetKey = normalizedEmail + ":" + row.studentId;
+      if (!uniqueTargets.has(targetKey)) uniqueTargets.set(targetKey, row);
     }
-    const targets = [...uniqueByEmail.values()];
+    const targets = [...uniqueTargets.values()];
     if (!targets.length) { toast.info("لا توجد عناوين بريد مؤهلة للدعوة في النطاق المحدد."); return; }
     const skippedDuplicates = candidates.length - targets.length;
-    const confirmation = "سيتم إرسال " + targets.length + " دعوة مستقلة إلى عناوين بريد فريدة." + (skippedDuplicates ? " وسيُتجاوز " + skippedDuplicates + " سجلًا مكرر البريد." : "") + " هل تريد المتابعة؟";
+    const uniqueEmails = new Set(targets.map(row => row.guardianEmail!.trim().toLowerCase())).size;
+    const confirmation = "سيتم إرسال " + targets.length + " دعوة لربط " + targets.length + " طالبًا عبر " + uniqueEmails + " بريدًا إلكترونيًا." +
+      (skippedDuplicates ? " وسيُتجاوز " + skippedDuplicates + " سجلًا مكررًا." : "") +
+      " إذا كان البريد مرتبطًا بأكثر من طالب فقد تصله دعوة مستقلة لكل طالب. هل تريد المتابعة؟";
     if (!window.confirm(confirmation)) return;
     setBulkSubmitting(true);
     let sent = 0;
