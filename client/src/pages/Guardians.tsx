@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BellRing, Download, Mail, Pencil, Phone, Plus, RefreshCw, Search, ShieldCheck, UserX, Users } from "lucide-react";
+import { BellRing, Download, Mail, Pencil, Phone, Plus, RefreshCw, Search, Send, ShieldCheck, UserX, Users } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,6 +88,12 @@ export default function Guardians() {
   const [cohortFilter, setCohortFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<GuardianDirectoryStatusFilter>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
+  const [bulkScope, setBulkScope] = useState<"school" | "cohort">("school");
+  const [bulkCohort, setBulkCohort] = useState("all");
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ completed: 0, total: 0 });
+  const [bulkResult, setBulkResult] = useState<{ sent: number; failed: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [fullName, setFullName] = useState("");
@@ -158,6 +164,11 @@ export default function Guardians() {
     );
   }, [cohortFilter, query, rows, statusFilter]);
 
+  const bulkCandidates = useMemo(() => {
+    const scopedRows = bulkScope === "cohort" ? rows.filter(row => bulkCohort !== "all" && guardianDirectoryCohortKey(row) === bulkCohort) : rows;
+    return scopedRows.filter(row => Boolean(row.guardianEmail?.trim()) && row.relationshipStatus !== "active" && row.relationshipStatus !== "revoked" && (row.invitationStatus === null || row.invitationStatus === "failed" || row.invitationStatus === "expired"));
+  }, [bulkCohort, bulkScope, rows]);
+
   const activeCount = rows.filter(row => row.relationshipStatus === "active").length;
   const pendingCount = rows.filter(row => row.relationshipStatus === "pending").length;
 
@@ -197,6 +208,25 @@ export default function Guardians() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const submitBulkInvites = async () => {
+    if (!school?.id || bulkCandidates.length === 0) { toast.error("لا توجد عناوين بريد مؤهلة لإرسال الدعوات ضمن النطاق المحدد."); return; }
+    const confirmed = window.confirm(`سيتم إرسال ${bulkCandidates.length} دعوة تفعيل مستقلة إلى أولياء الأمور المحددين. ستُتجاوز الدعوات النشطة والعلاقات المفعّلة. هل تريد المتابعة؟`);
+    if (!confirmed) return;
+    setBulkSending(true); setBulkResult(null); setBulkProgress({ completed: 0, total: bulkCandidates.length });
+    let sent = 0; let failed = 0;
+    try {
+      for (const row of bulkCandidates) {
+        try { await inviteGuardian({ schoolId: school.id, studentId: row.studentId, email: row.guardianEmail!, fullName: row.guardianName, relationshipType: row.relationshipType, isPrimary: row.isPrimary }); sent += 1; }
+        catch { failed += 1; }
+        setBulkProgress({ completed: sent + failed, total: bulkCandidates.length });
+      }
+      setBulkResult({ sent, failed });
+      if (sent > 0) toast.success(`تم إرسال ${sent} دعوة بنجاح.`);
+      if (failed > 0) toast.error(`تعذر إرسال ${failed} دعوة؛ راجع بياناتها وحاول مجددًا.`);
+      await load();
+    } finally { setBulkSending(false); }
   };
 
   const downloadTemplate = async () => {
@@ -310,6 +340,11 @@ export default function Guardians() {
             </Button>
           )}
           {access.canInvite && (
+            <Button variant="outline" onClick={() => { setBulkResult(null); setBulkScope("school"); setBulkCohort("all"); setBulkInviteOpen(true); }}>
+              <Send className="size-4" /> دعوات جماعية
+            </Button>
+          )}
+          {access.canInvite && (
             <Button className="bg-[#0B4738] hover:bg-[#0B4738]/90" onClick={() => setInviteOpen(true)}>
               <Plus className="size-4" /> دعوة ولي أمر
             </Button>
@@ -393,6 +428,44 @@ export default function Guardians() {
           ))}
         </CardContent>
       </Card>
+
+      <Dialog open={bulkInviteOpen} onOpenChange={open => { if (!bulkSending) setBulkInviteOpen(open); }}>
+        <DialogContent dir="rtl" className="sm:max-w-xl">
+          <DialogHeader className="text-right">
+            <DialogTitle>إرسال دعوات الأولياء جماعيًا</DialogTitle>
+            <DialogDescription>اختر نطاق الإرسال. ستُرسل دعوة تفعيل مستقلة لكل علاقة بين وليّ وطالب، مع الحفاظ على صلاحية الولي لبيانات أبنائه المرتبطين به فقط.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2"><Label>نطاق الدعوة</Label>
+              <Select value={bulkScope} onValueChange={value => { setBulkScope(value as "school" | "cohort"); setBulkCohort("all"); setBulkResult(null); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                  <SelectItem value="school">كامل المدرسة</SelectItem><SelectItem value="cohort">حسب الحلقة / الفوج</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {bulkScope === "cohort" && <div className="space-y-2"><Label>الفرع والحلقة</Label>
+              <Select value={bulkCohort} onValueChange={value => { setBulkCohort(value); setBulkResult(null); }}>
+                <SelectTrigger><SelectValue placeholder="اختر الحلقة" /></SelectTrigger><SelectContent>
+                  {cohortOptions.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>}
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="flex items-center justify-between"><span>العلاقات المؤهلة للدعوة</span><strong>{bulkCandidates.length}</strong></div>
+              <p className="mt-1 text-xs text-muted-foreground">يشمل الأولياء ذوي البريد المسجل الذين لم تُرسل لهم دعوة، أو تعذر إرسالها سابقًا، أو انتهت صلاحيتها. تُستثنى الدعوات النشطة والحسابات المفعّلة والعلاقات الملغاة.</p>
+            </div>
+            {bulkSending && <div className="space-y-2" aria-live="polite">
+              <div className="flex justify-between text-sm"><span>تقدم الإرسال</span><span>{bulkProgress.completed} / {bulkProgress.total}</span></div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-[#17663B] transition-all" style={{ width: `${bulkProgress.total ? (bulkProgress.completed / bulkProgress.total) * 100 : 0}%` }} /></div>
+            </div>}
+            {bulkResult && <div className="rounded-lg border p-3 text-sm" role="status">اكتملت العملية: أُرسلت {bulkResult.sent} دعوة، وتعذر إرسال {bulkResult.failed} دعوة.</div>}
+          </div>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button onClick={() => void submitBulkInvites()} disabled={bulkSending || bulkCandidates.length === 0} className="bg-[#0B4738] hover:bg-[#0B4738]/90">{bulkSending ? "جارٍ إرسال الدفعة..." : `إرسال ${bulkCandidates.length} دعوة`}</Button>
+            <Button variant="outline" onClick={() => setBulkInviteOpen(false)} disabled={bulkSending}>إغلاق</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) resetInvite(); }}>
         <DialogContent dir="rtl" className="sm:max-w-lg">
