@@ -72,7 +72,7 @@ export default function MushafPreviewButton({
         const attachment = attachments?.find(file =>
           (file.extension_type || "").toLowerCase().includes("pdf") ||
           (file.url || file.file_url || "").toLowerCase().includes(".pdf"),
-        ) || item.attachments?.[0];
+        ) || attachments?.[0];
         const rawUrl = attachment?.url || attachment?.file_url;
         const url = rawUrl?.replace(/^http:\/\//i, "https://");
         if (!url || !/^https:\/\//i.test(url) || !/\.pdf(?:$|[?#])/i.test(url)) {
