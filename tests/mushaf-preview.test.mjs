@@ -13,16 +13,16 @@ test("Warsh page index is complete and resolves verse ranges exactly", () => {
   assert.equal(pages.pages["114"]["6"], 604);
 });
 
-test("mushaf preview is wired into individual and group memorization", () => {
+test("mushaf preview uses the item metadata endpoint and validates its PDF attachment", () => {
   const component = readFileSync(new URL("../client/src/components/MushafPreviewButton.tsx", import.meta.url), "utf8");
   const individual = readFileSync(new URL("../client/src/pages/Memorization.tsx", import.meta.url), "utf8");
   const group = readFileSync(new URL("../client/src/components/GroupMemorizationEntry.tsx", import.meta.url), "utf8");
-  assert.match(component, /ISLAMHOUSE_ATTACHMENTS_API/);
-  assert.match(component, /ISLAMCONTENT_ITEM_PAGE/);
-  assert.match(component, /بتوسط البدل/);
+  assert.match(component, /main\/get-item\/2790112\/ar\/json/);
+  assert.match(component, /Array\.isArray\(item\?\.attachments\)/);
+  assert.match(component, /extension_type.*pdf/i);
   assert.match(component, /iframe/);
-  assert.match(component, /check-attachment/);
-  assert.match(component, /Highlighter/);
+  assert.match(component, /بتوسط البدل/);
+  assert.doesNotMatch(component, /check-attachment/);
   assert.match(individual, /MushafPreviewButton/);
   assert.match(group, /MushafPreviewButton/);
   assert.match(component, /ayahStart/);
