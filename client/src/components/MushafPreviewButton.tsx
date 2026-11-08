@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { BookOpen, ExternalLink, Highlighter, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, Highlighter, Loader2, X } from "lucide-react";
 import warshPages from "@/data/warsh-mushaf-pages.json";
 
 type Props = {
@@ -16,8 +16,17 @@ const pages = (warshPages as {
   pages: Record<string, Record<string, number>>;
 }).pages;
 
-const ASSABILE_READER = "https://www.assabile.com/quran/mushaf/warsh";
-const ASSABILE_COLORED_PDF = "https://www.assabile.com/telecharger-le-coran-pdf/tajwid-warsh/download";
+// IslamHouse publishes this Warsh tajweed mushaf and permits reuse of its
+// materials in apps/websites under its published attribution and integrity rules.
+const ISLAMHOUSE_ITEM_API =
+  "https://api3.islamhouse.com/v3/paV29H2gm56kvLPy/main/get-item/2790112/ar/json";
+const ISLAMCONTENT_ITEM_PAGE = "https://islamcontent.com/ar/content/2885";
+
+type Attachment = {
+  url?: string;
+  file_url?: string;
+  extension_type?: string;
+};
 
 export default function MushafPreviewButton({
   surahNumber,
@@ -27,6 +36,10 @@ export default function MushafPreviewButton({
   disabled = false,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
+
   const pageRange = useMemo(() => {
     const surahPages = pages[String(surahNumber)];
     if (!surahPages) return null;
@@ -45,12 +58,40 @@ export default function MushafPreviewButton({
     ayahEnd >= ayahStart &&
     Boolean(pageRange);
 
-  const readerUrl = pageRange
-    ? `${ASSABILE_READER}/${pageRange.first}`
-    : ASSABILE_READER;
-  const coloredPdfUrl = pageRange
-    ? `${ASSABILE_COLORED_PDF}#page=${pageRange.first}`
-    : ASSABILE_COLORED_PDF;
+  useEffect(() => {
+    if (!open || pdfUrl || pdfError) return;
+    const controller = new AbortController();
+    setLoadingPdf(true);
+
+    fetch(ISLAMHOUSE_ITEM_API, { signal: controller.signal })
+      .then(response => {
+        if (!response.ok) throw new Error("Unable to load IslamHouse item");
+        return response.json();
+      })
+      .then((item: { attachments?: Attachment[] }) => {
+        const attachment = item.attachments?.find(file =>
+          (file.extension_type || "").toLowerCase().includes("pdf") ||
+          (file.url || file.file_url || "").toLowerCase().includes(".pdf"),
+        ) || item.attachments?.[0];
+        const url = attachment?.url || attachment?.file_url;
+        if (!url || !/^https:\/\//i.test(url)) {
+          throw new Error("PDF attachment URL is unavailable");
+        }
+        setPdfUrl(url);
+      })
+      .catch(error => {
+        if (error.name !== "AbortError") setPdfError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingPdf(false);
+      });
+
+    return () => controller.abort();
+  }, [open, pdfUrl, pdfError]);
+
+  const pdfPageUrl = pdfUrl && pageRange
+    ? `${pdfUrl}#page=${pageRange.first}`
+    : pdfUrl;
 
   return (
     <>
@@ -67,7 +108,7 @@ export default function MushafPreviewButton({
 
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-3"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-2 sm:p-4"
           role="presentation"
           onMouseDown={event => {
             if (event.target === event.currentTarget) setOpen(false);
@@ -77,64 +118,73 @@ export default function MushafPreviewButton({
             role="dialog"
             aria-modal="true"
             aria-labelledby="warsh-mushaf-preview-title"
-            className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl"
+            className="flex h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
             dir="rtl"
           >
-            <div className="flex items-start justify-between gap-3">
+            <header className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 p-3 sm:p-4">
               <div>
                 <h2 id="warsh-mushaf-preview-title" className="flex items-center gap-2 text-lg font-bold text-[#0B4738]">
                   <BookOpen size={20} />
-                  معاينة المصحف
+                  مصحف التجويد الملون — ورش بتوسط البدل
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">رواية ورش عن نافع — طريق الأزرق</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  رواية ورش عن نافع · مصحف منشور عبر IslamHouse · ملف PDF بحجم 338 ميغابايت
+                </p>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100" aria-label="إغلاق">
-                <X size={18} />
+                <X size={20} />
               </button>
-            </div>
+            </header>
 
-            <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-              <div className="flex items-center gap-2 text-sm font-bold text-amber-900">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 sm:px-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-amber-950">
                 <Highlighter size={17} />
-                المقطع المحدد للحفظ أو التسميع
+                المقطع المحدد: سورة {surahName}، الآيات {ayahStart}–{ayahEnd}
               </div>
-              <p className="mt-2 text-base font-bold text-gray-900">
-                سورة {surahName} — الآيات {ayahStart} إلى {ayahEnd}
-              </p>
               {pageRange && (
-                <p className="mt-1 text-xs text-amber-900">
-                  موضع المقطع في مصحف ورش: {pageRange.first === pageRange.last ? `الصفحة ${pageRange.first}` : `من الصفحة ${pageRange.first} إلى الصفحة ${pageRange.last}`}
-                </p>
+                <span className="text-xs font-semibold text-amber-900">
+                  {pageRange.first === pageRange.last
+                    ? `صفحة ${pageRange.first}`
+                    : `الصفحات ${pageRange.first}–${pageRange.last}`}
+                </span>
               )}
             </div>
 
-            <p className="mt-4 text-sm leading-6 text-gray-600">
-              اختر فتح المصحف الملون أو المعاينة الرقمية برواية ورش. سيُفتح المصحف عند الصفحة التي تبدأ فيها الآيات المحددة، ويظل نطاق الحفظ ظاهرًا هنا للرجوع إليه.
-            </p>
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              <a
-                href={coloredPdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#0B4738] px-3 text-center text-sm font-bold text-white hover:bg-[#08382D]"
-              >
-                <ExternalLink size={16} />
-                فتح مصحف ورش الملون
-              </a>
-              <a
-                href={readerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 text-center text-sm font-bold text-[#0B4738] hover:bg-gray-50"
-              >
-                <BookOpen size={16} />
-                معاينة ورش مباشرة
-              </a>
+            <div className="relative min-h-0 flex-1 bg-gray-100">
+              {loadingPdf && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white text-sm text-gray-600">
+                  <Loader2 className="animate-spin" size={28} />
+                  جارٍ تحميل بيانات المصحف وتجهيز الصفحة...
+                </div>
+              )}
+              {pdfPageUrl ? (
+                <iframe
+                  title="مصحف التجويد الملون برواية ورش بتوسط البدل"
+                  src={pdfPageUrl}
+                  className="h-full w-full border-0"
+                  allow="fullscreen"
+                />
+              ) : pdfError ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                  <BookOpen size={36} className="text-[#0B4738]" />
+                  <p className="max-w-lg text-sm leading-6 text-gray-700">
+                    تعذر جلب رابط ملف PDF تلقائيًا من واجهة IslamHouse. يمكنك عرض النسخة المنشورة في نافذة المنصة، ثم اختيار المرفق PDF من صفحة المصدر.
+                  </p>
+                  <iframe
+                    title="صفحة المصحف على IslamContent"
+                    src={ISLAMCONTENT_ITEM_PAGE}
+                    className="h-full min-h-[360px] w-full rounded-lg border border-gray-200 bg-white"
+                  />
+                </div>
+              ) : null}
             </div>
-            <p className="mt-3 text-xs leading-5 text-gray-500">
-              صفحات المصحف الملون تُعرض من مصدرها الخارجي ولا تُنسخ إلى خوادم المنصة. تظليل نطاق الآيات داخل الصفحة المصورة نفسها يحتاج ترخيصًا أو واجهة عرض تسمح بإضافة طبقة تظليل فوق الصفحة.
-            </p>
+
+            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-500 sm:px-4">
+              <span>المصدر: IslamHouse / IslamContent — يُعرض المصحف دون تعديل على نصه أو صفحاته.</span>
+              <a href={ISLAMCONTENT_ITEM_PAGE} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0B4738] underline">
+                بيانات المصدر والترخيص
+              </a>
+            </footer>
           </section>
         </div>
       )}
