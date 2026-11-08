@@ -5,8 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getSupabaseClient } from "@/lib/supabase";
 
 type Plan = {
-  id: string; code: string; name_ar: string; max_active_students: number;
-  max_active_branches: number; annual_price: number; currency_code: string; is_active: boolean;
+  id: string; code: string; name_ar: string; min_active_students: number; max_active_students: number;
+  min_active_branches: number; max_active_branches: number; annual_price: number; currency_code: string; is_active: boolean;
 };
 type RegistrationRequest = {
   id: string; applicant_profile_id: string; school_name: string; slug: string;
@@ -16,10 +16,10 @@ type RegistrationRequest = {
 type Subscription = {
   id: string; school_id: string; plan_id: string | null; plan_name_snapshot: string; status: string;
   starts_at: string | null; ends_at: string | null; trial_ends_at: string | null; grace_ends_at: string | null;
-  max_active_students: number | null; max_active_branches: number | null;
+  min_active_students: number | null; max_active_students: number | null; min_active_branches: number | null; max_active_branches: number | null;
   agreed_annual_price: number | null; discount_amount: number; currency_code: string;
 };
-type PlanDraft = { name_ar: string; max_active_students: string; max_active_branches: string; annual_price: string; currency_code: string };
+type PlanDraft = { name_ar: string; min_active_students: string; max_active_students: string; min_active_branches: string; max_active_branches: string; annual_price: string; currency_code: string };
 type SchoolName = { id: string; name: string };
 type RenewalRequest = { id: string; school_id: string; requested_by: string; message: string | null; created_at: string };
 type AuditRow = { id: number; actor_user_id: string | null; action: string; entity_type: string; created_at: string };
@@ -40,7 +40,7 @@ export default function PlatformOwnerDashboard() {
   const [settings, setSettings] = useState({ trial_default_days: 14, grace_period_days: 7, default_currency_code: "DZD" });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
-  const [planForm, setPlanForm] = useState({ code: "", name_ar: "", max_active_students: "", max_active_branches: "", annual_price: "", currency_code: "DZD" });
+  const [planForm, setPlanForm] = useState({ code: "", name_ar: "", min_active_students: "0", max_active_students: "", min_active_branches: "1", max_active_branches: "", annual_price: "", currency_code: "DZD" });
   const [approval, setApproval] = useState<Record<string, { planId: string; trialDays: string; discount: string }>>({});
   const [renewal, setRenewal] = useState<Record<string, { planId: string; amount: string; discount: string; method: string; reference: string }>>({});
   const [trialExtensions, setTrialExtensions] = useState<Record<string, string>>({});
@@ -51,9 +51,9 @@ export default function PlatformOwnerDashboard() {
     setLoading(true);
     try {
       const [planResult, requestResult, subscriptionResult, settingsResult, auditResult, renewalRequestResult] = await Promise.all([
-        client.from("subscription_plans").select("id,code,name_ar,max_active_students,max_active_branches,annual_price,currency_code,is_active").order("annual_price"),
+        client.from("subscription_plans").select("id,code,name_ar,min_active_students,max_active_students,min_active_branches,max_active_branches,annual_price,currency_code,is_active").order("annual_price"),
         client.from("school_registration_requests").select("id,applicant_profile_id,school_name,slug,contact_phone,contact_email,address,applicant_note,created_at").eq("status", "pending").order("created_at", { ascending: false }),
-        client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,grace_ends_at,max_active_students,max_active_branches,agreed_annual_price,discount_amount,currency_code").order("created_at", { ascending: false }),
+        client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,grace_ends_at,min_active_students,max_active_students,min_active_branches,max_active_branches,agreed_annual_price,discount_amount,currency_code").order("created_at", { ascending: false }),
         client.from("platform_settings").select("trial_default_days,grace_period_days,default_currency_code").eq("singleton", true).maybeSingle(),
         client.from("platform_audit_log").select("id,actor_user_id,action,entity_type,created_at").order("created_at", { ascending: false }).limit(20),
         client.from("school_subscription_renewal_requests").select("id,school_id,requested_by,message,created_at").eq("status", "pending").order("created_at", { ascending: false }),
@@ -71,7 +71,9 @@ export default function PlatformOwnerDashboard() {
         for (const plan of nextPlans) {
           if (!next[plan.id]) next[plan.id] = {
             name_ar: plan.name_ar,
+            min_active_students: String(plan.min_active_students),
             max_active_students: String(plan.max_active_students),
+            min_active_branches: String(plan.min_active_branches),
             max_active_branches: String(plan.max_active_branches),
             annual_price: String(plan.annual_price),
             currency_code: plan.currency_code,
@@ -162,8 +164,10 @@ export default function PlatformOwnerDashboard() {
     event.preventDefault();
     const code = planForm.code.trim().toLowerCase().replace(/\s+/g, "-");
     if (!/^[a-z][a-z0-9_-]*$/.test(code)
-      || !Number.isInteger(Number(planForm.max_active_students)) || Number(planForm.max_active_students) < 1
-      || !Number.isInteger(Number(planForm.max_active_branches)) || Number(planForm.max_active_branches) < 1
+      || !Number.isInteger(Number(planForm.min_active_students)) || Number(planForm.min_active_students) < 0
+      || !Number.isInteger(Number(planForm.max_active_students)) || Number(planForm.max_active_students) < Number(planForm.min_active_students)
+      || !Number.isInteger(Number(planForm.min_active_branches)) || Number(planForm.min_active_branches) < 1
+      || !Number.isInteger(Number(planForm.max_active_branches)) || Number(planForm.max_active_branches) < Number(planForm.min_active_branches)
       || !Number.isFinite(Number(planForm.annual_price)) || Number(planForm.annual_price) <= 0
       || !/^[A-Z]{3}$/.test(planForm.currency_code.toUpperCase())) {
       toast.error("تحقق من رمز الباقة والحدود والسعر والعملة.");
@@ -174,7 +178,9 @@ export default function PlatformOwnerDashboard() {
       const { error } = await client.from("subscription_plans").insert({
         code,
         name_ar: planForm.name_ar.trim(),
+        min_active_students: Number(planForm.min_active_students),
         max_active_students: Number(planForm.max_active_students),
+        min_active_branches: Number(planForm.min_active_branches),
         max_active_branches: Number(planForm.max_active_branches),
         annual_price: Number(planForm.annual_price),
         currency_code: planForm.currency_code.toUpperCase(),
@@ -182,7 +188,7 @@ export default function PlatformOwnerDashboard() {
       });
       if (error) throw error;
       toast.success("تم إنشاء الباقة.");
-      setPlanForm({ code: "", name_ar: "", max_active_students: "", max_active_branches: "", annual_price: "", currency_code: settings.default_currency_code });
+      setPlanForm({ code: "", name_ar: "", min_active_students: "0", max_active_students: "", min_active_branches: "1", max_active_branches: "", annual_price: "", currency_code: settings.default_currency_code });
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر إنشاء الباقة.");
@@ -193,8 +199,10 @@ export default function PlatformOwnerDashboard() {
     const draft = planEdits[plan.id];
     if (!draft) return;
     if (!draft.name_ar.trim()
-      || !Number.isInteger(Number(draft.max_active_students)) || Number(draft.max_active_students) < 1
-      || !Number.isInteger(Number(draft.max_active_branches)) || Number(draft.max_active_branches) < 1
+      || !Number.isInteger(Number(draft.min_active_students)) || Number(draft.min_active_students) < 0
+      || !Number.isInteger(Number(draft.max_active_students)) || Number(draft.max_active_students) < Number(draft.min_active_students)
+      || !Number.isInteger(Number(draft.min_active_branches)) || Number(draft.min_active_branches) < 1
+      || !Number.isInteger(Number(draft.max_active_branches)) || Number(draft.max_active_branches) < Number(draft.min_active_branches)
       || !Number.isFinite(Number(draft.annual_price)) || Number(draft.annual_price) <= 0
       || !/^[A-Z]{3}$/.test(draft.currency_code.toUpperCase())) {
       toast.error("تحقق من اسم الباقة وحدودها وسعرها وعملتها.");
@@ -204,7 +212,9 @@ export default function PlatformOwnerDashboard() {
     try {
       const { error } = await client.from("subscription_plans").update({
         name_ar: draft.name_ar.trim(),
+        min_active_students: Number(draft.min_active_students),
         max_active_students: Number(draft.max_active_students),
+        min_active_branches: Number(draft.min_active_branches),
         max_active_branches: Number(draft.max_active_branches),
         annual_price: Number(draft.annual_price),
         currency_code: draft.currency_code.toUpperCase(),
@@ -440,8 +450,10 @@ export default function PlatformOwnerDashboard() {
         <form onSubmit={createPlan} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <input className={inputClass} placeholder="رمز الباقة (basic)" value={planForm.code} onChange={e => setPlanForm(v => ({...v, code:e.target.value}))} required />
           <input className={inputClass} placeholder="اسم الباقة" value={planForm.name_ar} onChange={e => setPlanForm(v => ({...v, name_ar:e.target.value}))} required />
-          <input className={inputClass} type="number" min="1" placeholder="حد التلاميذ" value={planForm.max_active_students} onChange={e => setPlanForm(v => ({...v, max_active_students:e.target.value}))} required />
-          <input className={inputClass} type="number" min="1" placeholder="حد الفروع" value={planForm.max_active_branches} onChange={e => setPlanForm(v => ({...v, max_active_branches:e.target.value}))} required />
+          <input className={inputClass} type="number" min="0" placeholder="الطلاب: أقل من" value={planForm.min_active_students} onChange={e => setPlanForm(v => ({...v, min_active_students:e.target.value}))} required />
+          <input className={inputClass} type="number" min="0" placeholder="الطلاب: أكثر من / الحد الأعلى" value={planForm.max_active_students} onChange={e => setPlanForm(v => ({...v, max_active_students:e.target.value}))} required />
+          <input className={inputClass} type="number" min="1" placeholder="الفروع: أقل من" value={planForm.min_active_branches} onChange={e => setPlanForm(v => ({...v, min_active_branches:e.target.value}))} required />
+          <input className={inputClass} type="number" min="1" placeholder="الفروع: أكثر من / الحد الأعلى" value={planForm.max_active_branches} onChange={e => setPlanForm(v => ({...v, max_active_branches:e.target.value}))} required />
           <input className={inputClass} type="number" min="0.01" step="0.01" placeholder="السعر السنوي" value={planForm.annual_price} onChange={e => setPlanForm(v => ({...v, annual_price:e.target.value}))} required />
           <button className={buttonClass} disabled={busy === "plan"}><Plus size={16}/> إضافة الباقة</button>
           <input className={inputClass} maxLength={3} placeholder="العملة" value={planForm.currency_code} onChange={e => setPlanForm(v => ({...v, currency_code:e.target.value}))} required />
@@ -450,7 +462,9 @@ export default function PlatformOwnerDashboard() {
           {plans.map(plan => {
             const draft = planEdits[plan.id] ?? {
               name_ar: plan.name_ar,
+              min_active_students: String(plan.min_active_students),
               max_active_students: String(plan.max_active_students),
+              min_active_branches: String(plan.min_active_branches),
               max_active_branches: String(plan.max_active_branches),
               annual_price: String(plan.annual_price),
               currency_code: plan.currency_code,
@@ -462,8 +476,10 @@ export default function PlatformOwnerDashboard() {
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <input className={inputClass} aria-label="اسم الباقة" value={draft.name_ar} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,name_ar:e.target.value}}))}/>
-                <input className={inputClass} aria-label="حد التلاميذ" type="number" min="1" value={draft.max_active_students} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,max_active_students:e.target.value}}))}/>
-                <input className={inputClass} aria-label="حد الفروع" type="number" min="1" value={draft.max_active_branches} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,max_active_branches:e.target.value}}))}/>
+                <input className={inputClass} aria-label="الحد الأدنى للطلاب" type="number" min="0" value={draft.min_active_students} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,min_active_students:e.target.value}}))}/>
+                <input className={inputClass} aria-label="الحد الأعلى للطلاب" type="number" min="0" value={draft.max_active_students} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,max_active_students:e.target.value}}))}/>
+                <input className={inputClass} aria-label="الحد الأدنى للفروع" type="number" min="1" value={draft.min_active_branches} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,min_active_branches:e.target.value}}))}/>
+                <input className={inputClass} aria-label="الحد الأعلى للفروع" type="number" min="1" value={draft.max_active_branches} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,max_active_branches:e.target.value}}))}/>
                 <div className="flex gap-1">
                   <input className={inputClass} aria-label="السعر السنوي" type="number" min="0.01" step="0.01" value={draft.annual_price} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,annual_price:e.target.value}}))}/>
                   <input className="w-20 rounded-xl border border-slate-200 px-2 text-sm uppercase" aria-label="العملة" maxLength={3} value={draft.currency_code} onChange={e => setPlanEdits(v => ({...v,[plan.id]:{...draft,currency_code:e.target.value}}))}/>
@@ -493,7 +509,7 @@ export default function PlatformOwnerDashboard() {
               {request.applicant_note && <p className="mt-1 text-sm text-slate-600">{request.applicant_note}</p>}
               <div className="mt-3 grid gap-2 sm:grid-cols-4">
                 <select className={inputClass} value={selected.planId} onChange={e => setApproval(v => ({...v,[request.id]:{...selected,planId:e.target.value}}))}>
-                  <option value="">اختر الباقة</option>{plans.filter(plan => plan.is_active).map(plan => <option key={plan.id} value={plan.id}>{plan.name_ar} — {plan.annual_price} {plan.currency_code}/سنة</option>)}
+                  <option value="">اختر الباقة</option>{plans.filter(plan => plan.is_active).map(plan => <option key={plan.id} value={plan.id}>{plan.name_ar} — {plan.min_active_students}–{plan.max_active_students} طالب · {plan.min_active_branches}–{plan.max_active_branches} فرع — {plan.annual_price} {plan.currency_code}/سنة</option>)}
                 </select>
                 <input className={inputClass} type="number" min="0" max="365" value={selected.trialDays} aria-label="أيام التجربة" onChange={e => setApproval(v => ({...v,[request.id]:{...selected,trialDays:e.target.value}}))}/>
                 <input className={inputClass} type="number" min="0" step="0.01" value={selected.discount} aria-label="الخصم" onChange={e => setApproval(v => ({...v,[request.id]:{...selected,discount:e.target.value}}))}/>
@@ -556,7 +572,7 @@ export default function PlatformOwnerDashboard() {
                         </>}
                       </div> : "غير محدد"}
                 </td>
-                <td className="p-2">{subscription.max_active_students ?? "∞"} تلميذ · {subscription.max_active_branches ?? "∞"} فرع</td>
+                <td className="p-2">{subscription.min_active_students ?? 0}–{subscription.max_active_students ?? "∞"} طالب · {subscription.min_active_branches ?? 1}–{subscription.max_active_branches ?? "∞"} فرع</td>
                 <td className="p-2"><div className="flex min-w-[520px] gap-1">
                   <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => { const nextPlan = plans.find(plan => plan.id === e.target.value); setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value,amount:String(nextPlan?.annual_price ?? form.amount),discount:"0"}})); }} aria-label="الباقة الجديدة">
                     {plans.filter(plan => plan.is_active).map(plan => <option key={plan.id} value={plan.id}>{plan.name_ar}</option>)}
