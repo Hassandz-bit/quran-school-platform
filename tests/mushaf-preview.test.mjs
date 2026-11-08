@@ -17,10 +17,11 @@ test("mushaf preview is wired into individual and group memorization", () => {
   const component = readFileSync(new URL("../client/src/components/MushafPreviewButton.tsx", import.meta.url), "utf8");
   const individual = readFileSync(new URL("../client/src/pages/Memorization.tsx", import.meta.url), "utf8");
   const group = readFileSync(new URL("../client/src/components/GroupMemorizationEntry.tsx", import.meta.url), "utf8");
-  assert.match(component, /ISLAMHOUSE_ITEM_API/);
+  assert.match(component, /ISLAMHOUSE_ATTACHMENTS_API/);
   assert.match(component, /ISLAMCONTENT_ITEM_PAGE/);
   assert.match(component, /بتوسط البدل/);
   assert.match(component, /iframe/);
+  assert.match(component, /check-attachment/);
   assert.match(component, /Highlighter/);
   assert.match(individual, /MushafPreviewButton/);
   assert.match(group, /MushafPreviewButton/);
