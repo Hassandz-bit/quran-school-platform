@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { MemorizationFocusNotes } from "@/components/MemorizationFocusNotes";
 import GroupMemorizationEntry from "@/components/GroupMemorizationEntry";
+import MushafPreviewButton from "@/components/MushafPreviewButton";
 import StudentAvatar from "@/components/StudentAvatar";
 import StudentQuranCard from "@/components/StudentQuranCard";
 import { Button } from "@/components/ui/button";
@@ -916,6 +917,14 @@ export default function Memorization() {
                       الحد الأعلى لسورة {selectedSurah.name}: {selectedSurah.ayahCount}
                     </span>
                   </label>
+                  <div className="flex items-end">
+                    <MushafPreviewButton
+                      surahNumber={draft.surahNumber}
+                      surahName={selectedSurah.name}
+                      ayahStart={draft.ayahStart}
+                      ayahEnd={draft.ayahEnd}
+                    />
+                  </div>
 
                   <label className="space-y-2">
                     <span className="text-sm font-semibold text-[#2C3E50]">
