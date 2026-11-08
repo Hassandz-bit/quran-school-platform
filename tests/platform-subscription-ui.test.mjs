@@ -66,10 +66,10 @@ test("subscription plans define and preserve minimum and maximum active student 
   assert.match(dashboard, /max_active_students/);
   assert.match(dashboard, /min_active_branches/);
   assert.match(dashboard, /max_active_branches/);
-  assert.match(dashboard, /الطلاب من \\(الحد الأدنى\\)/);
-  assert.match(dashboard, /الطلاب إلى \\(الحد الأعلى\\)/);
-  assert.match(dashboard, /الفروع من \\(الحد الأدنى\\)/);
-  assert.match(dashboard, /الفروع إلى \\(الحد الأعلى\\)/);
+  assert.ok(dashboard.includes("الطلاب من (الحد الأدنى)"));
+  assert.ok(dashboard.includes("الطلاب إلى (الحد الأعلى)"));
+  assert.ok(dashboard.includes("الفروع من (الحد الأدنى)"));
+  assert.ok(dashboard.includes("الفروع إلى (الحد الأعلى)"));
   assert.match(rangeMigration, /subscription_plans_student_range_check/);
   assert.match(rangeMigration, /subscription_plans_branch_range_check/);
   assert.match(rangeMigration, /sync_subscription_plan_range/);
