@@ -16,16 +16,19 @@ const pages = (warshPages as {
   pages: Record<string, Record<string, number>>;
 }).pages;
 
-// IslamHouse publishes this Warsh tajweed mushaf and permits reuse of its
-// materials in apps/websites under its published attribution and integrity rules.
-const ISLAMHOUSE_ATTACHMENTS_API =
-  "https://api3.islamhouse.com/v3/paV29H2gm56kvLPy/main/check-attachment/2790112/json";
+// Read the published item metadata; check-attachment is only a lightweight
+// availability check and does not return the attachment list.
+const ISLAMHOUSE_ITEM_API =
+  "https://api3.islamhouse.com/v3/paV29H2gm56kvLPy/main/get-item/2790112/ar/json";
 const ISLAMCONTENT_ITEM_PAGE = "https://islamcontent.com/ar/content/2885";
 
 type Attachment = {
   url?: string;
-  file_url?: string;
   extension_type?: string;
+};
+
+type IslamHouseItem = {
+  attachments?: Attachment[];
 };
 
 export default function MushafPreviewButton({
@@ -63,17 +66,18 @@ export default function MushafPreviewButton({
     const controller = new AbortController();
     setLoadingPdf(true);
 
-    fetch(ISLAMHOUSE_ATTACHMENTS_API, { signal: controller.signal })
+    fetch(ISLAMHOUSE_ITEM_API, { signal: controller.signal })
       .then(response => {
         if (!response.ok) throw new Error("Unable to load IslamHouse item");
-        return response.json();
+        return response.json() as Promise<IslamHouseItem>;
       })
-      .then((attachments: Attachment[]) => {
-        const attachment = attachments?.find(file =>
-          (file.extension_type || "").toLowerCase().includes("pdf") ||
-          (file.url || file.file_url || "").toLowerCase().includes(".pdf"),
-        ) || attachments?.[0];
-        const rawUrl = attachment?.url || attachment?.file_url;
+      .then(item => {
+        const attachments = Array.isArray(item?.attachments) ? item.attachments : [];
+        const attachment = attachments.find(file =>
+          (file.extension_type || "").toLowerCase() === "pdf" ||
+          (file.url || "").toLowerCase().split(/[?#]/, 1)[0].endsWith(".pdf"),
+        );
+        const rawUrl = attachment?.url;
         const url = rawUrl?.replace(/^http:\/\//i, "https://");
         if (!url || !/^https:\/\//i.test(url) || !/\.pdf(?:$|[?#])/i.test(url)) {
           throw new Error("PDF attachment URL is unavailable");
@@ -169,13 +173,11 @@ export default function MushafPreviewButton({
                 <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
                   <BookOpen size={36} className="text-[#0B4738]" />
                   <p className="max-w-lg text-sm leading-6 text-gray-700">
-                    تعذر جلب رابط ملف PDF تلقائيًا من واجهة IslamHouse. يمكنك عرض النسخة المنشورة في نافذة المنصة، ثم اختيار المرفق PDF من صفحة المصدر.
+                    تعذر تحميل بيانات المصحف حاليًا. حاول مرة أخرى لاحقًا، أو افتح بيانات النسخة المنشورة لدى المصدر.
                   </p>
-                  <iframe
-                    title="صفحة المصحف على IslamContent"
-                    src={ISLAMCONTENT_ITEM_PAGE}
-                    className="h-full min-h-[360px] w-full rounded-lg border border-gray-200 bg-white"
-                  />
+                  <a href={ISLAMCONTENT_ITEM_PAGE} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0B4738] underline">
+                    فتح صفحة المصحف لدى المصدر
+                  </a>
                 </div>
               ) : null}
             </div>
