@@ -89,6 +89,7 @@ export default function Guardians() {
   const [statusFilter, setStatusFilter] = useState<GuardianDirectoryStatusFilter>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -199,6 +200,47 @@ export default function Guardians() {
     }
   };
 
+  const submitBulkInvites = async (scope: "school" | "cohort") => {
+    if (!school?.id || bulkSubmitting) return;
+    const candidates = rows.filter(row => {
+      const inScope = scope === "school" || (cohortFilter !== "all" && guardianDirectoryCohortKey(row) === cohortFilter);
+      const inviteable = row.relationshipStatus !== "active" && row.relationshipStatus !== "revoked" &&
+        (row.invitationStatus === null || row.invitationStatus === "failed" || row.invitationStatus === "expired");
+      return inScope && inviteable && Boolean(row.guardianEmail?.trim());
+    });
+    // Deduplicate repeated directory rows for the same guardian/student pair,
+    // but preserve one invitation for every student linked to a shared guardian email.
+    const uniqueTargets = new Map<string, GuardianDirectoryRow>();
+    for (const row of candidates) {
+      const normalizedEmail = row.guardianEmail!.trim().toLowerCase();
+      const targetKey = normalizedEmail + ":" + row.studentId;
+      if (!uniqueTargets.has(targetKey)) uniqueTargets.set(targetKey, row);
+    }
+    const targets = [...uniqueTargets.values()];
+    if (!targets.length) { toast.info("لا توجد عناوين بريد مؤهلة للدعوة في النطاق المحدد."); return; }
+    const skippedDuplicates = candidates.length - targets.length;
+    const uniqueEmails = new Set(targets.map(row => row.guardianEmail!.trim().toLowerCase())).size;
+    const confirmation = "سيتم إرسال " + targets.length + " دعوة لربط " + targets.length + " طالبًا عبر " + uniqueEmails + " بريدًا إلكترونيًا." +
+      (skippedDuplicates ? " وسيُتجاوز " + skippedDuplicates + " سجلًا مكررًا." : "") +
+      " إذا كان البريد مرتبطًا بأكثر من طالب فقد تصله دعوة مستقلة لكل طالب. هل تريد المتابعة؟";
+    if (!window.confirm(confirmation)) return;
+    setBulkSubmitting(true);
+    let sent = 0;
+    let failed = 0;
+    try {
+      for (let index = 0; index < targets.length; index += 3) {
+        const chunk = targets.slice(index, index + 3);
+        const results = await Promise.allSettled(chunk.map(row => inviteGuardian({
+          schoolId: school.id, studentId: row.studentId, email: row.guardianEmail!, fullName: row.guardianName,
+          relationshipType: row.relationshipType, isPrimary: row.isPrimary,
+          idempotencyKey: "guardian-bulk-" + scope + "-" + row.relationshipId + "-" + Date.now(),
+        })));
+        for (const result of results) { if (result.status === "fulfilled") sent += 1; else failed += 1; }
+      }
+      toast.success("انتهت عملية الدعوات: أُرسلت " + sent + "، وتعذر إرسال " + failed + "." + (skippedDuplicates ? " وتُجاوز " + skippedDuplicates + " سجلًا مكررًا." : ""));
+      await load();
+    } finally { setBulkSubmitting(false); }
+  };
   const downloadTemplate = async () => {
     if (!school?.id) return;
     setDownloadingTemplate(true);
@@ -314,6 +356,8 @@ export default function Guardians() {
               <Plus className="size-4" /> دعوة ولي أمر
             </Button>
           )}
+          {access.canInvite && <Button variant="outline" onClick={() => void submitBulkInvites("cohort")} disabled={bulkSubmitting || cohortFilter === "all"}>{bulkSubmitting ? <RefreshCw className="size-4 animate-spin" /> : <Mail className="size-4" />} دعوة أولياء الحلقة المحددة</Button>}
+          {access.canInvite && <Button variant="outline" onClick={() => void submitBulkInvites("school")} disabled={bulkSubmitting}>{bulkSubmitting ? <RefreshCw className="size-4 animate-spin" /> : <Users className="size-4" />} دعوة أولياء المدرسة</Button>}
         </div>
       </div>
 

@@ -2058,5 +2058,22 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تمت الموافقة وربط حساب المسؤول، وستبقى المدرسة بانتظار تسجيل أول دفعة قبل تفعيل الاستخدام.": "The application was approved and the applicant account was assigned; the school remains read-only until its first payment is recorded.",
   "موافقة وبدء التجربة": "Approve and start trial",
   "أنشئ حساب المسؤول أو سجّل الدخول بحسابك الحالي، ثم أرسل طلب مدرستك. لن تُفعّل المدرسة قبل موافقة مالك المنصة.": "Create an administrator account or sign in with your existing account, then submit your school application. The platform owner must approve it before activation.",
-  "موافقة بانتظار الدفع": "Approve, awaiting payment"
+  "موافقة بانتظار الدفع": "Approve, awaiting payment",
+  "لا توجد عناوين بريد مؤهلة للدعوة في النطاق المحدد.": "No eligible email addresses are available in the selected scope.",
+  "سيتم إرسال": "Will send",
+  "دعوة مستقلة إلى عناوين بريد فريدة.": "separate invitations to unique email addresses.",
+  "وسيُتجاوز": "and will skip",
+  "سجلًا مكرر البريد.": "duplicate email records.",
+  "هل تريد المتابعة؟": "Do you want to continue?",
+  "انتهت عملية الدعوات: أُرسلت": "Invitations completed: sent",
+  "، وتعذر إرسال": ", failed to send",
+  "وتُجاوز": "and skipped",
+  "سجلًا مكررًا.": "duplicate records.",
+
+  // Bulk guardian invitations
+  "دعوة لربط": "invitation to link",
+  "طالبًا عبر": "students across",
+  "بريدًا إلكترونيًا.": "email addresses.",
+  "إذا كان البريد مرتبطًا بأكثر من طالب فقد تصله دعوة مستقلة لكل طالب. هل تريد المتابعة؟": "If an email is linked to more than one student, it may receive a separate invitation for each student. Continue?",
+
 };
