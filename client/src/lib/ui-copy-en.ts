@@ -2,6 +2,14 @@
 // strings. Keeping the catalog separate makes coverage measurable and prevents
 // page components from accumulating one-off language conditionals.
 export const EXACT_UI_ENGLISH: Record<string, string> = {
+  "الطلاب من (الحد الأدنى)": "Students from (minimum)",
+  "الطلاب إلى (الحد الأعلى)": "Students up to (maximum)",
+  "الفروع من (الحد الأدنى)": "Branches from (minimum)",
+  "الفروع إلى (الحد الأعلى)": "Branches up to (maximum)",
+  "الحد الأدنى للطلاب": "Minimum students",
+  "الحد الأعلى للطلاب": "Maximum students",
+  "الحد الأدنى للفروع": "Minimum branches",
+  "الحد الأعلى للفروع": "Maximum branches",
   // Student creation
   "إضافة طالب جديد": "Add new student",
   "طباعة استمارة ورقية فارغة": "Print blank paper form",
