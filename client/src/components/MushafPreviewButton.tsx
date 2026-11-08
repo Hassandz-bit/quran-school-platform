@@ -18,8 +18,8 @@ const pages = (warshPages as {
 
 // IslamHouse publishes this Warsh tajweed mushaf and permits reuse of its
 // materials in apps/websites under its published attribution and integrity rules.
-const ISLAMHOUSE_ITEM_API =
-  "https://api3.islamhouse.com/v3/paV29H2gm56kvLPy/main/get-item/2790112/ar/json";
+const ISLAMHOUSE_ATTACHMENTS_API =
+  "https://api3.islamhouse.com/v3/paV29H2gm56kvLPy/main/check-attachment/2790112/json";
 const ISLAMCONTENT_ITEM_PAGE = "https://islamcontent.com/ar/content/2885";
 
 type Attachment = {
@@ -63,18 +63,19 @@ export default function MushafPreviewButton({
     const controller = new AbortController();
     setLoadingPdf(true);
 
-    fetch(ISLAMHOUSE_ITEM_API, { signal: controller.signal })
+    fetch(ISLAMHOUSE_ATTACHMENTS_API, { signal: controller.signal })
       .then(response => {
         if (!response.ok) throw new Error("Unable to load IslamHouse item");
         return response.json();
       })
-      .then((item: { attachments?: Attachment[] }) => {
-        const attachment = item.attachments?.find(file =>
+      .then((attachments: Attachment[]) => {
+        const attachment = attachments?.find(file =>
           (file.extension_type || "").toLowerCase().includes("pdf") ||
           (file.url || file.file_url || "").toLowerCase().includes(".pdf"),
         ) || item.attachments?.[0];
-        const url = attachment?.url || attachment?.file_url;
-        if (!url || !/^https:\/\//i.test(url)) {
+        const rawUrl = attachment?.url || attachment?.file_url;
+        const url = rawUrl?.replace(/^http:\/\//i, "https://");
+        if (!url || !/^https:\/\//i.test(url) || !/\.pdf(?:$|[?#])/i.test(url)) {
           throw new Error("PDF attachment URL is unavailable");
         }
         setPdfUrl(url);
