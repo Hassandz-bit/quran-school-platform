@@ -2078,6 +2078,14 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "وتُجاوز": "and skipped",
   "سجلًا مكررًا.": "duplicate records.",
 
+  // Embedded Warsh mushaf reader
+  "مصحف التجويد الملون — ورش بتوسط البدل": "Colour-coded Tajweed Mushaf — Warsh with medium madd al-badal",
+  "رواية ورش عن نافع · مصحف منشور عبر IslamHouse · ملف PDF بحجم 338 ميغابايت": "Warsh narration from Nafi · Published by IslamHouse · 338 MB PDF",
+  "تعذر جلب رابط ملف PDF تلقائيًا من واجهة IslamHouse. يمكنك عرض النسخة المنشورة في نافذة المنصة، ثم اختيار المرفق PDF من صفحة المصدر.": "The PDF link could not be retrieved automatically from IslamHouse. You can view the published edition in the embedded source page and select its PDF attachment.",
+  "المصدر: IslamHouse / IslamContent — يُعرض المصحف دون تعديل على نصه أو صفحاته.": "Source: IslamHouse / IslamContent — the mushaf is displayed without changing its text or pages.",
+  "بيانات المصدر والترخيص": "Source and reuse terms",
+  "صفحة المصحف على IslamContent": "Mushaf page on IslamContent",
+
   // Bulk guardian invitations
   "دعوة لربط": "invitation to link",
   "طالبًا عبر": "students across",
