@@ -450,10 +450,10 @@ export default function PlatformOwnerDashboard() {
         <form onSubmit={createPlan} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <input className={inputClass} placeholder="رمز الباقة (basic)" value={planForm.code} onChange={e => setPlanForm(v => ({...v, code:e.target.value}))} required />
           <input className={inputClass} placeholder="اسم الباقة" value={planForm.name_ar} onChange={e => setPlanForm(v => ({...v, name_ar:e.target.value}))} required />
-          <input className={inputClass} type="number" min="0" placeholder="الطلاب: أقل من" value={planForm.min_active_students} onChange={e => setPlanForm(v => ({...v, min_active_students:e.target.value}))} required />
-          <input className={inputClass} type="number" min="0" placeholder="الطلاب: أكثر من / الحد الأعلى" value={planForm.max_active_students} onChange={e => setPlanForm(v => ({...v, max_active_students:e.target.value}))} required />
-          <input className={inputClass} type="number" min="1" placeholder="الفروع: أقل من" value={planForm.min_active_branches} onChange={e => setPlanForm(v => ({...v, min_active_branches:e.target.value}))} required />
-          <input className={inputClass} type="number" min="1" placeholder="الفروع: أكثر من / الحد الأعلى" value={planForm.max_active_branches} onChange={e => setPlanForm(v => ({...v, max_active_branches:e.target.value}))} required />
+          <input className={inputClass} type="number" min="0" placeholder="الطلاب من (الحد الأدنى)" value={planForm.min_active_students} onChange={e => setPlanForm(v => ({...v, min_active_students:e.target.value}))} required />
+          <input className={inputClass} type="number" min="0" placeholder="الطلاب إلى (الحد الأعلى)" value={planForm.max_active_students} onChange={e => setPlanForm(v => ({...v, max_active_students:e.target.value}))} required />
+          <input className={inputClass} type="number" min="1" placeholder="الفروع من (الحد الأدنى)" value={planForm.min_active_branches} onChange={e => setPlanForm(v => ({...v, min_active_branches:e.target.value}))} required />
+          <input className={inputClass} type="number" min="1" placeholder="الفروع إلى (الحد الأعلى)" value={planForm.max_active_branches} onChange={e => setPlanForm(v => ({...v, max_active_branches:e.target.value}))} required />
           <input className={inputClass} type="number" min="0.01" step="0.01" placeholder="السعر السنوي" value={planForm.annual_price} onChange={e => setPlanForm(v => ({...v, annual_price:e.target.value}))} required />
           <button className={buttonClass} disabled={busy === "plan"}><Plus size={16}/> إضافة الباقة</button>
           <input className={inputClass} maxLength={3} placeholder="العملة" value={planForm.currency_code} onChange={e => setPlanForm(v => ({...v, currency_code:e.target.value}))} required />
