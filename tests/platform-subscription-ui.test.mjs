@@ -58,3 +58,19 @@ test("subscription financial records are visible only to the platform owner or s
 test("trial expiry displays the configured grace period before read-only expiry", () => {
   assert.match(subscription, /subscription\.status === "trial"[\s\S]*?subscription\.grace_ends_at[\s\S]*?return "grace"/);
 });
+
+test("subscription plans define and preserve minimum and maximum active student and branch ranges", () => {
+  const dashboard = read("../client/src/pages/PlatformOwnerDashboard.tsx");
+  const rangeMigration = read("../supabase/083_subscription_plan_range_bounds.sql");
+  assert.match(dashboard, /min_active_students/);
+  assert.match(dashboard, /max_active_students/);
+  assert.match(dashboard, /min_active_branches/);
+  assert.match(dashboard, /max_active_branches/);
+  assert.match(dashboard, /الحد الأدنى للطلاب/);
+  assert.match(dashboard, /الحد الأعلى للطلاب/);
+  assert.match(dashboard, /الحد الأدنى للفروع/);
+  assert.match(dashboard, /الحد الأعلى للفروع/);
+  assert.match(rangeMigration, /subscription_plans_student_range_check/);
+  assert.match(rangeMigration, /subscription_plans_branch_range_check/);
+  assert.match(rangeMigration, /sync_subscription_plan_range/);
+});
