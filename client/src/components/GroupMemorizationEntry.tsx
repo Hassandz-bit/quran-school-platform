@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { BookOpenCheck, CheckCircle2, Loader2, RotateCcw, Save, Users } from "lucide-react";
 import { toast } from "sonner";
 import StudentAvatar from "@/components/StudentAvatar";
+import MushafPreviewButton from "@/components/MushafPreviewButton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -274,6 +275,15 @@ export default function GroupMemorizationEntry({
             />
             <span className="text-xs text-gray-500">الحد الأعلى لسورة {selectedSurah.name}: {selectedSurah.ayahCount}</span>
           </label>
+          <div className="flex items-end">
+            <MushafPreviewButton
+              surahNumber={surahNumber}
+              surahName={selectedSurah.name}
+              ayahStart={ayahStart}
+              ayahEnd={ayahEnd}
+              disabled={controlsDisabled}
+            />
+          </div>
         </div>
       </section>
 
