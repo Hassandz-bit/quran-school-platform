@@ -360,7 +360,10 @@ export default function Attendance() {
       toast.success(message);
 
     } catch (error) {
-      const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const offline =
+        (typeof navigator !== "undefined" && !navigator.onLine) ||
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
       if (offline && user?.id) {
         try {
           await saveOfflineAttendanceDraft({
