@@ -100,6 +100,15 @@ export default function OfflineAttendance() {
     };
   }, [loading, user?.id]);
 
+  useEffect(() => {
+    if (!items.some(item => item.hasPendingDraft)) return;
+    const resumeSyncWhenOnline = () => {
+      window.location.assign("/attendance");
+    };
+    window.addEventListener("online", resumeSyncWhenOnline);
+    return () => window.removeEventListener("online", resumeSyncWhenOnline);
+  }, [items]);
+
   return (
     <main dir="rtl" className="min-h-screen bg-[#F7F8F3] px-4 py-6 text-[#173B2D] md:px-8">
       <div className="mx-auto max-w-5xl space-y-5">
