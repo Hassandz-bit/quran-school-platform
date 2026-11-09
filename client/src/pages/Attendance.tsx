@@ -269,6 +269,54 @@ export default function Attendance() {
           return;
         }
 
+        if (
+          savedDraft.operationId &&
+          (savedDraft.syncState === "pending" || savedDraft.syncState === "syncing" || !savedDraft.syncState)
+        ) {
+          try {
+            const replayResult = await saveAttendance({
+              schoolId: school.id,
+              branchId,
+              classId,
+              sessionDate,
+              rows: savedDraft.rows,
+            }, undefined, savedDraft.operationId);
+            await deleteOfflineAttendanceDraft(draftScope).catch(() => undefined);
+            setSessionId(replayResult.sessionId);
+            setRows(roster.rows);
+            setDirty(false);
+            setNeedsOfflineSync(false);
+            setRosterReload(current => current + 1);
+            const replayMessage = `تم تأكيد مزامنة عملية محفوظة مسبقًا لـ ${replayResult.savedCount} طالب.`;
+            setSaveSuccess(replayMessage);
+            toast.success(replayMessage);
+            return;
+          } catch (syncError) {
+            const syncErrorText = syncError instanceof Error
+              ? syncError.message.toLowerCase()
+              : String(syncError).toLowerCase();
+            const networkFailure =
+              (typeof navigator !== "undefined" && !navigator.onLine) ||
+              /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(syncErrorText);
+            if (!networkFailure) {
+              const conflict =
+                /attendance_record_conflict|attendance_roster_changed|attendance_permission_required|attendance_operation_id_reused|42501|row-level security/.test(syncErrorText);
+              const message = getAttendanceErrorMessage(syncError);
+              await updateOfflineAttendanceDraftState(
+                draftScope,
+                conflict ? "conflict" : "failed",
+                message
+              ).catch(() => undefined);
+              setRows(roster.rows);
+              setDirty(false);
+              setNeedsOfflineSync(false);
+              setRosterError(message);
+              return;
+            }
+            await updateOfflineAttendanceDraftState(draftScope, "pending", null).catch(() => undefined);
+          }
+        }
+
         const serverById = new Map(roster.rows.map(row => [row.id, row]));
         const sameRoster = savedDraft.rows.length === roster.rows.length &&
           savedDraft.rows.every(saved => {
