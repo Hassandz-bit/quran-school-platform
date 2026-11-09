@@ -94,7 +94,7 @@ test("loads only active students in the exact school branch and class", () => {
   );
   assert.match(
     attendanceData,
-    /await canAccessAttendanceClass\([\s\S]*?"attendance\.view"/
+    /Promise\.all\([\s\S]*canAccessAttendanceClass\([\s\S]*?"attendance\.view"/
   );
 });
 
