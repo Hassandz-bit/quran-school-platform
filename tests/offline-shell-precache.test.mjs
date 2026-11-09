@@ -66,6 +66,7 @@ test("service worker install precaches every same-origin JavaScript and CSS buil
 });
 
 test("large public documents are not forced into the install-time cache", () => {
-  assert.match(worker, /large public files remain\s+runtime\/on-demand/);
+  assert.match(worker, /large public files remain/);
+  assert.match(worker, /runtime\/on-demand/);
   assert.doesNotMatch(worker, /\.pdf\$\//i);
 });
