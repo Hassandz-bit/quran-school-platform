@@ -24,7 +24,7 @@ import {
   captureGuardianInviteSession,
   captureTeacherInviteSession,
 } from "./lib/invite-session";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LocaleProvider, useLocale } from "./contexts/LocaleContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import type { TranslationKey } from "./lib/locale";
@@ -33,6 +33,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import PostLoginRedirect from "./pages/PostLoginRedirect";
 
+const OfflineAttendance = lazy(() => import("./pages/OfflineAttendance"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PlatformOwnerDashboard = lazy(() => import("./pages/PlatformOwnerDashboard"));
 const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
@@ -167,9 +168,20 @@ captureGuardianInviteSession();
 
 function Router() {
   const { locale } = useLocale();
+  const { user, loading } = useAuth();
+  const offlineSession =
+    typeof navigator !== "undefined" &&
+    !navigator.onLine &&
+    Boolean(user?.id) &&
+    !loading;
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
+        <Route path="/offline">
+          <Suspense fallback={<FinancePageFallback />}>
+            <OfflineAttendance />
+          </Suspense>
+        </Route>
         <Route path="/school-registration">
           <Suspense fallback={<FinancePageFallback />}>
             <SchoolRegistration />
@@ -452,7 +464,9 @@ function Router() {
         <Route path="/backups">
           <ProtectedRoute><Shell><SchoolBackups /></Shell></ProtectedRoute>
         </Route>
-        <Route path="/"><Redirect to="/post-login" /></Route>
+        <Route path="/">
+          {loading ? <FinancePageFallback /> : <Redirect to={offlineSession ? "/offline" : "/post-login"} />}
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>

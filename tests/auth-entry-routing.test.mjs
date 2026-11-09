@@ -10,7 +10,8 @@ const [app, loginRoute, postLogin] = await Promise.all([
 ]);
 
 test("routes the application root through post-login session resolution", () => {
-  assert.match(app, /<Route path="\/">\s*<Redirect to="\/post-login" \/>\s*<\/Route>/);
+  assert.match(app, /const offlineSession =[\s\S]*?Boolean\(user\?\.id\)/);
+  assert.ok(app.includes('<Route path="/">\n          {loading ? <FinancePageFallback /> : <Redirect to={offlineSession ? "/offline" : "/post-login"} />}\n        </Route>'));
   assert.doesNotMatch(app, /<Route path="\/">\s*<Redirect to="\/login" \/>\s*<\/Route>/);
 });
 

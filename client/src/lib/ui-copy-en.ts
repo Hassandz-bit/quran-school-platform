@@ -2,6 +2,14 @@
 // strings. Keeping the catalog separate makes coverage measurable and prevents
 // page components from accumulating one-off language conditionals.
 export const EXACT_UI_ENGLISH: Record<string, string> = {
+  "استُعيدت مسودة حضور محفوظة على هذا الجهاز.": "A saved attendance draft was restored on this device.",
+  "توجد مسودة محلية قديمة لهذه الحلقة والتاريخ، لكن قائمة الطلاب أو سجلاتهم تغيّرت. احتُفظ بالمسودة ولم تُدمج تلقائيًا منعًا لفقدان البيانات.": "An older local draft exists for this class and date, but the roster or records changed. The draft was retained and was not merged automatically to prevent data loss.",
+  "تعذر حفظ نسخة محلية من مسودة الحضور على هذا الجهاز.": "Could not save a local copy of the attendance draft on this device.",
+  "تم إرسال الحضور، لكن تعذر حذف النسخة المحلية القديمة. ستُراجع عند تحميل القائمة لاحقًا.": "Attendance was submitted, but the older local copy could not be deleted. It will be checked the next time the roster loads.",
+  "انقطع الاتصال. حُفظت التعديلات محليًا على هذا الجهاز، ولم تُرسل إلى الخادم بعد. أعد المحاولة بعد عودة الإنترنت.": "Connection lost. Changes were saved locally on this device but have not been sent to the server. Retry when internet access returns.",
+  "المسودة محفوظة محليًا — لم يُسجل الحضور في قاعدة البيانات بعد.": "Draft saved locally — attendance has not yet been recorded in the database.",
+  "انقطع الاتصال وتعذر حفظ المسودة محليًا. أبقِ الصفحة مفتوحة ولا تغلقها حتى لا تفقد التعديلات.": "Connection lost and the draft could not be saved locally. Keep this page open to avoid losing your changes.",
+
   "الطلاب من (الحد الأدنى)": "Students from (minimum)",
   "الطلاب إلى (الحد الأعلى)": "Students up to (maximum)",
   "الفروع من (الحد الأدنى)": "Branches from (minimum)",
@@ -2093,4 +2101,41 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "بريدًا إلكترونيًا.": "email addresses.",
   "إذا كان البريد مرتبطًا بأكثر من طالب فقد تصله دعوة مستقلة لكل طالب. هل تريد المتابعة؟": "If an email is linked to more than one student, it may receive a separate invitation for each student. Continue?",
 
+  // Offline attendance hub
+  "الوضع دون اتصال": "Offline mode",
+  "هذه نسخة محلية للقراءة ومراجعة مسودات الحضور التي سبق تحميلها على هذا الجهاز. لا تُعدّ البيانات المعروضة تأكيدًا لصلاحياتك الحالية، ولا تُرسل أي تغييرات إلى الخادم من هذه الصفحة.": "This is a local read-only copy for reviewing attendance drafts previously loaded on this device. The displayed data does not confirm your current permissions, and this page does not send changes to the server.",
+  "تنبيه أمان:": "Security notice:",
+  "البيانات قديمة بحسب آخر وقت حفظ ظاهر لكل حلقة. لا تعتمد عليها لاتخاذ قرار إداري نهائي حتى يعود الاتصال وتُحدّث البيانات وتُراجع الصلاحيات.": "Data may be stale according to the last save time shown for each class. Do not rely on it for final administrative decisions until the connection returns, data is refreshed, and permissions are checked.",
+  "جارٍ استرجاع البيانات المحلية...": "Restoring local data...",
+  "يلزم وجود جلسة محفوظة": "A saved session is required",
+  "لا توجد جلسة مستخدم محلية يمكن ربط البيانات المحفوظة بها. اتصل بالإنترنت وسجّل الدخول مجددًا.": "No local user session is available to associate with the saved data. Connect to the internet and sign in again.",
+  "لا توجد قوائم حضور محفوظة بعد": "No attendance lists have been saved yet",
+  "افتح وحدة الحضور أثناء الاتصال بالإنترنت مرة واحدة لتحميل القوائم التي تحتاج إليها على هذا الجهاز.": "Open the attendance module while online once to download the lists you need to this device.",
+  "مسودة غير متزامنة": "Unsynced draft",
+  "قراءة فقط": "Read only",
+  "الطالب": "Student",
+  "الحالة": "Status",
+  "ملاحظة": "Note",
+  "غير محدد": "Not set",
+  "حاضر": "Present",
+  "غائب": "Absent",
+  "متأخر": "Late",
+  "غياب مبرر": "Excused absence",
+  "فرع محفوظ": "Saved branch",
+  "حلقة محفوظة": "Saved class",
+  "توجد مسودة محلية لم ندمجها لأننا لم نستطع التحقق من تطابق قائمة الطلاب. احتُفظ بها دون تعديل.": "A local draft was not merged because the student roster could not be verified. It has been preserved unchanged.",
+  "المزامنة الآلية الشاملة لم تُفعّل بعد؛ لا تُحذف هذه المسودات قبل مراجعتها عند عودة الاتصال.": "Full automatic synchronization is not enabled yet; do not delete these drafts before reviewing them when the connection returns.",
+  "فتح الحضور للمزامنة عند عودة الاتصال": "Open attendance to sync when the connection returns",
+  "تُعرض نسخة الحضور المحفوظة دون دمج المسودة القديمة؛ تعذر التحقق من تطابق قائمة الطلاب أثناء انقطاع الإنترنت، ولم تُحذف المسودة.": "The saved attendance copy is shown without merging the old draft. The roster could not be verified while offline, and the draft was preserved.",
+  "أنت تعمل على نسخة محلية محفوظة مع استعادة مسودة الحضور. لم يتم التحقق من الصلاحيات أو إرسال التعديلات إلى الخادم.": "You are using a saved local copy with an attendance draft restored. Permissions have not been verified and changes have not been sent to the server.",
+  "أنت تعرض نسخة محفوظة محليًا من قائمة الحضور. لم يتم التحقق من حداثة البيانات أو الصلاحيات أثناء انقطاع الإنترنت.": "You are viewing a locally saved attendance list. Data freshness and permissions have not been verified while offline.",
+  "البيانات المحلية": "Local data",
+
+  "تعذر قراءة البيانات المحفوظة على هذا الجهاز.": "Could not read the data saved on this device.",
+  "هذه البيانات مخزنة على الجهاز ولا يشفّرها هذا الوضع؛ استخدم جهازًا موثوقًا.": "This data is stored on the device and is not encrypted by this mode; use a trusted device.",
+  "توقفت أثناء المزامنة": "Sync was interrupted",
+  "تحتاج إلى مراجعة": "Needs review",
+  "بانتظار المزامنة": "Waiting to sync",
+
+  "تحتاج المسودة إلى مراجعة قبل إعادة المحاولة.": "This draft needs review before retrying.",
 };

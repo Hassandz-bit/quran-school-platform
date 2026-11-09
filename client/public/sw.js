@@ -1,5 +1,5 @@
-const SHELL_CACHE = "quranos-shell-v2";
-const RUNTIME_CACHE = "quranos-runtime-v2";
+const SHELL_CACHE = "quranos-shell-v3";
+const RUNTIME_CACHE = "quranos-runtime-v3";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -9,13 +9,35 @@ const APP_SHELL = [
   "/pwa-icon.svg",
 ];
 
+async function precacheAppShell() {
+  const cache = await caches.open(SHELL_CACHE);
+  await cache.addAll(APP_SHELL);
+
+  // Vite emits the complete production asset graph, including lazy-loaded
+  // route chunks. Cache only executable app assets; large public files remain
+  // runtime/on-demand so a Quran PDF is not forced onto every device.
+  const manifestResponse = await fetch("/asset-manifest.json", { cache: "no-store" });
+  if (!manifestResponse.ok) {
+    throw new Error("quranos_asset_manifest_unavailable");
+  }
+
+  const manifest = await manifestResponse.json();
+  const assets = new Set(["/asset-manifest.json"]);
+  for (const entry of Object.values(manifest)) {
+    if (!entry || typeof entry !== "object") continue;
+    const files = [entry.file, ...(Array.isArray(entry.css) ? entry.css : []), ...(Array.isArray(entry.assets) ? entry.assets : [])];
+    for (const file of files) {
+      if (typeof file !== "string" || !/\.(?:m?js|css|woff2?|ttf|otf|svg)$/i.test(file)) continue;
+      const assetUrl = new URL(file, self.registration.scope);
+      if (assetUrl.origin === self.location.origin) assets.add(assetUrl.href);
+    }
+  }
+
+  await cache.addAll([...assets]);
+}
+
 self.addEventListener("install", event => {
-  event.waitUntil(
-    caches
-      .open(SHELL_CACHE)
-      .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(precacheAppShell().then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", event => {

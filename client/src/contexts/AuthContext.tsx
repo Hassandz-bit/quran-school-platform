@@ -147,7 +147,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSchoolAdmin(false);
       setAuthorizationError(null);
 
-      const authorization = await fetchCurrentAuthorization(client, userId);
+      let authorization;
+      try {
+        authorization = await fetchCurrentAuthorization(client, userId);
+      } catch {
+        if (!isCurrentRequest()) return;
+        setAuthorizationError(AUTHORIZATION_MESSAGES.connectionError);
+        setAuthorizationLoading(false);
+        return;
+      }
 
       if (!isCurrentRequest()) return;
 

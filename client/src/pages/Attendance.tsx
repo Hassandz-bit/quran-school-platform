@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -21,6 +21,17 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  deleteOfflineAttendanceDraft,
+  getOfflineAttendanceDraft,
+  getOfflineAttendanceRoster,
+  getOfflineAttendanceScope,
+  saveOfflineAttendanceDraft,
+  saveOfflineAttendanceRoster,
+  saveOfflineAttendanceScope,
+  updateOfflineAttendanceDraftState,
+  type AttendanceDraftScope,
+} from "@/lib/attendance-offline";
 import {
   fetchAttendanceRoster,
   fetchAttendanceScope,
@@ -119,7 +130,7 @@ function LoadingCard({ label }: { label: string }) {
 }
 
 export default function Attendance() {
-  const { school, isSchoolAdmin, signOut } = useAuth();
+  const { school, user, isSchoolAdmin, signOut } = useAuth();
   const [, setLocation] = useLocation();
   const [scope, setScope] = useState<AttendanceScope | null>(null);
   const [scopeLoading, setScopeLoading] = useState(true);
@@ -135,6 +146,10 @@ export default function Attendance() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [offlineSnapshotAt, setOfflineSnapshotAt] = useState<string | null>(null);
+  const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
+  const [onlineRevision, setOnlineRevision] = useState(0);
+  const autoSyncAttemptedRef = useRef(false);
 
   const loadScope = useCallback(async () => {
     if (!school?.id) return;
@@ -146,6 +161,10 @@ export default function Attendance() {
     try {
       const nextScope = await fetchAttendanceScope(school.id);
       setScope(nextScope);
+      setOfflineSnapshotAt(null);
+      if (user?.id) {
+        void saveOfflineAttendanceScope(user.id, school.id, nextScope).catch(() => undefined);
+      }
 
       const params = new URLSearchParams(window.location.search);
       const requestedClass = nextScope.classes.find(item =>
@@ -161,11 +180,34 @@ export default function Attendance() {
       setBranchId(firstBranchId);
       setClassId(firstClassId);
     } catch (error) {
-      setScopeError(getAttendanceErrorMessage(error));
+      const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const offline =
+        (typeof navigator !== "undefined" && !navigator.onLine) ||
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+      const cached = offline && user?.id
+        ? await getOfflineAttendanceScope(user.id, school.id).catch(() => null)
+        : null;
+      if (cached) {
+        setScope(cached.scope);
+        setOfflineSnapshotAt(cached.savedAt);
+        const params = new URLSearchParams(window.location.search);
+        const requestedClass = cached.scope.classes.find(item =>
+          item.id === params.get("classId") && item.branchId === params.get("branchId")
+        );
+        const firstClass = requestedClass ?? cached.scope.classes[0];
+        const firstBranchId = firstClass?.branchId ?? cached.scope.branches[0]?.id ?? "";
+        const firstClassId =
+          cached.scope.classes.find(item => item.branchId === firstBranchId)?.id ?? "";
+        setBranchId(firstBranchId);
+        setClassId(firstClassId);
+        setScopeError(null);
+      } else {
+        setScopeError(getAttendanceErrorMessage(error));
+      }
     } finally {
       setScopeLoading(false);
     }
-  }, [school?.id]);
+  }, [school?.id, user?.id]);
 
   useEffect(() => {
     void loadScope();
@@ -197,20 +239,177 @@ export default function Attendance() {
     setSessionId(null);
     setDirty(false);
 
-    void fetchAttendanceRoster(
-      school.id,
-      branchId,
-      classId,
-      sessionDate
-    )
-      .then(roster => {
+    const draftScope: AttendanceDraftScope | null = user?.id
+      ? {
+          userId: user.id,
+          schoolId: school.id,
+          branchId,
+          classId,
+          sessionDate,
+        }
+      : null;
+
+    void fetchAttendanceRoster(school.id, branchId, classId, sessionDate)
+      .then(async roster => {
         if (!active) return;
-        setRows(roster.rows);
+        setOfflineSnapshotAt(null);
+        if (draftScope) {
+          void saveOfflineAttendanceRoster(draftScope, roster).catch(() => undefined);
+        }
         setSessionId(roster.sessionId);
-      })
-      .catch(error => {
+        if (!draftScope) {
+          setRows(roster.rows);
+          return;
+        }
+
+        const savedDraft = await getOfflineAttendanceDraft(draftScope).catch(() => null);
         if (!active) return;
-        setRosterError(getAttendanceErrorMessage(error));
+        if (!savedDraft) {
+          setRows(roster.rows);
+          return;
+        }
+
+        if (
+          savedDraft.operationId &&
+          (savedDraft.syncState === "pending" || savedDraft.syncState === "syncing" || !savedDraft.syncState)
+        ) {
+          try {
+            const replayResult = await saveAttendance({
+              schoolId: school.id,
+              branchId,
+              classId,
+              sessionDate,
+              rows: savedDraft.rows,
+            }, undefined, savedDraft.operationId);
+            await deleteOfflineAttendanceDraft(draftScope).catch(() => undefined);
+            setSessionId(replayResult.sessionId);
+            setRows(roster.rows);
+            setDirty(false);
+            setNeedsOfflineSync(false);
+            setRosterReload(current => current + 1);
+            const replayMessage = `تم تأكيد مزامنة عملية محفوظة مسبقًا لـ ${replayResult.savedCount} طالب.`;
+            setSaveSuccess(replayMessage);
+            toast.success(replayMessage);
+            return;
+          } catch (syncError) {
+            const syncErrorText = syncError instanceof Error
+              ? syncError.message.toLowerCase()
+              : String(syncError).toLowerCase();
+            const networkFailure =
+              (typeof navigator !== "undefined" && !navigator.onLine) ||
+              /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(syncErrorText);
+            if (!networkFailure) {
+              const conflict =
+                /attendance_record_conflict|attendance_roster_changed|attendance_permission_required|attendance_operation_id_reused|42501|row-level security/.test(syncErrorText);
+              const message = getAttendanceErrorMessage(syncError);
+              await updateOfflineAttendanceDraftState(
+                draftScope,
+                conflict ? "conflict" : "failed",
+                message
+              ).catch(() => undefined);
+              setRows(roster.rows);
+              setDirty(false);
+              setNeedsOfflineSync(false);
+              setRosterError(message);
+              return;
+            }
+            await updateOfflineAttendanceDraftState(draftScope, "pending", null).catch(() => undefined);
+          }
+        }
+
+        const serverById = new Map(roster.rows.map(row => [row.id, row]));
+        const sameRoster = savedDraft.rows.length === roster.rows.length &&
+          savedDraft.rows.every(saved => {
+            const current = serverById.get(saved.id);
+            return current &&
+              current.recordId === saved.recordId &&
+              current.baseUpdatedAt === saved.baseUpdatedAt;
+          });
+
+        if (sameRoster) {
+          const savedSyncState = savedDraft.syncState ?? "pending";
+          const canRetrySavedDraft = savedSyncState === "pending" || savedSyncState === "syncing";
+          if (canRetrySavedDraft) {
+            await updateOfflineAttendanceDraftState(draftScope, "pending", null).catch(() => undefined);
+          }
+          const savedById = new Map(savedDraft.rows.map(row => [row.id, row]));
+          setRows(roster.rows.map(row => {
+            const saved = savedById.get(row.id);
+            return saved ? {
+              ...row,
+              status: saved.status,
+              arrivalTime: saved.arrivalTime,
+              note: saved.note,
+            } : row;
+          }));
+          setDirty(true);
+          setNeedsOfflineSync(canRetrySavedDraft);
+          if (!canRetrySavedDraft) {
+            setRosterError(savedDraft.lastSyncError ?? "تحتاج المسودة إلى مراجعة قبل إعادة المحاولة.");
+          }
+          setSaveSuccess("استُعيدت مسودة حضور محفوظة على هذا الجهاز.");
+        } else {
+          setRows(roster.rows);
+          setRosterError("توجد مسودة محلية قديمة لهذه الحلقة والتاريخ، لكن قائمة الطلاب أو سجلاتهم تغيّرت. احتُفظ بالمسودة ولم تُدمج تلقائيًا منعًا لفقدان البيانات.");
+        }
+      })
+      .catch(async error => {
+        if (!active) return;
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const offline =
+          (typeof navigator !== "undefined" && !navigator.onLine) ||
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+        const cached = offline && draftScope
+          ? await getOfflineAttendanceRoster(draftScope).catch(() => null)
+          : null;
+        if (!cached) {
+          setRosterError(getAttendanceErrorMessage(error));
+          return;
+        }
+
+        let displayRows = cached.roster.rows;
+        const savedDraft = await getOfflineAttendanceDraft(draftScope!).catch(() => null);
+        let restoredDraft = false;
+        if (savedDraft) {
+          const serverById = new Map(cached.roster.rows.map(row => [row.id, row]));
+          const sameRoster = savedDraft.rows.length === cached.roster.rows.length &&
+            savedDraft.rows.every(saved => {
+              const current = serverById.get(saved.id);
+              return current &&
+                current.recordId === saved.recordId &&
+                current.baseUpdatedAt === saved.baseUpdatedAt;
+            });
+          if (sameRoster) {
+            const savedById = new Map(savedDraft.rows.map(row => [row.id, row]));
+            displayRows = cached.roster.rows.map(row => {
+              const saved = savedById.get(row.id);
+              return saved ? {
+                ...row,
+                status: saved.status,
+                arrivalTime: saved.arrivalTime,
+                note: saved.note,
+              } : row;
+            });
+            restoredDraft = true;
+            setDirty(true);
+            const savedSyncState = savedDraft.syncState ?? "pending";
+            const canRetrySavedDraft = savedSyncState === "pending" || savedSyncState === "syncing";
+            setNeedsOfflineSync(canRetrySavedDraft);
+            if (canRetrySavedDraft) {
+              await updateOfflineAttendanceDraftState(draftScope!, "pending", null).catch(() => undefined);
+            }
+          }
+        }
+        setRows(displayRows);
+        setSessionId(cached.roster.sessionId);
+        setOfflineSnapshotAt(cached.savedAt);
+        setRosterError(
+          savedDraft && !restoredDraft
+            ? "تُعرض نسخة الحضور المحفوظة دون دمج المسودة القديمة؛ تعذر التحقق من تطابق قائمة الطلاب أثناء انقطاع الإنترنت، ولم تُحذف المسودة."
+            : restoredDraft
+              ? "أنت تعمل على نسخة محلية محفوظة مع استعادة مسودة الحضور. لم يتم التحقق من الصلاحيات أو إرسال التعديلات إلى الخادم."
+              : "أنت تعرض نسخة محفوظة محليًا من قائمة الحضور. لم يتم التحقق من حداثة البيانات أو الصلاحيات أثناء انقطاع الإنترنت."
+        );
       })
       .finally(() => {
         if (active) setRosterLoading(false);
@@ -219,7 +418,24 @@ export default function Attendance() {
     return () => {
       active = false;
     };
-  }, [branchId, classId, rosterReload, school?.id, sessionDate]);
+  }, [branchId, classId, rosterReload, school?.id, sessionDate, user?.id]);
+
+  useEffect(() => {
+    if (!dirty || !user?.id || !school?.id || !branchId || !classId || !sessionDate || rows.length === 0) {
+      return;
+    }
+
+    const scope: AttendanceDraftScope = {
+      userId: user.id,
+      schoolId: school.id,
+      branchId,
+      classId,
+      sessionDate,
+    };
+    void saveOfflineAttendanceDraft(scope, sessionId, rows).catch(() => {
+      setRosterError("تعذر حفظ نسخة محلية من مسودة الحضور على هذا الجهاز.");
+    });
+  }, [branchId, classId, dirty, rows, school?.id, sessionDate, sessionId, user?.id]);
 
   const summary = useMemo(() => summarizeAttendance(rows), [rows]);
   const allStudentsHaveStatus =
@@ -267,27 +483,128 @@ export default function Attendance() {
     setRosterError(null);
 
     try {
+      const offlineScope: AttendanceDraftScope = {
+        userId: user?.id ?? "",
+        schoolId: school.id,
+        branchId,
+        classId,
+        sessionDate,
+      };
+      let operationId: string | undefined;
+      if (offlineScope.userId) {
+        operationId = (await saveOfflineAttendanceDraft(offlineScope, sessionId, rows, true)) ?? undefined;
+        if (!operationId) {
+          throw new Error("attendance_operation_id_unavailable");
+        }
+        await updateOfflineAttendanceDraftState(offlineScope, "syncing", null).catch(() => undefined);
+      }
+
       const result = await saveAttendance({
         schoolId: school.id,
         branchId,
         classId,
         sessionDate,
         rows,
-      });
+      }, undefined, operationId);
       setSessionId(result.sessionId);
+      if (user?.id) {
+        await deleteOfflineAttendanceDraft({
+          userId: user.id,
+          schoolId: school.id,
+          branchId,
+          classId,
+          sessionDate,
+        }).catch(() => {
+          setRosterError("تم إرسال الحضور، لكن تعذر حذف النسخة المحلية القديمة. ستُراجع عند تحميل القائمة لاحقًا.");
+        });
+      }
       setDirty(false);
+      setNeedsOfflineSync(false);
+      // Refresh the server version tokens after a successful write so a
+      // subsequent edit from this page does not submit stale updated_at values.
+      setRosterReload(current => current + 1);
       const message = `تم حفظ حضور ${result.savedCount} طالب بنجاح.`;
       setSaveSuccess(message);
       toast.success(message);
 
     } catch (error) {
-      const message = getAttendanceErrorMessage(error);
-      setRosterError(message);
-      toast.error(message);
+      const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const offline =
+        (typeof navigator !== "undefined" && !navigator.onLine) ||
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+      if (offline && user?.id) {
+        try {
+          const offlineScope: AttendanceDraftScope = {
+            userId: user.id,
+            schoolId: school.id,
+            branchId,
+            classId,
+            sessionDate,
+          };
+          await saveOfflineAttendanceDraft(offlineScope, sessionId, rows);
+          await updateOfflineAttendanceDraftState(offlineScope, "pending", null).catch(() => undefined);
+          const message = "انقطع الاتصال. حُفظت التعديلات محليًا على هذا الجهاز، ولم تُرسل إلى الخادم بعد. أعد المحاولة بعد عودة الإنترنت.";
+          setRosterError(message);
+          setNeedsOfflineSync(true);
+          setSaveSuccess("المسودة محفوظة محليًا — لم يُسجل الحضور في قاعدة البيانات بعد.");
+          toast.info(message);
+        } catch {
+          const message = "انقطع الاتصال وتعذر حفظ المسودة محليًا. أبقِ الصفحة مفتوحة ولا تغلقها حتى لا تفقد التعديلات.";
+          setRosterError(message);
+          toast.error(message);
+        }
+      } else {
+        setNeedsOfflineSync(false);
+        const message = getAttendanceErrorMessage(error);
+        const conflict =
+          /attendance_record_conflict|attendance_roster_changed|attendance_permission_required|42501|row-level security/.test(errorText);
+        if (user?.id) {
+          await updateOfflineAttendanceDraftState({
+            userId: user.id,
+            schoolId: school.id,
+            branchId,
+            classId,
+            sessionDate,
+          }, conflict ? "conflict" : "failed", message).catch(() => undefined);
+        }
+        setRosterError(message);
+        toast.error(message);
+      }
     } finally {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (!needsOfflineSync) {
+      autoSyncAttemptedRef.current = false;
+      return;
+    }
+    if (
+      (typeof navigator !== "undefined" && !navigator.onLine) ||
+      !canManageSelectedClass ||
+      !allStudentsHaveStatus ||
+      saving ||
+      autoSyncAttemptedRef.current
+    ) {
+      return;
+    }
+
+    autoSyncAttemptedRef.current = true;
+    const timer = window.setTimeout(() => {
+      void handleSave();
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [needsOfflineSync, onlineRevision, canManageSelectedClass, allStudentsHaveStatus, saving, rows, sessionId, school?.id, branchId, classId, sessionDate]);
+
+  useEffect(() => {
+    const retryWhenOnline = () => {
+      autoSyncAttemptedRef.current = false;
+      setOnlineRevision(current => current + 1);
+    };
+    window.addEventListener("online", retryWhenOnline);
+    return () => window.removeEventListener("online", retryWhenOnline);
+  }, []);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -362,6 +679,14 @@ export default function Attendance() {
             <h1 className="truncate text-lg font-bold">الحضور اليومي</h1>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-white hover:bg-white/10 hover:text-white"
+              onClick={() => setLocation("/offline")}
+            >
+              البيانات المحلية
+            </Button>
             {isSchoolAdmin && (
               <Button
                 type="button"

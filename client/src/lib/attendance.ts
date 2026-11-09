@@ -42,6 +42,7 @@ export type AttendanceStudent = {
 
 export type AttendanceDraftRow = AttendanceStudent & {
   recordId: string | null;
+  baseUpdatedAt?: string | null;
   status: AttendanceStatus | null;
   arrivalTime: string;
   note: string;
@@ -105,12 +106,10 @@ type RecordRow = {
   status: AttendanceStatus;
   arrival_time: string | null;
   note: string | null;
+  updated_at: string;
 };
 
-type ExistingRecordRow = {
-  id: string;
-  student_id: string;
-};
+
 
 type ClassAccess = {
   view: boolean;
@@ -131,15 +130,6 @@ export class AttendanceValidationError extends Error {
     super(message);
     this.name = "AttendanceValidationError";
   }
-}
-
-function isPostgrestError(error: unknown): error is PostgrestError {
-  return Boolean(
-    error &&
-      typeof error === "object" &&
-      "code" in error &&
-      typeof (error as { code?: unknown }).code === "string"
-  );
 }
 
 async function hasSchoolPermission(
@@ -363,6 +353,7 @@ export function buildAttendanceDraft(
     return {
       ...student,
       recordId: record?.id ?? null,
+      baseUpdatedAt: record?.updated_at ?? null,
       status: record?.status ?? null,
       arrivalTime: normalizeArrivalTime(record?.arrival_time ?? null),
       note: record?.note ?? "",
@@ -418,24 +409,6 @@ export function getTodayInputValue(date = new Date()): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-async function assertClassAccess(
-  client: SupabaseClient,
-  schoolId: string,
-  branchId: string,
-  classId: string,
-  permission: AttendancePermissionCode
-): Promise<void> {
-  const allowed = await canAccessAttendanceClass(
-    client,
-    schoolId,
-    branchId,
-    classId,
-    permission
-  );
-
-  if (!allowed) throw new AttendancePermissionError();
 }
 
 export async function fetchAttendanceRoster(
@@ -503,7 +476,7 @@ export async function fetchAttendanceRoster(
 
   const { data: recordData, error: recordError } = await client
     .from("attendance_records")
-    .select("id, student_id, status, arrival_time, note")
+    .select("id, student_id, status, arrival_time, note, updated_at")
     .eq("school_id", schoolId)
     .eq("branch_id", branchId)
     .eq("class_id", classId)
@@ -543,210 +516,55 @@ function validateSaveInput(input: SaveAttendanceInput): void {
   }
 }
 
-async function verifyRoster(
-  client: SupabaseClient,
-  input: SaveAttendanceInput
-): Promise<void> {
-  const { data, error } = await client
-    .from("students")
-    .select("id")
-    .eq("school_id", input.schoolId)
-    .eq("branch_id", input.branchId)
-    .eq("class_id", input.classId)
-    .eq("status", "active")
-    .in(
-      "id",
-      input.rows.map(row => row.id)
-    );
-
-  if (error) throw error;
-  const allowedIds = new Set(
-    ((data ?? []) as Array<{ id: string }>).map(row => row.id)
-  );
-
-  if (
-    allowedIds.size !== input.rows.length ||
-    input.rows.some(row => !allowedIds.has(row.id))
-  ) {
-    throw new AttendancePermissionError();
-  }
-}
-
-async function findAttendanceSession(
-  client: SupabaseClient,
-  input: SaveAttendanceInput
-): Promise<SessionRow | null> {
-  const { data, error } = await client
-    .from("attendance_sessions")
-    .select("id")
-    .eq("school_id", input.schoolId)
-    .eq("branch_id", input.branchId)
-    .eq("class_id", input.classId)
-    .eq("session_date", input.sessionDate)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as SessionRow | null;
-}
-
-async function getOrCreateAttendanceSession(
-  client: SupabaseClient,
-  input: SaveAttendanceInput
-): Promise<SessionRow> {
-  const existing = await findAttendanceSession(client, input);
-  if (existing) return existing;
-
-  const { data, error } = await client
-    .from("attendance_sessions")
-    .insert({
-      school_id: input.schoolId,
-      branch_id: input.branchId,
-      class_id: input.classId,
-      session_date: input.sessionDate,
-    })
-    .select("id")
-    .single();
-
-  if (!error && data) return data as SessionRow;
-
-  if (isPostgrestError(error) && error.code === "23505") {
-    const racedSession = await findAttendanceSession(client, input);
-    if (racedSession) return racedSession;
-  }
-
-  throw error ?? new Error("attendance_session_create_failed");
-}
-
-function normalizeWriteRow(row: AttendanceDraftRow) {
-  return {
-    status: row.status as AttendanceStatus,
-    arrival_time:
-      row.status === "late" && row.arrivalTime
-        ? row.arrivalTime
-        : null,
-    note: row.note.trim() || null,
-  };
-}
-
-async function fetchExistingRecords(
-  client: SupabaseClient,
-  input: SaveAttendanceInput,
-  sessionId: string
-): Promise<Map<string, ExistingRecordRow>> {
-  const { data, error } = await client
-    .from("attendance_records")
-    .select("id, student_id")
-    .eq("school_id", input.schoolId)
-    .eq("branch_id", input.branchId)
-    .eq("class_id", input.classId)
-    .eq("session_id", sessionId)
-    .in(
-      "student_id",
-      input.rows.map(row => row.id)
-    );
-
-  if (error) throw error;
-  return new Map(
-    ((data ?? []) as ExistingRecordRow[]).map(row => [row.student_id, row])
-  );
-}
-
-async function updateExistingRecords(
-  client: SupabaseClient,
-  input: SaveAttendanceInput,
-  sessionId: string,
-  existingRecords: Map<string, ExistingRecordRow>
-): Promise<void> {
-  const updates = input.rows.flatMap(row => {
-    const existing = existingRecords.get(row.id);
-    if (!existing) return [];
-
-    return [
-      client
-        .from("attendance_records")
-        .update(normalizeWriteRow(row))
-        .eq("id", existing.id)
-        .eq("session_id", sessionId)
-        .select("id"),
-    ];
-  });
-  const results = await Promise.all(updates);
-
-  for (const result of results) {
-    if (result.error) throw result.error;
-    if ((result.data ?? []).length !== 1) {
-      throw new AttendancePermissionError();
-    }
-  }
-}
-
-async function insertNewRecords(
-  client: SupabaseClient,
-  input: SaveAttendanceInput,
-  sessionId: string,
-  existingRecords: Map<string, ExistingRecordRow>
-): Promise<void> {
-  const inserts = input.rows.flatMap(row => {
-    if (existingRecords.has(row.id)) return [];
-
-    return [
-      {
-        session_id: sessionId,
-        student_id: row.id,
-        ...normalizeWriteRow(row),
-      },
-    ];
-  });
-
-  if (inserts.length === 0) return;
-
-  const { error } = await client
-    .from("attendance_records")
-    .insert(inserts);
-
-  if (error) throw error;
-}
-
 export async function saveAttendance(
   input: SaveAttendanceInput,
-  client: SupabaseClient = getSupabaseClient()
+  client: SupabaseClient = getSupabaseClient(),
+  operationId?: string
 ): Promise<SaveAttendanceResult> {
-  await assertClassAccess(
-    client,
-    input.schoolId,
-    input.branchId,
-    input.classId,
-    "attendance.manage"
-  );
   validateSaveInput(input);
-  await verifyRoster(client, input);
 
-  const session = await getOrCreateAttendanceSession(client, input);
-  let existingRecords = await fetchExistingRecords(
-    client,
-    input,
-    session.id
-  );
+  const stableOperationId =
+    operationId ??
+    (typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : null);
 
-  await updateExistingRecords(client, input, session.id, existingRecords);
+  if (!stableOperationId) {
+    throw new AttendanceValidationError("attendance_operation_id_unavailable");
+  }
 
-  try {
-    await insertNewRecords(client, input, session.id, existingRecords);
-  } catch (error) {
-    if (!isPostgrestError(error) || error.code !== "23505") throw error;
+  const rows = input.rows.map(row => ({
+    student_id: row.id,
+    status: row.status,
+    arrival_time:
+      row.status === "late" && row.arrivalTime ? row.arrivalTime : null,
+    note: row.note.trim() || null,
+    expected_updated_at: row.baseUpdatedAt ?? null,
+  }));
 
-    existingRecords = await fetchExistingRecords(
-      client,
-      input,
-      session.id
-    );
-    await updateExistingRecords(client, input, session.id, existingRecords);
-    await insertNewRecords(client, input, session.id, existingRecords);
+  const { data, error } = await client.rpc("save_attendance_batch", {
+    target_operation_id: stableOperationId,
+    target_school_id: input.schoolId,
+    target_branch_id: input.branchId,
+    target_class_id: input.classId,
+    target_session_date: input.sessionDate,
+    target_rows: rows,
+  });
+
+  if (error) throw error;
+
+  const result = Array.isArray(data) ? data[0] : data;
+  if (
+    !result ||
+    typeof result.session_id !== "string" ||
+    typeof result.saved_count !== "number"
+  ) {
+    throw new Error("attendance_save_response_invalid");
   }
 
   return {
-    sessionId: session.id,
-    savedCount: input.rows.length,
+    sessionId: result.session_id,
+    savedCount: result.saved_count,
   };
 }
 
@@ -761,6 +579,22 @@ export function getAttendanceErrorMessage(error: unknown): string {
 
   const safeError = error as Partial<PostgrestError> | null;
   const message = safeError?.message?.toLowerCase() ?? "";
+
+  if (message.includes("attendance_roster_changed")) {
+    return "تغيّرت قائمة طلاب الحلقة منذ تحميلها. أعد تحميل القائمة وراجع الحالات قبل الحفظ.";
+  }
+
+  if (message.includes("attendance_record_conflict")) {
+    return "عُدّل سجل أحد الطلاب من جهاز آخر بعد تحميل القائمة. أعد تحميل الحضور وراجع التغييرات قبل الحفظ.";
+  }
+
+  if (message.includes("attendance_operation_id_reused")) {
+    return "تعذر تأكيد الحفظ بسبب تعارض في معرّف العملية. أعد تحميل سجل الحضور قبل المحاولة.";
+  }
+
+  if (message.includes("attendance_invalid")) {
+    return "بيانات الحضور غير مكتملة أو غير صحيحة. راجع حالات الطلاب ثم حاول مجددًا.";
+  }
 
   if (
     safeError?.code === "42501" ||

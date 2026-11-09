@@ -5,7 +5,7 @@ import test from "node:test";
 const read = path =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [app, route, page, attendanceData, dashboard, migration] =
+const [app, route, page, attendanceData, dashboard, migration, syncMigration] =
   await Promise.all([
     read("client/src/App.tsx"),
     read("client/src/components/AttendanceRoute.tsx"),
@@ -13,6 +13,7 @@ const [app, route, page, attendanceData, dashboard, migration] =
     read("client/src/lib/attendance.ts"),
     read("client/src/pages/Dashboard.tsx"),
     read("supabase/013_attendance_module.sql"),
+    read("supabase/084_attendance_transactional_sync.sql"),
   ]);
 
 const interfaceSources = [app, route, page, attendanceData, dashboard].join(
@@ -66,31 +67,12 @@ test("does not render write controls for view-only users", () => {
   assert.match(page, /لا تُرسل الصفحة\s+أي عملية إنشاء أو تعديل/);
 });
 
-test("checks manage permission before issuing any attendance write", () => {
-  const saveStart = attendanceData.indexOf(
-    "export async function saveAttendance"
-  );
-  const permissionCheck = attendanceData.indexOf(
-    '"attendance.manage"',
-    saveStart
-  );
-  const sessionWrite = attendanceData.indexOf(
-    "getOrCreateAttendanceSession(client, input)",
-    saveStart
-  );
-  const recordWrite = attendanceData.indexOf(
-    "updateExistingRecords(client, input",
-    saveStart
-  );
-
+test("routes attendance writes through the authenticated permission-checked transaction", () => {
+  const saveStart = attendanceData.indexOf("export async function saveAttendance");
   assert.ok(saveStart >= 0);
-  assert.ok(permissionCheck > saveStart);
-  assert.ok(sessionWrite > permissionCheck);
-  assert.ok(recordWrite > permissionCheck);
-  assert.match(
-    attendanceData,
-    /if \(!allowed\) throw new AttendancePermissionError\(\)/
-  );
+  assert.match(attendanceData.slice(saveStart), /client\.rpc\("save_attendance_batch"/);
+  assert.match(syncMigration, /public\.can_access_attendance_class\([\s\S]*'attendance\.manage'/);
+  assert.match(syncMigration, /grant execute on function public\.save_attendance_batch[\s\S]*to authenticated/i);
 });
 
 test("filters branch and class choices to the attendance scope", () => {
@@ -112,7 +94,7 @@ test("loads only active students in the exact school branch and class", () => {
   );
   assert.match(
     attendanceData,
-    /await canAccessAttendanceClass\([\s\S]*?"attendance\.view"/
+    /Promise\.all\([\s\S]*canAccessAttendanceClass\([\s\S]*?"attendance\.view"/
   );
 });
 
@@ -166,49 +148,39 @@ test("computes the four live summary counters from draft rows", () => {
   }
 });
 
-test("loads a previously recorded session and its exact records", () => {
+test("loads a previously recorded session and its exact records including concurrency version", () => {
   assert.match(
     attendanceData,
     /\.from\("attendance_sessions"\)[\s\S]*?\.eq\("session_date", sessionDate\)[\s\S]*?\.maybeSingle\(\)/
   );
   assert.match(
     attendanceData,
-    /\.from\("attendance_records"\)[\s\S]*?\.select\("id, student_id, status, arrival_time, note"\)[\s\S]*?\.eq\("session_id", session\.id\)/
+    /\.from\("attendance_records"\)[\s\S]*?\.select\("id, student_id, status, arrival_time, note, updated_at"\)[\s\S]*?\.eq\("session_id", session\.id\)/
   );
+  assert.match(attendanceData, /baseUpdatedAt: record\?\.updated_at \?\? null/);
   assert.match(page, /تم تحميل جلسة مسجلة لهذا التاريخ/);
 });
 
-test("creates at most one session and recovers from a concurrent duplicate", () => {
-  assert.match(
-    attendanceData,
-    /getOrCreateAttendanceSession[\s\S]*?findAttendanceSession/
-  );
-  assert.match(attendanceData, /error\.code === "23505"/);
-  assert.match(
-    migration,
-    /constraint attendance_sessions_class_date_unique\s+unique \(class_id, session_date\)/
-  );
+test("creates a single session inside the transactional attendance RPC", () => {
+  assert.match(syncMigration, /insert into public\.attendance_sessions[\s\S]*on conflict \(class_id, session_date\) do nothing/i);
+  assert.match(syncMigration, /for update/i);
+  assert.match(migration, /constraint attendance_sessions_class_date_unique\s+unique \(class_id, session_date\)/);
 });
 
-test("uses bounded bulk inserts and RLS-checked updates without deletes", () => {
-  assert.match(attendanceData, /insertNewRecords/);
-  assert.match(attendanceData, /\.insert\(inserts\)/);
-  assert.match(attendanceData, /updateExistingRecords/);
-  assert.match(attendanceData, /\.update\(normalizeWriteRow\(row\)\)/);
-  assert.match(attendanceData, /\.select\("id"\)/);
+test("uses one transactional RPC and does not expose direct attendance writes to the client", () => {
+  assert.match(attendanceData, /client\.rpc\("save_attendance_batch"/);
+  assert.doesNotMatch(attendanceData, /\.from\("attendance_records"\)[\s\S]*?\.insert\(/);
+  assert.doesNotMatch(attendanceData, /\.from\("attendance_records"\)[\s\S]*?\.update\(/);
+  assert.match(syncMigration, /insert into public\.attendance_records/i);
+  assert.match(syncMigration, /update public\.attendance_records/i);
   assert.doesNotMatch(attendanceData, /\.delete\(/);
 });
 
-test("validates the roster server-side before a bulk save", () => {
-  assert.match(attendanceData, /async function verifyRoster/);
-  assert.match(
-    attendanceData,
-    /\.eq\("school_id", input\.schoolId\)[\s\S]*?\.eq\("branch_id", input\.branchId\)[\s\S]*?\.eq\("class_id", input\.classId\)[\s\S]*?\.eq\("status", "active"\)/
-  );
-  assert.match(
-    attendanceData,
-    /allowedIds\.size !== input\.rows\.length/
-  );
+test("validates the roster and class permissions inside the server transaction", () => {
+  assert.match(syncMigration, /public\.can_access_attendance_class\([\s\S]*'attendance\.manage'/i);
+  assert.match(syncMigration, /student\.status = 'active'/i);
+  assert.match(syncMigration, /ATTENDANCE_ROSTER_CHANGED/);
+  assert.match(syncMigration, /ATTENDANCE_RECORD_CONFLICT/);
 });
 
 test("covers loading error empty forbidden and save-success states", () => {
