@@ -7,6 +7,7 @@ import {
   getOfflineAttendanceScope,
   listOfflineAttendanceRosters,
   type AttendanceDraftScope,
+  type AttendanceSyncState,
   type CachedAttendanceRoster,
 } from "@/lib/attendance-offline";
 import type { AttendanceDraftRow, AttendanceScope } from "@/lib/attendance";
@@ -24,6 +25,8 @@ type OfflineItem = CachedAttendanceRoster & {
   rows: AttendanceDraftRow[];
   hasPendingDraft: boolean;
   draftNeedsReview: boolean;
+  draftSyncState: AttendanceSyncState;
+  draftSyncError: string | null;
   scopeSavedAt: string | null;
 };
 
@@ -84,6 +87,8 @@ export default function OfflineAttendance() {
             rows: draft && draftMatches ? draft.rows : snapshot.roster.rows,
             hasPendingDraft: Boolean(draft),
             draftNeedsReview: Boolean(draft && !draftMatches),
+            draftSyncState: draft?.syncState ?? "pending",
+            draftSyncError: draft?.lastSyncError ?? null,
             scopeSavedAt: scopeSnapshot?.savedAt ?? null,
           };
         }));
@@ -156,10 +161,23 @@ export default function OfflineAttendance() {
                     <p className="mt-1 text-xs text-gray-500">آخر حفظ: {new Date(item.savedAt).toLocaleString(dateLocale)}</p>
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs">
-                    {item.hasPendingDraft && <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-900">مسودة غير متزامنة</span>}
+                    {item.hasPendingDraft && (
+                    <span className={`rounded-full px-3 py-1 font-semibold ${item.draftSyncState === "conflict" || item.draftSyncState === "failed" ? "bg-red-100 text-red-900" : "bg-amber-100 text-amber-900"}`}>
+                      {item.draftSyncState === "syncing"
+                        ? "توقفت أثناء المزامنة"
+                        : item.draftSyncState === "conflict"
+                          ? "تحتاج إلى مراجعة"
+                          : item.draftSyncState === "failed"
+                            ? "تعذر الإرسال"
+                            : "بانتظار المزامنة"}
+                    </span>
+                  )}
                     <span className="rounded-full bg-gray-200 px-3 py-1 text-gray-700">قراءة فقط</span>
                   </div>
                 </div>
+                {item.draftSyncError && !item.draftNeedsReview && (
+                  <p className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900">{item.draftSyncError}</p>
+                )}
                 {item.draftNeedsReview && (
                   <p className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
                     توجد مسودة محلية لم ندمجها لأننا لم نستطع التحقق من تطابق قائمة الطلاب. احتُفظ بها دون تعديل.
