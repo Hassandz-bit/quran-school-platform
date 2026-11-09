@@ -130,10 +130,20 @@ Only after that database contract is tested should the client add IndexedDB draf
 - [x] Attendance permission and roster revalidation path reviewed.
 - [x] Existing uniqueness constraints and audit trigger reviewed.
 - [x] Partial-write and stale-update risk identified.
-- [ ] Transactional idempotent attendance RPC implemented.
+- [x] Transactional attendance batch RPC added in `supabase/084_attendance_transactional_sync.sql`.
+- [x] Actor-scoped idempotency ledger stores the exact request and committed result; replay with the same UUID returns the prior result, while reusing the UUID with a different payload is rejected.
+- [x] Existing online attendance save path now calls the transactional RPC instead of issuing separate update/insert requests.
+- [x] Static migration/client contract tests added in `tests/attendance-sync-migration.test.mjs`.
 - [ ] IndexedDB draft store and scoped roster cache implemented.
 - [ ] Offline UI states and reconnect sync implemented.
-- [ ] Offline/online and lost-response tests executed.
+- [ ] Database migration executed against a disposable test database and transactional concurrency/lost-response behavior verified.
+- [ ] Full test/build suite executed on this branch.
 - [ ] Production release gate passed.
+
+### Transactional RPC implementation notes
+
+The RPC caps each batch at 200 students, validates the payload and active roster, re-checks the authenticated caller's `attendance.manage` access for the exact class, and applies the batch inside one PostgreSQL transaction. The idempotency result is checked before re-validating the roster on retries, so a committed operation can still be acknowledged if a student's roster membership changed after the original commit. The operation ledger is inaccessible directly to browser roles; the authenticated RPC is the only client entry point.
+
+The browser currently creates a fresh operation UUID for each explicit save. The API accepts an operation UUID argument so a future IndexedDB queue can persist and reuse the same UUID across retries. Offline queueing is **not yet implemented**, and the current RPC still follows the existing online edit semantics for already-recorded attendance; optimistic concurrency/conflict detection for simultaneous edits remains a release gate.
 
 This audit is a technical refinement of the plan only; it does not change production data or enable offline attendance yet.
