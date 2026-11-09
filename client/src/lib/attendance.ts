@@ -709,44 +709,52 @@ async function insertNewRecords(
 
 export async function saveAttendance(
   input: SaveAttendanceInput,
-  client: SupabaseClient = getSupabaseClient()
+  client: SupabaseClient = getSupabaseClient(),
+  operationId?: string
 ): Promise<SaveAttendanceResult> {
-  await assertClassAccess(
-    client,
-    input.schoolId,
-    input.branchId,
-    input.classId,
-    "attendance.manage"
-  );
   validateSaveInput(input);
-  await verifyRoster(client, input);
 
-  const session = await getOrCreateAttendanceSession(client, input);
-  let existingRecords = await fetchExistingRecords(
-    client,
-    input,
-    session.id
-  );
+  const stableOperationId =
+    operationId ??
+    (typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : null);
 
-  await updateExistingRecords(client, input, session.id, existingRecords);
+  if (!stableOperationId) {
+    throw new AttendanceValidationError("attendance_operation_id_unavailable");
+  }
 
-  try {
-    await insertNewRecords(client, input, session.id, existingRecords);
-  } catch (error) {
-    if (!isPostgrestError(error) || error.code !== "23505") throw error;
+  const rows = input.rows.map(row => ({
+    student_id: row.id,
+    status: row.status,
+    arrival_time:
+      row.status === "late" && row.arrivalTime ? row.arrivalTime : null,
+    note: row.note.trim() || null,
+  }));
 
-    existingRecords = await fetchExistingRecords(
-      client,
-      input,
-      session.id
-    );
-    await updateExistingRecords(client, input, session.id, existingRecords);
-    await insertNewRecords(client, input, session.id, existingRecords);
+  const { data, error } = await client.rpc("save_attendance_batch", {
+    target_operation_id: stableOperationId,
+    target_school_id: input.schoolId,
+    target_branch_id: input.branchId,
+    target_class_id: input.classId,
+    target_session_date: input.sessionDate,
+    target_rows: rows,
+  });
+
+  if (error) throw error;
+
+  const result = Array.isArray(data) ? data[0] : data;
+  if (
+    !result ||
+    typeof result.session_id !== "string" ||
+    typeof result.saved_count !== "number"
+  ) {
+    throw new Error("attendance_save_response_invalid");
   }
 
   return {
-    sessionId: session.id,
-    savedCount: input.rows.length,
+    sessionId: result.session_id,
+    savedCount: result.saved_count,
   };
 }
 
