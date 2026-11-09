@@ -58,12 +58,12 @@ async function withDraftStore<T>(
     return await new Promise<T>((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, mode);
       const request = run(transaction.objectStore(STORE_NAME));
-      let result: T;
+      let result: T | undefined;
       request.onsuccess = () => {
         result = request.result;
       };
       request.onerror = () => reject(request.error ?? new Error("attendance_offline_request_failed"));
-      transaction.oncomplete = () => resolve(result);
+      transaction.oncomplete = () => resolve(result as T);
       transaction.onerror = () => reject(transaction.error ?? new Error("attendance_offline_transaction_failed"));
       transaction.onabort = () => reject(transaction.error ?? new Error("attendance_offline_transaction_aborted"));
     });
