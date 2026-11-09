@@ -4,6 +4,21 @@
 
 Allow an already-authenticated teacher to continue essential classroom work during a temporary network outage, persist drafts on that device, and synchronize them safely after connectivity returns. This is a staged implementation plan, not a claim that offline writes are already enabled.
 
+## Current branch implementation status (not production)
+
+The following incremental implementation is present on `feat/offline-first-foundation` and has a successful Vercel preview build, but it is not merged or deployed to production:
+
+- Vite emits `asset-manifest.json`; the service worker precaches same-origin lazy JavaScript/CSS chunks plus fonts and SVG icons, while leaving large documents on-demand.
+- Attendance scope and server-returned rosters are stored in IndexedDB, partitioned by user, school, branch, class, and session date.
+- A `/offline` hub can open from a previously persisted local Supabase session after a cold offline launch. It is read-only and displays cached attendance plus a matching pending draft when available.
+- Attendance can restore a draft only when the cached roster/version matches. On reconnect, it attempts synchronization once; the server RPC remains the authority for permission and roster checks.
+- Pending drafts are preserved across sign-out and account switching; data remains partitioned by user ID so another account does not see it. Device-local storage is not encrypted.
+- Auth initialization now settles cleanly when authorization lookup fails offline, without inventing or restoring cached server permissions.
+
+**Not complete:** this is not yet full-platform offline support. Student, class, teacher, memorization, finance, documents, parent, notification, and other modules still depend on live server requests. The offline hub currently exposes attendance snapshots only. There is no verified background sync, and no complete offline write queue across modules.
+
+**Release blockers:** migration 084 / `save_attendance_batch` has not been validated against a disposable PostgreSQL/Supabase database or applied to production; browser-level cold-install/restart/reconnect/conflict tests are still required. Do not merge, apply migration 084 to production, or promote the preview until those gates pass.
+
 ## Current baseline (verified on main)
 
 - The app is installable as a PWA.
