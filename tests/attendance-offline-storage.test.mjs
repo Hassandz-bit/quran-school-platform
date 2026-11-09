@@ -27,6 +27,8 @@ test("offline attendance drafts use IndexedDB and are isolated by user and schoo
   assert.match(storage, /saveOfflineAttendanceRoster/);
   assert.match(storage, /listOfflineAttendanceRosters/);
   assert.match(storage, /clearOfflineAttendanceForUser/);
+  assert.match(storage, /AttendanceSyncState = "pending" \| "syncing" \| "conflict" \| "failed"/);
+  assert.match(storage, /updateOfflineAttendanceDraftState/);
   assert.doesNotMatch(storage, /access_token|refresh_token|password/i);
 });
 
@@ -48,4 +50,6 @@ test("offline attendance drafts are restored only when the server roster version
   assert.match(page, /window\.addEventListener\("online", retryWhenOnline\)/);
   assert.match(page, /autoSyncAttemptedRef\.current = true/);
   assert.match(page, /setNeedsOfflineSync\(false\)/);
+  assert.match(page, /updateOfflineAttendanceDraftState\(offlineScope, "syncing"/);
+  assert.match(page, /updateOfflineAttendanceDraftState\(offlineScope, "pending"/);
 });
