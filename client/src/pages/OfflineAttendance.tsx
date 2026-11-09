@@ -147,7 +147,7 @@ export default function OfflineAttendance() {
         ) : (
           <div className="space-y-4">
             {items.map(item => (
-              <article key={\`\${item.schoolId}:\${item.branchId}:\${item.classId}:\${item.sessionDate}\`} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <article key={`${item.schoolId}:${item.branchId}:${item.classId}:${item.sessionDate}`} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b bg-gray-50 p-4">
                   <div>
                     <h2 className="font-bold">{item.className}</h2>
