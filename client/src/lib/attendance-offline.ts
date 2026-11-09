@@ -64,11 +64,11 @@ function makeKey(scope: AttendanceDraftScope): string {
 }
 
 function makeScopeSnapshotKey(userId: string, schoolId: string): string {
-  return \`scope::\${userId}::\${schoolId}\`;
+  return `scope::${userId}::${schoolId}`;
 }
 
 function makeRosterSnapshotKey(scope: AttendanceDraftScope): string {
-  return \`roster::\${makeKey(scope)}\`;
+  return `roster::${makeKey(scope)}`;
 }
 
 function openDatabase(): Promise<IDBDatabase> {
