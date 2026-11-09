@@ -22,9 +22,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  clearOfflineAttendanceForUser,
   deleteOfflineAttendanceDraft,
   getOfflineAttendanceDraft,
+  getOfflineAttendanceRoster,
+  getOfflineAttendanceScope,
   saveOfflineAttendanceDraft,
+  saveOfflineAttendanceRoster,
+  saveOfflineAttendanceScope,
   type AttendanceDraftScope,
 } from "@/lib/attendance-offline";
 import {
@@ -141,6 +146,7 @@ export default function Attendance() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [offlineSnapshotAt, setOfflineSnapshotAt] = useState<string | null>(null);
 
   const loadScope = useCallback(async () => {
     if (!school?.id) return;
@@ -152,6 +158,10 @@ export default function Attendance() {
     try {
       const nextScope = await fetchAttendanceScope(school.id);
       setScope(nextScope);
+      setOfflineSnapshotAt(null);
+      if (user?.id) {
+        void saveOfflineAttendanceScope(user.id, school.id, nextScope).catch(() => undefined);
+      }
 
       const params = new URLSearchParams(window.location.search);
       const requestedClass = nextScope.classes.find(item =>
@@ -167,11 +177,34 @@ export default function Attendance() {
       setBranchId(firstBranchId);
       setClassId(firstClassId);
     } catch (error) {
-      setScopeError(getAttendanceErrorMessage(error));
+      const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const offline =
+        (typeof navigator !== "undefined" && !navigator.onLine) ||
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+      const cached = offline && user?.id
+        ? await getOfflineAttendanceScope(user.id, school.id).catch(() => null)
+        : null;
+      if (cached) {
+        setScope(cached.scope);
+        setOfflineSnapshotAt(cached.savedAt);
+        const params = new URLSearchParams(window.location.search);
+        const requestedClass = cached.scope.classes.find(item =>
+          item.id === params.get("classId") && item.branchId === params.get("branchId")
+        );
+        const firstClass = requestedClass ?? cached.scope.classes[0];
+        const firstBranchId = firstClass?.branchId ?? cached.scope.branches[0]?.id ?? "";
+        const firstClassId =
+          cached.scope.classes.find(item => item.branchId === firstBranchId)?.id ?? "";
+        setBranchId(firstBranchId);
+        setClassId(firstClassId);
+        setScopeError(null);
+      } else {
+        setScopeError(getAttendanceErrorMessage(error));
+      }
     } finally {
       setScopeLoading(false);
     }
-  }, [school?.id]);
+  }, [school?.id, user?.id]);
 
   useEffect(() => {
     void loadScope();
@@ -216,6 +249,10 @@ export default function Attendance() {
     void fetchAttendanceRoster(school.id, branchId, classId, sessionDate)
       .then(async roster => {
         if (!active) return;
+        setOfflineSnapshotAt(null);
+        if (draftScope) {
+          void saveOfflineAttendanceRoster(draftScope, roster).catch(() => undefined);
+        }
         setSessionId(roster.sessionId);
         if (!draftScope) {
           setRows(roster.rows);
@@ -256,9 +293,57 @@ export default function Attendance() {
           setRosterError("توجد مسودة محلية قديمة لهذه الحلقة والتاريخ، لكن قائمة الطلاب أو سجلاتهم تغيّرت. احتُفظ بالمسودة ولم تُدمج تلقائيًا منعًا لفقدان البيانات.");
         }
       })
-      .catch(error => {
+      .catch(async error => {
         if (!active) return;
-        setRosterError(getAttendanceErrorMessage(error));
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const offline =
+          (typeof navigator !== "undefined" && !navigator.onLine) ||
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+        const cached = offline && draftScope
+          ? await getOfflineAttendanceRoster(draftScope).catch(() => null)
+          : null;
+        if (!cached) {
+          setRosterError(getAttendanceErrorMessage(error));
+          return;
+        }
+
+        let displayRows = cached.roster.rows;
+        const savedDraft = await getOfflineAttendanceDraft(draftScope!).catch(() => null);
+        let restoredDraft = false;
+        if (savedDraft) {
+          const serverById = new Map(cached.roster.rows.map(row => [row.id, row]));
+          const sameRoster = savedDraft.rows.length === cached.roster.rows.length &&
+            savedDraft.rows.every(saved => {
+              const current = serverById.get(saved.id);
+              return current &&
+                current.recordId === saved.recordId &&
+                current.baseUpdatedAt === saved.baseUpdatedAt;
+            });
+          if (sameRoster) {
+            const savedById = new Map(savedDraft.rows.map(row => [row.id, row]));
+            displayRows = cached.roster.rows.map(row => {
+              const saved = savedById.get(row.id);
+              return saved ? {
+                ...row,
+                status: saved.status,
+                arrivalTime: saved.arrivalTime,
+                note: saved.note,
+              } : row;
+            });
+            restoredDraft = true;
+            setDirty(true);
+          }
+        }
+        setRows(displayRows);
+        setSessionId(cached.roster.sessionId);
+        setOfflineSnapshotAt(cached.savedAt);
+        setRosterError(
+          savedDraft && !restoredDraft
+            ? "تُعرض نسخة الحضور المحفوظة دون دمج المسودة القديمة؛ تعذر التحقق من تطابق قائمة الطلاب أثناء انقطاع الإنترنت، ولم تُحذف المسودة."
+            : restoredDraft
+              ? "أنت تعمل على نسخة محلية محفوظة مع استعادة مسودة الحضور. لم يتم التحقق من الصلاحيات أو إرسال التعديلات إلى الخادم."
+              : "أنت تعرض نسخة محفوظة محليًا من قائمة الحضور. لم يتم التحقق من حداثة البيانات أو الصلاحيات أثناء انقطاع الإنترنت."
+        );
       })
       .finally(() => {
         if (active) setRosterLoading(false);
@@ -409,6 +494,9 @@ export default function Attendance() {
     if (error) {
       toast.error("تعذر تسجيل الخروج حاليًا.");
       return;
+    }
+    if (user?.id) {
+      await clearOfflineAttendanceForUser(user.id).catch(() => undefined);
     }
     setLocation("/login");
   };
