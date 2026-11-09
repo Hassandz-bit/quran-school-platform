@@ -4,6 +4,7 @@ import test from "node:test";
 
 const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
 const page = readFileSync(new URL("../client/src/pages/OfflineAttendance.tsx", import.meta.url), "utf8");
+const attendance = readFileSync(new URL("../client/src/pages/Attendance.tsx", import.meta.url), "utf8");
 const auth = readFileSync(new URL("../client/src/contexts/AuthContext.tsx", import.meta.url), "utf8");
 const storage = readFileSync(new URL("../client/src/lib/attendance-offline.ts", import.meta.url), "utf8");
 
@@ -28,6 +29,7 @@ test("cached attendance stays user-scoped and pending drafts survive sign-out", 
   assert.match(app, /offlineSession \? "\/offline" : "\/post-login"/);
   assert.doesNotMatch(auth, /clearOfflineAttendanceForUser/);
   assert.doesNotMatch(auth, /previousUserId/);
+  assert.doesNotMatch(attendance, /clearOfflineAttendanceForUser/);
 });
 
 test("offline authorization failure settles loading without granting cached permissions", () => {
