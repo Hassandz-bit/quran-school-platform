@@ -22,6 +22,11 @@ test("offline attendance drafts use IndexedDB and are isolated by user and schoo
   assert.match(storage, /saveOfflineAttendanceDraft/);
   assert.match(storage, /getOfflineAttendanceDraft/);
   assert.match(storage, /deleteOfflineAttendanceDraft/);
+  assert.match(storage, /DATABASE_VERSION = 2/);
+  assert.match(storage, /saveOfflineAttendanceScope/);
+  assert.match(storage, /saveOfflineAttendanceRoster/);
+  assert.match(storage, /listOfflineAttendanceRosters/);
+  assert.match(storage, /clearOfflineAttendanceForUser/);
   assert.doesNotMatch(storage, /access_token|refresh_token|password/i);
 });
 
@@ -34,4 +39,8 @@ test("offline attendance drafts are restored only when the server roster version
   assert.match(page, /\}, undefined, operationId\)/);
   assert.match(page, /saveOfflineAttendanceDraft\(offlineScope, sessionId, rows, true\)/);
   assert.match(page, /لم تُرسل إلى الخادم بعد/);
+  assert.match(page, /getOfflineAttendanceScope/);
+  assert.match(page, /getOfflineAttendanceRoster/);
+  assert.match(page, /saveOfflineAttendanceRoster/);
+  assert.match(page, /لم يتم التحقق من الصلاحيات/);
 });
