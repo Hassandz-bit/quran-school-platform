@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   getOfflineAttendanceDraft,
   getOfflineAttendanceScope,
@@ -42,6 +43,8 @@ function sameRoster(
 
 export default function OfflineAttendance() {
   const { user, loading } = useAuth();
+  const { locale } = useLocale();
+  const dateLocale = locale === "ar" ? "ar-DZ-u-nu-latn" : "en-GB";
   const [items, setItems] = useState<OfflineItem[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +139,7 @@ export default function OfflineAttendance() {
                   <div>
                     <h2 className="font-bold">{item.className}</h2>
                     <p className="mt-1 text-sm text-gray-600">{item.branchName} · {item.sessionDate}</p>
-                    <p className="mt-1 text-xs text-gray-500">آخر حفظ: {new Date(item.savedAt).toLocaleString("ar-DZ")}</p>
+                    <p className="mt-1 text-xs text-gray-500">آخر حفظ: {new Date(item.savedAt).toLocaleString(dateLocale)}</p>
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs">
                     {item.hasPendingDraft && <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-900">مسودة غير متزامنة</span>}
