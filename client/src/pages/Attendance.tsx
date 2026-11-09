@@ -147,6 +147,7 @@ export default function Attendance() {
   const [dirty, setDirty] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [offlineSnapshotAt, setOfflineSnapshotAt] = useState<string | null>(null);
+  const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
 
   const loadScope = useCallback(async () => {
     if (!school?.id) return;
@@ -287,6 +288,7 @@ export default function Attendance() {
             } : row;
           }));
           setDirty(true);
+          setNeedsOfflineSync(true);
           setSaveSuccess("استُعيدت مسودة حضور محفوظة على هذا الجهاز.");
         } else {
           setRows(roster.rows);
@@ -332,6 +334,7 @@ export default function Attendance() {
             });
             restoredDraft = true;
             setDirty(true);
+            setNeedsOfflineSync(true);
           }
         }
         setRows(displayRows);
@@ -449,6 +452,7 @@ export default function Attendance() {
         });
       }
       setDirty(false);
+      setNeedsOfflineSync(false);
       // Refresh the server version tokens after a successful write so a
       // subsequent edit from this page does not submit stale updated_at values.
       setRosterReload(current => current + 1);
@@ -472,6 +476,7 @@ export default function Attendance() {
           }, sessionId, rows);
           const message = "انقطع الاتصال. حُفظت التعديلات محليًا على هذا الجهاز، ولم تُرسل إلى الخادم بعد. أعد المحاولة بعد عودة الإنترنت.";
           setRosterError(message);
+          setNeedsOfflineSync(true);
           setSaveSuccess("المسودة محفوظة محليًا — لم يُسجل الحضور في قاعدة البيانات بعد.");
           toast.info(message);
         } catch {
@@ -480,6 +485,7 @@ export default function Attendance() {
           toast.error(message);
         }
       } else {
+        setNeedsOfflineSync(false);
         const message = getAttendanceErrorMessage(error);
         setRosterError(message);
         toast.error(message);
@@ -488,6 +494,33 @@ export default function Attendance() {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (
+      !needsOfflineSync ||
+      (typeof navigator !== "undefined" && !navigator.onLine) ||
+      !canManageSelectedClass ||
+      !allStudentsHaveStatus ||
+      saving
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void handleSave();
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [needsOfflineSync, canManageSelectedClass, allStudentsHaveStatus, saving, rows, sessionId, school?.id, branchId, classId, sessionDate]);
+
+  useEffect(() => {
+    const retryWhenOnline = () => {
+      if (needsOfflineSync) {
+        setNeedsOfflineSync(true);
+      }
+    };
+    window.addEventListener("online", retryWhenOnline);
+    return () => window.removeEventListener("online", retryWhenOnline);
+  }, [needsOfflineSync]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
