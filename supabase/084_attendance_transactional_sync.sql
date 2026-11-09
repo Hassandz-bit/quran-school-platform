@@ -208,11 +208,21 @@ begin
     end if;
 
     if expected_updated_at_value is null then
-      insert into public.attendance_records (
-        session_id, student_id, status, arrival_time, note
-      ) values (
-        resolved_session_id, student_id_value, status_value, arrival_value, note_value
-      );
+      begin
+        insert into public.attendance_records (
+          session_id, student_id, status, arrival_time, note
+        ) values (
+          resolved_session_id, student_id_value, status_value, arrival_value, note_value
+        );
+      exception
+        when unique_violation then
+          -- A second device may insert the same first-time student record
+          -- after our SELECT found no row. Report a version conflict rather
+          -- than leaking a raw unique-key error or overwriting its result.
+          raise exception using
+            errcode = '40001',
+            message = 'ATTENDANCE_RECORD_CONFLICT';
+      end;
     else
       update public.attendance_records
       set status = status_value,
