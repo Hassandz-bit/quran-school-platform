@@ -770,6 +770,18 @@ export function getAttendanceErrorMessage(error: unknown): string {
   const safeError = error as Partial<PostgrestError> | null;
   const message = safeError?.message?.toLowerCase() ?? "";
 
+  if (message.includes("attendance_roster_changed")) {
+    return "تغيّرت قائمة طلاب الحلقة منذ تحميلها. أعد تحميل القائمة وراجع الحالات قبل الحفظ.";
+  }
+
+  if (message.includes("attendance_operation_id_reused")) {
+    return "تعذر تأكيد الحفظ بسبب تعارض في معرّف العملية. أعد تحميل سجل الحضور قبل المحاولة.";
+  }
+
+  if (message.includes("attendance_invalid")) {
+    return "بيانات الحضور غير مكتملة أو غير صحيحة. راجع حالات الطلاب ثم حاول مجددًا.";
+  }
+
   if (
     safeError?.code === "42501" ||
     safeError?.code === "PGRST301" ||
