@@ -73,12 +73,6 @@ begin
     raise exception using errcode = '22023', message = 'ATTENDANCE_INVALID_BATCH_SIZE';
   end if;
 
-  if not public.can_access_attendance_class(
-    target_school_id, target_branch_id, target_class_id, 'attendance.manage'
-  ) then
-    raise exception using errcode = '42501', message = 'ATTENDANCE_PERMISSION_REQUIRED';
-  end if;
-
   select count(distinct parsed.student_id)
   into distinct_student_count
   from jsonb_to_recordset(target_rows) as parsed(student_id uuid, status text);
@@ -97,21 +91,6 @@ begin
       or (parsed.arrival_time is not null and parsed.status not in ('present', 'late'))
   ) then
     raise exception using errcode = '22023', message = 'ATTENDANCE_INVALID_ROW';
-  end if;
-
-  if (
-    select count(*)
-    from public.students as student
-    where student.school_id = target_school_id
-      and student.branch_id = target_branch_id
-      and student.class_id = target_class_id
-      and student.status = 'active'
-      and student.id in (
-        select parsed.student_id
-        from jsonb_to_recordset(target_rows) as parsed(student_id uuid)
-      )
-  ) <> row_count then
-    raise exception using errcode = '23514', message = 'ATTENDANCE_ROSTER_CHANGED';
   end if;
 
   insert into public.attendance_sync_operations (
@@ -148,6 +127,27 @@ begin
   if prior_operation.session_id is not null then
     return query select prior_operation.session_id, prior_operation.saved_count, true;
     return;
+  end if;
+
+  if not public.can_access_attendance_class(
+    target_school_id, target_branch_id, target_class_id, 'attendance.manage'
+  ) then
+    raise exception using errcode = '42501', message = 'ATTENDANCE_PERMISSION_REQUIRED';
+  end if;
+
+  if (
+    select count(*)
+    from public.students as student
+    where student.school_id = target_school_id
+      and student.branch_id = target_branch_id
+      and student.class_id = target_class_id
+      and student.status = 'active'
+      and student.id in (
+        select parsed.student_id
+        from jsonb_to_recordset(target_rows) as parsed(student_id uuid)
+      )
+  ) <> row_count then
+    raise exception using errcode = '23514', message = 'ATTENDANCE_ROSTER_CHANGED';
   end if;
 
   insert into public.attendance_sessions (
