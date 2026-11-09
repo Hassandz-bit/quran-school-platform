@@ -29,6 +29,8 @@ test("attendance batch RPC is authenticated, permission checked, and bounded", (
   assert.match(migration, /actor_id uuid := \(select auth\.uid\(\)\)/i);
   assert.match(migration, /public\.can_access_attendance_class\([\s\S]*'attendance\.manage'/i);
   assert.match(migration, /batch_size < 1 or batch_size > 200/i);
+  assert.match(migration, /jsonb_typeof\(target_rows\) is distinct from 'array'/i);
+  assert.match(migration, /parsed\.status is null/i);
   assert.match(migration, /attendance\.manage/i);
   assert.match(migration, /attendance_roster_changed/i);
   assert.match(migration, /attendance_duplicate_or_invalid_student/i);
