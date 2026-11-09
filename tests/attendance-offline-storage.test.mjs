@@ -43,4 +43,9 @@ test("offline attendance drafts are restored only when the server roster version
   assert.match(page, /getOfflineAttendanceRoster/);
   assert.match(page, /saveOfflineAttendanceRoster/);
   assert.match(page, /لم يتم التحقق من الصلاحيات/);
+  assert.match(page, /needsOfflineSync/);
+  assert.match(page, /saveOfflineAttendanceDraft\(offlineScope, sessionId, rows, true\)/);
+  assert.match(page, /window\.addEventListener\("online", retryWhenOnline\)/);
+  assert.match(page, /autoSyncAttemptedRef\.current = true/);
+  assert.match(page, /setNeedsOfflineSync\(false\)/);
 });
