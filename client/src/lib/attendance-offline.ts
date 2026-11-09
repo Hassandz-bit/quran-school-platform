@@ -14,11 +14,22 @@ export type AttendanceDraftScope = {
 
 export type StoredAttendanceDraft = AttendanceDraftScope & {
   key: string;
-  operationId: string;
+  operationId: string | null;
+  operationPayload: string | null;
   sessionId: string | null;
   rows: AttendanceDraftRow[];
   savedAt: string;
 };
+
+function makeOperationPayload(rows: AttendanceDraftRow[]): string {
+  return JSON.stringify(rows.map(row => ({
+    student_id: row.id,
+    status: row.status,
+    arrival_time: row.status === "late" && row.arrivalTime ? row.arrivalTime : null,
+    note: row.note.trim() || null,
+    expected_updated_at: row.baseUpdatedAt ?? null,
+  })));
+}
 
 function makeKey(scope: AttendanceDraftScope): string {
   return [
@@ -76,8 +87,9 @@ async function withDraftStore<T>(
 export async function saveOfflineAttendanceDraft(
   scope: AttendanceDraftScope,
   sessionId: string | null,
-  rows: AttendanceDraftRow[]
-): Promise<string> {
+  rows: AttendanceDraftRow[],
+  prepareOperation = false
+): Promise<string | null> {
   if (!scope.userId || !scope.schoolId || !scope.branchId || !scope.classId || !scope.sessionDate) {
     throw new Error("attendance_offline_scope_invalid");
   }
@@ -96,11 +108,16 @@ export async function saveOfflineAttendanceDraft(
 
       lookup.onsuccess = () => {
         const existing = lookup.result as StoredAttendanceDraft | undefined;
-        operationId = existing?.operationId ?? crypto.randomUUID();
+        const operationPayload = makeOperationPayload(rows);
+        const payloadUnchanged = existing?.operationPayload === operationPayload;
+        operationId = prepareOperation
+          ? (payloadUnchanged && existing?.operationId ? existing.operationId : crypto.randomUUID())
+          : (payloadUnchanged ? existing?.operationId ?? null : null);
         const draft: StoredAttendanceDraft = {
           ...scope,
           key,
           operationId,
+          operationPayload: prepareOperation ? operationPayload : (payloadUnchanged ? existing?.operationPayload ?? null : null),
           sessionId,
           rows: rows.map(row => ({ ...row })),
           savedAt: new Date().toISOString(),
@@ -109,8 +126,7 @@ export async function saveOfflineAttendanceDraft(
       };
       lookup.onerror = () => reject(lookup.error ?? new Error("attendance_offline_request_failed"));
       transaction.oncomplete = () => {
-        if (operationId) resolve(operationId);
-        else reject(new Error("attendance_operation_id_unavailable"));
+        resolve(operationId);
       };
       transaction.onerror = () => reject(transaction.error ?? new Error("attendance_offline_transaction_failed"));
       transaction.onabort = () => reject(transaction.error ?? new Error("attendance_offline_transaction_aborted"));
