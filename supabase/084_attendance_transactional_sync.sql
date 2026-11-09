@@ -55,6 +55,7 @@ declare
   current_updated_at_value timestamptz;
   row_count integer;
   distinct_student_count integer;
+  affected_count integer;
 begin
   if actor_id is null then
     raise exception using errcode = '28000', message = 'ATTENDANCE_AUTH_REQUIRED';
@@ -190,15 +191,28 @@ begin
         message = 'ATTENDANCE_RECORD_CONFLICT';
     end if;
 
-    insert into public.attendance_records (
-      session_id, student_id, status, arrival_time, note
-    ) values (
-      resolved_session_id, student_id_value, status_value, arrival_value, note_value
-    )
-    on conflict (session_id, student_id) do update
-    set status = excluded.status,
-        arrival_time = excluded.arrival_time,
-        note = excluded.note;
+    if expected_updated_at_value is null then
+      insert into public.attendance_records (
+        session_id, student_id, status, arrival_time, note
+      ) values (
+        resolved_session_id, student_id_value, status_value, arrival_value, note_value
+      );
+    else
+      update public.attendance_records
+      set status = status_value,
+          arrival_time = arrival_value,
+          note = note_value
+      where session_id = resolved_session_id
+        and student_id = student_id_value
+        and updated_at = expected_updated_at_value;
+
+      get diagnostics affected_count = row_count;
+      if affected_count <> 1 then
+        raise exception using
+          errcode = '40001',
+          message = 'ATTENDANCE_RECORD_CONFLICT';
+      end if;
+    end if;
   end loop;
 
   update public.attendance_sync_operations as operation
