@@ -10,11 +10,11 @@ test("production build publishes the Vite asset manifest", () => {
 });
 
 test("service worker precaches every same-origin JavaScript and CSS build chunk", () => {
-  assert.ok(worker.includes(String.raw\`fetch("/.vite/manifest.json"\`));
+  assert.ok(worker.includes('fetch("/.vite/manifest.json"'));
   assert.match(worker, /Object\.values\(manifest\)/);
   assert.match(worker, /entry\.file/);
   assert.match(worker, /entry\.css/);
-  assert.ok(worker.includes(String.raw\`/\.(?:m?js|css)$/i\`));
+  assert.ok(worker.includes("/\\.(?:m?js|css)$/i"));
   assert.match(worker, /assetUrl\.origin === self\.location\.origin/);
   assert.match(worker, /await cache\.addAll\(\[\.\.\.assets\]\)/);
 });
