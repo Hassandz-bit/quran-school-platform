@@ -28,7 +28,7 @@ test("attendance batch RPC is authenticated, permission checked, and bounded", (
   assert.match(migration, /create or replace function public\.save_attendance_batch/i);
   assert.match(migration, /actor_id uuid := \(select auth\.uid\(\)\)/i);
   assert.match(migration, /public\.can_access_attendance_class\([\s\S]*'attendance\.manage'/i);
-  assert.match(migration, /row_count < 1 or row_count > 200/i);
+  assert.match(migration, /batch_size < 1 or batch_size > 200/i);
   assert.match(migration, /attendance\.manage/i);
   assert.match(migration, /attendance_roster_changed/i);
   assert.match(migration, /attendance_duplicate_or_invalid_student/i);
@@ -51,7 +51,7 @@ test("attendance rows are applied in one database function transaction", () => {
   assert.match(migration, /current_updated_at_value is distinct from expected_updated_at_value/i);
   assert.match(migration, /if expected_updated_at_value is null then[\s\S]*insert into public\.attendance_records/i);
   assert.match(migration, /update public\.attendance_records[\s\S]*updated_at = expected_updated_at_value/i);
-  assert.match(migration, /update public\.attendance_sync_operations[\s\S]*saved_count = row_count/i);
+  assert.match(migration, /update public\.attendance_sync_operations[\s\S]*saved_count = batch_size/i);
   assert.match(migration, /begin;[\s\S]*commit;/i);
 });
 
