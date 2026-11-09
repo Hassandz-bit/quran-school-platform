@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -148,6 +148,8 @@ export default function Attendance() {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [offlineSnapshotAt, setOfflineSnapshotAt] = useState<string | null>(null);
   const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
+  const [onlineRevision, setOnlineRevision] = useState(0);
+  const autoSyncAttemptedRef = useRef(false);
 
   const loadScope = useCallback(async () => {
     if (!school?.id) return;
@@ -496,31 +498,35 @@ export default function Attendance() {
   };
 
   useEffect(() => {
+    if (!needsOfflineSync) {
+      autoSyncAttemptedRef.current = false;
+      return;
+    }
     if (
-      !needsOfflineSync ||
       (typeof navigator !== "undefined" && !navigator.onLine) ||
       !canManageSelectedClass ||
       !allStudentsHaveStatus ||
-      saving
+      saving ||
+      autoSyncAttemptedRef.current
     ) {
       return;
     }
 
+    autoSyncAttemptedRef.current = true;
     const timer = window.setTimeout(() => {
       void handleSave();
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [needsOfflineSync, canManageSelectedClass, allStudentsHaveStatus, saving, rows, sessionId, school?.id, branchId, classId, sessionDate]);
+  }, [needsOfflineSync, onlineRevision, canManageSelectedClass, allStudentsHaveStatus, saving, rows, sessionId, school?.id, branchId, classId, sessionDate]);
 
   useEffect(() => {
     const retryWhenOnline = () => {
-      if (needsOfflineSync) {
-        setNeedsOfflineSync(true);
-      }
+      autoSyncAttemptedRef.current = false;
+      setOnlineRevision(current => current + 1);
     };
     window.addEventListener("online", retryWhenOnline);
     return () => window.removeEventListener("online", retryWhenOnline);
-  }, [needsOfflineSync]);
+  }, []);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
