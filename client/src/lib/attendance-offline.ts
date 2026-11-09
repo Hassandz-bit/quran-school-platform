@@ -14,6 +14,7 @@ export type AttendanceDraftScope = {
 
 export type StoredAttendanceDraft = AttendanceDraftScope & {
   key: string;
+  operationId: string;
   sessionId: string | null;
   rows: AttendanceDraftRow[];
   savedAt: string;
@@ -76,20 +77,47 @@ export async function saveOfflineAttendanceDraft(
   scope: AttendanceDraftScope,
   sessionId: string | null,
   rows: AttendanceDraftRow[]
-): Promise<void> {
+): Promise<string> {
   if (!scope.userId || !scope.schoolId || !scope.branchId || !scope.classId || !scope.sessionDate) {
     throw new Error("attendance_offline_scope_invalid");
   }
+  if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+    throw new Error("attendance_operation_id_unavailable");
+  }
 
-  const draft: StoredAttendanceDraft = {
-    ...scope,
-    key: makeKey(scope),
-    sessionId,
-    rows: rows.map(row => ({ ...row })),
-    savedAt: new Date().toISOString(),
-  };
+  const database = await openDatabase();
+  try {
+    return await new Promise<string>((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const key = makeKey(scope);
+      const lookup = store.get(key);
+      let operationId: string | null = null;
 
-  await withDraftStore("readwrite", store => store.put(draft));
+      lookup.onsuccess = () => {
+        const existing = lookup.result as StoredAttendanceDraft | undefined;
+        operationId = existing?.operationId ?? crypto.randomUUID();
+        const draft: StoredAttendanceDraft = {
+          ...scope,
+          key,
+          operationId,
+          sessionId,
+          rows: rows.map(row => ({ ...row })),
+          savedAt: new Date().toISOString(),
+        };
+        store.put(draft);
+      };
+      lookup.onerror = () => reject(lookup.error ?? new Error("attendance_offline_request_failed"));
+      transaction.oncomplete = () => {
+        if (operationId) resolve(operationId);
+        else reject(new Error("attendance_operation_id_unavailable"));
+      };
+      transaction.onerror = () => reject(transaction.error ?? new Error("attendance_offline_transaction_failed"));
+      transaction.onabort = () => reject(transaction.error ?? new Error("attendance_offline_transaction_aborted"));
+    });
+  } finally {
+    database.close();
+  }
 }
 
 export async function getOfflineAttendanceDraft(
