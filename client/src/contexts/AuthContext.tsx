@@ -23,6 +23,7 @@ import {
   type SchoolRole,
 } from "@/lib/authorization";
 import { getSupabaseClient } from "@/lib/supabase";
+import { clearOfflineAttendanceForUser } from "@/lib/attendance-offline";
 
 export type {
   School,
@@ -112,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // resolves later, its snapshot may be stale and must not overwrite the event's
   // newer session (including a valid signed-in session with null).
   const authEventReceivedRef = useRef(false);
+  const previousSessionUserIdRef = useRef<string | null>(null);
 
   const clearAuthorization = useCallback(
     (nextError: string | null = null) => {
@@ -147,7 +149,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSchoolAdmin(false);
       setAuthorizationError(null);
 
-      const authorization = await fetchCurrentAuthorization(client, userId);
+      let authorization;
+      try {
+        authorization = await fetchCurrentAuthorization(client, userId);
+      } catch {
+        if (!isCurrentRequest()) return;
+        setAuthorizationError(AUTHORIZATION_MESSAGES.connectionError);
+        setAuthorizationLoading(false);
+        return;
+      }
 
       if (!isCurrentRequest()) return;
 
@@ -178,6 +188,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const applySession = (nextSession: Session | null) => {
       if (!isMounted) return;
+
+      const nextUserId = nextSession?.user.id ?? null;
+      const previousUserId = previousSessionUserIdRef.current;
+      if (previousUserId && previousUserId !== nextUserId) {
+        void clearOfflineAttendanceForUser(previousUserId).catch(() => undefined);
+      }
+      previousSessionUserIdRef.current = nextUserId;
 
       const generation = ++authorizationGenerationRef.current;
       setSession(nextSession);
@@ -268,9 +285,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async (): Promise<AuthOperationResult> => {
+    const currentUserId = session?.user.id;
     const { error } = await clientState.client!.auth.signOut({ scope: "local" });
 
     if (!error) {
+      if (currentUserId) {
+        await clearOfflineAttendanceForUser(currentUserId).catch(() => undefined);
+      }
+      previousSessionUserIdRef.current = null;
       authorizationGenerationRef.current += 1;
       setSession(null);
       setUser(null);
@@ -279,7 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return { error };
-  }, [clearAuthorization, clientState.client]);
+  }, [clearAuthorization, clientState.client, session?.user.id]);
 
   const resetPasswordForEmail = useCallback(
     async (
