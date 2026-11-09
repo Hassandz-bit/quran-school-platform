@@ -22,7 +22,7 @@ test("offline hub requires the locally restored user and only presents cached re
   assert.doesNotMatch(page, /saveAttendance\(|\.insert\(|\.update\(|\.delete\(/);
 });
 
-test("cached attendance is isolated by user and cleared on sign-out or account change", () => {
+test("cached attendance stays user-scoped and pending drafts survive sign-out", () => {
   assert.match(storage, /store\.index\("userId"\)\.getAll\(userId\)/);
   assert.match(storage, /clearOfflineAttendanceForUser/);
   assert.match(auth, /clearOfflineAttendanceForUser\(currentUserId\)/);
