@@ -332,13 +332,25 @@ export default function Attendance() {
     setRosterError(null);
 
     try {
+      const offlineScope: AttendanceDraftScope = {
+        userId: user?.id ?? "",
+        schoolId: school.id,
+        branchId,
+        classId,
+        sessionDate,
+      };
+      let operationId: string | undefined;
+      if (offlineScope.userId) {
+        operationId = await saveOfflineAttendanceDraft(offlineScope, sessionId, rows).catch(() => undefined);
+      }
+
       const result = await saveAttendance({
         schoolId: school.id,
         branchId,
         classId,
         sessionDate,
         rows,
-      });
+      }, undefined, operationId);
       setSessionId(result.sessionId);
       if (user?.id) {
         await deleteOfflineAttendanceDraft({
