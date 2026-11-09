@@ -52,4 +52,7 @@ test("offline attendance drafts are restored only when the server roster version
   assert.match(page, /setNeedsOfflineSync\(false\)/);
   assert.match(page, /updateOfflineAttendanceDraftState\(offlineScope, "syncing"/);
   assert.match(page, /updateOfflineAttendanceDraftState\(offlineScope, "pending"/);
+  assert.match(page, /savedDraft\.operationId/);
+  assert.match(page, /saveAttendance\([\s\S]*savedDraft\.operationId/);
+  assert.match(page, /replayResult/);
 });
