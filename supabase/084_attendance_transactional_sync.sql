@@ -66,7 +66,7 @@ begin
     or target_branch_id is null
     or target_class_id is null
     or target_session_date is null
-    or jsonb_typeof(target_rows) <> 'array'
+    or jsonb_typeof(target_rows) is distinct from 'array'
   then
     raise exception using errcode = '22023', message = 'ATTENDANCE_INVALID_BATCH';
   end if;
@@ -89,6 +89,7 @@ begin
     from jsonb_to_recordset(target_rows)
       as parsed(student_id uuid, status text, arrival_time text, note text)
     where parsed.student_id is null
+      or parsed.status is null
       or parsed.status not in ('present', 'absent', 'late', 'excused_absence')
       or (parsed.note is not null and char_length(btrim(parsed.note)) > 500)
       or (parsed.arrival_time is not null and parsed.status not in ('present', 'late'))
