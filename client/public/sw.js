@@ -25,9 +25,9 @@ async function precacheAppShell() {
   const assets = new Set(["/asset-manifest.json"]);
   for (const entry of Object.values(manifest)) {
     if (!entry || typeof entry !== "object") continue;
-    const files = [entry.file, ...(Array.isArray(entry.css) ? entry.css : [])];
+    const files = [entry.file, ...(Array.isArray(entry.css) ? entry.css : []), ...(Array.isArray(entry.assets) ? entry.assets : [])];
     for (const file of files) {
-      if (typeof file !== "string" || !/\.(?:m?js|css)$/i.test(file)) continue;
+      if (typeof file !== "string" || !/\.(?:m?js|css|woff2?|ttf|otf|svg)$/i.test(file)) continue;
       const assetUrl = new URL(file, self.registration.scope);
       if (assetUrl.origin === self.location.origin) assets.add(assetUrl.href);
     }
