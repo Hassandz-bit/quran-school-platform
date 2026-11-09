@@ -47,7 +47,10 @@ test("idempotent retries return the committed result and reject payload reuse", 
 test("attendance rows are applied in one database function transaction", () => {
   assert.match(migration, /insert into public\.attendance_sessions/i);
   assert.match(migration, /for row_item in select value from jsonb_array_elements\(target_rows\)/i);
-  assert.match(migration, /insert into public\.attendance_records[\s\S]*on conflict \(session_id, student_id\) do update/i);
+  assert.match(migration, /expected_updated_at_value := nullif\(row_item ->> 'expected_updated_at'/i);
+  assert.match(migration, /current_updated_at_value is distinct from expected_updated_at_value/i);
+  assert.match(migration, /if expected_updated_at_value is null then[\s\S]*insert into public\.attendance_records/i);
+  assert.match(migration, /update public\.attendance_records[\s\S]*updated_at = expected_updated_at_value/i);
   assert.match(migration, /update public\.attendance_sync_operations[\s\S]*saved_count = row_count/i);
   assert.match(migration, /begin;[\s\S]*commit;/i);
 });
@@ -55,6 +58,8 @@ test("attendance rows are applied in one database function transaction", () => {
 test("client attendance saves use the transactional RPC and send an operation UUID", () => {
   assert.match(attendance, /client\.rpc\("save_attendance_batch"/i);
   assert.match(attendance, /crypto\.randomUUID\(\)/i);
+  assert.match(attendance, /expected_updated_at: row\.baseUpdatedAt \?\? null/i);
+  assert.match(attendance, /baseUpdatedAt: record\?\.updated_at \?\? null/i);
   assert.doesNotMatch(attendance, /getOrCreateAttendanceSession\(client, input\)/);
   assert.doesNotMatch(attendance, /updateExistingRecords\(client, input/);
 });
