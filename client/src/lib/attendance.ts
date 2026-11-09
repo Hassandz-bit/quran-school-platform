@@ -42,6 +42,7 @@ export type AttendanceStudent = {
 
 export type AttendanceDraftRow = AttendanceStudent & {
   recordId: string | null;
+  baseUpdatedAt?: string | null;
   status: AttendanceStatus | null;
   arrivalTime: string;
   note: string;
@@ -105,6 +106,7 @@ type RecordRow = {
   status: AttendanceStatus;
   arrival_time: string | null;
   note: string | null;
+  updated_at: string;
 };
 
 type ExistingRecordRow = {
@@ -363,6 +365,7 @@ export function buildAttendanceDraft(
     return {
       ...student,
       recordId: record?.id ?? null,
+      baseUpdatedAt: record?.updated_at ?? null,
       status: record?.status ?? null,
       arrivalTime: normalizeArrivalTime(record?.arrival_time ?? null),
       note: record?.note ?? "",
@@ -503,7 +506,7 @@ export async function fetchAttendanceRoster(
 
   const { data: recordData, error: recordError } = await client
     .from("attendance_records")
-    .select("id, student_id, status, arrival_time, note")
+    .select("id, student_id, status, arrival_time, note, updated_at")
     .eq("school_id", schoolId)
     .eq("branch_id", branchId)
     .eq("class_id", classId)
@@ -730,6 +733,7 @@ export async function saveAttendance(
     arrival_time:
       row.status === "late" && row.arrivalTime ? row.arrivalTime : null,
     note: row.note.trim() || null,
+    expected_updated_at: row.baseUpdatedAt ?? null,
   }));
 
   const { data, error } = await client.rpc("save_attendance_batch", {
@@ -772,6 +776,10 @@ export function getAttendanceErrorMessage(error: unknown): string {
 
   if (message.includes("attendance_roster_changed")) {
     return "تغيّرت قائمة طلاب الحلقة منذ تحميلها. أعد تحميل القائمة وراجع الحالات قبل الحفظ.";
+  }
+
+  if (message.includes("attendance_record_conflict")) {
+    return "عُدّل سجل أحد الطلاب من جهاز آخر بعد تحميل القائمة. أعد تحميل الحضور وراجع التغييرات قبل الحفظ.";
   }
 
   if (message.includes("attendance_operation_id_reused")) {
