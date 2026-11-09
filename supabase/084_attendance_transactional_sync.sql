@@ -139,6 +139,21 @@ begin
     raise exception using errcode = '42501', message = 'ATTENDANCE_PERMISSION_REQUIRED';
   end if;
 
+  -- Lock the roster rows before validating membership. This prevents a
+  -- concurrent class/branch/status change from racing the subsequent writes.
+  perform student.id
+  from public.students as student
+  where student.school_id = target_school_id
+    and student.branch_id = target_branch_id
+    and student.class_id = target_class_id
+    and student.status = 'active'
+    and student.id in (
+      select parsed.student_id
+      from jsonb_to_recordset(target_rows) as parsed(student_id uuid)
+    )
+  order by student.id
+  for share;
+
   if (
     select count(*)
     from public.students as student
