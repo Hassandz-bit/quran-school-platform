@@ -29,6 +29,7 @@ import {
   saveOfflineAttendanceDraft,
   saveOfflineAttendanceRoster,
   saveOfflineAttendanceScope,
+  updateOfflineAttendanceDraftState,
   type AttendanceDraftScope,
 } from "@/lib/attendance-offline";
 import {
@@ -278,6 +279,11 @@ export default function Attendance() {
           });
 
         if (sameRoster) {
+          const savedSyncState = savedDraft.syncState ?? "pending";
+          const canRetrySavedDraft = savedSyncState === "pending" || savedSyncState === "syncing";
+          if (canRetrySavedDraft) {
+            await updateOfflineAttendanceDraftState(draftScope, "pending", null).catch(() => undefined);
+          }
           const savedById = new Map(savedDraft.rows.map(row => [row.id, row]));
           setRows(roster.rows.map(row => {
             const saved = savedById.get(row.id);
@@ -289,7 +295,10 @@ export default function Attendance() {
             } : row;
           }));
           setDirty(true);
-          setNeedsOfflineSync(true);
+          setNeedsOfflineSync(canRetrySavedDraft);
+          if (!canRetrySavedDraft) {
+            setRosterError(savedDraft.lastSyncError ?? "تحتاج المسودة إلى مراجعة قبل إعادة المحاولة.");
+          }
           setSaveSuccess("استُعيدت مسودة حضور محفوظة على هذا الجهاز.");
         } else {
           setRows(roster.rows);
@@ -335,7 +344,12 @@ export default function Attendance() {
             });
             restoredDraft = true;
             setDirty(true);
-            setNeedsOfflineSync(true);
+            const savedSyncState = savedDraft.syncState ?? "pending";
+            const canRetrySavedDraft = savedSyncState === "pending" || savedSyncState === "syncing";
+            setNeedsOfflineSync(canRetrySavedDraft);
+            if (canRetrySavedDraft) {
+              await updateOfflineAttendanceDraftState(draftScope!, "pending", null).catch(() => undefined);
+            }
           }
         }
         setRows(displayRows);
@@ -430,7 +444,11 @@ export default function Attendance() {
       };
       let operationId: string | undefined;
       if (offlineScope.userId) {
-        operationId = await saveOfflineAttendanceDraft(offlineScope, sessionId, rows, true).catch(() => undefined) ?? undefined;
+        operationId = await saveOfflineAttendanceDraft(offlineScope, sessionId, rows, true);
+        if (!operationId) {
+          throw new Error("attendance_operation_id_unavailable");
+        }
+        await updateOfflineAttendanceDraftState(offlineScope, "syncing", null).catch(() => undefined);
       }
 
       const result = await saveAttendance({
@@ -468,13 +486,15 @@ export default function Attendance() {
         /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
       if (offline && user?.id) {
         try {
-          await saveOfflineAttendanceDraft({
+          const offlineScope: AttendanceDraftScope = {
             userId: user.id,
             schoolId: school.id,
             branchId,
             classId,
             sessionDate,
-          }, sessionId, rows);
+          };
+          await saveOfflineAttendanceDraft(offlineScope, sessionId, rows);
+          await updateOfflineAttendanceDraftState(offlineScope, "pending", null).catch(() => undefined);
           const message = "انقطع الاتصال. حُفظت التعديلات محليًا على هذا الجهاز، ولم تُرسل إلى الخادم بعد. أعد المحاولة بعد عودة الإنترنت.";
           setRosterError(message);
           setNeedsOfflineSync(true);
@@ -488,6 +508,17 @@ export default function Attendance() {
       } else {
         setNeedsOfflineSync(false);
         const message = getAttendanceErrorMessage(error);
+        const conflict =
+          /attendance_record_conflict|attendance_roster_changed|attendance_permission_required|42501|row-level security/.test(errorText);
+        if (user?.id) {
+          await updateOfflineAttendanceDraftState({
+            userId: user.id,
+            schoolId: school.id,
+            branchId,
+            classId,
+            sessionDate,
+          }, conflict ? "conflict" : "failed", message).catch(() => undefined);
+        }
         setRosterError(message);
         toast.error(message);
       }
