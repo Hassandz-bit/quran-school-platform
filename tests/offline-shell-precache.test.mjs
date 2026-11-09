@@ -18,7 +18,7 @@ test("service worker install precaches every same-origin JavaScript and CSS buil
   const manifest = {
     "src/main.tsx": { file: "assets/main-a1.js", css: ["assets/main-a1.css"], isEntry: true },
     "src/pages/Attendance.tsx": { file: "assets/attendance-b2.js", css: ["assets/attendance-b2.css"], isDynamicEntry: true },
-    "src/pages/Finance.tsx": { file: "assets/finance-c3.js", isDynamicEntry: true },
+    "src/pages/Finance.tsx": { file: "assets/finance-c3.js", isDynamicEntry: true, assets: ["assets/fonts/quran.woff2", "assets/icons/mark.svg", "assets/large-image.png"] },
     "external.js": { file: "https://cdn.example.net/external.js" },
     "image.png": { file: "assets/large-image.png" },
   };
@@ -54,6 +54,8 @@ test("service worker install precaches every same-origin JavaScript and CSS buil
     "assets/attendance-b2.js",
     "assets/attendance-b2.css",
     "assets/finance-c3.js",
+    "assets/fonts/quran.woff2",
+    "assets/icons/mark.svg",
   ]) {
     assert.ok(
       precachedAssets.includes(`https://quranos.example/${file}`),
