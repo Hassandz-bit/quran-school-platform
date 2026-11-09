@@ -44,7 +44,7 @@ export default defineConfig(() => {
       outDir: path.resolve(import.meta.dirname, "client", "dist"),
       emptyOutDir: true,
       // Publish Vite's asset graph so the service worker can precache lazy routes.
-      manifest: true,
+      manifest: "asset-manifest.json",
       rollupOptions: {
         output: {
           manualChunks(id) {
