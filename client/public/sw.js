@@ -27,7 +27,7 @@ async function precacheAppShell() {
     if (!entry || typeof entry !== "object") continue;
     const files = [entry.file, ...(Array.isArray(entry.css) ? entry.css : [])];
     for (const file of files) {
-      if (typeof file !== "string" || !/\\.(?:m?js|css)$/i.test(file)) continue;
+      if (typeof file !== "string" || !/\.(?:m?js|css)$/i.test(file)) continue;
       const assetUrl = new URL(file, self.registration.scope);
       if (assetUrl.origin === self.location.origin) assets.add(assetUrl.href);
     }
