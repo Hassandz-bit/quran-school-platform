@@ -109,10 +109,7 @@ type RecordRow = {
   updated_at: string;
 };
 
-type ExistingRecordRow = {
-  id: string;
-  student_id: string;
-};
+
 
 type ClassAccess = {
   view: boolean;
@@ -133,15 +130,6 @@ export class AttendanceValidationError extends Error {
     super(message);
     this.name = "AttendanceValidationError";
   }
-}
-
-function isPostgrestError(error: unknown): error is PostgrestError {
-  return Boolean(
-    error &&
-      typeof error === "object" &&
-      "code" in error &&
-      typeof (error as { code?: unknown }).code === "string"
-  );
 }
 
 async function hasSchoolPermission(
@@ -423,24 +411,6 @@ export function getTodayInputValue(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-async function assertClassAccess(
-  client: SupabaseClient,
-  schoolId: string,
-  branchId: string,
-  classId: string,
-  permission: AttendancePermissionCode
-): Promise<void> {
-  const allowed = await canAccessAttendanceClass(
-    client,
-    schoolId,
-    branchId,
-    classId,
-    permission
-  );
-
-  if (!allowed) throw new AttendancePermissionError();
-}
-
 export async function fetchAttendanceRoster(
   schoolId: string,
   branchId: string,
@@ -544,170 +514,6 @@ function validateSaveInput(input: SaveAttendanceInput): void {
     }
     studentIds.add(row.id);
   }
-}
-
-async function verifyRoster(
-  client: SupabaseClient,
-  input: SaveAttendanceInput
-): Promise<void> {
-  const { data, error } = await client
-    .from("students")
-    .select("id")
-    .eq("school_id", input.schoolId)
-    .eq("branch_id", input.branchId)
-    .eq("class_id", input.classId)
-    .eq("status", "active")
-    .in(
-      "id",
-      input.rows.map(row => row.id)
-    );
-
-  if (error) throw error;
-  const allowedIds = new Set(
-    ((data ?? []) as Array<{ id: string }>).map(row => row.id)
-  );
-
-  if (
-    allowedIds.size !== input.rows.length ||
-    input.rows.some(row => !allowedIds.has(row.id))
-  ) {
-    throw new AttendancePermissionError();
-  }
-}
-
-async function findAttendanceSession(
-  client: SupabaseClient,
-  input: SaveAttendanceInput
-): Promise<SessionRow | null> {
-  const { data, error } = await client
-    .from("attendance_sessions")
-    .select("id")
-    .eq("school_id", input.schoolId)
-    .eq("branch_id", input.branchId)
-    .eq("class_id", input.classId)
-    .eq("session_date", input.sessionDate)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as SessionRow | null;
-}
-
-async function getOrCreateAttendanceSession(
-  client: SupabaseClient,
-  input: SaveAttendanceInput
-): Promise<SessionRow> {
-  const existing = await findAttendanceSession(client, input);
-  if (existing) return existing;
-
-  const { data, error } = await client
-    .from("attendance_sessions")
-    .insert({
-      school_id: input.schoolId,
-      branch_id: input.branchId,
-      class_id: input.classId,
-      session_date: input.sessionDate,
-    })
-    .select("id")
-    .single();
-
-  if (!error && data) return data as SessionRow;
-
-  if (isPostgrestError(error) && error.code === "23505") {
-    const racedSession = await findAttendanceSession(client, input);
-    if (racedSession) return racedSession;
-  }
-
-  throw error ?? new Error("attendance_session_create_failed");
-}
-
-function normalizeWriteRow(row: AttendanceDraftRow) {
-  return {
-    status: row.status as AttendanceStatus,
-    arrival_time:
-      row.status === "late" && row.arrivalTime
-        ? row.arrivalTime
-        : null,
-    note: row.note.trim() || null,
-  };
-}
-
-async function fetchExistingRecords(
-  client: SupabaseClient,
-  input: SaveAttendanceInput,
-  sessionId: string
-): Promise<Map<string, ExistingRecordRow>> {
-  const { data, error } = await client
-    .from("attendance_records")
-    .select("id, student_id")
-    .eq("school_id", input.schoolId)
-    .eq("branch_id", input.branchId)
-    .eq("class_id", input.classId)
-    .eq("session_id", sessionId)
-    .in(
-      "student_id",
-      input.rows.map(row => row.id)
-    );
-
-  if (error) throw error;
-  return new Map(
-    ((data ?? []) as ExistingRecordRow[]).map(row => [row.student_id, row])
-  );
-}
-
-async function updateExistingRecords(
-  client: SupabaseClient,
-  input: SaveAttendanceInput,
-  sessionId: string,
-  existingRecords: Map<string, ExistingRecordRow>
-): Promise<void> {
-  const updates = input.rows.flatMap(row => {
-    const existing = existingRecords.get(row.id);
-    if (!existing) return [];
-
-    return [
-      client
-        .from("attendance_records")
-        .update(normalizeWriteRow(row))
-        .eq("id", existing.id)
-        .eq("session_id", sessionId)
-        .select("id"),
-    ];
-  });
-  const results = await Promise.all(updates);
-
-  for (const result of results) {
-    if (result.error) throw result.error;
-    if ((result.data ?? []).length !== 1) {
-      throw new AttendancePermissionError();
-    }
-  }
-}
-
-async function insertNewRecords(
-  client: SupabaseClient,
-  input: SaveAttendanceInput,
-  sessionId: string,
-  existingRecords: Map<string, ExistingRecordRow>
-): Promise<void> {
-  const inserts = input.rows.flatMap(row => {
-    if (existingRecords.has(row.id)) return [];
-
-    return [
-      {
-        session_id: sessionId,
-        student_id: row.id,
-        ...normalizeWriteRow(row),
-      },
-    ];
-  });
-
-  if (inserts.length === 0) return;
-
-  const { error } = await client
-    .from("attendance_records")
-    .insert(inserts);
-
-  if (error) throw error;
 }
 
 export async function saveAttendance(
