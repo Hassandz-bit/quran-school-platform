@@ -99,7 +99,7 @@ export async function saveOfflineAttendanceDraft(
 
   const database = await openDatabase();
   try {
-    return await new Promise<string>((resolve, reject) => {
+    return await new Promise<string | null>((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, "readwrite");
       const store = transaction.objectStore(STORE_NAME);
       const key = makeKey(scope);
