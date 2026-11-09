@@ -464,7 +464,9 @@ function Router() {
         <Route path="/backups">
           <ProtectedRoute><Shell><SchoolBackups /></Shell></ProtectedRoute>
         </Route>
-        <Route path="/"><Redirect to={offlineSession ? "/offline" : "/post-login"} /></Route>
+        <Route path="/">
+          {loading ? <FinancePageFallback /> : <Redirect to={offlineSession ? "/offline" : "/post-login"} />}
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>
