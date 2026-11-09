@@ -13,12 +13,16 @@ export type AttendanceDraftScope = {
   sessionDate: string;
 };
 
+export type AttendanceSyncState = "pending" | "syncing" | "conflict" | "failed";
+
 export type StoredAttendanceDraft = AttendanceDraftScope & {
   key: string;
   operationId: string | null;
   operationPayload: string | null;
   sessionId: string | null;
   rows: AttendanceDraftRow[];
+  syncState: AttendanceSyncState;
+  lastSyncError: string | null;
   savedAt: string;
 };
 
@@ -178,6 +182,14 @@ export async function saveOfflineAttendanceDraft(
           operationPayload: prepareOperation ? operationPayload : (payloadUnchanged ? existing?.operationPayload ?? null : null),
           sessionId,
           rows: rows.map(row => ({ ...row })),
+          syncState: prepareOperation
+            ? "pending"
+            : payloadUnchanged
+              ? existing?.syncState ?? "pending"
+              : "pending",
+          lastSyncError: prepareOperation || !payloadUnchanged
+            ? null
+            : existing?.lastSyncError ?? null,
           savedAt: new Date().toISOString(),
         };
         store.put(draft);
@@ -207,6 +219,21 @@ export async function deleteOfflineAttendanceDraft(
   scope: AttendanceDraftScope
 ): Promise<void> {
   await withDraftStore("readwrite", store => store.delete(makeKey(scope)));
+}
+
+export async function updateOfflineAttendanceDraftState(
+  scope: AttendanceDraftScope,
+  syncState: AttendanceSyncState,
+  lastSyncError: string | null = null
+): Promise<void> {
+  const draft = await getOfflineAttendanceDraft(scope);
+  if (!draft) return;
+  await withDraftStore("readwrite", store => store.put({
+    ...draft,
+    syncState,
+    lastSyncError: lastSyncError?.slice(0, 500) ?? null,
+    savedAt: new Date().toISOString(),
+  }));
 }
 
 export async function saveOfflineAttendanceScope(
