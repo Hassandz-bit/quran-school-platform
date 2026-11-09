@@ -97,3 +97,43 @@ Expand to student profiles, حلقات, schedules, and reports only after each d
 ## Release gate
 
 No production deployment until the local persistence, server-side idempotency, permission revalidation, conflict handling, and end-to-end offline/online tests pass. The first usable release should be limited to teacher attendance; memorization follows as a separate increment.
+
+## Phase 1 code audit (2026-11-09)
+
+The current attendance implementation was inspected before choosing a synchronization design:
+
+- `client/src/lib/attendance.ts` fetches the authorized roster and existing session/records from Supabase. `saveAttendance()` re-checks `attendance.manage` and verifies that every submitted student is still active in the exact school/branch/class before writing.
+- Attendance session uniqueness is enforced by `unique (class_id, session_date)`; record uniqueness is enforced by `unique (session_id, student_id)`.
+- The current save path performs updates and inserts as separate client requests (parallel updates followed by inserts), not as one database transaction. A partial batch can therefore be committed before a later request fails.
+- `attendance_records` has an audit trigger that appends history only when attendance values actually change. A retry with identical values is less likely to duplicate history, but this is not a sufficient server-side idempotency guarantee and does not protect against stale concurrent edits.
+- The existing RLS and `can_access_attendance_class` checks are important security boundaries and must remain enforced for every sync request.
+- The existing service worker caches the app shell/static assets only; it does not persist roster data or attendance drafts.
+
+### Implementation decision
+
+Do **not** connect an offline queue directly to the current multi-request `saveAttendance()` implementation. That would risk partial batch commits and stale-value overwrites.
+
+Before automatic attendance sync is enabled, add a narrowly scoped, authenticated, transactional server operation with:
+
+1. A client-generated operation UUID stored under a unique database constraint together with the authenticated user and tenant scope.
+2. A request fingerprint/payload check so reusing an operation UUID with different content is rejected rather than treated as a successful replay.
+3. A single database transaction that re-checks `auth.uid()`, active membership, `attendance.manage` for the exact class, current student membership, and expected server state before applying the batch.
+4. A durable operation result returned on retries, so a lost HTTP response followed by retry cannot apply the same batch twice.
+5. Explicit conflict responses for changed roster or changed attendance values; do not silently use last-write-wins.
+6. Least-privilege execute grants and a pinned empty `search_path` if a privileged function is truly required; avoid broad `SECURITY DEFINER` access.
+
+Only after that database contract is tested should the client add IndexedDB draft persistence and a reconnect sync worker. The first client cache should be restricted to the authenticated teacher's authorized roster, and it must never cache credentials.
+
+### Current implementation status
+
+- [x] PWA shell/static caching verified.
+- [x] Attendance permission and roster revalidation path reviewed.
+- [x] Existing uniqueness constraints and audit trigger reviewed.
+- [x] Partial-write and stale-update risk identified.
+- [ ] Transactional idempotent attendance RPC implemented.
+- [ ] IndexedDB draft store and scoped roster cache implemented.
+- [ ] Offline UI states and reconnect sync implemented.
+- [ ] Offline/online and lost-response tests executed.
+- [ ] Production release gate passed.
+
+This audit is a technical refinement of the plan only; it does not change production data or enable offline attendance yet.
