@@ -53,7 +53,7 @@ declare
   note_value text;
   expected_updated_at_value timestamptz;
   current_updated_at_value timestamptz;
-  row_count integer;
+  batch_size integer;
   distinct_student_count integer;
   affected_count integer;
 begin
@@ -71,8 +71,8 @@ begin
     raise exception using errcode = '22023', message = 'ATTENDANCE_INVALID_BATCH';
   end if;
 
-  row_count := jsonb_array_length(target_rows);
-  if row_count < 1 or row_count > 200 then
+  batch_size := jsonb_array_length(target_rows);
+  if batch_size < 1 or batch_size > 200 then
     raise exception using errcode = '22023', message = 'ATTENDANCE_INVALID_BATCH_SIZE';
   end if;
 
@@ -80,7 +80,7 @@ begin
   into distinct_student_count
   from jsonb_to_recordset(target_rows) as parsed(student_id uuid, status text);
 
-  if distinct_student_count <> row_count then
+  if distinct_student_count <> batch_size then
     raise exception using errcode = '22023', message = 'ATTENDANCE_DUPLICATE_OR_INVALID_STUDENT';
   end if;
 
@@ -149,7 +149,7 @@ begin
         select parsed.student_id
         from jsonb_to_recordset(target_rows) as parsed(student_id uuid)
       )
-  ) <> row_count then
+  ) <> batch_size then
     raise exception using errcode = '23514', message = 'ATTENDANCE_ROSTER_CHANGED';
   end if;
 
@@ -206,7 +206,7 @@ begin
         and student_id = student_id_value
         and updated_at = expected_updated_at_value;
 
-      get diagnostics affected_count = row_count;
+      get diagnostics affected_count = ROW_COUNT;
       if affected_count <> 1 then
         raise exception using
           errcode = '40001',
@@ -217,10 +217,10 @@ begin
 
   update public.attendance_sync_operations as operation
   set session_id = resolved_session_id,
-      saved_count = row_count
+      saved_count = batch_size
   where operation.id = prior_operation.id;
 
-  return query select resolved_session_id, row_count, false;
+  return query select resolved_session_id, batch_size, false;
 end;
 $$;
 
