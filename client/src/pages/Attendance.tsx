@@ -276,6 +276,9 @@ export default function Attendance() {
       });
       setSessionId(result.sessionId);
       setDirty(false);
+      // Refresh the server version tokens after a successful write so a
+      // subsequent edit from this page does not submit stale updated_at values.
+      setRosterReload(current => current + 1);
       const message = `تم حفظ حضور ${result.savedCount} طالب بنجاح.`;
       setSaveSuccess(message);
       toast.success(message);
