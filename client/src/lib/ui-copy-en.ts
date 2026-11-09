@@ -2132,4 +2132,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "البيانات المحلية": "Local data",
 
   "تعذر قراءة البيانات المحفوظة على هذا الجهاز.": "Could not read the data saved on this device.",
+  "هذه البيانات مخزنة على الجهاز ولا يشفّرها هذا الوضع؛ استخدم جهازًا موثوقًا.": "This data is stored on the device and is not encrypted by this mode; use a trusted device.",
 };
