@@ -54,6 +54,7 @@ test("attendance rows are applied in one database function transaction", () => {
   assert.match(migration, /current_updated_at_value is distinct from expected_updated_at_value/i);
   assert.match(migration, /if expected_updated_at_value is null then[\s\S]*insert into public\.attendance_records/i);
   assert.match(migration, /update public\.attendance_records[\s\S]*updated_at = expected_updated_at_value/i);
+  assert.match(migration, /when unique_violation then[\s\S]*errcode = '40001',[\s\S]*message = 'ATTENDANCE_RECORD_CONFLICT'/i);
   assert.match(migration, /update public\.attendance_sync_operations[\s\S]*saved_count = batch_size/i);
   assert.match(migration, /begin;[\s\S]*commit;/i);
 });
