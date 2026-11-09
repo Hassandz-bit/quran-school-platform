@@ -2131,4 +2131,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "أنت تعرض نسخة محفوظة محليًا من قائمة الحضور. لم يتم التحقق من حداثة البيانات أو الصلاحيات أثناء انقطاع الإنترنت.": "You are viewing a locally saved attendance list. Data freshness and permissions have not been verified while offline.",
   "البيانات المحلية": "Local data",
 
+  "تعذر قراءة البيانات المحفوظة على هذا الجهاز.": "Could not read the data saved on this device.",
 };
