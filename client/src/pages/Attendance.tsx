@@ -22,6 +22,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  deleteOfflineAttendanceDraft,
+  getOfflineAttendanceDraft,
+  saveOfflineAttendanceDraft,
+  type AttendanceDraftScope,
+} from "@/lib/attendance-offline";
+import {
   fetchAttendanceRoster,
   fetchAttendanceScope,
   getAttendanceErrorMessage,
@@ -119,7 +125,7 @@ function LoadingCard({ label }: { label: string }) {
 }
 
 export default function Attendance() {
-  const { school, isSchoolAdmin, signOut } = useAuth();
+  const { school, user, isSchoolAdmin, signOut } = useAuth();
   const [, setLocation] = useLocation();
   const [scope, setScope] = useState<AttendanceScope | null>(null);
   const [scopeLoading, setScopeLoading] = useState(true);
@@ -197,16 +203,58 @@ export default function Attendance() {
     setSessionId(null);
     setDirty(false);
 
-    void fetchAttendanceRoster(
-      school.id,
-      branchId,
-      classId,
-      sessionDate
-    )
-      .then(roster => {
+    const draftScope: AttendanceDraftScope | null = user?.id
+      ? {
+          userId: user.id,
+          schoolId: school.id,
+          branchId,
+          classId,
+          sessionDate,
+        }
+      : null;
+
+    void fetchAttendanceRoster(school.id, branchId, classId, sessionDate)
+      .then(async roster => {
         if (!active) return;
-        setRows(roster.rows);
         setSessionId(roster.sessionId);
+        if (!draftScope) {
+          setRows(roster.rows);
+          return;
+        }
+
+        const savedDraft = await getOfflineAttendanceDraft(draftScope).catch(() => null);
+        if (!active) return;
+        if (!savedDraft) {
+          setRows(roster.rows);
+          return;
+        }
+
+        const serverById = new Map(roster.rows.map(row => [row.id, row]));
+        const sameRoster = savedDraft.rows.length === roster.rows.length &&
+          savedDraft.rows.every(saved => {
+            const current = serverById.get(saved.id);
+            return current &&
+              current.recordId === saved.recordId &&
+              current.baseUpdatedAt === saved.baseUpdatedAt;
+          });
+
+        if (sameRoster) {
+          const savedById = new Map(savedDraft.rows.map(row => [row.id, row]));
+          setRows(roster.rows.map(row => {
+            const saved = savedById.get(row.id);
+            return saved ? {
+              ...row,
+              status: saved.status,
+              arrivalTime: saved.arrivalTime,
+              note: saved.note,
+            } : row;
+          }));
+          setDirty(true);
+          setSaveSuccess("استُعيدت مسودة حضور محفوظة على هذا الجهاز.");
+        } else {
+          setRows(roster.rows);
+          setRosterError("توجد مسودة محلية قديمة لهذه الحلقة والتاريخ، لكن قائمة الطلاب أو سجلاتهم تغيّرت. احتُفظ بالمسودة ولم تُدمج تلقائيًا منعًا لفقدان البيانات.");
+        }
       })
       .catch(error => {
         if (!active) return;
@@ -219,7 +267,24 @@ export default function Attendance() {
     return () => {
       active = false;
     };
-  }, [branchId, classId, rosterReload, school?.id, sessionDate]);
+  }, [branchId, classId, rosterReload, school?.id, sessionDate, user?.id]);
+
+  useEffect(() => {
+    if (!dirty || !user?.id || !school?.id || !branchId || !classId || !sessionDate || rows.length === 0) {
+      return;
+    }
+
+    const scope: AttendanceDraftScope = {
+      userId: user.id,
+      schoolId: school.id,
+      branchId,
+      classId,
+      sessionDate,
+    };
+    void saveOfflineAttendanceDraft(scope, sessionId, rows).catch(() => {
+      setRosterError("تعذر حفظ نسخة محلية من مسودة الحضور على هذا الجهاز.");
+    });
+  }, [branchId, classId, dirty, rows, school?.id, sessionDate, sessionId, user?.id]);
 
   const summary = useMemo(() => summarizeAttendance(rows), [rows]);
   const allStudentsHaveStatus =
@@ -275,6 +340,17 @@ export default function Attendance() {
         rows,
       });
       setSessionId(result.sessionId);
+      if (user?.id) {
+        await deleteOfflineAttendanceDraft({
+          userId: user.id,
+          schoolId: school.id,
+          branchId,
+          classId,
+          sessionDate,
+        }).catch(() => {
+          setRosterError("تم إرسال الحضور، لكن تعذر حذف النسخة المحلية القديمة. ستُراجع عند تحميل القائمة لاحقًا.");
+        });
+      }
       setDirty(false);
       // Refresh the server version tokens after a successful write so a
       // subsequent edit from this page does not submit stale updated_at values.
@@ -284,9 +360,17 @@ export default function Attendance() {
       toast.success(message);
 
     } catch (error) {
-      const message = getAttendanceErrorMessage(error);
+      const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      const message = offline
+        ? "انقطع الاتصال. حُفظت التعديلات محليًا على هذا الجهاز، ولم تُرسل إلى الخادم بعد. أعد المحاولة بعد عودة الإنترنت."
+        : getAttendanceErrorMessage(error);
       setRosterError(message);
-      toast.error(message);
+      if (offline) {
+        setSaveSuccess("المسودة محفوظة محليًا — لم يُسجل الحضور في قاعدة البيانات بعد.");
+        toast.info(message);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setSaving(false);
     }
