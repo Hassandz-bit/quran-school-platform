@@ -43,7 +43,7 @@ test("HTML advertises QuranOS identity, manifest, favicon, and Apple icon", asyn
 test("service worker refreshes the branded shell and notification icon", async () => {
   const worker = await read("client/public/sw.js");
 
-  assert.match(worker, /quranos-shell-v2/);
+  assert.match(worker, /quranos-shell-v3/);
   assert.match(worker, /"\/pwa-icon-192\.svg"/);
   assert.match(worker, /"\/pwa-icon\.svg"/);
 });
