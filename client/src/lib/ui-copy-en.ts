@@ -2135,7 +2135,6 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "هذه البيانات مخزنة على الجهاز ولا يشفّرها هذا الوضع؛ استخدم جهازًا موثوقًا.": "This data is stored on the device and is not encrypted by this mode; use a trusted device.",
   "توقفت أثناء المزامنة": "Sync was interrupted",
   "تحتاج إلى مراجعة": "Needs review",
-  "تعذر الإرسال": "Failed to send",
   "بانتظار المزامنة": "Waiting to sync",
 
   "تحتاج المسودة إلى مراجعة قبل إعادة المحاولة.": "This draft needs review before retrying.",
