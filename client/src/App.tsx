@@ -33,6 +33,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import PostLoginRedirect from "./pages/PostLoginRedirect";
 
+const OfflineAttendance = lazy(() => import("./pages/OfflineAttendance"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PlatformOwnerDashboard = lazy(() => import("./pages/PlatformOwnerDashboard"));
 const SchoolRegistration = lazy(() => import("./pages/SchoolRegistration"));
@@ -170,6 +171,11 @@ function Router() {
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
+        <Route path="/offline">
+          <Suspense fallback={<FinancePageFallback />}>
+            <OfflineAttendance />
+          </Suspense>
+        </Route>
         <Route path="/school-registration">
           <Suspense fallback={<FinancePageFallback />}>
             <SchoolRegistration />
