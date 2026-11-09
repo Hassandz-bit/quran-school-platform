@@ -10,7 +10,7 @@ test("production build publishes the Vite asset manifest", () => {
   assert.match(vite, /manifest:\s*"asset-manifest\.json"/);
 });
 
-test("service worker install precaches every same-origin JavaScript and CSS build chunk", async () => {
+test("service worker install precaches same-origin code, styles, fonts, and vector icons", async () => {
   const listeners = new Map();
   const cacheWrites = [];
   let skippedWaiting = false;
