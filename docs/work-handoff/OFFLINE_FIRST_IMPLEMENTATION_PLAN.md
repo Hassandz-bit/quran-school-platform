@@ -137,13 +137,13 @@ Only after that database contract is tested should the client add IndexedDB draf
 - [ ] IndexedDB draft store and scoped roster cache implemented.
 - [ ] Offline UI states and reconnect sync implemented.
 - [ ] Database migration executed against a disposable test database and transactional concurrency/lost-response behavior verified.
-- [ ] Full test/build suite executed on this branch.
+- [ ] Full test/build suite executed on this branch. The first GitHub Actions attempt failed before any job steps began because no runner was allocated; it did not execute the project tests.
 - [ ] Production release gate passed.
 
 ### Transactional RPC implementation notes
 
 The RPC caps each batch at 200 students, validates the payload and active roster, re-checks the authenticated caller's `attendance.manage` access for the exact class, and applies the batch inside one PostgreSQL transaction. The idempotency result is checked before re-validating the roster on retries, so a committed operation can still be acknowledged if a student's roster membership changed after the original commit. The operation ledger is inaccessible directly to browser roles; the authenticated RPC is the only client entry point.
 
-The browser currently creates a fresh operation UUID for each explicit save. The API accepts an operation UUID argument so a future IndexedDB queue can persist and reuse the same UUID across retries. Offline queueing is **not yet implemented**, and the current RPC still follows the existing online edit semantics for already-recorded attendance; optimistic concurrency/conflict detection for simultaneous edits remains a release gate.
+The browser currently creates a fresh operation UUID for each explicit save. The API accepts an operation UUID argument so a future IndexedDB queue can persist and reuse the same UUID across retries. Existing records carry their fetched `updated_at` snapshot into the RPC; the server compares it while holding the record lock and rejects stale edits. Offline queueing is **not yet implemented**.
 
 This audit is a technical refinement of the plan only; it does not change production data or enable offline attendance yet.
