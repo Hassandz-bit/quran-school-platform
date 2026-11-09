@@ -341,7 +341,7 @@ export default function Attendance() {
       };
       let operationId: string | undefined;
       if (offlineScope.userId) {
-        operationId = await saveOfflineAttendanceDraft(offlineScope, sessionId, rows).catch(() => undefined);
+        operationId = await saveOfflineAttendanceDraft(offlineScope, sessionId, rows, true).catch(() => undefined) ?? undefined;
       }
 
       const result = await saveAttendance({
