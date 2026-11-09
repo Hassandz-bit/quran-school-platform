@@ -12,9 +12,9 @@ test("production build publishes the Vite asset manifest", () => {
 
 test("service worker install precaches every same-origin JavaScript and CSS build chunk", async () => {
   const listeners = new Map();
-  const cached = [];
+  const cacheWrites = [];
   let skippedWaiting = false;
-  const cache = { addAll: async urls => cached.push(...urls) };
+  const cache = { addAll: async urls => cacheWrites.push([...urls]) };
   const manifest = {
     "src/main.tsx": { file: "assets/main-a1.js", css: ["assets/main-a1.css"], isEntry: true },
     "src/pages/Attendance.tsx": { file: "assets/attendance-b2.js", css: ["assets/attendance-b2.css"], isDynamicEntry: true },
@@ -44,14 +44,24 @@ test("service worker install precaches every same-origin JavaScript and CSS buil
   listeners.get("install")({ waitUntil: promise => { installation = promise; } });
   await installation;
 
-  assert.deepEqual(cached.sort(), [
-    "/.??",
-    "https://quranos.example/assets/attendance-b2.css",
-    "https://quranos.example/assets/attendance-b2.js",
-    "https://quranos.example/assets/finance-c3.js",
-    "https://quranos.example/assets/main-a1.css",
-    "https://quranos.example/assets/main-a1.js",
-  ].filter(value => value !== "/.??").sort());
+  assert.equal(cacheWrites.length, 2);
+  assert.ok(cacheWrites[0].includes("/index.html"));
+  assert.ok(cacheWrites[1].includes("/asset-manifest.json"));
+  const precachedAssets = cacheWrites[1];
+  for (const file of [
+    "assets/main-a1.js",
+    "assets/main-a1.css",
+    "assets/attendance-b2.js",
+    "assets/attendance-b2.css",
+    "assets/finance-c3.js",
+  ]) {
+    assert.ok(
+      precachedAssets.includes(`https://quranos.example/${file}`),
+      `expected ${file} to be precached`,
+    );
+  }
+  assert.equal(precachedAssets.some(url => url.includes("external.js")), false);
+  assert.equal(precachedAssets.some(url => url.includes("large-image.png")), false);
   assert.equal(skippedWaiting, true);
   assert.equal(cached.some(url => url.includes("external.js")), false);
   assert.equal(cached.some(url => url.includes("large-image.png")), false);
