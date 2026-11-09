@@ -127,7 +127,7 @@ export default function OfflineAttendance() {
 
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900" role="status">
           <strong>تنبيه أمان:</strong> البيانات قديمة بحسب آخر وقت حفظ ظاهر لكل حلقة.
-          لا تعتمد عليها لاتخاذ قرار إداري نهائي حتى يعود الاتصال وتُحدّث البيانات وتُراجع الصلاحيات.
+          لا تعتمد عليها لاتخاذ قرار إداري نهائي حتى يعود الاتصال وتُحدّث البيانات وتُراجع الصلاحيات. هذه البيانات مخزنة على الجهاز ولا يشفّرها هذا الوضع؛ استخدم جهازًا موثوقًا.
         </section>
 
         {busy ? (
