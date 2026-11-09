@@ -444,7 +444,7 @@ export default function Attendance() {
       };
       let operationId: string | undefined;
       if (offlineScope.userId) {
-        operationId = await saveOfflineAttendanceDraft(offlineScope, sessionId, rows, true);
+        operationId = (await saveOfflineAttendanceDraft(offlineScope, sessionId, rows, true)) ?? undefined;
         if (!operationId) {
           throw new Error("attendance_operation_id_unavailable");
         }
