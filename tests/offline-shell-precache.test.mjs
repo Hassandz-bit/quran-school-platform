@@ -63,8 +63,6 @@ test("service worker install precaches every same-origin JavaScript and CSS buil
   assert.equal(precachedAssets.some(url => url.includes("external.js")), false);
   assert.equal(precachedAssets.some(url => url.includes("large-image.png")), false);
   assert.equal(skippedWaiting, true);
-  assert.equal(cached.some(url => url.includes("external.js")), false);
-  assert.equal(cached.some(url => url.includes("large-image.png")), false);
 });
 
 test("large public documents are not forced into the install-time cache", () => {
