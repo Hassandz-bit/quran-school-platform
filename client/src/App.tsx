@@ -24,7 +24,8 @@ import {
   captureGuardianInviteSession,
   captureTeacherInviteSession,
 } from "./lib/invite-session";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AUTHORIZATION_MESSAGES } from "@/lib/authorization";
 import { LocaleProvider, useLocale } from "./contexts/LocaleContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import type { TranslationKey } from "./lib/locale";
@@ -168,6 +169,14 @@ captureGuardianInviteSession();
 
 function Router() {
   const { locale } = useLocale();
+  const { user, loading, authorizationLoading, authorizationError } = useAuth();
+  const offlineSession =
+    typeof navigator !== "undefined" &&
+    !navigator.onLine &&
+    Boolean(user?.id) &&
+    !loading &&
+    !authorizationLoading &&
+    authorizationError === AUTHORIZATION_MESSAGES.connectionError;
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
@@ -458,7 +467,7 @@ function Router() {
         <Route path="/backups">
           <ProtectedRoute><Shell><SchoolBackups /></Shell></ProtectedRoute>
         </Route>
-        <Route path="/"><Redirect to="/post-login" /></Route>
+        <Route path="/"><Redirect to={offlineSession ? "/offline" : "/post-login"} /></Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>
