@@ -51,6 +51,8 @@ declare
   status_value text;
   arrival_value time;
   note_value text;
+  expected_updated_at_value timestamptz;
+  current_updated_at_value timestamptz;
   row_count integer;
   distinct_student_count integer;
 begin
@@ -172,6 +174,21 @@ begin
     status_value := row_item ->> 'status';
     arrival_value := nullif(row_item ->> 'arrival_time', '')::time;
     note_value := nullif(btrim(coalesce(row_item ->> 'note', '')), '');
+    expected_updated_at_value := nullif(row_item ->> 'expected_updated_at', '')::timestamptz;
+    current_updated_at_value := null;
+
+    select record.updated_at
+    into current_updated_at_value
+    from public.attendance_records as record
+    where record.session_id = resolved_session_id
+      and record.student_id = student_id_value
+    for update;
+
+    if current_updated_at_value is distinct from expected_updated_at_value then
+      raise exception using
+        errcode = '40001',
+        message = 'ATTENDANCE_RECORD_CONFLICT';
+    end if;
 
     insert into public.attendance_records (
       session_id, student_id, status, arrival_time, note
