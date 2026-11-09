@@ -361,14 +361,27 @@ export default function Attendance() {
 
     } catch (error) {
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
-      const message = offline
-        ? "انقطع الاتصال. حُفظت التعديلات محليًا على هذا الجهاز، ولم تُرسل إلى الخادم بعد. أعد المحاولة بعد عودة الإنترنت."
-        : getAttendanceErrorMessage(error);
-      setRosterError(message);
-      if (offline) {
-        setSaveSuccess("المسودة محفوظة محليًا — لم يُسجل الحضور في قاعدة البيانات بعد.");
-        toast.info(message);
+      if (offline && user?.id) {
+        try {
+          await saveOfflineAttendanceDraft({
+            userId: user.id,
+            schoolId: school.id,
+            branchId,
+            classId,
+            sessionDate,
+          }, sessionId, rows);
+          const message = "انقطع الاتصال. حُفظت التعديلات محليًا على هذا الجهاز، ولم تُرسل إلى الخادم بعد. أعد المحاولة بعد عودة الإنترنت.";
+          setRosterError(message);
+          setSaveSuccess("المسودة محفوظة محليًا — لم يُسجل الحضور في قاعدة البيانات بعد.");
+          toast.info(message);
+        } catch {
+          const message = "انقطع الاتصال وتعذر حفظ المسودة محليًا. أبقِ الصفحة مفتوحة ولا تغلقها حتى لا تفقد التعديلات.";
+          setRosterError(message);
+          toast.error(message);
+        }
       } else {
+        const message = getAttendanceErrorMessage(error);
+        setRosterError(message);
         toast.error(message);
       }
     } finally {
