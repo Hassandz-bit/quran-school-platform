@@ -105,6 +105,10 @@ export default function OfflineAttendance() {
     const resumeSyncWhenOnline = () => {
       window.location.assign("/attendance");
     };
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      resumeSyncWhenOnline();
+      return;
+    }
     window.addEventListener("online", resumeSyncWhenOnline);
     return () => window.removeEventListener("online", resumeSyncWhenOnline);
   }, [items]);
