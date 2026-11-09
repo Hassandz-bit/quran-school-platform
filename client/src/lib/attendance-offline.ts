@@ -93,7 +93,7 @@ export async function saveOfflineAttendanceDraft(
   if (!scope.userId || !scope.schoolId || !scope.branchId || !scope.classId || !scope.sessionDate) {
     throw new Error("attendance_offline_scope_invalid");
   }
-  if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+  if (prepareOperation && (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function")) {
     throw new Error("attendance_operation_id_unavailable");
   }
 
