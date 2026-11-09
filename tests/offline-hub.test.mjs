@@ -25,9 +25,9 @@ test("offline hub requires the locally restored user and only presents cached re
 test("cached attendance stays user-scoped and pending drafts survive sign-out", () => {
   assert.match(storage, /store\.index\("userId"\)\.getAll\(userId\)/);
   assert.match(storage, /clearOfflineAttendanceForUser/);
-  assert.match(auth, /clearOfflineAttendanceForUser\(currentUserId\)/);
   assert.match(app, /offlineSession \? "\/offline" : "\/post-login"/);
-  assert.match(auth, /previousUserId !== nextUserId/);
+  assert.doesNotMatch(auth, /clearOfflineAttendanceForUser/);
+  assert.doesNotMatch(auth, /previousUserId/);
 });
 
 test("offline authorization failure settles loading without granting cached permissions", () => {
