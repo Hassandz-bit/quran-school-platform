@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  clearOfflineAttendanceForUser,
   deleteOfflineAttendanceDraft,
   getOfflineAttendanceDraft,
   getOfflineAttendanceRoster,
@@ -533,9 +532,6 @@ export default function Attendance() {
     if (error) {
       toast.error("تعذر تسجيل الخروج حاليًا.");
       return;
-    }
-    if (user?.id) {
-      await clearOfflineAttendanceForUser(user.id).catch(() => undefined);
     }
     setLocation("/login");
   };
