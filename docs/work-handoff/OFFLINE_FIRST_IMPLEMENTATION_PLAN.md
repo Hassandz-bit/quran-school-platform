@@ -11,7 +11,8 @@ The following incremental implementation is present on `feat/offline-first-found
 - Vite emits `asset-manifest.json`; the service worker precaches same-origin lazy JavaScript/CSS chunks plus fonts and SVG icons, while leaving large documents on-demand.
 - Attendance scope and server-returned rosters are stored in IndexedDB, partitioned by user, school, branch, class, and session date.
 - A `/offline` hub can open from a previously persisted local Supabase session after a cold offline launch. It is read-only and displays cached attendance plus a matching pending draft when available.
-- Attendance can restore a draft only when the cached roster/version matches. On reconnect, it attempts synchronization once; the server RPC remains the authority for permission and roster checks.
+- Attendance drafts track `pending`, `syncing`, `conflict`, and `failed`. The operation UUID is persisted before the RPC; if durable local storage is unavailable, the client refuses to send a non-idempotent write.
+- On reconnect, an interrupted operation is replayed with the same UUID before comparing roster versions, so a lost response after a successful server commit is confirmed without duplicating records. New/uncommitted drafts sync only when the cached roster/version matches; the server RPC remains the authority for permission and roster checks.
 - Pending drafts are preserved across sign-out and account switching; data remains partitioned by user ID so another account does not see it. Device-local storage is not encrypted.
 - Auth initialization now settles cleanly when authorization lookup fails offline, without inventing or restoring cached server permissions.
 
