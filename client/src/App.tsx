@@ -25,7 +25,6 @@ import {
   captureTeacherInviteSession,
 } from "./lib/invite-session";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { AUTHORIZATION_MESSAGES } from "@/lib/authorization";
 import { LocaleProvider, useLocale } from "./contexts/LocaleContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import type { TranslationKey } from "./lib/locale";
@@ -169,14 +168,12 @@ captureGuardianInviteSession();
 
 function Router() {
   const { locale } = useLocale();
-  const { user, loading, authorizationLoading, authorizationError } = useAuth();
+  const { user, loading } = useAuth();
   const offlineSession =
     typeof navigator !== "undefined" &&
     !navigator.onLine &&
     Boolean(user?.id) &&
-    !loading &&
-    !authorizationLoading &&
-    authorizationError === AUTHORIZATION_MESSAGES.connectionError;
+    !loading;
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
