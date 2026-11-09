@@ -16,7 +16,9 @@ test("offline attendance drafts use IndexedDB and are isolated by user and schoo
   assert.match(storage, /keyPath: "key"/);
   assert.match(storage, /scope\.userId[\s\S]*scope\.schoolId[\s\S]*scope\.branchId[\s\S]*scope\.classId[\s\S]*scope\.sessionDate/);
   assert.match(storage, /operationId: string/);
-  assert.match(storage, /existing\?\.operationId \?\? crypto\.randomUUID\(\)/);
+  assert.match(storage, /const payloadUnchanged = existing\?\.operationPayload === operationPayload/);
+  assert.match(storage, /prepareOperation[\s\S]*crypto\.randomUUID\(\)/);
+  assert.match(storage, /operationPayload: prepareOperation/);
   assert.match(storage, /saveOfflineAttendanceDraft/);
   assert.match(storage, /getOfflineAttendanceDraft/);
   assert.match(storage, /deleteOfflineAttendanceDraft/);
@@ -30,5 +32,6 @@ test("offline attendance drafts are restored only when the server roster version
   assert.match(page, /احتُفظ بالمسودة ولم تُدمج تلقائيًا/);
   assert.match(page, /await saveOfflineAttendanceDraft\(/);
   assert.match(page, /\}, undefined, operationId\)/);
+  assert.match(page, /saveOfflineAttendanceDraft\(offlineScope, sessionId, rows, true\)/);
   assert.match(page, /لم تُرسل إلى الخادم بعد/);
 });
