@@ -177,7 +177,7 @@ export default function OfflineAttendance() {
 
         <footer className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <p className="text-gray-500">المزامنة الآلية الشاملة لم تُفعّل بعد؛ لا تُحذف هذه المسودات قبل مراجعتها عند عودة الاتصال.</p>
-          <Link href="/login" className="font-semibold text-[#0B4738] underline underline-offset-4">العودة إلى تسجيل الدخول</Link>
+          <div className="flex flex-wrap gap-4"><Link href="/attendance" className="font-semibold text-[#0B4738] underline underline-offset-4">فتح الحضور للمزامنة عند عودة الاتصال</Link><Link href="/login" className="font-semibold text-[#0B4738] underline underline-offset-4">العودة إلى تسجيل الدخول</Link></div>
         </footer>
       </div>
     </main>
