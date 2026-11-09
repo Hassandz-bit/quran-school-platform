@@ -16,7 +16,7 @@ The following incremental implementation is present on `feat/offline-first-found
 - Pending drafts are preserved across sign-out and account switching; data remains partitioned by user ID so another account does not see it. Device-local storage is not encrypted.
 - Auth initialization now settles cleanly when authorization lookup fails offline, without inventing or restoring cached server permissions.
 
-**Not complete:** this is not yet full-platform offline support. Student, class, teacher, memorization, finance, documents, parent, notification, and other modules still depend on live server requests. The offline hub currently exposes attendance snapshots only. There is no verified background sync, and no complete offline write queue across modules.
+**Not complete:** this is not yet full-platform offline support. Student, class, teacher, memorization, finance, documents, parent, notification, and other modules still depend on live server requests. The offline hub exposes attendance snapshots only. Reconnect synchronization is attempted while the app is open; background sync while the browser is closed is not implemented, and there is no complete offline write queue across modules.
 
 **Release blockers:** migration 084 / `save_attendance_batch` has not been validated against a disposable PostgreSQL/Supabase database or applied to production; browser-level cold-install/restart/reconnect/conflict tests are still required. Do not merge, apply migration 084 to production, or promote the preview until those gates pass.
 
@@ -46,8 +46,8 @@ The following incremental implementation is present on `feat/offline-first-found
 1. After a successful online login and permission check, cache only the active teacher's authorized branches, classes, active roster, and the selected/current attendance sessions.
 2. When offline, allow attendance edits only for a roster snapshot that was previously downloaded and whose authorization scope was last verified online.
 3. Persist each draft locally immediately; display “saved on this device — waiting to sync”, not “saved to school”.
-4. On reconnect, require a valid authenticated session and re-check current server-side `attendance.manage` permission and class/student membership.
-5. Add server-side idempotency for each queued operation before enabling automatic retries. A client UUID alone does not prevent duplicate writes after a lost response.
+4. When the app is open and connectivity returns, attempt synchronization using the persisted operation UUID. The server RPC re-checks the current authenticated caller's `attendance.manage` permission and class/student membership.
+5. Attendance server-side idempotency is implemented in draft migration 084; it remains gated on disposable-database integration tests before production use.
 6. Treat server rejection caused by revoked permission, archived/moved student, or stale roster as a visible conflict requiring user review. Never silently overwrite.
 7. Keep the local operation until the server confirms it was applied or the user explicitly resolves/discards it.
 
@@ -138,7 +138,7 @@ Before automatic attendance sync is enabled, add a narrowly scoped, authenticate
 5. Explicit conflict responses for changed roster or changed attendance values; do not silently use last-write-wins.
 6. Least-privilege execute grants and a pinned empty `search_path` if a privileged function is truly required; avoid broad `SECURITY DEFINER` access.
 
-The transactional server contract is now present in draft migration 084, but has not yet been integration-tested. A limited IndexedDB draft store has been added, without enabling automatic sync or offline cold-start. The next client increment must add only the authenticated teacher's authorized roster/scope cache, followed by explicit conflict review and sync after disposable-database tests pass. Credentials must never be cached.
+The transactional server contract is present in draft migration 084, but has not yet been integration-tested. IndexedDB stores user-scoped attendance snapshots and drafts; the offline hub supports a cached cold-start, and reconnect attempts synchronization while the app is open. Browser acceptance and disposable-database tests remain mandatory before production. Credentials must never be cached.
 
 ### Current implementation status
 
@@ -154,11 +154,11 @@ The transactional server contract is now present in draft migration 084, but has
 - [x] A stable operation UUID and exact submitted-payload snapshot are persisted for an explicit server save. Retrying an unchanged draft reuses its UUID; editing the draft rotates the UUID so the server never sees one key reused with different content.
 - [x] Attendance edits are persisted locally while the page has an authorized server-loaded roster. If a save fails while offline, the page confirms only local persistence and explicitly says the server has not been updated.
 - [x] A local draft is restored only when the server roster and each record's `recordId`/`updated_at` snapshot still match. A stale draft is retained and is not silently merged.
-- [ ] Offline cold-start: cached authorized scope and roster are not implemented, so reopening the app with no network cannot yet load attendance.
-- [ ] Automatic reconnect/background sync is not enabled. After connectivity returns, the teacher must retry the save explicitly; server permission and roster checks remain authoritative.
+- [x] Offline shell cold-start and read-only attendance hub: a previously persisted local session can open `/offline`, showing cached scope/roster and local drafts. Editable attendance cold-start still requires browser acceptance testing.
+- [x] Reconnect sync attempt is wired while the app is open: returning online from the offline hub routes to attendance and attempts the persisted operation. Background sync while the browser is closed is not implemented; server permission and roster checks remain authoritative.
 - [ ] Database migration 084 executed against a disposable test database; transactional concurrency/lost-response integration behavior remains unverified.
 - [x] Vercel preview build for commit `d086652b313c72002bbfaaff91536e24a28cec07` completed successfully: 516 Node tests, 16 memorization database tests, 66 Vitest runtime tests, TypeScript `tsc --noEmit`, Vite build, and `git diff --check` all completed in the successful `pnpm run build` pipeline.
-- [ ] GitHub Actions isolated Supabase migration validation is still blocked: run #43 failed in both runner-allocation and isolated-Supabase jobs before any steps were reported; this is not a test pass.
+- [ ] GitHub Actions validation remains blocked: latest PR jobs terminated before runner allocation (`runner_id: 0`, no runner name, no steps). No database integration commands ran; this is not a test pass.
 - [ ] Production release gate passed.
 
 ### Transactional RPC implementation notes
