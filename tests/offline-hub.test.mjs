@@ -18,6 +18,9 @@ test("offline hub requires the locally restored user and only presents cached re
   assert.match(page, /listOfflineAttendanceRosters\(user\.id\)/);
   assert.match(page, /قراءة فقط/);
   assert.match(page, /لا تُرسل أي تغييرات إلى الخادم/);
+  assert.match(page, /draftSyncState/);
+  assert.match(page, /تحتاج إلى مراجعة/);
+  assert.match(page, /بانتظار المزامنة/);
   assert.match(page, /window\.addEventListener\("online", resumeSyncWhenOnline\)/);
   assert.match(page, /window\.location\.assign\("\/attendance"\)/);
   assert.doesNotMatch(page, /saveAttendance\(|\.insert\(|\.update\(|\.delete\(/);
