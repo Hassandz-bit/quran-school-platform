@@ -24,6 +24,7 @@ test("cached attendance is isolated by user and cleared on sign-out or account c
   assert.match(storage, /store\.index\("userId"\)\.getAll\(userId\)/);
   assert.match(storage, /clearOfflineAttendanceForUser/);
   assert.match(auth, /clearOfflineAttendanceForUser\(currentUserId\)/);
+  assert.match(app, /offlineSession \? "\/offline" : "\/post-login"/);
   assert.match(auth, /previousUserId !== nextUserId/);
 });
 
