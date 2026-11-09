@@ -122,7 +122,7 @@ Before automatic attendance sync is enabled, add a narrowly scoped, authenticate
 5. Explicit conflict responses for changed roster or changed attendance values; do not silently use last-write-wins.
 6. Least-privilege execute grants and a pinned empty `search_path` if a privileged function is truly required; avoid broad `SECURITY DEFINER` access.
 
-Only after that database contract is tested should the client add IndexedDB draft persistence and a reconnect sync worker. The first client cache should be restricted to the authenticated teacher's authorized roster, and it must never cache credentials.
+The transactional server contract is now present in draft migration 084, but has not yet been integration-tested. A limited IndexedDB draft store has been added, without enabling automatic sync or offline cold-start. The next client increment must add only the authenticated teacher's authorized roster/scope cache, followed by explicit conflict review and sync after disposable-database tests pass. Credentials must never be cached.
 
 ### Current implementation status
 
@@ -134,16 +134,20 @@ Only after that database contract is tested should the client add IndexedDB draf
 - [x] Actor-scoped idempotency ledger stores the exact request and committed result; replay with the same UUID returns the prior result, while reusing the UUID with a different payload is rejected.
 - [x] Existing online attendance save path now calls the transactional RPC instead of issuing separate update/insert requests.
 - [x] Static migration/client contract tests added in `tests/attendance-sync-migration.test.mjs`.
-- [ ] IndexedDB draft store and scoped roster cache implemented.
-- [ ] Offline UI states and reconnect sync implemented.
-- [ ] Database migration executed against a disposable test database and transactional concurrency/lost-response behavior verified.
-- [ ] Full test/build suite executed on this branch. The first GitHub Actions attempt failed before any job steps began because no runner was allocated; it did not execute the project tests.
+- [x] User- and school-scoped IndexedDB attendance draft store implemented in `client/src/lib/attendance-offline.ts`; records are further keyed by branch, class, and date. No auth credentials or tokens are stored.
+- [x] Attendance edits are persisted locally while the page has an authorized server-loaded roster. If a save fails while offline, the page confirms only local persistence and explicitly says the server has not been updated.
+- [x] A local draft is restored only when the server roster and each record's `recordId`/`updated_at` snapshot still match. A stale draft is retained and is not silently merged.
+- [ ] Offline cold-start: cached authorized scope and roster are not implemented, so reopening the app with no network cannot yet load attendance.
+- [ ] Automatic reconnect/background sync is not enabled. After connectivity returns, the teacher must retry the save explicitly; server permission and roster checks remain authoritative.
+- [ ] Database migration 084 executed against a disposable test database; transactional concurrency/lost-response integration behavior remains unverified.
+- [x] Vercel preview build for commit `d086652b313c72002bbfaaff91536e24a28cec07` completed successfully: 516 Node tests, 16 memorization database tests, 66 Vitest runtime tests, TypeScript `tsc --noEmit`, Vite build, and `git diff --check` all completed in the successful `pnpm run build` pipeline.
+- [ ] GitHub Actions isolated Supabase migration validation is still blocked: run #43 failed in both runner-allocation and isolated-Supabase jobs before any steps were reported; this is not a test pass.
 - [ ] Production release gate passed.
 
 ### Transactional RPC implementation notes
 
 The RPC caps each batch at 200 students, validates the payload and active roster, re-checks the authenticated caller's `attendance.manage` access for the exact class, and applies the batch inside one PostgreSQL transaction. It locks matched active student rows in deterministic ID order before validating roster membership, preventing concurrent class/branch/status changes from racing the write. The idempotency result is checked before re-validating the roster on retries, so a committed operation can still be acknowledged if a student's roster membership changed after the original commit. The operation ledger is inaccessible directly to browser roles; the authenticated RPC is the only client entry point.
 
-The browser currently creates a fresh operation UUID for each explicit save. The API accepts an operation UUID argument so a future IndexedDB queue can persist and reuse the same UUID across retries. Existing records carry their fetched `updated_at` snapshot into the RPC; the server compares it while holding the record lock and rejects stale edits. Offline queueing is **not yet implemented**.
+The browser currently creates a fresh operation UUID for each explicit server save. The RPC accepts an operation UUID argument, but the current local draft store does not yet create a durable sync-operation queue or preserve an operation UUID for reconnect retries. Existing records carry their fetched `updated_at` snapshot into the RPC; the server compares it while holding the record lock and rejects stale edits. Local drafts are persisted, but automatic offline synchronization is **not yet implemented**.
 
 This audit is a technical refinement of the plan only; it does not change production data or enable offline attendance yet.
