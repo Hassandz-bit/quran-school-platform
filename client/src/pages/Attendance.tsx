@@ -604,6 +604,14 @@ export default function Attendance() {
             <h1 className="truncate text-lg font-bold">الحضور اليومي</h1>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-white hover:bg-white/10 hover:text-white"
+              onClick={() => setLocation("/offline")}
+            >
+              البيانات المحلية
+            </Button>
             {isSchoolAdmin && (
               <Button
                 type="button"
