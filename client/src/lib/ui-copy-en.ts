@@ -2,6 +2,14 @@
 // strings. Keeping the catalog separate makes coverage measurable and prevents
 // page components from accumulating one-off language conditionals.
 export const EXACT_UI_ENGLISH: Record<string, string> = {
+  "استُعيدت مسودة حضور محفوظة على هذا الجهاز.": "A saved attendance draft was restored on this device.",
+  "توجد مسودة محلية قديمة لهذه الحلقة والتاريخ، لكن قائمة الطلاب أو سجلاتهم تغيّرت. احتُفظ بالمسودة ولم تُدمج تلقائيًا منعًا لفقدان البيانات.": "An older local draft exists for this class and date, but the roster or records changed. The draft was retained and was not merged automatically to prevent data loss.",
+  "تعذر حفظ نسخة محلية من مسودة الحضور على هذا الجهاز.": "Could not save a local copy of the attendance draft on this device.",
+  "تم إرسال الحضور، لكن تعذر حذف النسخة المحلية القديمة. ستُراجع عند تحميل القائمة لاحقًا.": "Attendance was submitted, but the older local copy could not be deleted. It will be checked the next time the roster loads.",
+  "انقطع الاتصال. حُفظت التعديلات محليًا على هذا الجهاز، ولم تُرسل إلى الخادم بعد. أعد المحاولة بعد عودة الإنترنت.": "Connection lost. Changes were saved locally on this device but have not been sent to the server. Retry when internet access returns.",
+  "المسودة محفوظة محليًا — لم يُسجل الحضور في قاعدة البيانات بعد.": "Draft saved locally — attendance has not yet been recorded in the database.",
+  "انقطع الاتصال وتعذر حفظ المسودة محليًا. أبقِ الصفحة مفتوحة ولا تغلقها حتى لا تفقد التعديلات.": "Connection lost and the draft could not be saved locally. Keep this page open to avoid losing your changes.",
+
   "الطلاب من (الحد الأدنى)": "Students from (minimum)",
   "الطلاب إلى (الحد الأعلى)": "Students up to (maximum)",
   "الفروع من (الحد الأدنى)": "Branches from (minimum)",
