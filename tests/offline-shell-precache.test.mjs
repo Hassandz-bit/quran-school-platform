@@ -6,7 +6,7 @@ const vite = readFileSync(new URL("../vite.config.ts", import.meta.url), "utf8")
 const worker = readFileSync(new URL("../client/public/sw.js", import.meta.url), "utf8");
 
 test("production build publishes the Vite asset manifest", () => {
-  assert.match(vite, /manifest:\s*true/);
+  assert.match(vite, /manifest:\s*"asset-manifest\.json"/);
 });
 
 test("service worker precaches every same-origin JavaScript and CSS build chunk", () => {
