@@ -16,13 +16,13 @@ async function precacheAppShell() {
   // Vite emits the complete production asset graph, including lazy-loaded
   // route chunks. Cache only executable app assets; large public files remain
   // runtime/on-demand so a Quran PDF is not forced onto every device.
-  const manifestResponse = await fetch("/.vite/manifest.json", { cache: "no-store" });
+  const manifestResponse = await fetch("/asset-manifest.json", { cache: "no-store" });
   if (!manifestResponse.ok) {
     throw new Error("quranos_asset_manifest_unavailable");
   }
 
   const manifest = await manifestResponse.json();
-  const assets = new Set(["/.vite/manifest.json"]);
+  const assets = new Set(["/asset-manifest.json"]);
   for (const entry of Object.values(manifest)) {
     if (!entry || typeof entry !== "object") continue;
     const files = [entry.file, ...(Array.isArray(entry.css) ? entry.css : [])];
