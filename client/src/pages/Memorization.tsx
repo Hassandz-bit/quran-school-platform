@@ -638,7 +638,7 @@ export default function Memorization() {
       setNeedsOfflineSync(hasPendingInScope);
       const reviewCount = draftsInScope.filter(item => item.state === "conflict" || item.state === "failed").length;
       if (reviewCount > 0) {
-        setSaveSuccess(`توجد ${reviewCount} مسودة تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.`);
+        setSaveSuccess("توجد مسودات تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.");
       }
       if (!selectedStudentId || dirty) return;
       const stored = await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null);
