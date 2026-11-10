@@ -2157,4 +2157,6 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "يمكنك فتح متابعة الحفظ لعرض البيانات التي جرى تجهيزها مسبقًا.": "Open memorization to view data prepared in advance.",
   "المزامنة تتم بعد عودة الاتصال وفتح الوحدة المعنية، مع إعادة التحقق من الصلاحيات.": "Synchronization runs after connectivity returns and the relevant module is opened; permissions are checked again.",
   "أنت تعمل دون اتصال. يمكنك تسجيل متابعة جديدة للطلاب والبيانات المحفوظة على هذا الجهاز فقط؛ التعديلات على السجلات السابقة والمراجعة الجماعية تحتاج إلى اتصال. ستُعاد مراجعة الصلاحيات عند المزامنة.": "You are offline. You can record new memorization entries for students whose data is saved on this device; editing existing records and group entry require a connection. Permissions are checked again during synchronization.",
+  "فتح الحضور والعمل على المسودات": "Open attendance and work with drafts",
+  "فتح الحفظ والمراجعة": "Open memorization and revision",
 };
