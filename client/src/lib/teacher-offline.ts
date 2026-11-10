@@ -24,7 +24,7 @@ export type StoredMemorizationDraft = TeacherOfflineScope & {
   operationId: string;
   studentId: string;
   draft: MemorizationDraft;
-  state: "pending" | "syncing" | "conflict" | "failed";
+  state: "draft" | "pending" | "syncing" | "conflict" | "failed";
   error: string | null;
   savedAt: string;
 };
@@ -137,7 +137,8 @@ export async function saveTeacherMemorizationDraft(
   studentId: string,
   draft: MemorizationDraft,
   operationId?: string,
-  draftId = "individual"
+  draftId = "individual",
+  queueForSync = false
 ): Promise<StoredMemorizationDraft> {
   const key = draftKey(scope, studentId, draftId);
   const serialized = JSON.stringify(draft);
@@ -158,8 +159,8 @@ export async function saveTeacherMemorizationDraft(
           studentId,
           operationId: samePayload ? previous.operationId : operationId ?? crypto.randomUUID(),
           draft,
-          state: "pending",
-          error: null,
+          state: queueForSync ? "pending" : samePayload ? previous?.state ?? "draft" : "draft",
+          error: queueForSync ? null : samePayload ? previous?.error ?? null : null,
           savedAt: new Date().toISOString(),
         };
         store.put(next);
