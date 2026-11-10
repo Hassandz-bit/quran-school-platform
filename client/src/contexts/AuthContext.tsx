@@ -151,13 +151,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let authorization;
       try {
         authorization = await fetchCurrentAuthorization(client, userId);
-      } catch {
+      } catch (error) {
         if (!isCurrentRequest()) return;
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const networkFailure =
+          (typeof navigator !== "undefined" && !navigator.onLine) ||
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
         // Reuse only this authenticated user's last successfully verified
         // school context to render device-local teacher work while offline.
         // This snapshot is not server authorization: every queued write is
         // revalidated by the server when connectivity returns.
-        const cached = await getCachedAuthorization(userId).catch(() => null);
+        const cached = networkFailure
+          ? await getCachedAuthorization(userId).catch(() => null)
+          : null;
         if (!isCurrentRequest()) return;
         if (cached) {
           setProfile(cached.profile);
