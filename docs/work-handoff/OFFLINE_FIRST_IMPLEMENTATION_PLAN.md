@@ -180,7 +180,9 @@ The dedicated teacher workflow is being expanded on branch `feat/teacher-portal-
 - The teacher portal has a `Prepare for offline use` action. While online, it downloads only classes whose last-verified scope has `canManage`, attendance rosters for the current local date, memorization class workspaces, and the latest 20 memorization records for each student.
 - Memorization workspace, student records, and pending drafts are partitioned by user, school, branch, class, and (for drafts) date/student.
 - New individual memorization entries are saved locally before network submission. A stable UUID is stored with the draft and supplied as the database row ID. If the server committed but the response was lost, a retry reads the row by that UUID and treats it as successful only if the tenant, class, student, teacher, and submitted values match exactly.
-- Pending new memorization entries are restored after reopening the page and synchronized when the browser is online and the memorization page is open. Server permission, active-student, and assigned-teacher checks still run on every save.
+- Memorization drafts distinguish locally saved but not yet submitted work (`draft`) from queued work (`pending`/`syncing`). Only an explicit Save action queues an individual entry for synchronization; group submission queues one stable operation per selected student.
+- Multiple individual entries per student/date are supported with separate draft IDs; group batches use a separate namespace so they cannot overwrite individual drafts.
+- Pending new memorization entries are restored after reopening the page and synchronized when the browser is online and the memorization page is open. The offline hub routes to attendance first when attendance is pending, otherwise to memorization when queued memorization work is pending. Server permission, active-student, and assigned-teacher checks still run on every save.
 - Attendance remains backed by migration 084's transactional idempotent RPC and the existing durable IndexedDB queue.
 
 ### Explicit limits
