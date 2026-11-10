@@ -3,9 +3,9 @@ import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ saveGroup: vi.fn(), success: vi.fn(), error: vi.fn() }));
+const mocks = vi.hoisted(() => ({ saveGroup: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }));
 
-vi.mock("sonner", () => ({ toast: { success: mocks.success, error: mocks.error } }));
+vi.mock("sonner", () => ({ toast: { success: mocks.success, error: mocks.error, info: mocks.info, warning: mocks.warning } }));
 vi.mock("@/lib/app-version", () => ({
   assertCurrentAppVersion: vi.fn().mockResolvedValue(undefined),
   isStaleAppVersionError: vi.fn(() => false),
@@ -40,6 +40,7 @@ describe("group memorization entry", () => {
     render(
       <GroupMemorizationEntry
         schoolId="school-1"
+        userId="user-1"
         branchId="branch-1"
         classId="class-1"
         recordDate="2026-10-04"
@@ -79,7 +80,7 @@ describe("group memorization entry", () => {
         ayahEnd: 15,
         rating: 5,
         recitationResult: "memorized",
-        recitationAccuracy: null,
+        recitationAccuracy: "no_errors",
         focusWords: "",
         notes: "إتقان",
       },

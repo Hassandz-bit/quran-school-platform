@@ -168,3 +168,34 @@ The RPC caps each batch at 200 students, validates the payload and active roster
 The browser persists a stable operation UUID and the exact request-payload snapshot alongside the local draft when a save is prepared. An unchanged retry reuses that UUID; if the draft changes, the UUID is rotated before the next server attempt. Existing records carry their fetched `updated_at` snapshot into the RPC; the server compares it while holding the record lock and rejects stale edits. Local drafts are persisted, but automatic offline synchronization is **not yet implemented**.
 
 This audit is a technical refinement of the plan only; it does not change production data or enable offline attendance yet.
+
+
+## Teacher portal offline expansion (2026-11-10)
+
+The dedicated teacher workflow is being expanded on branch `feat/teacher-portal-offline-complete` / PR #138. This scope is intentionally limited to the teacher portal.
+
+### Implemented in this branch
+
+- Last successfully verified school context is stored in a separate IndexedDB store partitioned by Supabase user ID. It is restored only when the same authenticated user has a local Supabase session and the authorization request fails due to connectivity. Passwords and access/refresh tokens are not copied into this store.
+- The teacher portal has a `Prepare for offline use` action. While online, it downloads only classes whose last-verified scope has `canManage`, attendance rosters for the current local date, memorization class workspaces, and the latest 20 memorization records for each student.
+- Memorization workspace, student records, and pending drafts are partitioned by user, school, branch, class, and (for drafts) date/student.
+- New individual memorization entries are saved locally before network submission. A stable UUID is stored with the draft and supplied as the database row ID. If the server committed but the response was lost, a retry reads the row by that UUID and treats it as successful only if the tenant, class, student, teacher, and submitted values match exactly.
+- Memorization drafts distinguish locally saved but not yet submitted work (`draft`) from queued work (`pending`/`syncing`). Only an explicit Save action queues an individual entry for synchronization; group submission queues one stable operation per selected student.
+- Multiple individual entries per student/date are supported with separate draft IDs; group batches use a separate namespace so they cannot overwrite individual drafts.
+- Pending new memorization entries are restored after reopening the page and synchronized when the browser is online and the memorization page is open. The offline hub routes to attendance first when attendance is pending, otherwise to memorization when queued memorization work is pending. Server permission, active-student, and assigned-teacher checks still run on every save.
+- Attendance remains backed by migration 084's transactional idempotent RPC and the existing durable IndexedDB queue.
+
+### Explicit limits
+
+- The first preparation must be done online on each device/browser profile. Another device does not share the local cache.
+- Offline memorization supports new individual entries and group entries. Group drafts are stored separately per student and synchronized as independent idempotent records; they are not an all-or-nothing batch when synchronized offline. Editing an existing record remains online-only to avoid overwriting a newer server version.
+- Attendance and memorization caches are not encrypted by this feature. Use only a trusted, access-controlled device.
+- Sync is foreground-based: the relevant page must be open when connectivity returns. Guaranteed background sync after the browser is closed is not implemented.
+- Offline authorization data is a last-verified local context for rendering cached teacher work, not proof of current permission. All writes are revalidated on the server.
+- No new database migration is required for memorization replay: the existing memorization row UUID is used as the stable idempotency key. No production schema changes are part of PR #138.
+
+### Release gate
+
+- Vercel preview build and the repository build pipeline must pass.
+- Browser acceptance must verify: online preparation; offline cold start after a prior login; attendance edit/reload; individual memorization draft/reload; reconnect sync; lost-response replay without duplicates; and rejection/preservation when teacher permissions or class membership have changed.
+- Do not merge or deploy this branch to production until the preview/build checks are clean. The production branch remains unchanged by this work.

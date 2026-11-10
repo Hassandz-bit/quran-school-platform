@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { saveTeacherMemorizationDraft, type TeacherOfflineScope } from "@/lib/teacher-offline";
 import {
   assertCurrentAppVersion,
   isStaleAppVersionError,
@@ -42,6 +43,8 @@ type GroupEntry = {
 
 type GroupMemorizationEntryProps = {
   schoolId: string;
+  userId: string;
+  disabled?: boolean;
   branchId: string;
   classId: string;
   recordDate: string;
@@ -59,6 +62,8 @@ const sessionOptions = MEMORIZATION_SESSION_TYPES.map(value => ({
 
 export default function GroupMemorizationEntry({
   schoolId,
+  userId,
+  disabled = false,
   branchId,
   classId,
   recordDate,
@@ -88,12 +93,13 @@ export default function GroupMemorizationEntry({
   const [groupSaved, setGroupSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
+  const [groupDraftId, setGroupDraftId] = useState<string | null>(null);
 
   const selectedSurah = useMemo(() => getSurahByNumber(surahNumber), [surahNumber]);
   const selectedCount = entries.filter(entry => entry.selected).length;
   const allSelected = entries.length > 0 && selectedCount === entries.length;
   const validPortion = ayahStart >= 1 && ayahEnd >= ayahStart && ayahEnd <= selectedSurah.ayahCount;
-  const controlsDisabled = saving || groupSaved;
+  const controlsDisabled = saving || groupSaved || disabled;
 
   const updateEntry = (studentId: string, update: Partial<GroupEntry>) => {
     if (controlsDisabled) return;
@@ -104,7 +110,7 @@ export default function GroupMemorizationEntry({
   };
 
   const handleSave = async () => {
-    if (saving || groupSaved || !teacherId || !validPortion || selectedCount === 0) return;
+    if (saving || groupSaved || disabled || !teacherId || !validPortion || selectedCount === 0) return;
     const selectedEntries = entries.filter(entry => entry.selected);
     const invalidEntry = selectedEntries.some(entry =>
       !Number.isInteger(entry.rating) || entry.rating < 1 || entry.rating > 5 ||
@@ -118,6 +124,62 @@ export default function GroupMemorizationEntry({
 
     setSaving(true);
     setSaveError(null);
+    if (!navigator.onLine) {
+      let locallySaved = 0;
+      const locallySavedStudentIds: string[] = [];
+      try {
+        if (!userId) throw new Error("teacher_offline_user_missing");
+        const offlineScope: TeacherOfflineScope = {
+          userId,
+          schoolId,
+          branchId,
+          classId,
+          recordDate,
+        };
+        const batchDraftId = groupDraftId ?? `group:${crypto.randomUUID()}`;
+        setGroupDraftId(batchDraftId);
+        for (const entry of selectedEntries) {
+          const draft: MemorizationDraft = {
+            recordId: null,
+            teacherId,
+            recordDate,
+            sessionType,
+            surahNumber,
+            ayahStart,
+            ayahEnd,
+            rating: entry.rating,
+            errorsCount: entry.errorsCount,
+            recitationResult: entry.recitationResult,
+            recitationAccuracy: entry.recitationAccuracy,
+            focusWords: entry.focusWords,
+            notes: entry.notes,
+            nextAssignment: entry.nextAssignment,
+          };
+          await saveTeacherMemorizationDraft(offlineScope, entry.studentId, draft, undefined, batchDraftId, true);
+          locallySaved += 1;
+          locallySavedStudentIds.push(entry.studentId);
+        }
+        setSavedCount(locallySaved);
+        setGroupSaved(true);
+        toast.info("حُفظت المتابعة الجماعية محليًا، وستُزامَن سجلات الطلاب عند عودة الاتصال.");
+        onSaved();
+      } catch {
+        setSavedCount(locallySaved);
+        setEntries(current => current.map(entry =>
+          locallySavedStudentIds.includes(entry.studentId) ? { ...entry, selected: false } : entry
+        ));
+        setSaveError("تعذر حفظ جميع سجلات المجموعة محليًا؛ احتُفظ بما نجح حفظه، وأعد المحاولة للبقية.");
+        if (locallySaved > 0) {
+          toast.warning(`حُفظت ${locallySaved} من ${selectedEntries.length} سجلات محليًا. أعد المحاولة للبقية.`);
+          onSaved();
+        } else {
+          toast.error("تعذر حفظ المسودة الجماعية على هذا الجهاز.");
+        }
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     try {
       await assertCurrentAppVersion();
       const result = await saveMemorizationGroup({
@@ -136,8 +198,8 @@ export default function GroupMemorizationEntry({
             rating: entry.rating,
             errorsCount: entry.errorsCount,
             recitationResult: entry.recitationResult,
-            recitationAccuracy: null,
-            focusWords: "",
+            recitationAccuracy: entry.recitationAccuracy,
+            focusWords: entry.focusWords,
             notes: entry.notes,
             nextAssignment: entry.nextAssignment,
           };
@@ -174,6 +236,7 @@ export default function GroupMemorizationEntry({
     })));
     setGroupSaved(false);
     setSavedCount(0);
+    setGroupDraftId(null);
     setSaveError(null);
   };
 

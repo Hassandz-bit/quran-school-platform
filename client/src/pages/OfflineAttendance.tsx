@@ -11,6 +11,7 @@ import {
   type CachedAttendanceRoster,
 } from "@/lib/attendance-offline";
 import type { AttendanceDraftRow, AttendanceScope } from "@/lib/attendance";
+import { listTeacherMemorizationDrafts } from "@/lib/teacher-offline";
 
 const statusLabels: Record<string, string> = {
   present: "حاضر",
@@ -51,6 +52,7 @@ export default function OfflineAttendance() {
   const [items, setItems] = useState<OfflineItem[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [memorizationDraftCount, setMemorizationDraftCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -104,6 +106,39 @@ export default function OfflineAttendance() {
       active = false;
     };
   }, [loading, user?.id]);
+
+  useEffect(() => {
+    if (loading || !user?.id) {
+      setMemorizationDraftCount(0);
+      return;
+    }
+    let active = true;
+    void listTeacherMemorizationDrafts(user.id)
+      .then(drafts => { if (active) setMemorizationDraftCount(drafts.length); })
+      .catch(() => { if (active) setMemorizationDraftCount(0); });
+    return () => { active = false; };
+  }, [loading, user?.id]);
+
+  useEffect(() => {
+    if (busy || !user?.id || items.some(item => item.hasPendingDraft)) return;
+    let active = true;
+    const resumeMemorizationSync = async () => {
+      if (!navigator.onLine) return;
+      const drafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+      const hasQueuedMemorization = drafts.some(draft =>
+        draft.state === "pending" || draft.state === "syncing"
+      );
+      if (active && hasQueuedMemorization) {
+        window.location.assign("/memorization");
+      }
+    };
+    void resumeMemorizationSync();
+    window.addEventListener("online", resumeMemorizationSync);
+    return () => {
+      active = false;
+      window.removeEventListener("online", resumeMemorizationSync);
+    };
+  }, [busy, user?.id, items]);
 
   useEffect(() => {
     if (!items.some(item => item.hasPendingDraft)) return;
@@ -210,9 +245,18 @@ export default function OfflineAttendance() {
           </div>
         )}
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm">
-          <p className="text-gray-500">المزامنة الآلية الشاملة لم تُفعّل بعد؛ لا تُحذف هذه المسودات قبل مراجعتها عند عودة الاتصال.</p>
-          <div className="flex flex-wrap gap-4"><Link href="/attendance" className="font-semibold text-[#0B4738] underline underline-offset-4">فتح الحضور للمزامنة عند عودة الاتصال</Link><Link href="/login" className="font-semibold text-[#0B4738] underline underline-offset-4">العودة إلى تسجيل الدخول</Link></div>
+        <footer className="space-y-3 border-t border-gray-200 pt-4 text-sm">
+          <p className="text-gray-600">
+            {memorizationDraftCount > 0
+              ? `لديك ${memorizationDraftCount} مسودة متابعة حفظ محفوظة على هذا الجهاز.`
+              : "يمكنك فتح متابعة الحفظ لعرض البيانات التي جرى تجهيزها مسبقًا."}
+            {" "}المزامنة تتم بعد عودة الاتصال وفتح الوحدة المعنية، مع إعادة التحقق من الصلاحيات.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            <Link href="/attendance" className="font-semibold text-[#0B4738] underline underline-offset-4">فتح الحضور والعمل على المسودات</Link>
+            <Link href="/memorization" className="font-semibold text-[#0B4738] underline underline-offset-4">فتح الحفظ والمراجعة</Link>
+            <Link href="/login" className="font-semibold text-[#0B4738] underline underline-offset-4">العودة إلى تسجيل الدخول</Link>
+          </div>
         </footer>
       </div>
     </main>

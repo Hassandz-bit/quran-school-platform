@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -66,6 +67,19 @@ import {
   type MemorizationScope,
   type MemorizationWorkspace,
 } from "@/lib/memorization";
+import {
+  deleteTeacherMemorizationDraft,
+  getTeacherMemorizationRecords,
+  getTeacherMemorizationScope,
+  getTeacherMemorizationWorkspace,
+  listTeacherMemorizationDrafts,
+  saveTeacherMemorizationDraft,
+  saveTeacherMemorizationRecords,
+  saveTeacherMemorizationScope,
+  saveTeacherMemorizationWorkspace,
+  updateTeacherMemorizationDraftState,
+  type TeacherOfflineScope,
+} from "@/lib/teacher-offline";
 
 const sessionOptions = MEMORIZATION_SESSION_TYPES.map(value => ({
   value,
@@ -155,6 +169,7 @@ function getChangedLabels(entry: MemorizationAuditEntry): string[] {
 export default function Memorization() {
   const {
     school,
+    user,
     session,
     membership,
     roles,
@@ -188,6 +203,12 @@ export default function Memorization() {
     createMemorizationDraft(getTodayInputValue())
   );
   const [dirty, setDirty] = useState(false);
+  const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState("individual");
+  const [hasUnresolvedOfflineDrafts, setHasUnresolvedOfflineDrafts] = useState(false);
+  const [onlineRevision, setOnlineRevision] = useState(0);
+  const syncInFlightRef = useRef(false);
+  const skipRestoreRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [auditRecordId, setAuditRecordId] = useState<string | null>(null);
@@ -222,6 +243,9 @@ export default function Memorization() {
       ]);
       setScope(nextScope);
       setManagerScope(nextManagerScope);
+      if (user?.id) {
+        void saveTeacherMemorizationScope(user.id, school.id, nextScope).catch(() => undefined);
+      }
       const params = new URLSearchParams(window.location.search);
       const requestedClass = nextScope.classes.find(item =>
         item.id === params.get("classId") && item.branchId === params.get("branchId")
@@ -235,11 +259,31 @@ export default function Memorization() {
       setBranchId(firstBranchId);
       setClassId(firstClassId);
     } catch (error) {
-      setScopeError(getMemorizationErrorMessage(error));
+      const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504|timeout|connection reset|502|503|504/.test(errorText);
+      const cached = offline && user?.id
+        ? await getTeacherMemorizationScope(user.id, school.id).catch(() => null)
+        : null;
+      if (cached) {
+        setScope(cached.payload);
+        setManagerScope(emptyManagerScope);
+        const params = new URLSearchParams(window.location.search);
+        const requestedClass = cached.payload.classes.find(item =>
+          item.id === params.get("classId") && item.branchId === params.get("branchId")
+        );
+        const firstClass = requestedClass ?? cached.payload.classes[0];
+        const firstBranchId = firstClass?.branchId ?? cached.payload.branches[0]?.id ?? "";
+        setBranchId(firstBranchId);
+        setClassId(cached.payload.classes.find(item => item.branchId === firstBranchId)?.id ?? "");
+        setScopeError(null);
+      } else {
+        setScopeError(getMemorizationErrorMessage(error));
+      }
     } finally {
       setScopeLoading(false);
     }
-  }, [branchManagerRoleIds, membership?.id, school?.id]);
+  }, [branchManagerRoleIds, membership?.id, school?.id, user?.id]);
 
   useEffect(() => {
     void loadScope();
@@ -307,6 +351,10 @@ export default function Memorization() {
       .then(nextWorkspace => {
         if (!active) return;
         setWorkspace(nextWorkspace);
+        if (user?.id && school?.id) {
+          const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+          void saveTeacherMemorizationWorkspace(offlineScope, nextWorkspace).catch(() => undefined);
+        }
         const firstStudentId = nextWorkspace.students[0]?.id ?? "";
         const linkedTeacherId =
           nextWorkspace.teachers.find(
@@ -316,11 +364,33 @@ export default function Memorization() {
           linkedTeacherId ?? nextWorkspace.teachers[0]?.id ?? "";
         setSelectedStudentId(firstStudentId);
         setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
+        setCurrentDraftId("individual");
         setDirty(false);
       })
-      .catch(error => {
+      .catch(async error => {
         if (!active) return;
-        setWorkspaceError(getMemorizationErrorMessage(error));
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
+        const offlineScope: TeacherOfflineScope | null = user?.id && school?.id
+          ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
+          : null;
+        const cached = offline && offlineScope
+          ? await getTeacherMemorizationWorkspace(offlineScope).catch(() => null)
+          : null;
+        if (cached) {
+          setWorkspace(cached.payload);
+          const firstStudentId = cached.payload.students[0]?.id ?? "";
+          const linkedTeacherId = cached.payload.teachers.find(teacher => teacher.profileId === session?.user.id)?.id ?? null;
+          setSelectedStudentId(firstStudentId);
+          setDraft(createMemorizationDraft(recordDate, linkedTeacherId ?? cached.payload.teachers[0]?.id ?? ""));
+          setCurrentDraftId("individual");
+          setDirty(false);
+          setWorkspaceError(null);
+          setSaveSuccess("تعمل على بيانات محفوظة على هذا الجهاز؛ ستُعاد مراجعة الصلاحيات عند عودة الاتصال.");
+        } else {
+          setWorkspaceError(getMemorizationErrorMessage(error));
+        }
       })
       .finally(() => {
         if (active) setWorkspaceLoading(false);
@@ -336,6 +406,7 @@ export default function Memorization() {
     school?.id,
     session?.user.id,
     workspaceReload,
+    user?.id,
   ]);
 
   useEffect(() => {
@@ -361,9 +432,28 @@ export default function Memorization() {
     )
       .then(nextRecords => {
         if (active) setRecords(nextRecords);
+        if (user?.id && school?.id) {
+          const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+          void saveTeacherMemorizationRecords(offlineScope, selectedStudentId, nextRecords).catch(() => undefined);
+        }
       })
-      .catch(error => {
-        if (active) setRecordsError(getMemorizationErrorMessage(error));
+      .catch(async error => {
+        if (!active) return;
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
+        const offlineScope: TeacherOfflineScope | null = user?.id && school?.id
+          ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
+          : null;
+        const cached = offline && offlineScope
+          ? await getTeacherMemorizationRecords(offlineScope, selectedStudentId).catch(() => null)
+          : null;
+        if (cached) {
+          setRecords(cached.payload);
+          setRecordsError("سجل محفوظ محليًا؛ قد لا يتضمن آخر التعديلات التي أُجريت على جهاز آخر.");
+        } else {
+          setRecordsError(getMemorizationErrorMessage(error));
+        }
       })
       .finally(() => {
         if (active) setRecordsLoading(false);
@@ -380,6 +470,7 @@ export default function Memorization() {
     school?.id,
     selectedStudentId,
     showAllHistory,
+    user?.id,
   ]);
 
   useEffect(() => {
@@ -389,10 +480,24 @@ export default function Memorization() {
     }
     let active = true;
     void fetchAllStudentMemorizationRecords(school.id, branchId, classId, selectedStudentId)
-      .then(nextRecords => { if (active) setCardRecords(nextRecords); })
-      .catch(() => { if (active) setCardRecords([]); });
+      .then(nextRecords => {
+        if (active) setCardRecords(nextRecords);
+        if (user?.id && school?.id) {
+          const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+          void saveTeacherMemorizationRecords(offlineScope, selectedStudentId, nextRecords).catch(() => undefined);
+        }
+      })
+      .catch(async () => {
+        const offlineScope: TeacherOfflineScope | null = user?.id && school?.id
+          ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
+          : null;
+        const cached = offlineScope
+          ? await getTeacherMemorizationRecords(offlineScope, selectedStudentId).catch(() => null)
+          : null;
+        if (active) setCardRecords(cached?.payload ?? []);
+      });
     return () => { active = false; };
-  }, [branchId, classId, recordsReload, school?.id, selectedStudentId, workspaceReload]);
+  }, [branchId, classId, recordsReload, school?.id, selectedStudentId, workspaceReload, user?.id]);
 
   const handleBranchChange = (nextBranchId: string) => {
     setBranchId(nextBranchId);
@@ -402,7 +507,7 @@ export default function Memorization() {
   };
 
   const updateDraft = (update: Partial<MemorizationDraft>) => {
-    if (!canManageSelectedClass) return;
+    if (!canManageSelectedClass || saving) return;
     setDraft(current => ({ ...current, ...update }));
     setDirty(true);
     setSaveSuccess(null);
@@ -414,9 +519,12 @@ export default function Memorization() {
   };
 
   const handleNewRecord = () => {
+    if (saving) return;
     const defaultTeacherId =
       currentTeacherId ?? workspace?.teachers[0]?.id ?? "";
     setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
+    setCurrentDraftId(`individual:${crypto.randomUUID()}`);
+    skipRestoreRef.current = true;
     setDirty(false);
     setSaveSuccess(null);
   };
@@ -424,11 +532,13 @@ export default function Memorization() {
   const handleEditRecord = (record: MemorizationRecord) => {
     if (
       !canManageSelectedClass ||
+      saving ||
       (teacherRestrictedToOwnRecords && record.teacherId !== currentTeacherId)
     ) {
       return;
     }
     setDraft(draftFromMemorizationRecord(record));
+    setCurrentDraftId(`edit:${record.id}`);
     setDirty(false);
     setSaveSuccess(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -453,13 +563,24 @@ export default function Memorization() {
 
     try {
       await assertCurrentAppVersion();
+      const offlineScope: TeacherOfflineScope | null = user?.id
+        ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
+        : null;
+      const storedDraft = offlineScope && !draft.recordId
+        ? await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft, undefined, currentDraftId, true)
+        : null;
       const result = await saveMemorizationRecord({
         schoolId: school.id,
         branchId,
         classId,
         studentId: selectedStudentId,
         draft,
+        operationId: storedDraft?.operationId,
       });
+      if (offlineScope) {
+        await deleteTeacherMemorizationDraft(offlineScope, selectedStudentId, currentDraftId).catch(() => undefined);
+      }
+      setNeedsOfflineSync(false);
       const message =
         result.mode === "created"
           ? "تم حفظ السجل، وأصبح النموذج في وضع التعديل. اضغط «سجل جديد» لإضافة متابعة أخرى."
@@ -475,15 +596,225 @@ export default function Memorization() {
       toast.success(message);
       setRecordsReload(current => current + 1);
     } catch (error) {
+      const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
+      if (offline && user?.id && !draft.recordId) {
+        try {
+          const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school!.id, branchId, classId, recordDate };
+          await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft, undefined, currentDraftId, true);
+          setDirty(false);
+          setNeedsOfflineSync(true);
+          setHasUnresolvedOfflineDrafts(true);
+          setSaveSuccess("حُفظت متابعة الحفظ على هذا الجهاز فقط؛ ستُرسل إلى المدرسة عند عودة الإنترنت.");
+          setWorkspaceError(null);
+          toast.info("حُفظت المتابعة محليًا — لم تصل إلى قاعدة البيانات بعد.");
+          return;
+        } catch {
+          setWorkspaceError("انقطع الاتصال وتعذر حفظ المسودة محليًا. لا تغلق الصفحة قبل نسخ بياناتها.");
+          return;
+        }
+      }
       const message = isStaleAppVersionError(error)
         ? "توجد نسخة أحدث من المنصة. أعد تحميل الصفحة قبل الحفظ لتجنب إنشاء سجل غير مقصود."
         : getMemorizationErrorMessage(error);
+      if (user?.id && !draft.recordId) {
+        const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school!.id, branchId, classId, recordDate };
+        await updateTeacherMemorizationDraftState(
+          offlineScope,
+          selectedStudentId,
+          "conflict",
+          message,
+          currentDraftId
+        ).catch(() => undefined);
+        setNeedsOfflineSync(false);
+        setHasUnresolvedOfflineDrafts(true);
+      }
       setWorkspaceError(message);
       toast.error(message);
     } finally {
       setSaving(false);
     }
   };
+
+  // Restore this student's draft and detect group drafts queued for any student in the class.
+  useEffect(() => {
+    if (!user?.id || !school?.id || !branchId || !classId || !workspace) return;
+    let active = true;
+    void (async () => {
+      const allDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+      if (!active) return;
+      const draftsInScope = allDrafts.filter(item =>
+        item.schoolId === school.id &&
+        item.branchId === branchId &&
+        item.classId === classId &&
+        item.recordDate === recordDate
+      );
+      const hasPendingInScope = draftsInScope.some(item => item.state === "pending" || item.state === "syncing");
+      setHasUnresolvedOfflineDrafts(draftsInScope.length > 0);
+      setNeedsOfflineSync(hasPendingInScope);
+      if (hasPendingInScope) {
+        setSaveSuccess("توجد مسودات محفوظة على الجهاز بانتظار المزامنة.");
+      }
+      const reviewCount = draftsInScope.filter(item => item.state === "conflict" || item.state === "failed").length;
+      if (reviewCount > 0) {
+        setSaveSuccess("توجد مسودات تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.");
+      }
+      if (!selectedStudentId || dirty) return;
+      if (skipRestoreRef.current) {
+        skipRestoreRef.current = false;
+        return;
+      }
+      const stored = allDrafts
+        .filter(item =>
+          item.studentId === selectedStudentId &&
+          !item.draftId.startsWith("group:")
+        )
+        .sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0] ?? null;
+      if (!active) return;
+      if (!stored) return;
+      setCurrentDraftId(stored.draftId);
+      setDraft(stored.draft);
+      setDirty(true);
+      setSaveSuccess("استُعيدت متابعة حفظ محفوظة على هذا الجهاز.");
+    })().catch(() => undefined);
+    return () => { active = false; };
+  }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty, draft]);
+
+  // Persist every edit before it can be lost by a refresh or browser close.
+  useEffect(() => {
+    if (!dirty || draft.recordId || !user?.id || !school?.id || !branchId || !classId || !selectedStudentId) return;
+    const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+    void saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft).then(async () => {
+      setHasUnresolvedOfflineDrafts(true);
+      const allDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+      setNeedsOfflineSync(allDrafts.some(item =>
+        item.schoolId === school.id && item.branchId === branchId &&
+        item.classId === classId && item.recordDate === recordDate &&
+        (item.state === "pending" || item.state === "syncing")
+      ));
+    }).catch(() => {
+      setWorkspaceError("تعذر حفظ نسخة محلية من متابعة الحفظ على هذا الجهاز.");
+    });
+  }, [dirty, draft, currentDraftId, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate]);
+
+  // Revalidate and synchronize all queued individual/group entries for this class.
+  useEffect(() => {
+    if (!needsOfflineSync || !navigator.onLine || !user?.id || !school?.id || !branchId || !classId || syncInFlightRef.current) return;
+    let active = true;
+    const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+    void (async () => {
+      const allDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+      const queued = allDrafts.filter(item =>
+        item.schoolId === school.id &&
+        item.branchId === branchId &&
+        item.classId === classId &&
+        item.recordDate === recordDate &&
+        (item.state === "pending" || item.state === "syncing")
+      );
+      if (!active) return;
+      if (queued.length === 0) {
+        setHasUnresolvedOfflineDrafts(allDrafts.some(item =>
+          item.schoolId === school.id && item.branchId === branchId &&
+          item.classId === classId && item.recordDate === recordDate
+        ));
+        setNeedsOfflineSync(false);
+        return;
+      }
+      if (syncInFlightRef.current) return;
+      syncInFlightRef.current = true;
+      setSaving(true);
+      let savedCount = 0;
+      let transientFailure = false;
+      const permanentErrors: string[] = [];
+      try {
+        await assertCurrentAppVersion();
+        for (const stored of queued) {
+          if (!active) return;
+          const itemScope: TeacherOfflineScope = {
+            userId: stored.userId,
+            schoolId: stored.schoolId,
+            branchId: stored.branchId,
+            classId: stored.classId,
+            recordDate: stored.recordDate,
+          };
+          await updateTeacherMemorizationDraftState(itemScope, stored.studentId, "syncing", null, stored.draftId).catch(() => undefined);
+          try {
+            const result = await saveMemorizationRecord({
+              schoolId: stored.schoolId,
+              branchId: stored.branchId,
+              classId: stored.classId,
+              studentId: stored.studentId,
+              draft: stored.draft,
+              operationId: stored.operationId,
+            });
+            await deleteTeacherMemorizationDraft(itemScope, stored.studentId, stored.draftId);
+            savedCount += 1;
+            if (stored.studentId === selectedStudentId) {
+              setDraft({ ...stored.draft, recordId: result.recordId });
+              setDirty(false);
+            }
+          } catch (error) {
+            const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+            const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
+            const message = isStaleAppVersionError(error)
+              ? "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودة."
+              : getMemorizationErrorMessage(error);
+            await updateTeacherMemorizationDraftState(
+              itemScope,
+              stored.studentId,
+              transient ? "pending" : "conflict",
+              message,
+              stored.draftId
+            ).catch(() => undefined);
+            if (transient) {
+              transientFailure = true;
+              break;
+            }
+            permanentErrors.push(message);
+          }
+        }
+        if (!active) return;
+        if (savedCount > 0) {
+          setRecordsReload(current => current + 1);
+          setSaveSuccess(`تمت مزامنة ${savedCount} من سجلات متابعة الحفظ.`);
+          toast.success(`تمت مزامنة ${savedCount} من سجلات متابعة الحفظ.`);
+        }
+        const remainingDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+        const remainingInScope = remainingDrafts.filter(item =>
+          item.schoolId === school.id && item.branchId === branchId &&
+          item.classId === classId && item.recordDate === recordDate
+        );
+        setHasUnresolvedOfflineDrafts(remainingInScope.length > 0);
+        setNeedsOfflineSync(transientFailure);
+        if (permanentErrors.length) {
+          setWorkspaceError(`تحتاج ${permanentErrors.length} مسودة إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.`);
+        } else if (transientFailure) {
+          setWorkspaceError("تعذر الاتصال بالخادم؛ احتُفظ بالمسودات المتبقية وستُعاد المحاولة عند عودة الاتصال.");
+        } else {
+          setWorkspaceError(null);
+        }
+      } catch (error) {
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
+        setNeedsOfflineSync(transient);
+        setWorkspaceError(isStaleAppVersionError(error)
+          ? "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودات."
+          : getMemorizationErrorMessage(error));
+      } finally {
+        syncInFlightRef.current = false;
+        setSaving(false);
+        if (!active) setOnlineRevision(current => current + 1);
+      }
+    })();
+    return () => { active = false; };
+  }, [needsOfflineSync, onlineRevision, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate]);
+
+  useEffect(() => {
+    const retryWhenOnline = () => setOnlineRevision(current => current + 1);
+    window.addEventListener("online", retryWhenOnline);
+    return () => window.removeEventListener("online", retryWhenOnline);
+  }, []);
 
   const handleAuditToggle = async (recordId: string) => {
     if (!school?.id || !branchId || !classId) return;
@@ -564,6 +895,11 @@ export default function Memorization() {
   return (
     <main className="min-h-screen bg-[#F8F9FA] pb-28" dir="rtl">
       <div className="mx-auto max-w-6xl space-y-4 px-4 py-5 md:px-6">
+        {!navigator.onLine && (
+          <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+            أنت تعمل دون اتصال. يمكنك تسجيل متابعة فردية أو جماعية للطلاب المحمّلة بياناتهم على هذا الجهاز؛ تعديل السجلات السابقة يحتاج إلى اتصال. تُزامَن سجلات المجموعة فرديًا عند عودة الاتصال مع إعادة التحقق من الصلاحيات.
+          </div>
+        )}
         <Card className="border border-gray-100 p-4 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <ClipboardList size={20} className="text-[#0B4738]" />
@@ -654,7 +990,10 @@ export default function Memorization() {
                       aria-pressed={selectedStudentId === student.id}
                       onClick={() => {
                         setSelectedStudentId(student.id);
-                        handleNewRecord();
+                        setDraft(createMemorizationDraft(recordDate, currentTeacherId ?? workspace.teachers[0]?.id ?? ""));
+                        setCurrentDraftId("individual");
+                        setDirty(false);
+                        setSaveSuccess(null);
                       }}
                       className={`flex min-h-12 w-full items-center gap-3 rounded-md px-2 py-1.5 text-right text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B4738] ${selectedStudentId === student.id ? "bg-[#E8F3EC] font-bold text-[#0B4738]" : "text-[#2C3E50] hover:bg-gray-50"}`}
                     >
@@ -744,7 +1083,9 @@ export default function Memorization() {
                     role="tab"
                     aria-selected={entryMode === "group"}
                     onClick={() => setEntryMode("group")}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold ${entryMode === "group" ? "bg-[#0B4738] text-white" : "text-[#2C3E50] hover:bg-gray-50"}`}
+                    disabled={saving || hasUnresolvedOfflineDrafts}
+                    title={hasUnresolvedOfflineDrafts ? "أكمل مزامنة المسودات المحفوظة قبل بدء مجموعة جديدة." : undefined}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40 ${entryMode === "group" ? "bg-[#0B4738] text-white" : "text-[#2C3E50] hover:bg-gray-50"}`}
                   >
                     <Users size={17} />
                     حفظ جماعي
@@ -754,6 +1095,8 @@ export default function Memorization() {
                   <GroupMemorizationEntry
                     key={`${school?.id}:${branchId}:${classId}:${recordDate}`}
                     schoolId={school?.id ?? ""}
+                    userId={user?.id ?? ""}
+                    disabled={hasUnresolvedOfflineDrafts || saving}
                     branchId={branchId}
                     classId={classId}
                     recordDate={recordDate}
@@ -765,7 +1108,11 @@ export default function Memorization() {
                         : draft.teacherId || workspace.teachers[0]?.id || ""
                     }
                     teacherSelectionDisabled={teacherRestrictedToOwnRecords}
-                    onSaved={() => setRecordsReload(current => current + 1)}
+                    onSaved={() => {
+                      setRecordsReload(current => current + 1);
+                      setNeedsOfflineSync(true);
+                      setHasUnresolvedOfflineDrafts(true);
+                    }}
                   />
                 </div>
               </>

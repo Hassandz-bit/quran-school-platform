@@ -13,6 +13,11 @@ test("offline attendance route is reachable without the online authorization rou
   assert.doesNotMatch(app.slice(app.indexOf('<Route path="/offline">'), app.indexOf("</Route>", app.indexOf('<Route path="/offline">'))), /ProtectedRoute/);
 });
 
+test("offline navigation is restricted to the teacher's cached work modules", () => {
+  assert.match(app, /offlineAllowedPaths = \["\/offline", "\/attendance", "\/memorization", "\/login"\]/);
+  assert.match(app, /offlineSession[\s\S]*?return <Redirect to="\/offline" \/>/);
+});
+
 test("offline hub requires the locally restored user and only presents cached records read-only", () => {
   assert.match(page, /const \{ user, loading \} = useAuth\(\)/);
   assert.match(page, /listOfflineAttendanceRosters\(user\.id\)/);
@@ -35,6 +40,12 @@ test("cached attendance stays user-scoped and pending drafts survive sign-out", 
   assert.doesNotMatch(attendance, /clearOfflineAttendanceForUser/);
 });
 
-test("offline authorization failure settles loading without granting cached permissions", () => {
-  assert.match(auth, /catch \{\s*if \(!isCurrentRequest\(\)\) return;\s*setAuthorizationError\(AUTHORIZATION_MESSAGES\.connectionError\);\s*setAuthorizationLoading\(false\);/);
+test("offline authorization restores only the same user's last verified local school context", () => {
+  assert.match(auth, /getCachedAuthorization\(userId\)/);
+  assert.match(auth, /setProfile\(cached\.profile\)/);
+  assert.match(auth, /setMembership\(cached\.membership\)/);
+  assert.match(auth, /setSchool\(cached\.school\)/);
+  assert.match(auth, /setRoles\(cached\.roles\)/);
+  assert.match(auth, /every queued write is[\s\S]*?revalidated by the server/);
+  assert.doesNotMatch(auth, /setSession\(cached\.|setUser\(cached\./);
 });

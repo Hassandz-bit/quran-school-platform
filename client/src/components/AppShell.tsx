@@ -22,6 +22,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import PreferencesDialog from "@/components/PreferencesDialog";
+import PrepareTeacherOffline from "@/components/PrepareTeacherOffline";
 import { useLocale } from "@/contexts/LocaleContext";
 import { fetchMembersAccess } from "@/lib/members";
 import {
@@ -498,6 +499,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <PrepareTeacherOffline />
             <PreferencesDialog />
             <span className="hidden rounded-full bg-[#F3E8C6] px-3 py-1 text-xs font-extrabold text-[#0F5132] sm:inline" dir="ltr">
               Quran<span className="text-[#B28820]">OS</span>
