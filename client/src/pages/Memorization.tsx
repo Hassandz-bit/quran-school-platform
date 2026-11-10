@@ -556,7 +556,7 @@ export default function Memorization() {
         ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
         : null;
       const storedDraft = offlineScope && !draft.recordId
-        ? await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null)
+        ? await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft)
         : null;
       const result = await saveMemorizationRecord({
         schoolId: school.id,
@@ -688,7 +688,7 @@ export default function Memorization() {
         }
       } finally {
         syncInFlightRef.current = false;
-        if (active) setSaving(false);
+        setSaving(false);
       }
     })();
     return () => { active = false; };
