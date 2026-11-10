@@ -30,9 +30,10 @@ test("teacher preparation downloads only classes with last-verified manage acces
 
 test("memorization offline drafts have stable operation IDs before network submission", () => {
   assert.match(teacherStore, /operationId: samePayload \? previous\.operationId : operationId \?\? crypto\.randomUUID\(\)/);
+  assert.match(teacherStore, /state: queueForSync \? "pending" : samePayload \? previous\?\.state \?\? "draft" : "draft"/);
   assert.match(memorization, /id: operationId/);
   assert.match(memorization, /const exactReplay = !lookupError && existing/);
-  assert.match(memorizationPage, /await saveTeacherMemorizationDraft\(offlineScope, selectedStudentId, draft\)/);
+  assert.match(memorizationPage, /await saveTeacherMemorizationDraft\(offlineScope, selectedStudentId, draft, undefined, currentDraftId, true\)/);
   assert.match(memorizationPage, /operationId: stored\.operationId/);
   assert.match(memorizationPage, /currentDraftId/);
   assert.match(memorizationPage, /updateTeacherMemorizationDraftState\([\s\S]*?"syncing"/);
