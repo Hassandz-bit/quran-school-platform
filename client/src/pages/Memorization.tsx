@@ -66,6 +66,19 @@ import {
   type MemorizationScope,
   type MemorizationWorkspace,
 } from "@/lib/memorization";
+import {
+  deleteTeacherMemorizationDraft,
+  getTeacherMemorizationDraft,
+  getTeacherMemorizationRecords,
+  getTeacherMemorizationScope,
+  getTeacherMemorizationWorkspace,
+  saveTeacherMemorizationDraft,
+  saveTeacherMemorizationRecords,
+  saveTeacherMemorizationScope,
+  saveTeacherMemorizationWorkspace,
+  updateTeacherMemorizationDraftState,
+  type TeacherOfflineScope,
+} from "@/lib/teacher-offline";
 
 const sessionOptions = MEMORIZATION_SESSION_TYPES.map(value => ({
   value,
@@ -155,6 +168,7 @@ function getChangedLabels(entry: MemorizationAuditEntry): string[] {
 export default function Memorization() {
   const {
     school,
+    user,
     session,
     membership,
     roles,
@@ -188,6 +202,7 @@ export default function Memorization() {
     createMemorizationDraft(getTodayInputValue())
   );
   const [dirty, setDirty] = useState(false);
+  const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [auditRecordId, setAuditRecordId] = useState<string | null>(null);
@@ -222,6 +237,9 @@ export default function Memorization() {
       ]);
       setScope(nextScope);
       setManagerScope(nextManagerScope);
+      if (user?.id) {
+        void saveTeacherMemorizationScope(user.id, school.id, nextScope).catch(() => undefined);
+      }
       const params = new URLSearchParams(window.location.search);
       const requestedClass = nextScope.classes.find(item =>
         item.id === params.get("classId") && item.branchId === params.get("branchId")
@@ -235,11 +253,31 @@ export default function Memorization() {
       setBranchId(firstBranchId);
       setClassId(firstClassId);
     } catch (error) {
-      setScopeError(getMemorizationErrorMessage(error));
+      const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+      const cached = offline && user?.id
+        ? await getTeacherMemorizationScope(user.id, school.id).catch(() => null)
+        : null;
+      if (cached) {
+        setScope(cached.payload);
+        setManagerScope(emptyManagerScope);
+        const params = new URLSearchParams(window.location.search);
+        const requestedClass = cached.payload.classes.find(item =>
+          item.id === params.get("classId") && item.branchId === params.get("branchId")
+        );
+        const firstClass = requestedClass ?? cached.payload.classes[0];
+        const firstBranchId = firstClass?.branchId ?? cached.payload.branches[0]?.id ?? "";
+        setBranchId(firstBranchId);
+        setClassId(cached.payload.classes.find(item => item.branchId === firstBranchId)?.id ?? "");
+        setScopeError(null);
+      } else {
+        setScopeError(getMemorizationErrorMessage(error));
+      }
     } finally {
       setScopeLoading(false);
     }
-  }, [branchManagerRoleIds, membership?.id, school?.id]);
+  }, [branchManagerRoleIds, membership?.id, school?.id, user?.id]);
 
   useEffect(() => {
     void loadScope();
@@ -307,6 +345,10 @@ export default function Memorization() {
       .then(nextWorkspace => {
         if (!active) return;
         setWorkspace(nextWorkspace);
+        if (user?.id && school?.id) {
+          const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+          void saveTeacherMemorizationWorkspace(offlineScope, nextWorkspace).catch(() => undefined);
+        }
         const firstStudentId = nextWorkspace.students[0]?.id ?? "";
         const linkedTeacherId =
           nextWorkspace.teachers.find(
@@ -318,9 +360,28 @@ export default function Memorization() {
         setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
         setDirty(false);
       })
-      .catch(error => {
+      .catch(async error => {
         if (!active) return;
-        setWorkspaceError(getMemorizationErrorMessage(error));
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+        const offlineScope: TeacherOfflineScope | null = user?.id && school?.id
+          ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
+          : null;
+        const cached = offline && offlineScope
+          ? await getTeacherMemorizationWorkspace(offlineScope).catch(() => null)
+          : null;
+        if (cached) {
+          setWorkspace(cached.payload);
+          const firstStudentId = cached.payload.students[0]?.id ?? "";
+          const linkedTeacherId = cached.payload.teachers.find(teacher => teacher.profileId === session?.user.id)?.id ?? null;
+          setSelectedStudentId(firstStudentId);
+          setDraft(createMemorizationDraft(recordDate, linkedTeacherId ?? cached.payload.teachers[0]?.id ?? ""));
+          setDirty(false);
+          setWorkspaceError("تعمل على بيانات محفوظة على هذا الجهاز؛ لم يتم التحقق من الصلاحيات الحالية حتى عودة الاتصال.");
+        } else {
+          setWorkspaceError(getMemorizationErrorMessage(error));
+        }
       })
       .finally(() => {
         if (active) setWorkspaceLoading(false);
@@ -336,6 +397,7 @@ export default function Memorization() {
     school?.id,
     session?.user.id,
     workspaceReload,
+    user?.id,
   ]);
 
   useEffect(() => {
@@ -361,9 +423,28 @@ export default function Memorization() {
     )
       .then(nextRecords => {
         if (active) setRecords(nextRecords);
+        if (user?.id && school?.id) {
+          const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+          void saveTeacherMemorizationRecords(offlineScope, selectedStudentId, nextRecords).catch(() => undefined);
+        }
       })
-      .catch(error => {
-        if (active) setRecordsError(getMemorizationErrorMessage(error));
+      .catch(async error => {
+        if (!active) return;
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+        const offlineScope: TeacherOfflineScope | null = user?.id && school?.id
+          ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
+          : null;
+        const cached = offline && offlineScope
+          ? await getTeacherMemorizationRecords(offlineScope, selectedStudentId).catch(() => null)
+          : null;
+        if (cached) {
+          setRecords(cached.payload);
+          setRecordsError("سجل محفوظ محليًا؛ قد لا يتضمن آخر التعديلات التي أُجريت على جهاز آخر.");
+        } else {
+          setRecordsError(getMemorizationErrorMessage(error));
+        }
       })
       .finally(() => {
         if (active) setRecordsLoading(false);
@@ -380,6 +461,7 @@ export default function Memorization() {
     school?.id,
     selectedStudentId,
     showAllHistory,
+    user?.id,
   ]);
 
   useEffect(() => {
@@ -389,10 +471,24 @@ export default function Memorization() {
     }
     let active = true;
     void fetchAllStudentMemorizationRecords(school.id, branchId, classId, selectedStudentId)
-      .then(nextRecords => { if (active) setCardRecords(nextRecords); })
-      .catch(() => { if (active) setCardRecords([]); });
+      .then(nextRecords => {
+        if (active) setCardRecords(nextRecords);
+        if (user?.id && school?.id) {
+          const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+          void saveTeacherMemorizationRecords(offlineScope, selectedStudentId, nextRecords).catch(() => undefined);
+        }
+      })
+      .catch(async () => {
+        const offlineScope: TeacherOfflineScope | null = user?.id && school?.id
+          ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
+          : null;
+        const cached = offlineScope
+          ? await getTeacherMemorizationRecords(offlineScope, selectedStudentId).catch(() => null)
+          : null;
+        if (active) setCardRecords(cached?.payload ?? []);
+      });
     return () => { active = false; };
-  }, [branchId, classId, recordsReload, school?.id, selectedStudentId, workspaceReload]);
+  }, [branchId, classId, recordsReload, school?.id, selectedStudentId, workspaceReload, user?.id]);
 
   const handleBranchChange = (nextBranchId: string) => {
     setBranchId(nextBranchId);
@@ -453,13 +549,24 @@ export default function Memorization() {
 
     try {
       await assertCurrentAppVersion();
+      const offlineScope: TeacherOfflineScope | null = user?.id
+        ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
+        : null;
+      const storedDraft = offlineScope && !draft.recordId
+        ? await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null)
+        : null;
       const result = await saveMemorizationRecord({
         schoolId: school.id,
         branchId,
         classId,
         studentId: selectedStudentId,
         draft,
+        operationId: storedDraft?.operationId,
       });
+      if (offlineScope) {
+        await deleteTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => undefined);
+      }
+      setNeedsOfflineSync(false);
       const message =
         result.mode === "created"
           ? "تم حفظ السجل، وأصبح النموذج في وضع التعديل. اضغط «سجل جديد» لإضافة متابعة أخرى."
@@ -475,6 +582,24 @@ export default function Memorization() {
       toast.success(message);
       setRecordsReload(current => current + 1);
     } catch (error) {
+      const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+      if (offline && user?.id && !draft.recordId) {
+        try {
+          const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school!.id, branchId, classId, recordDate };
+          await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft);
+          setDirty(false);
+          setNeedsOfflineSync(true);
+          setSaveSuccess("حُفظت متابعة الحفظ على هذا الجهاز فقط؛ ستُرسل إلى المدرسة عند عودة الإنترنت.");
+          setWorkspaceError(null);
+          toast.info("حُفظت المتابعة محليًا — لم تصل إلى قاعدة البيانات بعد.");
+          return;
+        } catch {
+          setWorkspaceError("انقطع الاتصال وتعذر حفظ المسودة محليًا. لا تغلق الصفحة قبل نسخ بياناتها.");
+          return;
+        }
+      }
       const message = isStaleAppVersionError(error)
         ? "توجد نسخة أحدث من المنصة. أعد تحميل الصفحة قبل الحفظ لتجنب إنشاء سجل غير مقصود."
         : getMemorizationErrorMessage(error);
