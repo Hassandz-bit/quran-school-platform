@@ -2166,4 +2166,6 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تعذر الاتصال بالخادم؛ احتُفظ بالمسودات المتبقية وستُعاد المحاولة عند عودة الاتصال.": "Could not reach the server; remaining drafts were preserved and will be retried when connectivity returns.",
   "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودات.": "A newer version of the platform is available. Refresh the page before synchronizing drafts.",
   "أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة الجلسة ودرجة الأداء وعدد الأخطاء وملاحظات كل طالب. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.": "Enter the portion and session type once, then set each student's result, performance rating, error count, and notes. Group records are saved together or not at all.",
+  "أكمل مزامنة المسودات المحفوظة قبل بدء مجموعة جديدة.": "Synchronize saved drafts before starting another group.",
+  "توجد مسودة تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.": "A draft needs permission or data review; it has been preserved and not deleted.",
 };
