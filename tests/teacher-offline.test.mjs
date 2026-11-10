@@ -42,7 +42,7 @@ test("group memorization drafts remain separate per student and replay independe
   assert.match(teacherStore, /draftId = "individual"/);
   assert.match(teacherStore, /studentId, draftId\]\.join\("::"\)/);
   assert.match(groupEntry, /const batchDraftId = groupDraftId \?\? `group:\$\{crypto\.randomUUID\(\)\}`/);
-  assert.match(groupEntry, /saveTeacherMemorizationDraft\(offlineScope, entry\.studentId, draft, undefined, batchDraftId\)/);
+  assert.match(groupEntry, /saveTeacherMemorizationDraft\(offlineScope, entry\.studentId, draft, undefined, batchDraftId, true\)/);
   assert.match(memorizationPage, /deleteTeacherMemorizationDraft\(itemScope, stored\.studentId, stored\.draftId\)/);
 });
 
