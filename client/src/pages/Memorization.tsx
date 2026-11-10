@@ -673,21 +673,14 @@ export default function Memorization() {
         )
         .sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0] ?? null;
       if (!active) return;
-      if (!stored) {
-        if (!draft.recordId) {
-          const defaultTeacherId = currentTeacherId ?? workspace.teachers[0]?.id ?? "";
-          setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
-          setCurrentDraftId("individual");
-        }
-        return;
-      }
+      if (!stored) return;
       setCurrentDraftId(stored.draftId);
       setDraft(stored.draft);
       setDirty(true);
       setSaveSuccess("استُعيدت متابعة حفظ محفوظة على هذا الجهاز.");
     })().catch(() => undefined);
     return () => { active = false; };
-  }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty, draft, currentTeacherId]);
+  }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty, draft]);
 
   // Persist every edit before it can be lost by a refresh or browser close.
   useEffect(() => {
