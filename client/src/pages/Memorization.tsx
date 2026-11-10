@@ -678,8 +678,14 @@ export default function Memorization() {
   useEffect(() => {
     if (!dirty || draft.recordId || !user?.id || !school?.id || !branchId || !classId || !selectedStudentId) return;
     const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
-    void saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft).then(() => {
+    void saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft).then(async () => {
       setHasUnresolvedOfflineDrafts(true);
+      const allDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+      setNeedsOfflineSync(allDrafts.some(item =>
+        item.schoolId === school.id && item.branchId === branchId &&
+        item.classId === classId && item.recordDate === recordDate &&
+        (item.state === "pending" || item.state === "syncing")
+      ));
     }).catch(() => {
       setWorkspaceError("تعذر حفظ نسخة محلية من متابعة الحفظ على هذا الجهاز.");
     });
