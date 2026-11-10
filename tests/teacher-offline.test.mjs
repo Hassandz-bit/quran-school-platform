@@ -34,13 +34,14 @@ test("memorization offline drafts have stable operation IDs before network submi
   assert.match(memorization, /const exactReplay = !lookupError && existing/);
   assert.match(memorizationPage, /await saveTeacherMemorizationDraft\(offlineScope, selectedStudentId, draft\)/);
   assert.match(memorizationPage, /operationId: stored\.operationId/);
+  assert.match(memorizationPage, /currentDraftId/);
   assert.match(memorizationPage, /updateTeacherMemorizationDraftState\([\s\S]*?"syncing"/);
 });
 
 test("group memorization drafts remain separate per student and replay independently", () => {
   assert.match(teacherStore, /draftId = "individual"/);
   assert.match(teacherStore, /studentId, draftId\]\.join\("::"\)/);
-  assert.match(groupEntry, /const batchDraftId = groupDraftId \?\? crypto\.randomUUID\(\)/);
+  assert.match(groupEntry, /const batchDraftId = groupDraftId \?\? `group:\$\{crypto\.randomUUID\(\)\}`/);
   assert.match(groupEntry, /saveTeacherMemorizationDraft\(offlineScope, entry\.studentId, draft, undefined, batchDraftId\)/);
   assert.match(memorizationPage, /deleteTeacherMemorizationDraft\(itemScope, stored\.studentId, stored\.draftId\)/);
 });
