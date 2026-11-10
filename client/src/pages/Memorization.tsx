@@ -567,7 +567,7 @@ export default function Memorization() {
         ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
         : null;
       const storedDraft = offlineScope && !draft.recordId
-        ? await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft, undefined, currentDraftId)
+        ? await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft, undefined, currentDraftId, true)
         : null;
       const result = await saveMemorizationRecord({
         schoolId: school.id,
@@ -602,7 +602,7 @@ export default function Memorization() {
       if (offline && user?.id && !draft.recordId) {
         try {
           const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school!.id, branchId, classId, recordDate };
-          await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft, undefined, currentDraftId);
+          await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft, undefined, currentDraftId, true);
           setDirty(false);
           setNeedsOfflineSync(true);
           setHasUnresolvedOfflineDrafts(true);
