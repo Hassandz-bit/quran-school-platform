@@ -44,6 +44,7 @@ type GroupEntry = {
 type GroupMemorizationEntryProps = {
   schoolId: string;
   userId: string;
+  disabled?: boolean;
   branchId: string;
   classId: string;
   recordDate: string;
@@ -62,6 +63,7 @@ const sessionOptions = MEMORIZATION_SESSION_TYPES.map(value => ({
 export default function GroupMemorizationEntry({
   schoolId,
   userId,
+  disabled = false,
   branchId,
   classId,
   recordDate,
@@ -97,7 +99,7 @@ export default function GroupMemorizationEntry({
   const selectedCount = entries.filter(entry => entry.selected).length;
   const allSelected = entries.length > 0 && selectedCount === entries.length;
   const validPortion = ayahStart >= 1 && ayahEnd >= ayahStart && ayahEnd <= selectedSurah.ayahCount;
-  const controlsDisabled = saving || groupSaved;
+  const controlsDisabled = saving || groupSaved || disabled;
 
   const updateEntry = (studentId: string, update: Partial<GroupEntry>) => {
     if (controlsDisabled) return;
@@ -108,7 +110,7 @@ export default function GroupMemorizationEntry({
   };
 
   const handleSave = async () => {
-    if (saving || groupSaved || !teacherId || !validPortion || selectedCount === 0) return;
+    if (saving || groupSaved || disabled || !teacherId || !validPortion || selectedCount === 0) return;
     const selectedEntries = entries.filter(entry => entry.selected);
     const invalidEntry = selectedEntries.some(entry =>
       !Number.isInteger(entry.rating) || entry.rating < 1 || entry.rating > 5 ||
@@ -124,6 +126,7 @@ export default function GroupMemorizationEntry({
     setSaveError(null);
     if (!navigator.onLine) {
       let locallySaved = 0;
+      const locallySavedStudentIds: string[] = [];
       try {
         if (!userId) throw new Error("teacher_offline_user_missing");
         const offlineScope: TeacherOfflineScope = {
@@ -154,6 +157,7 @@ export default function GroupMemorizationEntry({
           };
           await saveTeacherMemorizationDraft(offlineScope, entry.studentId, draft, undefined, batchDraftId, true);
           locallySaved += 1;
+          locallySavedStudentIds.push(entry.studentId);
         }
         setSavedCount(locallySaved);
         setGroupSaved(true);
@@ -161,6 +165,9 @@ export default function GroupMemorizationEntry({
         onSaved();
       } catch {
         setSavedCount(locallySaved);
+        setEntries(current => current.map(entry =>
+          locallySavedStudentIds.includes(entry.studentId) ? { ...entry, selected: false } : entry
+        ));
         setSaveError("تعذر حفظ جميع سجلات المجموعة محليًا؛ احتُفظ بما نجح حفظه، وأعد المحاولة للبقية.");
         if (locallySaved > 0) {
           toast.warning(`حُفظت ${locallySaved} من ${selectedEntries.length} سجلات محليًا. أعد المحاولة للبقية.`);
