@@ -20,6 +20,7 @@ export type TeacherOfflineScope = {
 
 export type StoredMemorizationDraft = TeacherOfflineScope & {
   key: string;
+  draftId: string;
   operationId: string;
   studentId: string;
   draft: MemorizationDraft;
@@ -43,8 +44,8 @@ function scopeKey(scope: TeacherOfflineScope, kind: string): string {
   return [kind, scope.userId, scope.schoolId, scope.branchId, scope.classId].join("::");
 }
 
-function draftKey(scope: TeacherOfflineScope, studentId: string): string {
-  return [scope.userId, scope.schoolId, scope.branchId, scope.classId, scope.recordDate, studentId].join("::");
+function draftKey(scope: TeacherOfflineScope, studentId: string, draftId = "individual"): string {
+  return [scope.userId, scope.schoolId, scope.branchId, scope.classId, scope.recordDate, studentId, draftId].join("::");
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -135,9 +136,10 @@ export async function saveTeacherMemorizationDraft(
   scope: TeacherOfflineScope,
   studentId: string,
   draft: MemorizationDraft,
-  operationId?: string
+  operationId?: string,
+  draftId = "individual"
 ): Promise<StoredMemorizationDraft> {
-  const key = draftKey(scope, studentId);
+  const key = draftKey(scope, studentId, draftId);
   const serialized = JSON.stringify(draft);
   const db = await openDatabase();
   try {
@@ -151,6 +153,7 @@ export async function saveTeacherMemorizationDraft(
         const samePayload = previous && JSON.stringify(previous.draft) === serialized;
         next = {
           key,
+          draftId,
           ...scope,
           studentId,
           operationId: samePayload ? previous.operationId : operationId ?? crypto.randomUUID(),
@@ -171,24 +174,25 @@ export async function saveTeacherMemorizationDraft(
   }
 }
 
-export async function getTeacherMemorizationDraft(scope: TeacherOfflineScope, studentId: string): Promise<StoredMemorizationDraft | null> {
-  return (await readWrite<StoredMemorizationDraft | undefined>(DRAFTS, "readonly", store => store.get(draftKey(scope, studentId)))) ?? null;
+export async function getTeacherMemorizationDraft(scope: TeacherOfflineScope, studentId: string, draftId = "individual"): Promise<StoredMemorizationDraft | null> {
+  return (await readWrite<StoredMemorizationDraft | undefined>(DRAFTS, "readonly", store => store.get(draftKey(scope, studentId, draftId)))) ?? null;
 }
 
 export async function updateTeacherMemorizationDraftState(
   scope: TeacherOfflineScope,
   studentId: string,
   state: StoredMemorizationDraft["state"],
-  error: string | null = null
+  error: string | null = null,
+  draftId = "individual"
 ): Promise<void> {
-  const key = draftKey(scope, studentId);
+  const key = draftKey(scope, studentId, draftId);
   const draft = await readWrite<StoredMemorizationDraft | undefined>(DRAFTS, "readonly", store => store.get(key));
   if (!draft) return;
   await readWrite(DRAFTS, "readwrite", store => store.put({ ...draft, state, error, savedAt: new Date().toISOString() }));
 }
 
-export async function deleteTeacherMemorizationDraft(scope: TeacherOfflineScope, studentId: string): Promise<void> {
-  await readWrite(DRAFTS, "readwrite", store => store.delete(draftKey(scope, studentId)));
+export async function deleteTeacherMemorizationDraft(scope: TeacherOfflineScope, studentId: string, draftId = "individual"): Promise<void> {
+  await readWrite(DRAFTS, "readwrite", store => store.delete(draftKey(scope, studentId, draftId)));
 }
 
 export async function listTeacherMemorizationDrafts(userId: string): Promise<StoredMemorizationDraft[]> {
