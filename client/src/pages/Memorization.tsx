@@ -261,7 +261,7 @@ export default function Memorization() {
     } catch (error) {
       const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
       const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
-        /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
       const cached = offline && user?.id
         ? await getTeacherMemorizationScope(user.id, school.id).catch(() => null)
         : null;
@@ -618,6 +618,18 @@ export default function Memorization() {
       const message = isStaleAppVersionError(error)
         ? "توجد نسخة أحدث من المنصة. أعد تحميل الصفحة قبل الحفظ لتجنب إنشاء سجل غير مقصود."
         : getMemorizationErrorMessage(error);
+      if (user?.id && !draft.recordId) {
+        const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school!.id, branchId, classId, recordDate };
+        await updateTeacherMemorizationDraftState(
+          offlineScope,
+          selectedStudentId,
+          "conflict",
+          message,
+          currentDraftId
+        ).catch(() => undefined);
+        setNeedsOfflineSync(false);
+        setHasUnresolvedOfflineDrafts(true);
+      }
       setWorkspaceError(message);
       toast.error(message);
     } finally {
