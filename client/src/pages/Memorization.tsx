@@ -636,6 +636,10 @@ export default function Memorization() {
       const hasPendingInScope = draftsInScope.some(item => item.state === "pending" || item.state === "syncing");
       setHasUnresolvedOfflineDrafts(draftsInScope.length > 0);
       setNeedsOfflineSync(hasPendingInScope);
+      const reviewCount = draftsInScope.filter(item => item.state === "conflict" || item.state === "failed").length;
+      if (reviewCount > 0) {
+        setSaveSuccess(`توجد ${reviewCount} مسودة تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.`);
+      }
       if (!selectedStudentId || dirty) return;
       const stored = await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null);
       if (!active || !stored) return;
