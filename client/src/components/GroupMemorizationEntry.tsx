@@ -91,6 +91,7 @@ export default function GroupMemorizationEntry({
   const [groupSaved, setGroupSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
+  const [groupDraftId, setGroupDraftId] = useState<string | null>(null);
 
   const selectedSurah = useMemo(() => getSurahByNumber(surahNumber), [surahNumber]);
   const selectedCount = entries.filter(entry => entry.selected).length;
@@ -132,6 +133,8 @@ export default function GroupMemorizationEntry({
           classId,
           recordDate,
         };
+        const batchDraftId = groupDraftId ?? crypto.randomUUID();
+        setGroupDraftId(batchDraftId);
         for (const entry of selectedEntries) {
           const draft: MemorizationDraft = {
             recordId: null,
@@ -149,7 +152,7 @@ export default function GroupMemorizationEntry({
             notes: entry.notes,
             nextAssignment: entry.nextAssignment,
           };
-          await saveTeacherMemorizationDraft(offlineScope, entry.studentId, draft);
+          await saveTeacherMemorizationDraft(offlineScope, entry.studentId, draft, undefined, batchDraftId);
           locallySaved += 1;
         }
         setSavedCount(locallySaved);
@@ -226,6 +229,7 @@ export default function GroupMemorizationEntry({
     })));
     setGroupSaved(false);
     setSavedCount(0);
+    setGroupDraftId(null);
     setSaveError(null);
   };
 
