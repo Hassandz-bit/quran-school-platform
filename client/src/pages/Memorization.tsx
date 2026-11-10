@@ -203,6 +203,7 @@ export default function Memorization() {
   );
   const [dirty, setDirty] = useState(false);
   const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
+  const [onlineRevision, setOnlineRevision] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [auditRecordId, setAuditRecordId] = useState<string | null>(null);
@@ -609,6 +610,90 @@ export default function Memorization() {
       setSaving(false);
     }
   };
+
+  // Restore a locally queued new record for the currently selected student.
+  useEffect(() => {
+    if (!user?.id || !school?.id || !branchId || !classId || !selectedStudentId || !workspace || dirty) return;
+    let active = true;
+    const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+    void getTeacherMemorizationDraft(offlineScope, selectedStudentId).then(stored => {
+      if (!active || !stored) return;
+      setDraft(stored.draft);
+      setDirty(true);
+      setNeedsOfflineSync(stored.state === "pending" || stored.state === "syncing");
+      setSaveSuccess("استُعيدت متابعة حفظ محفوظة على هذا الجهاز.");
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty]);
+
+  // Persist every edit before it can be lost by a refresh or browser close.
+  useEffect(() => {
+    if (!dirty || draft.recordId || !user?.id || !school?.id || !branchId || !classId || !selectedStudentId) return;
+    const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+    void saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft).catch(() => {
+      setWorkspaceError("تعذر حفظ نسخة محلية من متابعة الحفظ على هذا الجهاز.");
+    });
+  }, [dirty, draft, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate]);
+
+  // Revalidate and synchronize queued records only after connectivity returns.
+  useEffect(() => {
+    if (!needsOfflineSync || !navigator.onLine || !user?.id || !school?.id || !branchId || !classId || !selectedStudentId || saving) return;
+    let active = true;
+    const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
+    void (async () => {
+      const stored = await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null);
+      if (!active || !stored) return;
+      setSaving(true);
+      await updateTeacherMemorizationDraftState(offlineScope, selectedStudentId, "syncing", null).catch(() => undefined);
+      try {
+        await assertCurrentAppVersion();
+        const result = await saveMemorizationRecord({
+          schoolId: school.id,
+          branchId,
+          classId,
+          studentId: selectedStudentId,
+          draft: stored.draft,
+          operationId: stored.operationId,
+        });
+        await deleteTeacherMemorizationDraft(offlineScope, selectedStudentId);
+        if (!active) return;
+        setDraft({ ...stored.draft, recordId: result.recordId });
+        setDirty(false);
+        setNeedsOfflineSync(false);
+        setSaveSuccess("تمت مزامنة متابعة الحفظ مع قاعدة البيانات بنجاح.");
+        setWorkspaceError(null);
+        setRecordsReload(current => current + 1);
+        toast.success("تمت مزامنة متابعة الحفظ.");
+      } catch (error) {
+        const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+        const message = isStaleAppVersionError(error)
+          ? "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودة."
+          : getMemorizationErrorMessage(error);
+        await updateTeacherMemorizationDraftState(
+          offlineScope,
+          selectedStudentId,
+          transient ? "pending" : "conflict",
+          message
+        ).catch(() => undefined);
+        if (active) {
+          setNeedsOfflineSync(transient);
+          setWorkspaceError(transient
+            ? "تعذر الاتصال بالخادم؛ احتُفظ بالمسودة وستُعاد المحاولة عند عودة الاتصال."
+            : `لم تُزامَن المسودة: ${message} احتُفظ بها للمراجعة ولم تُحذف.`);
+        }
+      } finally {
+        if (active) setSaving(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [needsOfflineSync, onlineRevision, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, saving]);
+
+  useEffect(() => {
+    const retryWhenOnline = () => setOnlineRevision(current => current + 1);
+    window.addEventListener("online", retryWhenOnline);
+    return () => window.removeEventListener("online", retryWhenOnline);
+  }, []);
 
   const handleAuditToggle = async (recordId: string) => {
     if (!school?.id || !branchId || !classId) return;
