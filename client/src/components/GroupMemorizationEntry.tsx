@@ -133,7 +133,7 @@ export default function GroupMemorizationEntry({
           classId,
           recordDate,
         };
-        const batchDraftId = groupDraftId ?? crypto.randomUUID();
+        const batchDraftId = groupDraftId ?? `group:${crypto.randomUUID()}`;
         setGroupDraftId(batchDraftId);
         for (const entry of selectedEntries) {
           const draft: MemorizationDraft = {
