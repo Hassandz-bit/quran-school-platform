@@ -199,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isSchoolAdmin: authorization.isSchoolAdmin,
         }).catch(() => undefined);
       }
+      if (!isCurrentRequest()) return;
       setAuthorizationLoading(false);
     },
     [clientState.client]
