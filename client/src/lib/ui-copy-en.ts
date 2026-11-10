@@ -2163,4 +2163,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تعذر حفظ جميع سجلات المجموعة محليًا؛ احتُفظ بما نجح حفظه، وأعد المحاولة للبقية.": "Not all group records could be saved locally; successful drafts were preserved. Retry the remaining entries.",
   "تعذر حفظ المسودة الجماعية على هذا الجهاز.": "Could not save the group draft on this device.",
   "أنت تعمل دون اتصال. يمكنك تسجيل متابعة فردية أو جماعية للطلاب المحمّلة بياناتهم على هذا الجهاز؛ تعديل السجلات السابقة يحتاج إلى اتصال. تُزامَن سجلات المجموعة فرديًا عند عودة الاتصال مع إعادة التحقق من الصلاحيات.": "You are offline. You can record individual or group entries for students whose data is cached on this device; editing existing records requires a connection. Group entries synchronize individually when connectivity returns, with permissions rechecked.",
+  "تعذر الاتصال بالخادم؛ احتُفظ بالمسودات المتبقية وستُعاد المحاولة عند عودة الاتصال.": "Could not reach the server; remaining drafts were preserved and will be retried when connectivity returns.",
+  "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودات.": "A newer version of the platform is available. Refresh the page before synchronizing drafts.",
+  "أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة الجلسة ودرجة الأداء وعدد الأخطاء وملاحظات كل طالب. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.": "Enter the portion and session type once, then set each student's result, performance rating, error count, and notes. Group records are saved together or not at all.",
 };
