@@ -73,6 +73,7 @@ import {
   getTeacherMemorizationRecords,
   getTeacherMemorizationScope,
   getTeacherMemorizationWorkspace,
+  listTeacherMemorizationDrafts,
   saveTeacherMemorizationDraft,
   saveTeacherMemorizationRecords,
   saveTeacherMemorizationScope,
@@ -326,7 +327,7 @@ export default function Memorization() {
   );
   const canManageSelectedClass = selectedClass?.canManage === true;
   const showGroupEntry =
-    canManageSelectedClass && Boolean(workspace && workspace.teachers.length > 0) && entryMode === "group";
+    canManageSelectedClass && !saving && Boolean(workspace && workspace.teachers.length > 0) && entryMode === "group";
   const canChooseAssignedTeacher =
     isSchoolAdmin ||
     managerScope.schoolWide ||
@@ -649,55 +650,98 @@ export default function Memorization() {
     });
   }, [dirty, draft, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate]);
 
-  // Revalidate and synchronize queued records only after connectivity returns.
+  // Revalidate and synchronize all queued individual/group entries for this class.
   useEffect(() => {
-    if (!needsOfflineSync || !navigator.onLine || !user?.id || !school?.id || !branchId || !classId || !selectedStudentId || syncInFlightRef.current) return;
+    if (!needsOfflineSync || !navigator.onLine || !user?.id || !school?.id || !branchId || !classId || syncInFlightRef.current) return;
     let active = true;
     const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
     void (async () => {
-      const stored = await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null);
-      if (!active || !stored) return;
+      const allDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+      const queued = allDrafts.filter(item =>
+        item.schoolId === school.id &&
+        item.branchId === branchId &&
+        item.classId === classId &&
+        item.recordDate === recordDate &&
+        (item.state === "pending" || item.state === "syncing")
+      );
+      if (!active) return;
+      if (queued.length === 0) {
+        setNeedsOfflineSync(false);
+        return;
+      }
       if (syncInFlightRef.current) return;
       syncInFlightRef.current = true;
       setSaving(true);
-      await updateTeacherMemorizationDraftState(offlineScope, selectedStudentId, "syncing", null).catch(() => undefined);
+      let savedCount = 0;
+      let transientFailure = false;
+      const permanentErrors: string[] = [];
       try {
         await assertCurrentAppVersion();
-        const result = await saveMemorizationRecord({
-          schoolId: school.id,
-          branchId,
-          classId,
-          studentId: selectedStudentId,
-          draft: stored.draft,
-          operationId: stored.operationId,
-        });
-        await deleteTeacherMemorizationDraft(offlineScope, selectedStudentId);
+        for (const stored of queued) {
+          if (!active) return;
+          const itemScope: TeacherOfflineScope = {
+            userId: stored.userId,
+            schoolId: stored.schoolId,
+            branchId: stored.branchId,
+            classId: stored.classId,
+            recordDate: stored.recordDate,
+          };
+          await updateTeacherMemorizationDraftState(itemScope, stored.studentId, "syncing", null).catch(() => undefined);
+          try {
+            const result = await saveMemorizationRecord({
+              schoolId: stored.schoolId,
+              branchId: stored.branchId,
+              classId: stored.classId,
+              studentId: stored.studentId,
+              draft: stored.draft,
+              operationId: stored.operationId,
+            });
+            await deleteTeacherMemorizationDraft(itemScope, stored.studentId);
+            savedCount += 1;
+            if (stored.studentId === selectedStudentId) {
+              setDraft({ ...stored.draft, recordId: result.recordId });
+              setDirty(false);
+            }
+          } catch (error) {
+            const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+            const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+            const message = isStaleAppVersionError(error)
+              ? "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودة."
+              : getMemorizationErrorMessage(error);
+            await updateTeacherMemorizationDraftState(
+              itemScope,
+              stored.studentId,
+              transient ? "pending" : "conflict",
+              message
+            ).catch(() => undefined);
+            if (transient) {
+              transientFailure = true;
+              break;
+            }
+            permanentErrors.push(message);
+          }
+        }
         if (!active) return;
-        setDraft({ ...stored.draft, recordId: result.recordId });
-        setDirty(false);
-        setNeedsOfflineSync(false);
-        setSaveSuccess("تمت مزامنة متابعة الحفظ مع قاعدة البيانات بنجاح.");
-        setWorkspaceError(null);
-        setRecordsReload(current => current + 1);
-        toast.success("تمت مزامنة متابعة الحفظ.");
+        if (savedCount > 0) {
+          setRecordsReload(current => current + 1);
+          setSaveSuccess(`تمت مزامنة ${savedCount} من سجلات متابعة الحفظ.`);
+          toast.success(`تمت مزامنة ${savedCount} من سجلات متابعة الحفظ.`);
+        }
+        setNeedsOfflineSync(transientFailure);
+        if (permanentErrors.length) {
+          setWorkspaceError(`تحتاج ${permanentErrors.length} مسودة إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.`);
+        } else if (transientFailure) {
+          setWorkspaceError("تعذر الاتصال بالخادم؛ احتُفظ بالمسودات المتبقية وستُعاد المحاولة عند عودة الاتصال.");
+        } else {
+          setWorkspaceError(null);
+        }
       } catch (error) {
         const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
         const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
-        const message = isStaleAppVersionError(error)
-          ? "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودة."
-          : getMemorizationErrorMessage(error);
-        await updateTeacherMemorizationDraftState(
-          offlineScope,
-          selectedStudentId,
-          transient ? "pending" : "conflict",
-          message
-        ).catch(() => undefined);
-        if (active) {
-          setNeedsOfflineSync(transient);
-          setWorkspaceError(transient
-            ? "تعذر الاتصال بالخادم؛ احتُفظ بالمسودة وستُعاد المحاولة عند عودة الاتصال."
-            : `لم تُزامَن المسودة: ${message} احتُفظ بها للمراجعة ولم تُحذف.`);
-        }
+        setNeedsOfflineSync(transient);
+        setWorkspaceError(isStaleAppVersionError(error)
+          ? "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودات."
+          : getMemorizationErrorMessage(error));
       } finally {
         syncInFlightRef.current = false;
         setSaving(false);
