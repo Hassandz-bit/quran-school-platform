@@ -277,7 +277,7 @@ test("returns the saved record id for create and update operations", () => {
 test("keeps the saved draft in edit mode instead of resetting after save", () => {
   const saveBlock = page.slice(
     page.indexOf("const handleSave"),
-    page.indexOf("const handleAuditToggle")
+    page.indexOf("// Restore this student's draft")
   );
 
   assert.match(saveBlock, /recordId:\s*result\.recordId/);
