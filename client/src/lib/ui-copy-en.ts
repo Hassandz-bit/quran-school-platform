@@ -2170,4 +2170,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "توجد مسودة تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.": "A draft needs permission or data review; it has been preserved and not deleted.",
   "توجد مسودات تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.": "Some drafts need permission or data review; they have been preserved and not deleted.",
   "توجد مسودات محفوظة على الجهاز بانتظار المزامنة.": "Drafts saved on this device are waiting to synchronize.",
+  "تنبيه: بيانات الطلاب المحفوظة محليًا غير مشفرة؛ استخدم جهازًا موثوقًا.": "Notice: student data saved locally is not encrypted; use a trusted device.",
 };
