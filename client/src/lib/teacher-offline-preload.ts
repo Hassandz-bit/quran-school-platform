@@ -44,12 +44,22 @@ export async function prepareTeacherOfflineData(
   let memorizationClasses = 0;
   let memorizationStudents = 0;
 
-  const attendanceScope = await fetchAttendanceScope(schoolId);
-  await saveOfflineAttendanceScope(userId, schoolId, attendanceScope);
-  const attendanceTargets = attendanceScope.classes.filter(item => item.canManage);
-  const memorizationScope = await fetchMemorizationScope(schoolId);
-  await saveTeacherMemorizationScope(userId, schoolId, memorizationScope);
-  const memorizationTargets = memorizationScope.classes.filter(item => item.canManage);
+  let attendanceTargets: Awaited<ReturnType<typeof fetchAttendanceScope>>["classes"] = [];
+  let memorizationTargets: Awaited<ReturnType<typeof fetchMemorizationScope>>["classes"] = [];
+  try {
+    const attendanceScope = await fetchAttendanceScope(schoolId);
+    await saveOfflineAttendanceScope(userId, schoolId, attendanceScope);
+    attendanceTargets = attendanceScope.classes.filter(item => item.canManage);
+  } catch (error) {
+    failures.push(`نطاق الحضور: ${error instanceof Error ? error.message : "تعذر التحميل"}`);
+  }
+  try {
+    const memorizationScope = await fetchMemorizationScope(schoolId);
+    await saveTeacherMemorizationScope(userId, schoolId, memorizationScope);
+    memorizationTargets = memorizationScope.classes.filter(item => item.canManage);
+  } catch (error) {
+    failures.push(`نطاق الحفظ: ${error instanceof Error ? error.message : "تعذر التحميل"}`);
+  }
   const total = attendanceTargets.length + memorizationTargets.length;
   let completed = 0;
 
