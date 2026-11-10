@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { BookOpenCheck, CheckCircle2, Loader2, RotateCcw, Save, Users } from "lucide-react";
 import { toast } from "sonner";
 import StudentAvatar from "@/components/StudentAvatar";
@@ -44,6 +43,7 @@ type GroupEntry = {
 
 type GroupMemorizationEntryProps = {
   schoolId: string;
+  userId: string;
   branchId: string;
   classId: string;
   recordDate: string;
@@ -61,6 +61,7 @@ const sessionOptions = MEMORIZATION_SESSION_TYPES.map(value => ({
 
 export default function GroupMemorizationEntry({
   schoolId,
+  userId,
   branchId,
   classId,
   recordDate,
@@ -70,7 +71,6 @@ export default function GroupMemorizationEntry({
   teacherSelectionDisabled,
   onSaved,
 }: GroupMemorizationEntryProps) {
-  const { user } = useAuth();
   const [teacherId, setTeacherId] = useState(defaultTeacherId);
   const [sessionType, setSessionType] = useState<MemorizationSessionType>("new_memorization");
   const [surahNumber, setSurahNumber] = useState(1);
@@ -125,9 +125,9 @@ export default function GroupMemorizationEntry({
     if (!navigator.onLine) {
       let locallySaved = 0;
       try {
-        if (!user?.id) throw new Error("teacher_offline_user_missing");
+        if (!userId) throw new Error("teacher_offline_user_missing");
         const offlineScope: TeacherOfflineScope = {
-          userId: user.id,
+          userId,
           schoolId,
           branchId,
           classId,
