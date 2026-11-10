@@ -35,6 +35,12 @@ test("cached attendance stays user-scoped and pending drafts survive sign-out", 
   assert.doesNotMatch(attendance, /clearOfflineAttendanceForUser/);
 });
 
-test("offline authorization failure settles loading without granting cached permissions", () => {
-  assert.match(auth, /catch \{\s*if \(!isCurrentRequest\(\)\) return;\s*setAuthorizationError\(AUTHORIZATION_MESSAGES\.connectionError\);\s*setAuthorizationLoading\(false\);/);
+test("offline authorization restores only the same user's last verified local school context", () => {
+  assert.match(auth, /getCachedAuthorization\(userId\)/);
+  assert.match(auth, /setProfile\(cached\.profile\)/);
+  assert.match(auth, /setMembership\(cached\.membership\)/);
+  assert.match(auth, /setSchool\(cached\.school\)/);
+  assert.match(auth, /setRoles\(cached\.roles\)/);
+  assert.match(auth, /Every queued write is[\s\S]*?revalidated by the server/);
+  assert.doesNotMatch(auth, /setSession\(cached\.|setUser\(cached\./);
 });
