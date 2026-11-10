@@ -138,21 +138,37 @@ export async function saveTeacherMemorizationDraft(
   operationId?: string
 ): Promise<StoredMemorizationDraft> {
   const key = draftKey(scope, studentId);
-  const previous = await readWrite<StoredMemorizationDraft | undefined>(DRAFTS, "readonly", store => store.get(key));
   const serialized = JSON.stringify(draft);
-  const previousSerialized = previous ? JSON.stringify(previous.draft) : null;
-  const next: StoredMemorizationDraft = {
-    key,
-    ...scope,
-    studentId,
-    operationId: previous && previousSerialized === serialized ? previous.operationId : operationId ?? crypto.randomUUID(),
-    draft,
-    state: "pending",
-    error: null,
-    savedAt: new Date().toISOString(),
-  };
-  await readWrite(DRAFTS, "readwrite", store => store.put(next));
-  return next;
+  const db = await openDatabase();
+  try {
+    return await new Promise<StoredMemorizationDraft>((resolve, reject) => {
+      const tx = db.transaction(DRAFTS, "readwrite");
+      const store = tx.objectStore(DRAFTS);
+      const request = store.get(key);
+      let next: StoredMemorizationDraft | null = null;
+      request.onsuccess = () => {
+        const previous = request.result as StoredMemorizationDraft | undefined;
+        const samePayload = previous && JSON.stringify(previous.draft) === serialized;
+        next = {
+          key,
+          ...scope,
+          studentId,
+          operationId: samePayload ? previous.operationId : operationId ?? crypto.randomUUID(),
+          draft,
+          state: "pending",
+          error: null,
+          savedAt: new Date().toISOString(),
+        };
+        store.put(next);
+      };
+      request.onerror = () => reject(request.error ?? new Error("teacher_offline_draft_read_failed"));
+      tx.oncomplete = () => next ? resolve(next) : reject(new Error("teacher_offline_draft_write_failed"));
+      tx.onerror = () => reject(tx.error ?? new Error("teacher_offline_draft_write_failed"));
+      tx.onabort = () => reject(tx.error ?? new Error("teacher_offline_draft_write_aborted"));
+    });
+  } finally {
+    db.close();
+  }
 }
 
 export async function getTeacherMemorizationDraft(scope: TeacherOfflineScope, studentId: string): Promise<StoredMemorizationDraft | null> {
