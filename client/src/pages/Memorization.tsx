@@ -208,6 +208,7 @@ export default function Memorization() {
   const [hasUnresolvedOfflineDrafts, setHasUnresolvedOfflineDrafts] = useState(false);
   const [onlineRevision, setOnlineRevision] = useState(0);
   const syncInFlightRef = useRef(false);
+  const skipRestoreRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [auditRecordId, setAuditRecordId] = useState<string | null>(null);
@@ -523,7 +524,8 @@ export default function Memorization() {
       currentTeacherId ?? workspace?.teachers[0]?.id ?? "";
     setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
     setCurrentDraftId(`individual:${crypto.randomUUID()}`);
-    setDirty(true);
+    skipRestoreRef.current = true;
+    setDirty(false);
     setSaveSuccess(null);
   };
 
@@ -645,6 +647,10 @@ export default function Memorization() {
         setSaveSuccess("توجد مسودات تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.");
       }
       if (!selectedStudentId || dirty) return;
+      if (skipRestoreRef.current) {
+        skipRestoreRef.current = false;
+        return;
+      }
       const stored = allDrafts
         .filter(item =>
           item.studentId === selectedStudentId &&
@@ -666,7 +672,7 @@ export default function Memorization() {
       setSaveSuccess("استُعيدت متابعة حفظ محفوظة على هذا الجهاز.");
     })().catch(() => undefined);
     return () => { active = false; };
-  }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty, draft.recordId, currentTeacherId]);
+  }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty, draft, currentTeacherId]);
 
   // Persist every edit before it can be lost by a refresh or browser close.
   useEffect(() => {
