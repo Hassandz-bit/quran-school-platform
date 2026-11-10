@@ -38,6 +38,7 @@ export default function PrepareTeacherOffline() {
       } else {
         toast.success(summary, { duration: 7000 });
       }
+      toast.info("تنبيه: بيانات الطلاب المحفوظة محليًا غير مشفرة؛ استخدم جهازًا موثوقًا.", { duration: 9000 });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تجهيز بيانات العمل دون إنترنت.");
     } finally {
