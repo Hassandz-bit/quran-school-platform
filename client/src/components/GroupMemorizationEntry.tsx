@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { BookOpenCheck, CheckCircle2, Loader2, RotateCcw, Save, Users } from "lucide-react";
 import { toast } from "sonner";
 import StudentAvatar from "@/components/StudentAvatar";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { saveTeacherMemorizationDraft, type TeacherOfflineScope } from "@/lib/teacher-offline";
 import {
   assertCurrentAppVersion,
   isStaleAppVersionError,
@@ -68,6 +70,7 @@ export default function GroupMemorizationEntry({
   teacherSelectionDisabled,
   onSaved,
 }: GroupMemorizationEntryProps) {
+  const { user } = useAuth();
   const [teacherId, setTeacherId] = useState(defaultTeacherId);
   const [sessionType, setSessionType] = useState<MemorizationSessionType>("new_memorization");
   const [surahNumber, setSurahNumber] = useState(1);
@@ -118,6 +121,55 @@ export default function GroupMemorizationEntry({
 
     setSaving(true);
     setSaveError(null);
+    if (!navigator.onLine) {
+      let locallySaved = 0;
+      try {
+        if (!user?.id) throw new Error("teacher_offline_user_missing");
+        const offlineScope: TeacherOfflineScope = {
+          userId: user.id,
+          schoolId,
+          branchId,
+          classId,
+          recordDate,
+        };
+        for (const entry of selectedEntries) {
+          const draft: MemorizationDraft = {
+            recordId: null,
+            teacherId,
+            recordDate,
+            sessionType,
+            surahNumber,
+            ayahStart,
+            ayahEnd,
+            rating: entry.rating,
+            errorsCount: entry.errorsCount,
+            recitationResult: entry.recitationResult,
+            recitationAccuracy: entry.recitationAccuracy,
+            focusWords: entry.focusWords,
+            notes: entry.notes,
+            nextAssignment: entry.nextAssignment,
+          };
+          await saveTeacherMemorizationDraft(offlineScope, entry.studentId, draft);
+          locallySaved += 1;
+        }
+        setSavedCount(locallySaved);
+        setGroupSaved(true);
+        toast.info("حُفظت المتابعة الجماعية محليًا، وستُزامَن سجلات الطلاب عند عودة الاتصال.");
+        onSaved();
+      } catch {
+        setSavedCount(locallySaved);
+        setSaveError("تعذر حفظ جميع سجلات المجموعة محليًا؛ احتُفظ بما نجح حفظه، وأعد المحاولة للبقية.");
+        if (locallySaved > 0) {
+          toast.warning(`حُفظت ${locallySaved} من ${selectedEntries.length} سجلات محليًا. أعد المحاولة للبقية.`);
+          onSaved();
+        } else {
+          toast.error("تعذر حفظ المسودة الجماعية على هذا الجهاز.");
+        }
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     try {
       await assertCurrentAppVersion();
       const result = await saveMemorizationGroup({
