@@ -205,6 +205,7 @@ export default function Memorization() {
   );
   const [dirty, setDirty] = useState(false);
   const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
+  const [hasUnresolvedOfflineDrafts, setHasUnresolvedOfflineDrafts] = useState(false);
   const [onlineRevision, setOnlineRevision] = useState(0);
   const syncInFlightRef = useRef(false);
   const [saving, setSaving] = useState(false);
@@ -318,7 +319,7 @@ export default function Memorization() {
   );
   const canManageSelectedClass = selectedClass?.canManage === true;
   const showGroupEntry =
-    canManageSelectedClass && !saving && Boolean(workspace && workspace.teachers.length > 0) && entryMode === "group";
+    canManageSelectedClass && !saving && !hasUnresolvedOfflineDrafts && Boolean(workspace && workspace.teachers.length > 0) && entryMode === "group";
   const canChooseAssignedTeacher =
     isSchoolAdmin ||
     managerScope.schoolWide ||
@@ -598,6 +599,7 @@ export default function Memorization() {
           await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft);
           setDirty(false);
           setNeedsOfflineSync(true);
+          setHasUnresolvedOfflineDrafts(true);
           setSaveSuccess("حُفظت متابعة الحفظ على هذا الجهاز فقط؛ ستُرسل إلى المدرسة عند عودة الإنترنت.");
           setWorkspaceError(null);
           toast.info("حُفظت المتابعة محليًا — لم تصل إلى قاعدة البيانات بعد.");
@@ -625,13 +627,14 @@ export default function Memorization() {
     void (async () => {
       const allDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
       if (!active) return;
-      const hasPendingInScope = allDrafts.some(item =>
+      const draftsInScope = allDrafts.filter(item =>
         item.schoolId === school.id &&
         item.branchId === branchId &&
         item.classId === classId &&
-        item.recordDate === recordDate &&
-        (item.state === "pending" || item.state === "syncing")
+        item.recordDate === recordDate
       );
+      const hasPendingInScope = draftsInScope.some(item => item.state === "pending" || item.state === "syncing");
+      setHasUnresolvedOfflineDrafts(draftsInScope.length > 0);
       setNeedsOfflineSync(hasPendingInScope);
       if (!selectedStudentId || dirty) return;
       const stored = await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null);
@@ -647,7 +650,9 @@ export default function Memorization() {
   useEffect(() => {
     if (!dirty || draft.recordId || !user?.id || !school?.id || !branchId || !classId || !selectedStudentId) return;
     const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
-    void saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft).catch(() => {
+    void saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft).then(() => {
+      setHasUnresolvedOfflineDrafts(true);
+    }).catch(() => {
       setWorkspaceError("تعذر حفظ نسخة محلية من متابعة الحفظ على هذا الجهاز.");
     });
   }, [dirty, draft, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate]);
@@ -668,6 +673,10 @@ export default function Memorization() {
       );
       if (!active) return;
       if (queued.length === 0) {
+        setHasUnresolvedOfflineDrafts(allDrafts.some(item =>
+          item.schoolId === school.id && item.branchId === branchId &&
+          item.classId === classId && item.recordDate === recordDate
+        ));
         setNeedsOfflineSync(false);
         return;
       }
@@ -730,6 +739,12 @@ export default function Memorization() {
           setSaveSuccess(`تمت مزامنة ${savedCount} من سجلات متابعة الحفظ.`);
           toast.success(`تمت مزامنة ${savedCount} من سجلات متابعة الحفظ.`);
         }
+        const remainingDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+        const remainingInScope = remainingDrafts.filter(item =>
+          item.schoolId === school.id && item.branchId === branchId &&
+          item.classId === classId && item.recordDate === recordDate
+        );
+        setHasUnresolvedOfflineDrafts(remainingInScope.length > 0);
         setNeedsOfflineSync(transientFailure);
         if (permanentErrors.length) {
           setWorkspaceError(`تحتاج ${permanentErrors.length} مسودة إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.`);
@@ -1023,7 +1038,8 @@ export default function Memorization() {
                     role="tab"
                     aria-selected={entryMode === "group"}
                     onClick={() => setEntryMode("group")}
-                    disabled={saving}
+                    disabled={saving || hasUnresolvedOfflineDrafts}
+                    title={hasUnresolvedOfflineDrafts ? "أكمل مزامنة المسودات المحفوظة قبل بدء مجموعة جديدة." : undefined}
                     className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40 ${entryMode === "group" ? "bg-[#0B4738] text-white" : "text-[#2C3E50] hover:bg-gray-50"}`}
                   >
                     <Users size={17} />
@@ -1048,6 +1064,7 @@ export default function Memorization() {
                     onSaved={() => {
                       setRecordsReload(current => current + 1);
                       setNeedsOfflineSync(true);
+                      setHasUnresolvedOfflineDrafts(true);
                     }}
                   />
                 </div>
