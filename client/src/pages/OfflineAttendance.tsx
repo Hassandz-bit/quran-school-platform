@@ -120,7 +120,7 @@ export default function OfflineAttendance() {
   }, [loading, user?.id]);
 
   useEffect(() => {
-    if (!user?.id || items.some(item => item.hasPendingDraft)) return;
+    if (busy || !user?.id || items.some(item => item.hasPendingDraft)) return;
     let active = true;
     const resumeMemorizationSync = async () => {
       if (!navigator.onLine) return;
@@ -138,7 +138,7 @@ export default function OfflineAttendance() {
       active = false;
       window.removeEventListener("online", resumeMemorizationSync);
     };
-  }, [user?.id, items]);
+  }, [busy, user?.id, items]);
 
   useEffect(() => {
     if (!items.some(item => item.hasPendingDraft)) return;
