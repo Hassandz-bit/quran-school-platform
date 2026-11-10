@@ -191,8 +191,8 @@ export default function GroupMemorizationEntry({
             rating: entry.rating,
             errorsCount: entry.errorsCount,
             recitationResult: entry.recitationResult,
-            recitationAccuracy: null,
-            focusWords: "",
+            recitationAccuracy: entry.recitationAccuracy,
+            focusWords: entry.focusWords,
             notes: entry.notes,
             nextAssignment: entry.nextAssignment,
           };
