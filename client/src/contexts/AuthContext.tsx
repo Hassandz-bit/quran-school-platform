@@ -184,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSchoolAdmin(authorization.isSchoolAdmin);
       setAuthorizationError(authorization.authorizationError);
       if (authorization.profile && authorization.membership && authorization.school && !authorization.authorizationError) {
-        void cacheAuthorization(userId, {
+        await cacheAuthorization(userId, {
           profile: authorization.profile,
           membership: authorization.membership,
           school: authorization.school,
