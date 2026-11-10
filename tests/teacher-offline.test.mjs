@@ -39,7 +39,7 @@ test("memorization offline drafts have stable operation IDs before network submi
 
 test("group memorization drafts remain separate per student and replay independently", () => {
   assert.match(teacherStore, /draftId = "individual"/);
-  assert.match(teacherStore, /studentId, draftId\)\.join\("::"\)/);
+  assert.match(teacherStore, /studentId, draftId\]\.join\("::"\)/);
   assert.match(groupEntry, /const batchDraftId = groupDraftId \?\? crypto\.randomUUID\(\)/);
   assert.match(groupEntry, /saveTeacherMemorizationDraft\(offlineScope, entry\.studentId, draft, undefined, batchDraftId\)/);
   assert.match(memorizationPage, /deleteTeacherMemorizationDraft\(itemScope, stored\.studentId, stored\.draftId\)/);
