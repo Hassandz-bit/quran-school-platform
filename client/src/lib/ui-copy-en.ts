@@ -2169,4 +2169,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "أكمل مزامنة المسودات المحفوظة قبل بدء مجموعة جديدة.": "Synchronize saved drafts before starting another group.",
   "توجد مسودة تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.": "A draft needs permission or data review; it has been preserved and not deleted.",
   "توجد مسودات تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.": "Some drafts need permission or data review; they have been preserved and not deleted.",
+  "توجد مسودات محفوظة على الجهاز بانتظار المزامنة.": "Drafts saved on this device are waiting to synchronize.",
 };
