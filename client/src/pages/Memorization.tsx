@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -204,6 +205,7 @@ export default function Memorization() {
   const [dirty, setDirty] = useState(false);
   const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
   const [onlineRevision, setOnlineRevision] = useState(0);
+  const syncInFlightRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [auditRecordId, setAuditRecordId] = useState<string | null>(null);
@@ -637,12 +639,14 @@ export default function Memorization() {
 
   // Revalidate and synchronize queued records only after connectivity returns.
   useEffect(() => {
-    if (!needsOfflineSync || !navigator.onLine || !user?.id || !school?.id || !branchId || !classId || !selectedStudentId || saving) return;
+    if (!needsOfflineSync || !navigator.onLine || !user?.id || !school?.id || !branchId || !classId || !selectedStudentId || syncInFlightRef.current) return;
     let active = true;
     const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
     void (async () => {
       const stored = await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null);
       if (!active || !stored) return;
+      if (syncInFlightRef.current) return;
+      syncInFlightRef.current = true;
       setSaving(true);
       await updateTeacherMemorizationDraftState(offlineScope, selectedStudentId, "syncing", null).catch(() => undefined);
       try {
@@ -683,11 +687,12 @@ export default function Memorization() {
             : `لم تُزامَن المسودة: ${message} احتُفظ بها للمراجعة ولم تُحذف.`);
         }
       } finally {
+        syncInFlightRef.current = false;
         if (active) setSaving(false);
       }
     })();
     return () => { active = false; };
-  }, [needsOfflineSync, onlineRevision, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, saving]);
+  }, [needsOfflineSync, onlineRevision, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate]);
 
   useEffect(() => {
     const retryWhenOnline = () => setOnlineRevision(current => current + 1);
