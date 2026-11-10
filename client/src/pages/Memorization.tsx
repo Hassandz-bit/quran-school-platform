@@ -654,6 +654,9 @@ export default function Memorization() {
       const hasPendingInScope = draftsInScope.some(item => item.state === "pending" || item.state === "syncing");
       setHasUnresolvedOfflineDrafts(draftsInScope.length > 0);
       setNeedsOfflineSync(hasPendingInScope);
+      if (hasPendingInScope) {
+        setSaveSuccess("توجد مسودات محفوظة على الجهاز بانتظار المزامنة.");
+      }
       const reviewCount = draftsInScope.filter(item => item.state === "conflict" || item.state === "failed").length;
       if (reviewCount > 0) {
         setSaveSuccess("توجد مسودات تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.");
