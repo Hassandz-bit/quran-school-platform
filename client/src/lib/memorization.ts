@@ -307,6 +307,8 @@ export type SaveMemorizationInput = {
   classId: string;
   studentId: string;
   draft: MemorizationDraft;
+  /** Stable client UUID used to safely replay a locally queued insert. */
+  operationId?: string;
 };
 
 export type SaveMemorizationGroupEntry = {
@@ -973,18 +975,49 @@ export async function saveMemorizationRecord(
     return { recordId: data.id as string, mode: "updated" };
   }
 
+  const operationId = input.operationId ?? crypto.randomUUID();
+  const payload = normalizedWritePayload(input.draft);
   const { data, error } = await client
     .from("memorization_records")
     .insert({
+      id: operationId,
       class_id: input.classId,
       student_id: input.studentId,
       teacher_id: input.draft.teacherId,
-      ...normalizedWritePayload(input.draft),
+      ...payload,
     })
     .select("id")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    // A response can be lost after Postgres commits. Replaying the same
+    // UUID is successful only when the existing row is an exact match.
+    if (error.code === "23505") {
+      const { data: existing, error: lookupError } = await client
+        .from("memorization_records")
+        .select("id, school_id, branch_id, class_id, student_id, teacher_id, record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, recitation_result, recitation_accuracy, focus_words, notes, next_assignment")
+        .eq("id", operationId)
+        .maybeSingle();
+      const exactReplay = !lookupError && existing &&
+        existing.school_id === input.schoolId &&
+        existing.branch_id === input.branchId &&
+        existing.class_id === input.classId &&
+        existing.student_id === input.studentId &&
+        existing.teacher_id === input.draft.teacherId &&
+        existing.record_date === payload.record_date &&
+        existing.session_type === payload.session_type &&
+        existing.surah_number === payload.surah_number &&
+        existing.ayah_start === payload.ayah_start &&
+        existing.ayah_end === payload.ayah_end &&
+        existing.rating === payload.rating &&
+        existing.errors_count === payload.errors_count &&
+        existing.recitation_result === payload.recitation_result &&
+        existing.notes === payload.notes &&
+        existing.next_assignment === payload.next_assignment;
+      if (exactReplay) return { recordId: operationId, mode: "created" };
+    }
+    throw error;
+  }
   return { recordId: data.id as string, mode: "created" };
 }
 
