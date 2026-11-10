@@ -16,7 +16,7 @@ test("offline authorization cache is isolated by authenticated user and contains
   assert.match(authStore, /get\(userId\)/);
   assert.doesNotMatch(authStore, /access_token|refresh_token|password|service_role/i);
   assert.match(authContext, /getCachedAuthorization\(userId\)/);
-  assert.match(authContext, /Every queued write is[\s\S]*?revalidated by the server/);
+  assert.match(authContext, /every queued write is[\s\S]*?revalidated by the server/);
 });
 
 test("teacher preparation downloads only classes with last-verified manage access", () => {
