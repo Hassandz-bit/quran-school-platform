@@ -174,6 +174,16 @@ function Router() {
     !navigator.onLine &&
     Boolean(user?.id) &&
     !loading;
+  const offlineAllowedPaths = ["/offline", "/attendance", "/memorization", "/login"];
+  if (
+    offlineSession &&
+    typeof window !== "undefined" &&
+    !offlineAllowedPaths.some(path =>
+      window.location.pathname === path || window.location.pathname.startsWith(`${path}/`)
+    )
+  ) {
+    return <Redirect to="/offline" />;
+  }
   return (
     <Suspense fallback={<FinancePageFallback />}>
       <Switch>
