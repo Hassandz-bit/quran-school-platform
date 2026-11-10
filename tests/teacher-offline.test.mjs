@@ -10,6 +10,7 @@ const teacherStore = read("client/src/lib/teacher-offline.ts");
 const memorization = read("client/src/lib/memorization.ts");
 const memorizationPage = read("client/src/pages/Memorization.tsx");
 const attendancePage = read("client/src/pages/Attendance.tsx");
+const groupEntry = read("client/src/components/GroupMemorizationEntry.tsx");
 
 test("offline authorization cache is isolated by authenticated user and contains no credentials", () => {
   assert.match(authStore, /keyPath: "userId"/);
@@ -34,6 +35,14 @@ test("memorization offline drafts have stable operation IDs before network submi
   assert.match(memorizationPage, /await saveTeacherMemorizationDraft\(offlineScope, selectedStudentId, draft\)/);
   assert.match(memorizationPage, /operationId: stored\.operationId/);
   assert.match(memorizationPage, /updateTeacherMemorizationDraftState\([\s\S]*?"syncing"/);
+});
+
+test("group memorization drafts remain separate per student and replay independently", () => {
+  assert.match(teacherStore, /draftId = "individual"/);
+  assert.match(teacherStore, /studentId, draftId\)\.join\("::"\)/);
+  assert.match(groupEntry, /const batchDraftId = groupDraftId \?\? crypto\.randomUUID\(\)/);
+  assert.match(groupEntry, /saveTeacherMemorizationDraft\(offlineScope, entry\.studentId, draft, undefined, batchDraftId\)/);
+  assert.match(memorizationPage, /deleteTeacherMemorizationDraft\(itemScope, stored\.studentId, stored\.draftId\)/);
 });
 
 test("offline memorization never silently edits an existing server record", () => {
