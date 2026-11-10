@@ -213,6 +213,15 @@ export default function Memorization() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const enforceOfflineMode = () => {
+      if (!navigator.onLine) setEntryMode("individual");
+    };
+    enforceOfflineMode();
+    window.addEventListener("offline", enforceOfflineMode);
+    return () => window.removeEventListener("offline", enforceOfflineMode);
+  }, []);
+
   const branchManagerRoleIds = useMemo(
     () =>
       roles
@@ -967,7 +976,8 @@ export default function Memorization() {
                     role="tab"
                     aria-selected={entryMode === "group"}
                     onClick={() => setEntryMode("group")}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold ${entryMode === "group" ? "bg-[#0B4738] text-white" : "text-[#2C3E50] hover:bg-gray-50"}`}
+                    disabled={!navigator.onLine}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40 ${entryMode === "group" ? "bg-[#0B4738] text-white" : "text-[#2C3E50] hover:bg-gray-50"}`}
                   >
                     <Users size={17} />
                     حفظ جماعي
