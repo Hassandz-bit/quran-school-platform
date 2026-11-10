@@ -1012,6 +1012,8 @@ export async function saveMemorizationRecord(
         existing.rating === payload.rating &&
         existing.errors_count === payload.errors_count &&
         existing.recitation_result === payload.recitation_result &&
+        existing.recitation_accuracy === payload.recitation_accuracy &&
+        existing.focus_words === payload.focus_words &&
         existing.notes === payload.notes &&
         existing.next_assignment === payload.next_assignment;
       if (exactReplay) return { recordId: operationId, mode: "created" };
