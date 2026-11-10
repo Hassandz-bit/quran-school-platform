@@ -186,7 +186,7 @@ The dedicated teacher workflow is being expanded on branch `feat/teacher-portal-
 ### Explicit limits
 
 - The first preparation must be done online on each device/browser profile. Another device does not share the local cache.
-- Offline memorization supports creating a new individual record. Editing an existing record and group memorization entry remain online-only; this avoids overwriting a newer server record or creating partially replayed group operations.
+- Offline memorization supports new individual entries and group entries. Group drafts are stored separately per student and synchronized as independent idempotent records; they are not an all-or-nothing batch when synchronized offline. Editing an existing record remains online-only to avoid overwriting a newer server version.
 - Attendance and memorization caches are not encrypted by this feature. Use only a trusted, access-controlled device.
 - Sync is foreground-based: the relevant page must be open when connectivity returns. Guaranteed background sync after the browser is closed is not implemented.
 - Offline authorization data is a last-verified local context for rendering cached teacher work, not proof of current permission. All writes are revalidated on the server.
