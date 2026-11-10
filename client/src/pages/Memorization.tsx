@@ -1054,6 +1054,7 @@ export default function Memorization() {
                   <GroupMemorizationEntry
                     key={`${school?.id}:${branchId}:${classId}:${recordDate}`}
                     schoolId={school?.id ?? ""}
+                    userId={user?.id ?? ""}
                     branchId={branchId}
                     classId={classId}
                     recordDate={recordDate}
