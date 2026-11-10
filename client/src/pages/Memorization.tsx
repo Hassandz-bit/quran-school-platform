@@ -645,14 +645,28 @@ export default function Memorization() {
         setSaveSuccess("توجد مسودات تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.");
       }
       if (!selectedStudentId || dirty) return;
-      const stored = await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null);
-      if (!active || !stored) return;
+      const stored = allDrafts
+        .filter(item =>
+          item.studentId === selectedStudentId &&
+          !item.draftId.startsWith("group:")
+        )
+        .sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0] ?? null;
+      if (!active) return;
+      if (!stored) {
+        if (!draft.recordId) {
+          const defaultTeacherId = currentTeacherId ?? workspace.teachers[0]?.id ?? "";
+          setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
+          setCurrentDraftId("individual");
+        }
+        return;
+      }
+      setCurrentDraftId(stored.draftId);
       setDraft(stored.draft);
       setDirty(true);
       setSaveSuccess("استُعيدت متابعة حفظ محفوظة على هذا الجهاز.");
     })().catch(() => undefined);
     return () => { active = false; };
-  }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty]);
+  }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty, draft.recordId, currentTeacherId]);
 
   // Persist every edit before it can be lost by a refresh or browser close.
   useEffect(() => {
@@ -956,7 +970,10 @@ export default function Memorization() {
                       aria-pressed={selectedStudentId === student.id}
                       onClick={() => {
                         setSelectedStudentId(student.id);
-                        handleNewRecord();
+                        setDraft(createMemorizationDraft(recordDate, currentTeacherId ?? workspace.teachers[0]?.id ?? ""));
+                        setCurrentDraftId("individual");
+                        setDirty(false);
+                        setSaveSuccess(null);
                       }}
                       className={`flex min-h-12 w-full items-center gap-3 rounded-md px-2 py-1.5 text-right text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B4738] ${selectedStudentId === student.id ? "bg-[#E8F3EC] font-bold text-[#0B4738]" : "text-[#2C3E50] hover:bg-gray-50"}`}
                     >
