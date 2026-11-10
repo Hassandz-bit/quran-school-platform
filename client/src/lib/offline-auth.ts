@@ -48,12 +48,17 @@ export async function getCachedAuthorization(userId: string): Promise<CachedAuth
   if (!userId) return null;
   const db = await openDb();
   try {
-    return await new Promise((resolve, reject) => {
+    const cached = await new Promise<CachedAuthorization | null>((resolve, reject) => {
       const tx = db.transaction(STORE, "readonly");
       const request = tx.objectStore(STORE).get(userId);
       request.onsuccess = () => resolve((request.result as CachedAuthorization | undefined) ?? null);
       request.onerror = () => reject(request.error ?? new Error("offline_auth_read_failed"));
     });
+    // Do not restore an indefinitely old school context on a shared device.
+    const ageMs = cached ? Date.now() - Date.parse(cached.savedAt) : Infinity;
+    return cached && Number.isFinite(ageMs) && ageMs >= 0 && ageMs <= 30 * 24 * 60 * 60 * 1000
+      ? cached
+      : null;
   } finally {
     db.close();
   }
