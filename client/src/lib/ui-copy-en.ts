@@ -2168,4 +2168,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "أدخل الجزء ونوع الجلسة مرة واحدة، ثم حدّد نتيجة الجلسة ودرجة الأداء وعدد الأخطاء وملاحظات كل طالب. تُحفظ سجلات المجموعة معًا أو لا يُحفظ أي منها.": "Enter the portion and session type once, then set each student's result, performance rating, error count, and notes. Group records are saved together or not at all.",
   "أكمل مزامنة المسودات المحفوظة قبل بدء مجموعة جديدة.": "Synchronize saved drafts before starting another group.",
   "توجد مسودة تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.": "A draft needs permission or data review; it has been preserved and not deleted.",
+  "توجد مسودات تحتاج إلى مراجعة الصلاحيات أو البيانات؛ احتُفظ بها ولم تُحذف.": "Some drafts need permission or data review; they have been preserved and not deleted.",
 };
