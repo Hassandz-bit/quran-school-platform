@@ -214,15 +214,6 @@ export default function Memorization() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const enforceOfflineMode = () => {
-      if (!navigator.onLine) setEntryMode("individual");
-    };
-    enforceOfflineMode();
-    window.addEventListener("offline", enforceOfflineMode);
-    return () => window.removeEventListener("offline", enforceOfflineMode);
-  }, []);
-
   const branchManagerRoleIds = useMemo(
     () =>
       roles
@@ -848,7 +839,7 @@ export default function Memorization() {
       <div className="mx-auto max-w-6xl space-y-4 px-4 py-5 md:px-6">
         {!navigator.onLine && (
           <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-            أنت تعمل دون اتصال. يمكنك تسجيل متابعة جديدة للطلاب والبيانات المحفوظة على هذا الجهاز فقط؛ التعديلات على السجلات السابقة والمراجعة الجماعية تحتاج إلى اتصال. ستُعاد مراجعة الصلاحيات عند المزامنة.
+            أنت تعمل دون اتصال. يمكنك تسجيل متابعة فردية أو جماعية للطلاب المحمّلة بياناتهم على هذا الجهاز؛ تعديل السجلات السابقة يحتاج إلى اتصال. تُزامَن سجلات المجموعة فرديًا عند عودة الاتصال مع إعادة التحقق من الصلاحيات.
           </div>
         )}
         <Card className="border border-gray-100 p-4 shadow-sm">
@@ -1031,7 +1022,7 @@ export default function Memorization() {
                     role="tab"
                     aria-selected={entryMode === "group"}
                     onClick={() => setEntryMode("group")}
-                    disabled={!navigator.onLine}
+                    disabled={saving}
                     className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40 ${entryMode === "group" ? "bg-[#0B4738] text-white" : "text-[#2C3E50] hover:bg-gray-50"}`}
                   >
                     <Users size={17} />
@@ -1053,7 +1044,10 @@ export default function Memorization() {
                         : draft.teacherId || workspace.teachers[0]?.id || ""
                     }
                     teacherSelectionDisabled={teacherRestrictedToOwnRecords}
-                    onSaved={() => setRecordsReload(current => current + 1)}
+                    onSaved={() => {
+                      setRecordsReload(current => current + 1);
+                      setNeedsOfflineSync(true);
+                    }}
                   />
                 </div>
               </>
