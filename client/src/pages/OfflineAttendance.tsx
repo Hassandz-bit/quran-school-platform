@@ -120,6 +120,27 @@ export default function OfflineAttendance() {
   }, [loading, user?.id]);
 
   useEffect(() => {
+    if (!user?.id || items.some(item => item.hasPendingDraft)) return;
+    let active = true;
+    const resumeMemorizationSync = async () => {
+      if (!navigator.onLine) return;
+      const drafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+      const hasQueuedMemorization = drafts.some(draft =>
+        draft.state === "pending" || draft.state === "syncing"
+      );
+      if (active && hasQueuedMemorization) {
+        window.location.assign("/memorization");
+      }
+    };
+    void resumeMemorizationSync();
+    window.addEventListener("online", resumeMemorizationSync);
+    return () => {
+      active = false;
+      window.removeEventListener("online", resumeMemorizationSync);
+    };
+  }, [user?.id, items]);
+
+  useEffect(() => {
     if (!items.some(item => item.hasPendingDraft)) return;
     const resumeSyncWhenOnline = () => {
       window.location.assign("/attendance");
