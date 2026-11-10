@@ -69,7 +69,6 @@ import {
 } from "@/lib/memorization";
 import {
   deleteTeacherMemorizationDraft,
-  getTeacherMemorizationDraft,
   getTeacherMemorizationRecords,
   getTeacherMemorizationScope,
   getTeacherMemorizationWorkspace,
@@ -205,6 +204,7 @@ export default function Memorization() {
   );
   const [dirty, setDirty] = useState(false);
   const [needsOfflineSync, setNeedsOfflineSync] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState("individual");
   const [hasUnresolvedOfflineDrafts, setHasUnresolvedOfflineDrafts] = useState(false);
   const [onlineRevision, setOnlineRevision] = useState(0);
   const syncInFlightRef = useRef(false);
@@ -363,6 +363,7 @@ export default function Memorization() {
           linkedTeacherId ?? nextWorkspace.teachers[0]?.id ?? "";
         setSelectedStudentId(firstStudentId);
         setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
+        setCurrentDraftId("individual");
         setDirty(false);
       })
       .catch(async error => {
@@ -382,6 +383,7 @@ export default function Memorization() {
           const linkedTeacherId = cached.payload.teachers.find(teacher => teacher.profileId === session?.user.id)?.id ?? null;
           setSelectedStudentId(firstStudentId);
           setDraft(createMemorizationDraft(recordDate, linkedTeacherId ?? cached.payload.teachers[0]?.id ?? ""));
+          setCurrentDraftId("individual");
           setDirty(false);
           setWorkspaceError(null);
           setSaveSuccess("تعمل على بيانات محفوظة على هذا الجهاز؛ ستُعاد مراجعة الصلاحيات عند عودة الاتصال.");
@@ -520,7 +522,8 @@ export default function Memorization() {
     const defaultTeacherId =
       currentTeacherId ?? workspace?.teachers[0]?.id ?? "";
     setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
-    setDirty(false);
+    setCurrentDraftId(`individual:${crypto.randomUUID()}`);
+    setDirty(true);
     setSaveSuccess(null);
   };
 
@@ -533,6 +536,7 @@ export default function Memorization() {
       return;
     }
     setDraft(draftFromMemorizationRecord(record));
+    setCurrentDraftId(`edit:${record.id}`);
     setDirty(false);
     setSaveSuccess(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -561,7 +565,7 @@ export default function Memorization() {
         ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
         : null;
       const storedDraft = offlineScope && !draft.recordId
-        ? await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft)
+        ? await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft, undefined, currentDraftId)
         : null;
       const result = await saveMemorizationRecord({
         schoolId: school.id,
@@ -572,7 +576,7 @@ export default function Memorization() {
         operationId: storedDraft?.operationId,
       });
       if (offlineScope) {
-        await deleteTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => undefined);
+        await deleteTeacherMemorizationDraft(offlineScope, selectedStudentId, currentDraftId).catch(() => undefined);
       }
       setNeedsOfflineSync(false);
       const message =
@@ -596,7 +600,7 @@ export default function Memorization() {
       if (offline && user?.id && !draft.recordId) {
         try {
           const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school!.id, branchId, classId, recordDate };
-          await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft);
+          await saveTeacherMemorizationDraft(offlineScope, selectedStudentId, draft, undefined, currentDraftId);
           setDirty(false);
           setNeedsOfflineSync(true);
           setHasUnresolvedOfflineDrafts(true);
@@ -659,7 +663,7 @@ export default function Memorization() {
     }).catch(() => {
       setWorkspaceError("تعذر حفظ نسخة محلية من متابعة الحفظ على هذا الجهاز.");
     });
-  }, [dirty, draft, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate]);
+  }, [dirty, draft, currentDraftId, user?.id, school?.id, branchId, classId, selectedStudentId, recordDate]);
 
   // Revalidate and synchronize all queued individual/group entries for this class.
   useEffect(() => {
