@@ -626,18 +626,29 @@ export default function Memorization() {
     }
   };
 
-  // Restore a locally queued new record for the currently selected student.
+  // Restore this student's draft and detect group drafts queued for any student in the class.
   useEffect(() => {
-    if (!user?.id || !school?.id || !branchId || !classId || !selectedStudentId || !workspace || dirty) return;
+    if (!user?.id || !school?.id || !branchId || !classId || !workspace) return;
     let active = true;
     const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
-    void getTeacherMemorizationDraft(offlineScope, selectedStudentId).then(stored => {
+    void (async () => {
+      const allDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
+      if (!active) return;
+      const hasPendingInScope = allDrafts.some(item =>
+        item.schoolId === school.id &&
+        item.branchId === branchId &&
+        item.classId === classId &&
+        item.recordDate === recordDate &&
+        (item.state === "pending" || item.state === "syncing")
+      );
+      setNeedsOfflineSync(hasPendingInScope);
+      if (!selectedStudentId || dirty) return;
+      const stored = await getTeacherMemorizationDraft(offlineScope, selectedStudentId).catch(() => null);
       if (!active || !stored) return;
       setDraft(stored.draft);
       setDirty(true);
-      setNeedsOfflineSync(stored.state === "pending" || stored.state === "syncing");
       setSaveSuccess("استُعيدت متابعة حفظ محفوظة على هذا الجهاز.");
-    }).catch(() => undefined);
+    })().catch(() => undefined);
     return () => { active = false; };
   }, [user?.id, school?.id, branchId, classId, selectedStudentId, recordDate, workspace, dirty]);
 
