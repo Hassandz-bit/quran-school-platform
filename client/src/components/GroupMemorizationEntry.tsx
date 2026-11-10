@@ -152,7 +152,7 @@ export default function GroupMemorizationEntry({
             notes: entry.notes,
             nextAssignment: entry.nextAssignment,
           };
-          await saveTeacherMemorizationDraft(offlineScope, entry.studentId, draft, undefined, batchDraftId);
+          await saveTeacherMemorizationDraft(offlineScope, entry.studentId, draft, undefined, batchDraftId, true);
           locallySaved += 1;
         }
         setSavedCount(locallySaved);
