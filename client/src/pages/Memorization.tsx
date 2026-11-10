@@ -381,7 +381,8 @@ export default function Memorization() {
           setSelectedStudentId(firstStudentId);
           setDraft(createMemorizationDraft(recordDate, linkedTeacherId ?? cached.payload.teachers[0]?.id ?? ""));
           setDirty(false);
-          setWorkspaceError("تعمل على بيانات محفوظة على هذا الجهاز؛ لم يتم التحقق من الصلاحيات الحالية حتى عودة الاتصال.");
+          setWorkspaceError(null);
+          setSaveSuccess("تعمل على بيانات محفوظة على هذا الجهاز؛ ستُعاد مراجعة الصلاحيات عند عودة الاتصال.");
         } else {
           setWorkspaceError(getMemorizationErrorMessage(error));
         }
@@ -779,6 +780,11 @@ export default function Memorization() {
   return (
     <main className="min-h-screen bg-[#F8F9FA] pb-28" dir="rtl">
       <div className="mx-auto max-w-6xl space-y-4 px-4 py-5 md:px-6">
+        {!navigator.onLine && (
+          <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+            أنت تعمل دون اتصال. يمكنك تسجيل متابعة جديدة للطلاب والبيانات المحفوظة على هذا الجهاز فقط؛ التعديلات على السجلات السابقة والمراجعة الجماعية تحتاج إلى اتصال. ستُعاد مراجعة الصلاحيات عند المزامنة.
+          </div>
+        )}
         <Card className="border border-gray-100 p-4 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <ClipboardList size={20} className="text-[#0B4738]" />
