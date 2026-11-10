@@ -16,7 +16,8 @@ test("offline authorization cache is isolated by authenticated user and contains
   assert.match(authStore, /keyPath: "userId"/);
   assert.match(authStore, /get\(userId\)/);
   assert.doesNotMatch(authStore, /access_token|refresh_token|password|service_role/i);
-  assert.match(authContext, /getCachedAuthorization\(userId\)/);
+  assert.match(authContext, /const networkFailure =/);
+  assert.match(authContext, /networkFailure\s*\?\s*await getCachedAuthorization\(userId\)/);
   assert.match(authContext, /every queued write is[\s\S]*?revalidated by the server/);
 });
 
