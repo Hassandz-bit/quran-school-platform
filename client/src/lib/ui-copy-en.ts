@@ -2159,4 +2159,8 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "أنت تعمل دون اتصال. يمكنك تسجيل متابعة جديدة للطلاب والبيانات المحفوظة على هذا الجهاز فقط؛ التعديلات على السجلات السابقة والمراجعة الجماعية تحتاج إلى اتصال. ستُعاد مراجعة الصلاحيات عند المزامنة.": "You are offline. You can record new memorization entries for students whose data is saved on this device; editing existing records and group entry require a connection. Permissions are checked again during synchronization.",
   "فتح الحضور والعمل على المسودات": "Open attendance and work with drafts",
   "فتح الحفظ والمراجعة": "Open memorization and revision",
+  "حُفظت المتابعة الجماعية محليًا، وستُزامَن سجلات الطلاب عند عودة الاتصال.": "The group entries were saved locally; student records will synchronize when connectivity returns.",
+  "تعذر حفظ جميع سجلات المجموعة محليًا؛ احتُفظ بما نجح حفظه، وأعد المحاولة للبقية.": "Not all group records could be saved locally; successful drafts were preserved. Retry the remaining entries.",
+  "تعذر حفظ المسودة الجماعية على هذا الجهاز.": "Could not save the group draft on this device.",
+  "أنت تعمل دون اتصال. يمكنك تسجيل متابعة فردية أو جماعية للطلاب المحمّلة بياناتهم على هذا الجهاز؛ تعديل السجلات السابقة يحتاج إلى اتصال. تُزامَن سجلات المجموعة فرديًا عند عودة الاتصال مع إعادة التحقق من الصلاحيات.": "You are offline. You can record individual or group entries for students whose data is cached on this device; editing existing records requires a connection. Group entries synchronize individually when connectivity returns, with permissions rechecked.",
 };
