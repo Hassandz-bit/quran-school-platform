@@ -688,7 +688,7 @@ export default function Memorization() {
             classId: stored.classId,
             recordDate: stored.recordDate,
           };
-          await updateTeacherMemorizationDraftState(itemScope, stored.studentId, "syncing", null).catch(() => undefined);
+          await updateTeacherMemorizationDraftState(itemScope, stored.studentId, "syncing", null, stored.draftId).catch(() => undefined);
           try {
             const result = await saveMemorizationRecord({
               schoolId: stored.schoolId,
@@ -698,7 +698,7 @@ export default function Memorization() {
               draft: stored.draft,
               operationId: stored.operationId,
             });
-            await deleteTeacherMemorizationDraft(itemScope, stored.studentId);
+            await deleteTeacherMemorizationDraft(itemScope, stored.studentId, stored.draftId);
             savedCount += 1;
             if (stored.studentId === selectedStudentId) {
               setDraft({ ...stored.draft, recordId: result.recordId });
@@ -714,7 +714,8 @@ export default function Memorization() {
               itemScope,
               stored.studentId,
               transient ? "pending" : "conflict",
-              message
+              message,
+              stored.draftId
             ).catch(() => undefined);
             if (transient) {
               transientFailure = true;
