@@ -805,6 +805,7 @@ export default function Memorization() {
       } finally {
         syncInFlightRef.current = false;
         setSaving(false);
+        if (!active) setOnlineRevision(current => current + 1);
       }
     })();
     return () => { active = false; };
