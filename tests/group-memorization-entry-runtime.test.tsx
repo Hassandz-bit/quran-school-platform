@@ -40,6 +40,7 @@ describe("group memorization entry", () => {
     render(
       <GroupMemorizationEntry
         schoolId="school-1"
+        userId="user-1"
         branchId="branch-1"
         classId="class-1"
         recordDate="2026-10-04"
@@ -79,7 +80,7 @@ describe("group memorization entry", () => {
         ayahEnd: 15,
         rating: 5,
         recitationResult: "memorized",
-        recitationAccuracy: null,
+        recitationAccuracy: "no_errors",
         focusWords: "",
         notes: "إتقان",
       },
