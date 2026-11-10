@@ -320,7 +320,7 @@ export default function Memorization() {
   );
   const canManageSelectedClass = selectedClass?.canManage === true;
   const showGroupEntry =
-    canManageSelectedClass && !saving && !hasUnresolvedOfflineDrafts && Boolean(workspace && workspace.teachers.length > 0) && entryMode === "group";
+    canManageSelectedClass && !saving && Boolean(workspace && workspace.teachers.length > 0) && entryMode === "group";
   const canChooseAssignedTeacher =
     isSchoolAdmin ||
     managerScope.schoolWide ||
@@ -1100,6 +1100,7 @@ export default function Memorization() {
                     key={`${school?.id}:${branchId}:${classId}:${recordDate}`}
                     schoolId={school?.id ?? ""}
                     userId={user?.id ?? ""}
+                    disabled={hasUnresolvedOfflineDrafts}
                     branchId={branchId}
                     classId={classId}
                     recordDate={recordDate}
