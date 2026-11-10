@@ -23,6 +23,7 @@ import {
   type SchoolRole,
 } from "@/lib/authorization";
 import { getSupabaseClient } from "@/lib/supabase";
+import { cacheAuthorization, getCachedAuthorization } from "@/lib/offline-auth";
 
 export type {
   School,
@@ -152,7 +153,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authorization = await fetchCurrentAuthorization(client, userId);
       } catch {
         if (!isCurrentRequest()) return;
-        setAuthorizationError(AUTHORIZATION_MESSAGES.connectionError);
+        // Reuse only this authenticated user's last successfully verified
+        // school context to render device-local teacher work while offline.
+        // This snapshot is not server authorization: every queued write is
+        // revalidated by the server when connectivity returns.
+        const cached = await getCachedAuthorization(userId).catch(() => null);
+        if (!isCurrentRequest()) return;
+        if (cached) {
+          setProfile(cached.profile);
+          setMembership(cached.membership);
+          setSchool(cached.school);
+          setRoles(cached.roles);
+          setActiveRoleCodes(cached.activeRoleCodes);
+          setIsSchoolAdmin(cached.isSchoolAdmin);
+          setAuthorizationError(null);
+        } else {
+          setAuthorizationError(AUTHORIZATION_MESSAGES.connectionError);
+        }
         setAuthorizationLoading(false);
         return;
       }
@@ -166,6 +183,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActiveRoleCodes(authorization.activeRoleCodes);
       setIsSchoolAdmin(authorization.isSchoolAdmin);
       setAuthorizationError(authorization.authorizationError);
+      if (authorization.profile && authorization.membership && authorization.school && !authorization.authorizationError) {
+        void cacheAuthorization(userId, {
+          profile: authorization.profile,
+          membership: authorization.membership,
+          school: authorization.school,
+          roles: authorization.roles,
+          activeRoleCodes: authorization.activeRoleCodes,
+          isSchoolAdmin: authorization.isSchoolAdmin,
+        }).catch(() => undefined);
+      }
       setAuthorizationLoading(false);
     },
     [clientState.client]
