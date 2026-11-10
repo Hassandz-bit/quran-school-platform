@@ -13,6 +13,11 @@ test("offline attendance route is reachable without the online authorization rou
   assert.doesNotMatch(app.slice(app.indexOf('<Route path="/offline">'), app.indexOf("</Route>", app.indexOf('<Route path="/offline">'))), /ProtectedRoute/);
 });
 
+test("offline navigation is restricted to the teacher's cached work modules", () => {
+  assert.match(app, /offlineAllowedPaths = \["\/offline", "\/attendance", "\/memorization", "\/login"\]/);
+  assert.match(app, /offlineSession[\s\S]*?return <Redirect to="\/offline" \/>/);
+});
+
 test("offline hub requires the locally restored user and only presents cached records read-only", () => {
   assert.match(page, /const \{ user, loading \} = useAuth\(\)/);
   assert.match(page, /listOfflineAttendanceRosters\(user\.id\)/);
