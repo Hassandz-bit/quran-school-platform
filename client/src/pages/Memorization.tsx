@@ -641,7 +641,6 @@ export default function Memorization() {
   useEffect(() => {
     if (!user?.id || !school?.id || !branchId || !classId || !workspace) return;
     let active = true;
-    const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school.id, branchId, classId, recordDate };
     void (async () => {
       const allDrafts = await listTeacherMemorizationDrafts(user.id).catch(() => []);
       if (!active) return;
