@@ -41,6 +41,6 @@ test("offline authorization restores only the same user's last verified local sc
   assert.match(auth, /setMembership\(cached\.membership\)/);
   assert.match(auth, /setSchool\(cached\.school\)/);
   assert.match(auth, /setRoles\(cached\.roles\)/);
-  assert.match(auth, /Every queued write is[\s\S]*?revalidated by the server/);
+  assert.match(auth, /every queued write is[\s\S]*?revalidated by the server/);
   assert.doesNotMatch(auth, /setSession\(cached\.|setUser\(cached\./);
 });
