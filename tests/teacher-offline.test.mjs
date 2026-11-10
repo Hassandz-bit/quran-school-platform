@@ -47,7 +47,7 @@ test("group memorization drafts remain separate per student and replay independe
 
 test("offline memorization never silently edits an existing server record", () => {
   assert.match(memorizationPage, /if \(offline && user\?\.id && !draft\.recordId\)/);
-  assert.match(memorizationPage, /التعديلات على السجلات السابقة والمراجعة الجماعية تحتاج إلى اتصال/);
+  assert.match(memorizationPage, /تعديل السجلات السابقة يحتاج إلى اتصال/);
 });
 
 test("attendance remains durable and server-validated when synchronization resumes", () => {
