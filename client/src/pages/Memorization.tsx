@@ -502,7 +502,7 @@ export default function Memorization() {
   };
 
   const updateDraft = (update: Partial<MemorizationDraft>) => {
-    if (!canManageSelectedClass) return;
+    if (!canManageSelectedClass || saving) return;
     setDraft(current => ({ ...current, ...update }));
     setDirty(true);
     setSaveSuccess(null);
@@ -514,6 +514,7 @@ export default function Memorization() {
   };
 
   const handleNewRecord = () => {
+    if (saving) return;
     const defaultTeacherId =
       currentTeacherId ?? workspace?.teachers[0]?.id ?? "";
     setDraft(createMemorizationDraft(recordDate, defaultTeacherId));
@@ -524,6 +525,7 @@ export default function Memorization() {
   const handleEditRecord = (record: MemorizationRecord) => {
     if (
       !canManageSelectedClass ||
+      saving ||
       (teacherRestrictedToOwnRecords && record.teacherId !== currentTeacherId)
     ) {
       return;
