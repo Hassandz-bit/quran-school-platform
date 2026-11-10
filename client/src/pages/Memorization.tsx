@@ -261,7 +261,7 @@ export default function Memorization() {
     } catch (error) {
       const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
       const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
-        /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504|timeout|connection reset|502|503|504/.test(errorText);
       const cached = offline && user?.id
         ? await getTeacherMemorizationScope(user.id, school.id).catch(() => null)
         : null;
@@ -371,7 +371,7 @@ export default function Memorization() {
         if (!active) return;
         const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
         const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
-          /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
         const offlineScope: TeacherOfflineScope | null = user?.id && school?.id
           ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
           : null;
@@ -441,7 +441,7 @@ export default function Memorization() {
         if (!active) return;
         const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
         const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
-          /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+          /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
         const offlineScope: TeacherOfflineScope | null = user?.id && school?.id
           ? { userId: user.id, schoolId: school.id, branchId, classId, recordDate }
           : null;
@@ -598,7 +598,7 @@ export default function Memorization() {
     } catch (error) {
       const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
       const offline = (typeof navigator !== "undefined" && !navigator.onLine) ||
-        /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+        /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
       if (offline && user?.id && !draft.recordId) {
         try {
           const offlineScope: TeacherOfflineScope = { userId: user.id, schoolId: school!.id, branchId, classId, recordDate };
@@ -761,7 +761,7 @@ export default function Memorization() {
             }
           } catch (error) {
             const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-            const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+            const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
             const message = isStaleAppVersionError(error)
               ? "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودة."
               : getMemorizationErrorMessage(error);
@@ -801,7 +801,7 @@ export default function Memorization() {
         }
       } catch (error) {
         const errorText = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-        const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed/.test(errorText);
+        const transient = !navigator.onLine || /failed to fetch|networkerror|fetch failed|load failed|network request failed|timeout|connection reset|502|503|504/.test(errorText);
         setNeedsOfflineSync(transient);
         setWorkspaceError(isStaleAppVersionError(error)
           ? "توجد نسخة أحدث من المنصة. حدّث الصفحة قبل مزامنة المسودات."
