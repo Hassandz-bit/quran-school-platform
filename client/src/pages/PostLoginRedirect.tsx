@@ -59,6 +59,8 @@ export default function PostLoginRedirect() {
       return () => { cancelled = true; };
     }
 
+    setPortalChoices([]);
+
     if (school && !authorizationError && availableRoutes.length > 0) {
       setParentCheck("checking");
       void listMyGuardianStudents()
