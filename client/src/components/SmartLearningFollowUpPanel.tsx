@@ -83,6 +83,13 @@ export default function SmartLearningFollowUpPanel({
     setLoading(true);
     setError("");
     try {
+      const { error: alertError } = await getSupabaseClient().rpc("refresh_learning_follow_up_alerts", {
+        target_school_id: schoolId,
+        target_branch_id: branchId || null,
+        target_class_id: classId || null,
+        target_student_id: studentId || null,
+      });
+      if (alertError) toast.error("تعذر تحديث التنبيهات داخل المنصة؛ ستظل لوحة التقارير متاحة.");
       const { data, error: rpcError } = await getSupabaseClient().rpc("get_learning_follow_up_dashboard", {
         target_school_id: schoolId,
         target_branch_id: branchId || null,
