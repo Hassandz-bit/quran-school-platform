@@ -567,8 +567,8 @@ begin
       and t.profile_id is not null;
 
     if teacher_profile_id is not null then
-      notification_id := public.create_learning_follow_up_notification(
-        target_row.school_id, target_row.branch_id, target_row.class_id, teacher_profile_id, target_row.student_id,
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, teacher_profile_id, null, target_row.student_id,
         'teachers', 'learning_target_overdue',
         case when target_row.target_kind = 'new_memorization'
           then 'تكليف حفظ متأخر' else 'تكليف مراجعة متأخر' end,
@@ -588,8 +588,8 @@ begin
         and g.student_id = target_row.student_id
         and g.status = 'active'
     loop
-      notification_id := public.create_learning_follow_up_notification(
-        target_row.school_id, target_row.branch_id, target_row.class_id, guardian_row.guardian_profile_id, target_row.student_id,
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, guardian_row.guardian_profile_id, null, target_row.student_id,
         'guardians', 'learning_target_overdue',
         case when target_row.target_kind = 'new_memorization'
           then 'متابعة الحفظ' else 'متابعة المراجعة' end,
@@ -635,8 +635,8 @@ begin
       and t.profile_id is not null;
 
     if teacher_profile_id is not null then
-      notification_id := public.create_learning_follow_up_notification(
-        target_row.school_id, target_row.branch_id, target_row.class_id, teacher_profile_id, target_row.student_id,
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, teacher_profile_id, null, target_row.student_id,
         'teachers', 'learning_passage_recurring_weakness',
         'موضع يحتاج متابعة متكررة',
         'تكررت ملاحظات الضعف لدى ' || student_label || ' في السورة رقم '
@@ -656,8 +656,8 @@ begin
         and g.student_id = target_row.student_id
         and g.status = 'active'
     loop
-      notification_id := public.create_learning_follow_up_notification(
-        target_row.school_id, target_row.branch_id, target_row.class_id, guardian_row.guardian_profile_id, target_row.student_id,
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, guardian_row.guardian_profile_id, null, target_row.student_id,
         'guardians', 'learning_passage_recurring_weakness',
         'متابعة موضع في الحفظ',
         'لاحظ المعلم تكرار صعوبة في موضع من حفظ ' || student_label
@@ -701,8 +701,8 @@ begin
         and ct.status = 'active' and t.status = 'active'
         and t.profile_id is not null
     loop
-      notification_id := public.create_learning_follow_up_notification(
-        absence_row.school_id, absence_row.branch_id, absence_row.class_id, target_row.profile_id, absence_row.student_id,
+      notification_id := public.create_app_notification_internal(
+        absence_row.school_id, target_row.profile_id, null, absence_row.student_id,
         'teachers', 'attendance_absence_follow_up',
         'غياب يحتاج متابعة',
         'سُجل غياب ' || student_label || ' بتاريخ ' || absence_row.session_date::text || '.',
@@ -719,8 +719,8 @@ begin
       where g.school_id = absence_row.school_id
         and g.student_id = absence_row.student_id and g.status = 'active'
     loop
-      notification_id := public.create_learning_follow_up_notification(
-        absence_row.school_id, absence_row.branch_id, absence_row.class_id, guardian_row.guardian_profile_id, absence_row.student_id,
+      notification_id := public.create_app_notification_internal(
+        absence_row.school_id, guardian_row.guardian_profile_id, null, absence_row.student_id,
         'guardians', 'attendance_absence_follow_up',
         'تنبيه بخصوص الغياب',
         'سُجل غياب ' || student_label || ' بتاريخ ' || absence_row.session_date::text
