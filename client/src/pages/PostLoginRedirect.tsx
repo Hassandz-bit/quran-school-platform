@@ -48,6 +48,7 @@ export default function PostLoginRedirect() {
     [isSchoolAdmin, activeRoleCodes]
   );
   const defaultRoute = getDefaultAuthenticatedRoute({ isSchoolAdmin, activeRoleCodes });
+  const defaultRoutePath = defaultRoute?.path;
 
   useEffect(() => {
     let cancelled = false;
@@ -216,7 +217,7 @@ export default function PostLoginRedirect() {
     );
   }
 
-  if (school && !authorizationError && defaultRoute) {
+  if (school && !authorizationError && defaultRoutePath) {
     return <LoadingState message={`جارٍ فتح ${defaultRoute.label}...`} />;
   }
 
