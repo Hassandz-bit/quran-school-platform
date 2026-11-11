@@ -46,6 +46,37 @@ begin
 end;
 $$;
 
+-- A teacher cannot assign a target to another teacher's identity.
+select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000001',false);
+do $
+begin
+  perform public.create_learning_follow_up_target(
+    '10000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    '21000000-0000-4000-8000-000000000001',
+    '70000000-0000-4000-8000-000000000001',
+    'revision', 1, 5, 7, current_date,
+    '50000000-0000-4000-8000-000000000005', null
+  );
+  raise exception 'teacher must not assign a target to another teacher';
+exception when sqlstate '42501' then
+  null;
+end;
+$;
+select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000003',false);
+
+do $
+begin
+  perform public.get_learning_follow_up_dashboard(
+    '10000000-0000-4000-8000-000000000001',
+    null,null,null,current_date,current_date,null
+  );
+  raise exception 'dashboard must reject a null row limit';
+exception when sqlstate '22023' then
+  null;
+end;
+$;
+
 -- A successful, exact-range memorization result completes the assigned target.
 update public.memorization_records
 set session_type='new_hifz', surah_number=1, ayah_start=1,
@@ -136,7 +167,19 @@ $qsp$;
 
 select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000006',false);
 
-do $$
+do $
+begin
+  perform public.get_my_guardian_learning_follow_up(
+    '10000000-0000-4000-8000-000000000001',
+    '70000000-0000-4000-8000-000000000001', null
+  );
+  raise exception 'guardian RPC must reject a null row limit';
+exception when sqlstate '22023' then
+  null;
+end;
+$;
+
+do $
 declare report jsonb;
 begin
   report := public.get_my_guardian_learning_follow_up(
