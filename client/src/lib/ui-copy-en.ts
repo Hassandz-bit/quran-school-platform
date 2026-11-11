@@ -2215,4 +2215,9 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "الآيات": "Ayahs",
   "السورة": "Surah",
   "التلميذ": "Student",
+  "غير محفوظ": "Not memorized",
+  "غير مراجع": "Not reviewed",
+  "الغياب حسب التلميذ": "Absences by student",
+  "غياب": "Absences",
+  "تأخر": "Late arrivals",
 };
