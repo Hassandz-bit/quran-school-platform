@@ -163,7 +163,9 @@ export default function SmartLearningFollowUpPanel({
       const message = cause instanceof Error ? cause.message : "";
       toast.error(message.includes("TEACHER_NOT_ASSIGNED")
         ? "لا يوجد معلم نشط مسند إلى هذه الحلقة."
-        : "تعذر حفظ التكليف. تحقق من صلاحية إدارة متابعة الحفظ.");
+        : message.includes("TEACHER_IDENTITY_MISMATCH")
+          ? "لا يمكنك إسناد التكليف باسم معلم آخر."
+          : "تعذر حفظ التكليف. تحقق من صلاحية إدارة متابعة الحفظ.");
     } finally {
       setSaving(false);
     }
