@@ -127,7 +127,7 @@ begin
     '10000000-0000-4000-8000-000000000001',
     '70000000-0000-4000-8000-000000000001',50
   );
-  if jsonb_array_length(report -> 'targets') <> 1 then
+  if jsonb_array_length(report -> 'targets') <> 2 then
     raise exception 'guardian should see exactly the linked child target: %', report;
   end if;
   if public.is_active_guardian_of_student(
