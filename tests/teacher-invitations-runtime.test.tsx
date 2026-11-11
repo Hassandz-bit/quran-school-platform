@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   inviteSession: true,
   clearInviteSession: vi.fn(),
   location: vi.fn(),
+  guardianStudents: vi.fn(),
 }));
 
 vi.mock("wouter", async () => {
@@ -22,6 +23,10 @@ vi.mock("wouter", async () => {
 });
 
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => mocks.auth }));
+
+vi.mock("@/lib/parent-portal", () => ({
+  listMyGuardianStudents: (...args: unknown[]) => mocks.guardianStudents(...args),
+}));
 
 vi.mock("@/lib/invite-session", () => ({
   hasTeacherInviteSession: () => mocks.inviteSession,
@@ -101,6 +106,7 @@ beforeEach(() => {
   });
   mocks.accepted.mockResolvedValue(true);
   mocks.inviteSession = true;
+  mocks.guardianStudents.mockResolvedValue([]);
 });
 
 describe("teacher invitation dialog", () => {
@@ -288,6 +294,43 @@ describe("post-authentication route selection", () => {
     render(<PostLoginRedirect />);
 
     await waitFor(() => expect(mocks.location).toHaveBeenCalledWith("/finance"));
+  });
+
+  test("asks a user with both administrator and teacher roles to choose the intended portal", async () => {
+    const user = userEvent.setup();
+    resetAuth({
+      activeRoleCodes: ["school_admin", "teacher"],
+      roles: [
+        { id: "role-admin", code: "school_admin" },
+        { id: "role-teacher", code: "teacher" },
+      ],
+      isSchoolAdmin: true,
+    });
+
+    render(<PostLoginRedirect />);
+
+    expect(await screen.findByRole("heading", { name: "اختر بوابة الدخول" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "لوحة الإدارة" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "بوابة المعلم والحضور" })).toBeInTheDocument();
+    expect(mocks.location).not.toHaveBeenCalledWith("/dashboard");
+
+    await user.click(screen.getByRole("button", { name: "بوابة المعلم والحضور" }));
+    expect(mocks.location).toHaveBeenCalledWith("/attendance");
+  });
+
+  test("offers the guardian portal alongside a staff portal when both are verified", async () => {
+    mocks.guardianStudents.mockResolvedValue([{ id: "student-1", full_name: "طالب الاختبار" }]);
+    resetAuth({
+      activeRoleCodes: ["teacher"],
+      roles: [{ id: "role-teacher", code: "teacher" }],
+      isSchoolAdmin: false,
+    });
+
+    render(<PostLoginRedirect />);
+
+    expect(await screen.findByRole("heading", { name: "اختر بوابة الدخول" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "بوابة المعلم والحضور" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "بوابة ولي الأمر" })).toBeInTheDocument();
   });
 
   test("routes a school admin to the dashboard after login", async () => {
