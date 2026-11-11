@@ -7,7 +7,7 @@ select public.create_learning_follow_up_target(
   '20000000-0000-4000-8000-000000000001',
   '21000000-0000-4000-8000-000000000001',
   '70000000-0000-4000-8000-000000000001',
-  'new_memorization', 1, 1, 4, current_date, null, 'اختبار التكليف'
+  'new_memorization', 1, 1, 4, current_date, '50000000-0000-4000-8000-000000000001', 'اختبار التكليف'
 );
 
 insert into public.attendance_sessions(id,school_id,branch_id,class_id,session_date)
