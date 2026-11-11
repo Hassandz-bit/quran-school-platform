@@ -61,6 +61,7 @@ export type ParentStudentAcademicData = {
 };
 
 export type ParentLearningTarget = {
+  id: string;
   targetKind: "new_memorization" | "revision";
   surahNumber: number;
   ayahStart: number;
@@ -250,6 +251,7 @@ export async function fetchParentStudentLearningFollowUp(
     targets: (Array.isArray(result.targets) ? result.targets : []).map(value => {
       const row = value as Record<string, unknown>;
       return {
+        id: String(row.id ?? ""),
         targetKind: row.target_kind as ParentLearningTarget["targetKind"],
         surahNumber: asNumber(row.surah_number),
         ayahStart: asNumber(row.ayah_start),
