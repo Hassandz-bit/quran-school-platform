@@ -205,7 +205,7 @@ export default function SmartLearningFollowUpPanel({
           </label>
           <label className="text-xs font-bold text-[#53675B]">نوع التكليف
             <select value={kind} onChange={e => setKind(e.target.value as typeof kind)} className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3 text-sm">
-              <option value="new_memorization">حفظ جديد</option>
+              <option value="new_memorization">حفظ الجديد</option>
               <option value="revision">مراجعة</option>
             </select>
           </label>
