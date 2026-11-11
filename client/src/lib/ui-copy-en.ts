@@ -2224,4 +2224,6 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "نوع التكليف": "Assignment type",
   "يمكنك الاطلاع على المتابعة، لكن لا تملك صلاحية إسناد التكليفات.": "You can view follow-up reports, but you do not have permission to assign tasks.",
   "المتابعة الذكية للحفظ والمراجعة": "Smart memorization and revision follow-up",
+  "حفظ لم يكتمل": "Memorization not completed",
+  "مراجعة لم تكتمل": "Revision not completed",
 };
