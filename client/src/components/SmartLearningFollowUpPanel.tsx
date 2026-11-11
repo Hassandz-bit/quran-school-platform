@@ -123,7 +123,7 @@ export default function SmartLearningFollowUpPanel({
   }, [studentId]);
 
   useEffect(() => {
-    if (!selected) {
+    if (!selected || !canManage) {
       setTeachers([]);
       setTeacherId("");
       return;
@@ -134,7 +134,7 @@ export default function SmartLearningFollowUpPanel({
       .then(result => { if (!cancelled) setTeachers(result); })
       .catch(() => { if (!cancelled) setTeachers([]); });
     return () => { cancelled = true; };
-  }, [schoolId, selected?.branchId, selected?.classId]);
+  }, [schoolId, canManage, selected?.branchId, selected?.classId]);
 
   async function createTarget(event: React.FormEvent) {
     event.preventDefault();
