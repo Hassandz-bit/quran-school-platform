@@ -290,6 +290,28 @@ describe("post-authentication route selection", () => {
     await waitFor(() => expect(mocks.location).toHaveBeenCalledWith("/finance"));
   });
 
+  test("asks a user with both administrator and teacher roles to choose the intended portal", async () => {
+    const user = userEvent.setup();
+    resetAuth({
+      activeRoleCodes: ["school_admin", "teacher"],
+      roles: [
+        { id: "role-admin", code: "school_admin" },
+        { id: "role-teacher", code: "teacher" },
+      ],
+      isSchoolAdmin: true,
+    });
+
+    render(<PostLoginRedirect />);
+
+    expect(await screen.findByRole("heading", { name: "اختر بوابة الدخول" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "لوحة الإدارة" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "بوابة المعلم والحضور" })).toBeInTheDocument();
+    expect(mocks.location).not.toHaveBeenCalledWith("/dashboard");
+
+    await user.click(screen.getByRole("button", { name: "بوابة المعلم والحضور" }));
+    expect(mocks.location).toHaveBeenCalledWith("/attendance");
+  });
+
   test("routes a school admin to the dashboard after login", async () => {
     resetAuth({
       activeRoleCodes: ["school_admin"],
