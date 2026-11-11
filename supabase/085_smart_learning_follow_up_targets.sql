@@ -309,6 +309,7 @@ begin
           and n.surah_number = st.surah_number
           and n.ayah_start <= st.ayah_end and n.ayah_end >= st.ayah_start
           and n.status <> 'resolved'
+          and n.observed_on >= st.assigned_on
           and n.observed_on between target_date_from and target_date_to
       ) as has_open_weakness
     from scoped_targets st
@@ -606,6 +607,7 @@ begin
           and n.surah_number = t.surah_number
           and n.ayah_start = t.ayah_start and n.ayah_end = t.ayah_end
           and n.status <> 'resolved'
+          and n.observed_on >= t.assigned_on
         group by n.student_id,n.surah_number,n.ayah_start,n.ayah_end
         having count(*) >= 2
       )
