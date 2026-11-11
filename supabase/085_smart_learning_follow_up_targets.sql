@@ -470,6 +470,7 @@ begin
         and a.class_id = ar.class_id
       where ar.school_id = target_school_id and ar.student_id = target_student_id
         and a.session_date >= current_date - 29
+        and a.session_date <= current_date
     )
   ) into result
   from (
@@ -682,6 +683,7 @@ begin
     join public.students s on s.id = ar.student_id and s.school_id = ar.school_id
     where ar.school_id = target_school_id and ar.status = 'absent'
       and a.session_date >= current_date - 29
+      and a.session_date <= current_date
       and (target_branch_id is null or ar.branch_id = target_branch_id)
       and (target_class_id is null or ar.class_id = target_class_id)
       and (target_student_id is null or ar.student_id = target_student_id)
