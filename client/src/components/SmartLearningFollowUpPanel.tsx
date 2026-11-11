@@ -117,6 +117,20 @@ export default function SmartLearningFollowUpPanel({
     if (studentId) setSelectedStudent(studentId);
   }, [studentId]);
 
+  useEffect(() => {
+    if (!selected) {
+      setTeachers([]);
+      setTeacherId("");
+      return;
+    }
+    let cancelled = false;
+    setTeacherId("");
+    void fetchMemorizationClassTeachers(schoolId, selected.branchId, selected.classId)
+      .then(result => { if (!cancelled) setTeachers(result); })
+      .catch(() => { if (!cancelled) setTeachers([]); });
+    return () => { cancelled = true; };
+  }, [schoolId, selected?.branchId, selected?.classId]);
+
   async function createTarget(event: React.FormEvent) {
     event.preventDefault();
     if (!selected) {
@@ -139,7 +153,7 @@ export default function SmartLearningFollowUpPanel({
         target_ayah_start: Number(ayahStart),
         target_ayah_end: Number(ayahEnd),
         target_due_on: dueOn,
-        target_teacher_id: null,
+        target_teacher_id: teacherId || null,
         target_notes: null,
       });
       if (rpcError) throw rpcError;
