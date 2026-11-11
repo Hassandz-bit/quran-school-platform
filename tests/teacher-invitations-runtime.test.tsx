@@ -204,7 +204,7 @@ describe("invite acceptance and password recovery isolation", () => {
     expect(mocks.accepted).toHaveBeenCalledTimes(1);
     expect(mocks.auth.reloadAuthorization).toHaveBeenCalledTimes(1);
     expect(mocks.clearInviteSession).toHaveBeenCalledTimes(1);
-    expect(mocks.location).toHaveBeenCalledWith("/post-login");
+    expect(mocks.location).toHaveBeenCalledWith("/post-login?portal=teacher");
   });
 
   test("keeps invite acceptance available while authorization is still pending", async () => {
@@ -282,6 +282,13 @@ describe("post-authentication route selection", () => {
       )
     );
     expect(mocks.location).toHaveBeenCalledWith("/post-login");
+  });
+
+  test("shows distinct administration, teacher and guardian choices before sign-in", () => {
+    render(<Login />);
+    expect(screen.getByRole("button", { name: /الإدارة/ })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /المعلم/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /ولي الأمر/ })).toHaveAttribute("aria-pressed", "false");
   });
 
   test("routes a finance user to finance after login", async () => {
