@@ -347,9 +347,9 @@ declare
   body_text text;
 begin
   if not (
-    new.recitation_result in ('not_memorized','not_revised')
-    or new.errors_count >= 3
-    or new.rating <= 2
+    coalesce(new.recitation_result in ('not_memorized','not_revised'), false)
+    or coalesce(new.errors_count >= 3, false)
+    or coalesce(new.rating <= 2, false)
   ) then
     return new;
   end if;
