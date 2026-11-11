@@ -37,6 +37,9 @@ begin
   if (report #>> '{overview,not_completed_count}')::int <> 1 then
     raise exception 'target without success must remain incomplete: %', report;
   end if;
+  if (report #>> '{overview,not_memorized_count}')::int <> 1 then
+    raise exception 'new memorization target should appear in not memorized count: %', report;
+  end if;
   if (report #>> '{overview,absence_count}')::int <> 1 then
     raise exception 'expected one absence: %', report;
   end if;
@@ -58,6 +61,10 @@ begin
   );
   if (report #>> '{overview,completed_count}')::int <> 1 then
     raise exception 'successful result did not complete target: %', report;
+  end if;
+  if (report #>> '{overview,not_memorized_count}')::int <> 0
+    or (report #>> '{overview,not_reviewed_count}')::int <> 0 then
+    raise exception 'new memorization completion was not reflected in the passage breakdown: %', report;
   end if;
 end;
 $$;
