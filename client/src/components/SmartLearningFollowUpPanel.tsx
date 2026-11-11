@@ -28,11 +28,14 @@ type Dashboard = {
     completed_count: number;
     overdue_count: number;
     not_completed_count: number;
+    not_memorized_count: number;
+    not_reviewed_count: number;
     weakness_count: number;
     absence_count: number;
     late_count: number;
   };
   targets: TargetRow[];
+  attendance_by_student: Array<{ student_id: string; student_name: string; absence_count: number; late_count: number }>;
 };
 
 function todayValue() {
@@ -173,10 +176,12 @@ export default function SmartLearningFollowUpPanel({
 
   return (
     <div className="space-y-5" dir="rtl">
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Metric label="التكليفات" value={dashboard?.overview.assigned_count ?? 0} icon={BookOpenCheck} />
         <Metric label="المنجز" value={dashboard?.overview.completed_count ?? 0} icon={CheckCircle2} />
         <Metric label="متأخر" value={dashboard?.overview.overdue_count ?? 0} icon={AlertTriangle} danger />
+        <Metric label="غير محفوظ" value={dashboard?.overview.not_memorized_count ?? 0} icon={BookOpenCheck} danger />
+        <Metric label="غير مراجع" value={dashboard?.overview.not_reviewed_count ?? 0} icon={CalendarClock} danger />
         <Metric label="مواضع ضعف" value={dashboard?.overview.weakness_count ?? 0} icon={CalendarClock} />
       </section>
 
@@ -254,6 +259,20 @@ export default function SmartLearningFollowUpPanel({
               </div>
             </article>)}
           </div>}
+        {Boolean(dashboard?.attendance_by_student?.length) && (
+          <div className="mt-4 border-t border-[#E5EDE7] pt-4">
+            <h4 className="mb-2 text-sm font-bold text-[#173B2D]">الغياب حسب التلميذ</h4>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {dashboard?.attendance_by_student.map(item => (
+                <div key={item.student_id} className="flex items-center justify-between gap-3 rounded-lg bg-[#F7F9F7] px-3 py-2 text-xs">
+                  <span className="font-semibold text-[#40564B]">{item.student_name}</span>
+                  <span className="text-[#B83A3A]">غياب: {item.absence_count}</span>
+                  <span className="text-[#A76009]">تأخر: {item.late_count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <p className="mt-4 text-xs leading-6 text-[#829087]">إحصاءات الحضور ضمن الفترة المختارة: غياب {dashboard?.overview.absence_count ?? 0} · تأخر {dashboard?.overview.late_count ?? 0}. لا تُرسل هذه المرحلة رسائل خارج المنصة.</p>
       </Card>
     </div>
