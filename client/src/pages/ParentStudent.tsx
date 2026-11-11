@@ -376,7 +376,7 @@ export default function ParentStudent() {
             {learning.targets.map((item, index) => (
               <article key={index} className="rounded-2xl border border-[#DCE7DF] bg-white p-4 shadow-sm">
                 <p className="font-bold text-[#173B2D]">
-                  {item.targetKind === "new_memorization" ? "حفظ جديد" : "مراجعة"} · سورة {surahName(item.surahNumber)}
+                  {item.targetKind === "new_memorization" ? "حفظ الجديد" : "مراجعة"} · سورة {surahName(item.surahNumber)}
                 </p>
                 <p className="mt-1 text-sm text-[#607368]">الآيات {item.ayahStart}–{item.ayahEnd}</p>
                 <p className="mt-2 text-xs text-[#718279]">موعد الإنجاز: {formatDate(item.dueOn)}</p>
