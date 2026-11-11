@@ -188,8 +188,8 @@ export default function Notifications() {
           {rows.map(row => {
             const unread = box === "inbox" && !row.readAt;
             const clickable = box === "inbox" && Boolean(row.targetPath);
-            const danger = ["learning_target_overdue", "attendance_absence_follow_up"].includes(row.eventType);
-            const warning = row.eventType === "learning_passage_recurring_weakness";
+            const danger = row.eventType.endsWith("_overdue") || row.eventType.includes("absence_follow_up");
+            const warning = row.eventType.endsWith("_weakness");
             return (
               <button
                 type="button"
