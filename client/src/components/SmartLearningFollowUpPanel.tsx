@@ -182,8 +182,8 @@ export default function SmartLearningFollowUpPanel({
         <Metric label="التكليفات" value={dashboard?.overview.assigned_count ?? 0} icon={BookOpenCheck} />
         <Metric label="المنجز" value={dashboard?.overview.completed_count ?? 0} icon={CheckCircle2} />
         <Metric label="متأخر" value={dashboard?.overview.overdue_count ?? 0} icon={AlertTriangle} danger />
-        <Metric label="غير محفوظ" value={dashboard?.overview.not_memorized_count ?? 0} icon={BookOpenCheck} danger />
-        <Metric label="غير مراجع" value={dashboard?.overview.not_reviewed_count ?? 0} icon={CalendarClock} danger />
+        <Metric label="حفظ لم يكتمل" value={dashboard?.overview.not_memorized_count ?? 0} icon={BookOpenCheck} danger />
+        <Metric label="مراجعة لم تكتمل" value={dashboard?.overview.not_reviewed_count ?? 0} icon={CalendarClock} danger />
         <Metric label="مواضع ضعف" value={dashboard?.overview.weakness_count ?? 0} icon={CalendarClock} />
       </section>
 
