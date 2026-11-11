@@ -60,12 +60,32 @@ export default function PostLoginRedirect() {
     }
 
     if (school && !authorizationError && availableRoutes.length > 0) {
-      if (availableRoutes.length === 1) {
-        setLocation(availableRoutes[0].path);
-      } else {
-        setPortalChoices(availableRoutes);
-        setParentCheck("none");
-      }
+      setParentCheck("checking");
+      void listMyGuardianStudents()
+        .then(students => {
+          if (cancelled) return;
+          const choices = [
+            ...availableRoutes,
+            ...(students.length > 0
+              ? [{ path: "/parent", label: "بوابة ولي الأمر" }]
+              : []),
+          ];
+          if (choices.length === 1) {
+            setLocation(choices[0].path);
+          } else {
+            setPortalChoices(choices);
+            setParentCheck("none");
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (availableRoutes.length === 1) {
+            setLocation(availableRoutes[0].path);
+          } else {
+            setPortalChoices(availableRoutes);
+            setParentCheck("none");
+          }
+        });
       return () => { cancelled = true; };
     }
 
