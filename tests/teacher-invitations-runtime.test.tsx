@@ -204,7 +204,7 @@ describe("invite acceptance and password recovery isolation", () => {
     expect(mocks.accepted).toHaveBeenCalledTimes(1);
     expect(mocks.auth.reloadAuthorization).toHaveBeenCalledTimes(1);
     expect(mocks.clearInviteSession).toHaveBeenCalledTimes(1);
-    expect(mocks.location).toHaveBeenCalledWith("/post-login?portal=teacher");
+    expect(mocks.location).toHaveBeenCalledWith("/post-login");
   });
 
   test("keeps invite acceptance available while authorization is still pending", async () => {
@@ -281,7 +281,7 @@ describe("post-authentication route selection", () => {
         "StrongPass123"
       )
     );
-    expect(mocks.location).toHaveBeenCalledWith("/post-login");
+    expect(mocks.location).toHaveBeenCalledWith("/post-login?portal=teacher");
   });
 
   test("shows distinct administration, teacher and guardian choices before sign-in", () => {
