@@ -290,7 +290,8 @@ begin
       (not st.completed and st.due_on < current_date) as overdue,
       exists (
         select 1 from public.memorization_follow_up_notes n
-        where n.school_id = st.school_id and n.student_id = st.student_id
+        where n.school_id = st.school_id and n.branch_id = st.branch_id
+          and n.class_id = st.class_id and n.student_id = st.student_id
           and n.surah_number = st.surah_number
           and n.ayah_start <= st.ayah_end and n.ayah_end >= st.ayah_start
           and n.status = 'open'
@@ -592,7 +593,8 @@ begin
       )
       and exists (
         select 1 from public.memorization_follow_up_notes n
-        where n.school_id = t.school_id and n.student_id = t.student_id
+        where n.school_id = t.school_id and n.branch_id = t.branch_id
+          and n.class_id = t.class_id and n.student_id = t.student_id
           and n.surah_number = t.surah_number
           and n.ayah_start <= t.ayah_end and n.ayah_end >= t.ayah_start
           and n.status = 'open'
