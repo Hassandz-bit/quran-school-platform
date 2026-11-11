@@ -10,6 +10,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import MemorizationAnalyticsPanel from "@/components/MemorizationAnalyticsPanel";
+import LearningTargetsPanel from "@/components/LearningTargetsPanel";
 import SmartLearningFollowUpPanel from "@/components/SmartLearningFollowUpPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -422,6 +423,7 @@ export default function AcademicReports() {
               {access.memorization.state === "ready" && (
                 <>
                   <TabsTrigger value="analytics" className="min-h-10 shrink-0">تحليلات المتابعة</TabsTrigger>
+                <TabsTrigger value="learningTargets" className="min-h-10 shrink-0">المتابعة الذكية</TabsTrigger>
                   <TabsTrigger value="smart" className="min-h-10 shrink-0">المتابعة الذكية</TabsTrigger>
                 </>
               )}
@@ -498,6 +500,14 @@ export default function AcademicReports() {
                 />
               ) : (
                 <ModuleError label="المتابعة الذكية" />
+              )}
+            </TabsContent>
+
+            <TabsContent value="learningTargets">
+              {access.memorization.state === "ready" && school?.id ? (
+                <LearningTargetsPanel schoolId={school.id} branchId={filters.branchId} classId={filters.classId} studentId={filters.studentId} />
+              ) : (
+                <ModuleError label="المتابعة الذكية للحفظ والمراجعة" />
               )}
             </TabsContent>
 
