@@ -373,8 +373,8 @@ export default function ParentStudent() {
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
-            {learning.targets.map((item, index) => (
-              <article key={index} className="rounded-2xl border border-[#DCE7DF] bg-white p-4 shadow-sm">
+            {learning.targets.map(item => (
+              <article key={item.id} className="rounded-2xl border border-[#DCE7DF] bg-white p-4 shadow-sm">
                 <p className="font-bold text-[#173B2D]">
                   {item.targetKind === "new_memorization" ? "حفظ الجديد" : "مراجعة"} · سورة {surahName(item.surahNumber)}
                 </p>
