@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   inviteSession: true,
   clearInviteSession: vi.fn(),
   location: vi.fn(),
+  guardianStudents: vi.fn(),
 }));
 
 vi.mock("wouter", async () => {
@@ -22,6 +23,10 @@ vi.mock("wouter", async () => {
 });
 
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => mocks.auth }));
+
+vi.mock("@/lib/parent-portal", () => ({
+  listMyGuardianStudents: (...args: unknown[]) => mocks.guardianStudents(...args),
+}));
 
 vi.mock("@/lib/invite-session", () => ({
   hasTeacherInviteSession: () => mocks.inviteSession,
@@ -101,6 +106,7 @@ beforeEach(() => {
   });
   mocks.accepted.mockResolvedValue(true);
   mocks.inviteSession = true;
+  mocks.guardianStudents.mockResolvedValue([]);
 });
 
 describe("teacher invitation dialog", () => {
