@@ -10,7 +10,7 @@ type DefaultRouteInput = {
 
 const ROUTES = {
   dashboard: { path: "/dashboard", label: "لوحة الإدارة" },
-  attendance: { path: "/attendance", label: "بوابة المعلم والحضور" },
+  attendance: { path: "/attendance", label: "الحضور" },
   memorization: { path: "/memorization", label: "متابعة الحفظ" },
   finance: { path: "/finance", label: "البوابة المالية" },
   members: { path: "/members", label: "إدارة الأعضاء" },
