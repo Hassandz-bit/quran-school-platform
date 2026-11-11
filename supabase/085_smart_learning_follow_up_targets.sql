@@ -181,6 +181,30 @@ begin
       and m.status = 'active'
       and r.code = 'teacher'
   ) and not exists (
+    select 1
+    from public.school_memberships manager_membership
+    join public.membership_roles manager_membership_role
+      on manager_membership_role.school_id = manager_membership.school_id
+     and manager_membership_role.membership_id = manager_membership.id
+    join public.roles manager_role
+      on manager_role.school_id = manager_membership_role.school_id
+     and manager_role.id = manager_membership_role.role_id
+     and manager_role.status = 'active'
+    join public.role_permissions manager_role_permission
+      on manager_role_permission.school_id = manager_role.school_id
+     and manager_role_permission.role_id = manager_role.id
+    join public.permissions manager_permission
+      on manager_permission.id = manager_role_permission.permission_id
+    where manager_membership.school_id = target_school_id
+      and manager_membership.profile_id = current_user_id
+      and manager_membership.status = 'active'
+      and manager_role.code <> 'teacher'
+      and manager_permission.code = 'memorization.manage'
+      and (
+        manager_membership_role.branch_id is null
+        or manager_membership_role.branch_id = target_branch_id
+      )
+  ) and not exists (
     select 1 from public.teachers t
     where t.id = resolved_teacher_id and t.profile_id = current_user_id
   ) then
