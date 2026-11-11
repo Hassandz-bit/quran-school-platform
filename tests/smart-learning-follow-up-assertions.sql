@@ -95,10 +95,10 @@ insert into public.learning_follow_up_targets(
 );
 
 insert into public.memorization_follow_up_notes(
-  school_id,student_id,surah_number,ayah_start,ayah_end,status,observed_on
+  school_id,branch_id,class_id,student_id,surah_number,ayah_start,ayah_end,status,observed_on
 ) values
-  ('10000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001',1,1,4,'open',current_date-2),
-  ('10000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001',1,1,4,'open',current_date-1);
+  ('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','21000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001',1,1,4,'open',current_date-2),
+  ('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','21000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001',1,1,4,'open',current_date-1);
 
 do $qsp$
 declare result jsonb; report jsonb;
