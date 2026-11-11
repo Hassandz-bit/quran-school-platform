@@ -190,6 +190,12 @@ export default function SmartLearningFollowUpPanel({
               {filteredStudents.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </label>
+          <label className="text-xs font-bold text-[#53675B]">المعلم المسؤول
+            <select value={teacherId} onChange={e => setTeacherId(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3 text-sm">
+              <option value="">المعلم الحالي (للمعلم) / اختر للمدير</option>
+              {teachers.map(item => <option key={item.id} value={item.id}>{item.fullName}</option>)}
+            </select>
+          </label>
           <label className="text-xs font-bold text-[#53675B]">نوع التكليف
             <select value={kind} onChange={e => setKind(e.target.value as typeof kind)} className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3 text-sm">
               <option value="new_memorization">حفظ جديد</option>
