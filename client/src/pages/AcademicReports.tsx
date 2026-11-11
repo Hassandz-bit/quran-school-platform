@@ -493,7 +493,6 @@ export default function AcademicReports() {
                   branchId={filters.branchId}
                   classId={filters.classId}
                   studentId={filters.studentId}
-                  classes={data.classes.map(item => ({ id: item.id, name: item.name, branchId: item.branchId }))}
                   students={data.students.map(item => ({ id: item.id, name: item.fullName, branchId: item.branchId, classId: item.classId }))}
                 />
               ) : (
