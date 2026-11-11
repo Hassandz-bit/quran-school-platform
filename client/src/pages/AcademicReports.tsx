@@ -475,7 +475,6 @@ export default function AcademicReports() {
               {access.memorization.state === "ready" && school?.id ? (
                 <MemorizationAnalyticsPanel
                   schoolId={school.id}
-                  canManage={access.memorization.scope.canManage}
                   branchId={filters.branchId}
                   classId={filters.classId}
                   studentId={filters.studentId}
@@ -491,6 +490,7 @@ export default function AcademicReports() {
               {access.memorization.state === "ready" && school?.id ? (
                 <SmartLearningFollowUpPanel
                   schoolId={school.id}
+                  canManage={access.memorization.scope.canManage}
                   branchId={filters.branchId}
                   classId={filters.classId}
                   studentId={filters.studentId}
