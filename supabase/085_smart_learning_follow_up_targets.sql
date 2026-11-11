@@ -150,21 +150,6 @@ begin
     order by t.id
     limit 1;
 
-    if resolved_teacher_id is null then
-      select t.id into resolved_teacher_id
-      from public.teachers t
-      join public.class_teachers ct
-        on ct.school_id = t.school_id
-       and ct.branch_id = t.branch_id
-       and ct.teacher_id = t.id
-       and ct.class_id = target_class_id
-       and ct.status = 'active'
-      where t.school_id = target_school_id
-        and t.branch_id = target_branch_id
-        and t.status = 'active'
-      order by t.id
-      limit 1;
-    end if;
   else
     select t.id into resolved_teacher_id
     from public.teachers t
