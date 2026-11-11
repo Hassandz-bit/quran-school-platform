@@ -9,6 +9,8 @@ alter table public.memorization_records
 create table public.memorization_follow_up_notes (
   id uuid primary key default gen_random_uuid(),
   school_id uuid not null,
+  branch_id uuid not null,
+  class_id uuid not null,
   student_id uuid not null,
   surah_number smallint not null,
   ayah_start smallint not null,
