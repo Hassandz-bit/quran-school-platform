@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-container_name="qsp-smart-learning-\${RANDOM}-\${RANDOM}"
+container_name="qsp-smart-learning-${RANDOM}-${RANDOM}"
 cleanup() {
   docker rm -f "$container_name" >/dev/null 2>&1 || true
 }
