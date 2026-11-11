@@ -281,7 +281,14 @@ describe("post-authentication route selection", () => {
         "StrongPass123"
       )
     );
-    expect(mocks.location).toHaveBeenCalledWith("/post-login");
+    expect(mocks.location).toHaveBeenCalledWith("/post-login?portal=teacher");
+  });
+
+  test("shows distinct administration, teacher and guardian choices before sign-in", () => {
+    render(<Login />);
+    expect(screen.getByRole("button", { name: /الإدارة/ })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /المعلم/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /ولي الأمر/ })).toHaveAttribute("aria-pressed", "false");
   });
 
   test("routes a finance user to finance after login", async () => {
