@@ -103,6 +103,15 @@ insert into public.memorization_follow_up_notes(
 do $
 declare result jsonb;
 begin
+  report := public.get_learning_follow_up_dashboard(
+    '10000000-0000-4000-8000-000000000001',
+    null,null,null,current_date-30,current_date,50
+  );
+  if (report #>> '{overview,not_reviewed_count}')::int <> 1
+    or (report #>> '{overview,overdue_count}')::int <> 1 then
+    raise exception 'revision target should be reported as not reviewed and overdue: %', report;
+  end if;
+
   result := public.refresh_learning_follow_up_alerts(
     '10000000-0000-4000-8000-000000000001',null,null,null
   );
