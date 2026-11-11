@@ -486,9 +486,8 @@ grant execute on function public.get_my_guardian_learning_follow_up(uuid, uuid, 
   to authenticated;
 
 
--- Extend the existing internal writer to the reduced notification category set
--- introduced by migration 078. Without this replacement, its old allowlist would
--- reject the new "teachers" category at runtime.
+-- Extend the internal notification writer to the category allowlist enforced by migration 078.
+-- The earlier helper accepted "learning" but migration 078 retired that category.
 create or replace function public.create_app_notification_internal(
   target_school_id uuid,
   target_recipient_profile_id uuid,
@@ -778,7 +777,6 @@ comment on function public.get_my_guardian_learning_follow_up(uuid,uuid,integer)
   'Read-only guardian progress limited to the caller active linked child.';
 
 commit;
-
     or target_source_type is null
     or target_source_type !~ '^[a-z][a-z0-9_]{1,63}
   target_school_id uuid,
@@ -1043,7 +1041,6 @@ comment on function public.get_my_guardian_learning_follow_up(uuid,uuid,integer)
   'Read-only guardian progress limited to the caller active linked child.';
 
 commit;
-
     or target_title is null
     or char_length(btrim(target_title)) not between 1 and 160
     or target_body is null
@@ -1315,7 +1312,6 @@ comment on function public.get_my_guardian_learning_follow_up(uuid,uuid,integer)
   'Read-only guardian progress limited to the caller active linked child.';
 
 commit;
-
         or target_path ~ '://'
       )
     )
