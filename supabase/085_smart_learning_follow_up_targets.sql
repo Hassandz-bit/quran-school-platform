@@ -387,6 +387,7 @@ begin
 
   select jsonb_build_object(
     'targets', coalesce(jsonb_agg(jsonb_build_object(
+      'id', t.id,
       'target_kind', t.target_kind,
       'surah_number', t.surah_number,
       'ayah_start', t.ayah_start,
