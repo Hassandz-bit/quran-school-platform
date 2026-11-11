@@ -14,6 +14,7 @@ import { useLocation } from "wouter";
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [selectedPortal, setSelectedPortal] = useState<"admin" | "teacher" | "guardian">("teacher");
   const [isLoading, setIsLoading] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [canInstall, setCanInstall] = useState(false);
@@ -76,7 +77,7 @@ const Login: React.FC = () => {
         return;
       }
 
-      setLocation("/post-login");
+      setLocation(`/post-login?portal=${selectedPortal}`);
     } catch {
       setErrorMessage(
         language === "ar"
@@ -104,6 +105,10 @@ const Login: React.FC = () => {
     ar: {
       descriptor: "منظومة إدارة المدارس القرآنية",
       tagline: "تنظيم • تعليم • متابعة • إتقان",
+      portalLabel: "اختر نوع الدخول أولًا",
+      adminPortal: "الإدارة",
+      teacherPortal: "المعلم",
+      guardianPortal: "ولي الأمر",
       email: "البريد الإلكتروني",
       password: "كلمة المرور",
       forgotPassword: "نسيت كلمة المرور؟",
@@ -116,6 +121,10 @@ const Login: React.FC = () => {
     en: {
       descriptor: "Quran School Management System",
       tagline: "Organize • Teach • Follow up • Excel",
+      portalLabel: "Choose your portal first",
+      adminPortal: "Administration",
+      teacherPortal: "Teacher",
+      guardianPortal: "Guardian",
       email: "Email Address",
       password: "Password",
       forgotPassword: "Forgot password?",
@@ -220,6 +229,34 @@ const Login: React.FC = () => {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
+            <fieldset className="space-y-2">
+              <legend className="mb-2 text-sm font-bold text-gray-800">{t.portalLabel}</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { id: "admin", label: t.adminPortal, icon: "🏫" },
+                  { id: "teacher", label: t.teacherPortal, icon: "📚" },
+                  { id: "guardian", label: t.guardianPortal, icon: "👨‍👩‍👧" },
+                ] as const).map(portal => (
+                  <button
+                    key={portal.id}
+                    type="button"
+                    aria-pressed={selectedPortal === portal.id}
+                    onClick={() => setSelectedPortal(portal.id)}
+                    className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-sm font-bold transition ${selectedPortal === portal.id
+                      ? "border-[#0F5132] bg-[#0F5132]/10 text-[#0F5132] ring-2 ring-[#0F5132]/20"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-[#0F5132]/40"}`}
+                  >
+                    <span aria-hidden="true" className="text-xl">{portal.icon}</span>
+                    <span>{portal.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs leading-5 text-gray-500">
+                {language === "ar"
+                  ? "هذا اختيار للوجهة فقط؛ سيُتحقق من صلاحيات الحساب بعد تسجيل الدخول."
+                  : "This selects the destination only. Account permissions are verified after sign-in."}
+              </p>
+            </fieldset>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t.email}
