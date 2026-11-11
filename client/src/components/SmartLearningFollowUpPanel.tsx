@@ -3,10 +3,10 @@ import { AlertTriangle, BookOpenCheck, CalendarClock, CheckCircle2, RefreshCw, S
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { QURAN_SURAHS } from "@/lib/memorization";
+import { fetchMemorizationClassTeachers, QURAN_SURAHS, type MemorizationTeacher } from "@/lib/memorization";
 import { getSupabaseClient } from "@/lib/supabase";
 
-type StudentChoice = Choice & { branchId: string; classId: string };
+type StudentChoice = { id: string; name: string; branchId: string; classId: string };
 type TargetRow = {
   id: string;
   student_id: string;
@@ -62,6 +62,8 @@ export default function SmartLearningFollowUpPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(studentId);
+  const [teachers, setTeachers] = useState<MemorizationTeacher[]>([]);
+  const [teacherId, setTeacherId] = useState("");
   const [kind, setKind] = useState<"new_memorization" | "revision">("new_memorization");
   const [surah, setSurah] = useState("1");
   const [ayahStart, setAyahStart] = useState("1");
