@@ -45,7 +45,7 @@ $$;
 
 -- A successful, exact-range memorization result completes the assigned target.
 update public.memorization_records
-set session_type='new_memorization', surah_number=1, ayah_start=1,
+set session_type='new_hifz', surah_number=1, ayah_start=1,
     ayah_end=4, recitation_result='memorized'
 where id='80000000-0000-4000-8000-000000000001';
 
