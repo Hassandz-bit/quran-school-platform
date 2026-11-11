@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { QURAN_SURAHS } from "@/lib/memorization";
 import { getSupabaseClient } from "@/lib/supabase";
 
-type Choice = { id: string; name: string };
 type StudentChoice = Choice & { branchId: string; classId: string };
 type TargetRow = {
   id: string;
@@ -50,14 +49,12 @@ export default function SmartLearningFollowUpPanel({
   branchId,
   classId,
   studentId,
-  classes,
   students,
 }: {
   schoolId: string;
   branchId: string;
   classId: string;
   studentId: string;
-  classes: Array<Choice & { branchId: string }>;
   students: StudentChoice[];
 }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -71,10 +68,6 @@ export default function SmartLearningFollowUpPanel({
   const [ayahEnd, setAyahEnd] = useState("7");
   const [dueOn, setDueOn] = useState(todayValue());
 
-  const filteredClasses = useMemo(
-    () => classes.filter(item => !branchId || item.branchId === branchId),
-    [classes, branchId]
-  );
   const filteredStudents = useMemo(
     () => students.filter(item =>
       (!branchId || item.branchId === branchId) &&
