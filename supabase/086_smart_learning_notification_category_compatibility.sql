@@ -93,19 +93,7 @@ begin
     body,
     target_path,
     source_type,
-    source_id
-  ) values (
-    target_school_id,
-    target_recipient_profile_id,
-    target_sender_profile_id,
-    target_student_id,
-    target_category,
-    target_event_type,
-    btrim(target_title),
-    btrim(target_body),
-    target_path,
-    target_source_type,
-    target_source_id,
+    source_id,
     recipient_audiences
   ) values (
     target_school_id,
