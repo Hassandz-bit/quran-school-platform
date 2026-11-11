@@ -19,14 +19,14 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
-docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/memorization-follow-up-fixture.sql
 
-docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/smart-learning-follow-up-supplement.sql
 
-docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < supabase/085_smart_learning_follow_up_targets.sql
 
-docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
+docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/smart-learning-follow-up-assertions.sql
