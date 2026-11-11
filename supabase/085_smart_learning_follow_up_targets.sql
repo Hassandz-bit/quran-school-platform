@@ -326,6 +326,10 @@ begin
       and (target_branch_id is null or ar.branch_id = target_branch_id)
       and (target_class_id is null or ar.class_id = target_class_id)
       and (target_student_id is null or ar.student_id = target_student_id)
+      and (
+        public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.view')
+        or public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.manage')
+      )
     group by ar.student_id
   )
   select jsonb_build_object(
