@@ -2222,4 +2222,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "تأخر": "Late arrivals",
   "اختر التلميذ": "Select student",
   "نوع التكليف": "Assignment type",
+  "يمكنك الاطلاع على المتابعة، لكن لا تملك صلاحية إسناد التكليفات.": "You can view follow-up reports, but you do not have permission to assign tasks.",
 };
