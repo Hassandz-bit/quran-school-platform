@@ -486,6 +486,886 @@ grant execute on function public.get_my_guardian_learning_follow_up(uuid, uuid, 
   to authenticated;
 
 
+-- Extend the existing internal writer to the reduced notification category set
+-- introduced by migration 078. Without this replacement, its old allowlist would
+-- reject the new "teachers" category at runtime.
+create or replace function public.create_app_notification_internal(
+  target_school_id uuid,
+  target_recipient_profile_id uuid,
+  target_sender_profile_id uuid,
+  target_student_id uuid,
+  target_category text,
+  target_event_type text,
+  target_title text,
+  target_body text,
+  target_path text,
+  target_source_type text,
+  target_source_id uuid
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  created_notification_id uuid;
+begin
+  if target_school_id is null
+    or target_recipient_profile_id is null
+    or target_source_id is null
+    or target_category not in ('administration','teachers','finance','guardians','system')
+    or target_event_type is null
+    or target_event_type !~ '^[a-z][a-z0-9_]{1,63}
+  target_school_id uuid,
+  target_branch_id uuid default null,
+  target_class_id uuid default null,
+  target_student_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $qsp$
+declare
+  current_user_id uuid := (select auth.uid());
+  target_row record;
+  absence_row record;
+  guardian_row record;
+  teacher_profile_id uuid;
+  created_count integer := 0;
+  notification_id uuid;
+  student_label text;
+  passage_label text;
+begin
+  if current_user_id is null then
+    raise exception using errcode = '42501', message = 'LEARNING_ALERT_AUTH_REQUIRED';
+  end if;
+
+  if not exists (
+    select 1 from public.classes c
+    where c.school_id = target_school_id and c.status = 'active'
+      and (target_branch_id is null or c.branch_id = target_branch_id)
+      and (target_class_id is null or c.id = target_class_id)
+      and (
+        public.can_access_memorization_class(target_school_id,c.branch_id,c.id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,c.branch_id,c.id,'memorization.manage')
+      )
+  ) then
+    raise exception using errcode = '42501', message = 'LEARNING_ALERT_SCOPE_DENIED';
+  end if;
+
+  for target_row in
+    select t.*, s.first_name, s.last_name
+    from public.learning_follow_up_targets t
+    join public.students s on s.id = t.student_id and s.school_id = t.school_id
+    where t.school_id = target_school_id and t.status = 'active'
+      and t.due_on < current_date
+      and (target_branch_id is null or t.branch_id = target_branch_id)
+      and (target_class_id is null or t.class_id = target_class_id)
+      and (target_student_id is null or t.student_id = target_student_id)
+      and (
+        public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.manage')
+      )
+      and not exists (
+        select 1 from public.memorization_records r
+        where r.school_id = t.school_id and r.student_id = t.student_id
+          and r.surah_number = t.surah_number
+          and r.ayah_start <= t.ayah_start and r.ayah_end >= t.ayah_end
+          and r.record_date >= t.assigned_on
+          and (
+            (t.target_kind = 'new_memorization'
+              and r.session_type in ('new_memorization','new_hifz','assessment')
+              and r.recitation_result = 'memorized')
+            or
+            (t.target_kind = 'revision'
+              and r.session_type in ('near_revision','distant_revision')
+              and r.recitation_result = 'revised')
+          )
+      )
+  loop
+    student_label := btrim(concat_ws(' ',target_row.first_name,target_row.last_name));
+    passage_label := 'السورة رقم ' || target_row.surah_number::text
+      || '، الآيات ' || target_row.ayah_start::text || '-' || target_row.ayah_end::text;
+
+    select t.profile_id into teacher_profile_id
+    from public.teachers t
+    where t.id = target_row.teacher_id
+      and t.school_id = target_row.school_id
+      and t.status = 'active'
+      and t.profile_id is not null;
+
+    if teacher_profile_id is not null then
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, teacher_profile_id, null, target_row.student_id,
+        'teachers', 'learning_target_overdue',
+        case when target_row.target_kind = 'new_memorization'
+          then 'تكليف حفظ متأخر' else 'تكليف مراجعة متأخر' end,
+        'التلميذ ' || student_label || ': لم تُسجل نتيجة إنجاز لـ' || passage_label
+          || ' بعد موعد الاستحقاق.',
+        '/academic-reports?tab=smart',
+        'learning_target_overdue', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end if;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = target_row.school_id
+        and g.student_id = target_row.student_id
+        and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, guardian_row.guardian_profile_id, null, target_row.student_id,
+        'guardians', 'learning_target_overdue',
+        case when target_row.target_kind = 'new_memorization'
+          then 'متابعة الحفظ' else 'متابعة المراجعة' end,
+        'لم يُسجل إنجاز ' || student_label || ' لـ' || passage_label
+          || ' قبل الموعد المحدد. يرجى متابعة التكليف مع المعلم.',
+        '/parent',
+        'learning_target_overdue', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  -- Repeated unresolved observations are elevated once per assigned passage.
+  for target_row in
+    select t.*, s.first_name, s.last_name
+    from public.learning_follow_up_targets t
+    join public.students s on s.id = t.student_id and s.school_id = t.school_id
+    where t.school_id = target_school_id and t.status = 'active'
+      and (target_branch_id is null or t.branch_id = target_branch_id)
+      and (target_class_id is null or t.class_id = target_class_id)
+      and (target_student_id is null or t.student_id = target_student_id)
+      and (
+        public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.manage')
+      )
+      and exists (
+        select 1 from public.memorization_follow_up_notes n
+        where n.school_id = t.school_id and n.branch_id = t.branch_id
+          and n.class_id = t.class_id and n.student_id = t.student_id
+          and n.surah_number = t.surah_number
+          and n.ayah_start <= t.ayah_end and n.ayah_end >= t.ayah_start
+          and n.status = 'open'
+          and n.observed_on >= t.assigned_on
+        having count(*) >= 2
+      )
+  loop
+    student_label := btrim(concat_ws(' ',target_row.first_name,target_row.last_name));
+    select t.profile_id into teacher_profile_id
+    from public.teachers t
+    where t.id = target_row.teacher_id
+      and t.school_id = target_row.school_id
+      and t.status = 'active'
+      and t.profile_id is not null;
+
+    if teacher_profile_id is not null then
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, teacher_profile_id, null, target_row.student_id,
+        'teachers', 'learning_passage_recurring_weakness',
+        'موضع يحتاج متابعة متكررة',
+        'تكررت ملاحظات الضعف لدى ' || student_label || ' في السورة رقم '
+          || target_row.surah_number::text || '، الآيات '
+          || target_row.ayah_start::text || '-' || target_row.ayah_end::text || '.',
+        '/academic-reports?tab=smart',
+        'learning_target_weakness', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end if;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = target_row.school_id
+        and g.student_id = target_row.student_id
+        and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, guardian_row.guardian_profile_id, null, target_row.student_id,
+        'guardians', 'learning_passage_recurring_weakness',
+        'متابعة موضع في الحفظ',
+        'لاحظ المعلم تكرار صعوبة في موضع من حفظ ' || student_label
+          || '. ستتم متابعة الموضع مع المعلم.',
+        '/parent',
+        'learning_target_weakness', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  -- Absence reminders are created only for classes the caller can access in attendance.
+  for absence_row in
+    select ar.id, ar.school_id, ar.student_id, ar.branch_id, ar.class_id,
+      a.session_date, s.first_name, s.last_name
+    from public.attendance_records ar
+    join public.attendance_sessions a on a.id = ar.session_id
+      and a.school_id = ar.school_id and a.branch_id = ar.branch_id
+      and a.class_id = ar.class_id
+    join public.students s on s.id = ar.student_id and s.school_id = ar.school_id
+    where ar.school_id = target_school_id and ar.status = 'absent'
+      and a.session_date >= current_date - 29
+      and (target_branch_id is null or ar.branch_id = target_branch_id)
+      and (target_class_id is null or ar.class_id = target_class_id)
+      and (target_student_id is null or ar.student_id = target_student_id)
+      and (
+        public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.view')
+        or public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.manage')
+      )
+  loop
+    student_label := btrim(concat_ws(' ',absence_row.first_name,absence_row.last_name));
+
+    for target_row in
+      select distinct t.profile_id
+      from public.class_teachers ct
+      join public.teachers t on t.id = ct.teacher_id
+        and t.school_id = ct.school_id and t.branch_id = ct.branch_id
+      where ct.school_id = absence_row.school_id
+        and ct.branch_id = absence_row.branch_id
+        and ct.class_id = absence_row.class_id
+        and ct.status = 'active' and t.status = 'active'
+        and t.profile_id is not null
+    loop
+      notification_id := public.create_app_notification_internal(
+        absence_row.school_id, target_row.profile_id, null, absence_row.student_id,
+        'teachers', 'attendance_absence_follow_up',
+        'غياب يحتاج متابعة',
+        'سُجل غياب ' || student_label || ' بتاريخ ' || absence_row.session_date::text || '.',
+        '/attendance',
+        'attendance_absence_follow_up', absence_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = absence_row.school_id
+        and g.student_id = absence_row.student_id and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        absence_row.school_id, guardian_row.guardian_profile_id, null, absence_row.student_id,
+        'guardians', 'attendance_absence_follow_up',
+        'تنبيه بخصوص الغياب',
+        'سُجل غياب ' || student_label || ' بتاريخ ' || absence_row.session_date::text
+          || '. يرجى الاطلاع على سجل الحضور والتواصل مع المدرسة عند الحاجة.',
+        '/parent',
+        'attendance_absence_follow_up', absence_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  return jsonb_build_object('created_count',created_count,'deduplicated',true);
+end;
+$qsp$;
+
+revoke all on function public.refresh_learning_follow_up_alerts(uuid,uuid,uuid,uuid)
+  from public, anon;
+grant execute on function public.refresh_learning_follow_up_alerts(uuid,uuid,uuid,uuid)
+  to authenticated;
+
+comment on table public.learning_follow_up_targets is
+  'Teacher-defined Quran memorization and revision assignments; unrecorded passages are not inferred as failures.';
+comment on function public.get_learning_follow_up_dashboard(uuid,uuid,uuid,uuid,date,date,integer) is
+  'Scoped teacher/staff dashboard for assigned targets, overdue work, weaknesses and attendance.';
+comment on function public.get_my_guardian_learning_follow_up(uuid,uuid,integer) is
+  'Read-only guardian progress limited to the caller active linked child.';
+
+commit;
+
+    or target_source_type is null
+    or target_source_type !~ '^[a-z][a-z0-9_]{1,63}
+  target_school_id uuid,
+  target_branch_id uuid default null,
+  target_class_id uuid default null,
+  target_student_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $qsp$
+declare
+  current_user_id uuid := (select auth.uid());
+  target_row record;
+  absence_row record;
+  guardian_row record;
+  teacher_profile_id uuid;
+  created_count integer := 0;
+  notification_id uuid;
+  student_label text;
+  passage_label text;
+begin
+  if current_user_id is null then
+    raise exception using errcode = '42501', message = 'LEARNING_ALERT_AUTH_REQUIRED';
+  end if;
+
+  if not exists (
+    select 1 from public.classes c
+    where c.school_id = target_school_id and c.status = 'active'
+      and (target_branch_id is null or c.branch_id = target_branch_id)
+      and (target_class_id is null or c.id = target_class_id)
+      and (
+        public.can_access_memorization_class(target_school_id,c.branch_id,c.id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,c.branch_id,c.id,'memorization.manage')
+      )
+  ) then
+    raise exception using errcode = '42501', message = 'LEARNING_ALERT_SCOPE_DENIED';
+  end if;
+
+  for target_row in
+    select t.*, s.first_name, s.last_name
+    from public.learning_follow_up_targets t
+    join public.students s on s.id = t.student_id and s.school_id = t.school_id
+    where t.school_id = target_school_id and t.status = 'active'
+      and t.due_on < current_date
+      and (target_branch_id is null or t.branch_id = target_branch_id)
+      and (target_class_id is null or t.class_id = target_class_id)
+      and (target_student_id is null or t.student_id = target_student_id)
+      and (
+        public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.manage')
+      )
+      and not exists (
+        select 1 from public.memorization_records r
+        where r.school_id = t.school_id and r.student_id = t.student_id
+          and r.surah_number = t.surah_number
+          and r.ayah_start <= t.ayah_start and r.ayah_end >= t.ayah_end
+          and r.record_date >= t.assigned_on
+          and (
+            (t.target_kind = 'new_memorization'
+              and r.session_type in ('new_memorization','new_hifz','assessment')
+              and r.recitation_result = 'memorized')
+            or
+            (t.target_kind = 'revision'
+              and r.session_type in ('near_revision','distant_revision')
+              and r.recitation_result = 'revised')
+          )
+      )
+  loop
+    student_label := btrim(concat_ws(' ',target_row.first_name,target_row.last_name));
+    passage_label := 'السورة رقم ' || target_row.surah_number::text
+      || '، الآيات ' || target_row.ayah_start::text || '-' || target_row.ayah_end::text;
+
+    select t.profile_id into teacher_profile_id
+    from public.teachers t
+    where t.id = target_row.teacher_id
+      and t.school_id = target_row.school_id
+      and t.status = 'active'
+      and t.profile_id is not null;
+
+    if teacher_profile_id is not null then
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, teacher_profile_id, null, target_row.student_id,
+        'teachers', 'learning_target_overdue',
+        case when target_row.target_kind = 'new_memorization'
+          then 'تكليف حفظ متأخر' else 'تكليف مراجعة متأخر' end,
+        'التلميذ ' || student_label || ': لم تُسجل نتيجة إنجاز لـ' || passage_label
+          || ' بعد موعد الاستحقاق.',
+        '/academic-reports?tab=smart',
+        'learning_target_overdue', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end if;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = target_row.school_id
+        and g.student_id = target_row.student_id
+        and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, guardian_row.guardian_profile_id, null, target_row.student_id,
+        'guardians', 'learning_target_overdue',
+        case when target_row.target_kind = 'new_memorization'
+          then 'متابعة الحفظ' else 'متابعة المراجعة' end,
+        'لم يُسجل إنجاز ' || student_label || ' لـ' || passage_label
+          || ' قبل الموعد المحدد. يرجى متابعة التكليف مع المعلم.',
+        '/parent',
+        'learning_target_overdue', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  -- Repeated unresolved observations are elevated once per assigned passage.
+  for target_row in
+    select t.*, s.first_name, s.last_name
+    from public.learning_follow_up_targets t
+    join public.students s on s.id = t.student_id and s.school_id = t.school_id
+    where t.school_id = target_school_id and t.status = 'active'
+      and (target_branch_id is null or t.branch_id = target_branch_id)
+      and (target_class_id is null or t.class_id = target_class_id)
+      and (target_student_id is null or t.student_id = target_student_id)
+      and (
+        public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.manage')
+      )
+      and exists (
+        select 1 from public.memorization_follow_up_notes n
+        where n.school_id = t.school_id and n.branch_id = t.branch_id
+          and n.class_id = t.class_id and n.student_id = t.student_id
+          and n.surah_number = t.surah_number
+          and n.ayah_start <= t.ayah_end and n.ayah_end >= t.ayah_start
+          and n.status = 'open'
+          and n.observed_on >= t.assigned_on
+        having count(*) >= 2
+      )
+  loop
+    student_label := btrim(concat_ws(' ',target_row.first_name,target_row.last_name));
+    select t.profile_id into teacher_profile_id
+    from public.teachers t
+    where t.id = target_row.teacher_id
+      and t.school_id = target_row.school_id
+      and t.status = 'active'
+      and t.profile_id is not null;
+
+    if teacher_profile_id is not null then
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, teacher_profile_id, null, target_row.student_id,
+        'teachers', 'learning_passage_recurring_weakness',
+        'موضع يحتاج متابعة متكررة',
+        'تكررت ملاحظات الضعف لدى ' || student_label || ' في السورة رقم '
+          || target_row.surah_number::text || '، الآيات '
+          || target_row.ayah_start::text || '-' || target_row.ayah_end::text || '.',
+        '/academic-reports?tab=smart',
+        'learning_target_weakness', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end if;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = target_row.school_id
+        and g.student_id = target_row.student_id
+        and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, guardian_row.guardian_profile_id, null, target_row.student_id,
+        'guardians', 'learning_passage_recurring_weakness',
+        'متابعة موضع في الحفظ',
+        'لاحظ المعلم تكرار صعوبة في موضع من حفظ ' || student_label
+          || '. ستتم متابعة الموضع مع المعلم.',
+        '/parent',
+        'learning_target_weakness', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  -- Absence reminders are created only for classes the caller can access in attendance.
+  for absence_row in
+    select ar.id, ar.school_id, ar.student_id, ar.branch_id, ar.class_id,
+      a.session_date, s.first_name, s.last_name
+    from public.attendance_records ar
+    join public.attendance_sessions a on a.id = ar.session_id
+      and a.school_id = ar.school_id and a.branch_id = ar.branch_id
+      and a.class_id = ar.class_id
+    join public.students s on s.id = ar.student_id and s.school_id = ar.school_id
+    where ar.school_id = target_school_id and ar.status = 'absent'
+      and a.session_date >= current_date - 29
+      and (target_branch_id is null or ar.branch_id = target_branch_id)
+      and (target_class_id is null or ar.class_id = target_class_id)
+      and (target_student_id is null or ar.student_id = target_student_id)
+      and (
+        public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.view')
+        or public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.manage')
+      )
+  loop
+    student_label := btrim(concat_ws(' ',absence_row.first_name,absence_row.last_name));
+
+    for target_row in
+      select distinct t.profile_id
+      from public.class_teachers ct
+      join public.teachers t on t.id = ct.teacher_id
+        and t.school_id = ct.school_id and t.branch_id = ct.branch_id
+      where ct.school_id = absence_row.school_id
+        and ct.branch_id = absence_row.branch_id
+        and ct.class_id = absence_row.class_id
+        and ct.status = 'active' and t.status = 'active'
+        and t.profile_id is not null
+    loop
+      notification_id := public.create_app_notification_internal(
+        absence_row.school_id, target_row.profile_id, null, absence_row.student_id,
+        'teachers', 'attendance_absence_follow_up',
+        'غياب يحتاج متابعة',
+        'سُجل غياب ' || student_label || ' بتاريخ ' || absence_row.session_date::text || '.',
+        '/attendance',
+        'attendance_absence_follow_up', absence_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = absence_row.school_id
+        and g.student_id = absence_row.student_id and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        absence_row.school_id, guardian_row.guardian_profile_id, null, absence_row.student_id,
+        'guardians', 'attendance_absence_follow_up',
+        'تنبيه بخصوص الغياب',
+        'سُجل غياب ' || student_label || ' بتاريخ ' || absence_row.session_date::text
+          || '. يرجى الاطلاع على سجل الحضور والتواصل مع المدرسة عند الحاجة.',
+        '/parent',
+        'attendance_absence_follow_up', absence_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  return jsonb_build_object('created_count',created_count,'deduplicated',true);
+end;
+$qsp$;
+
+revoke all on function public.refresh_learning_follow_up_alerts(uuid,uuid,uuid,uuid)
+  from public, anon;
+grant execute on function public.refresh_learning_follow_up_alerts(uuid,uuid,uuid,uuid)
+  to authenticated;
+
+comment on table public.learning_follow_up_targets is
+  'Teacher-defined Quran memorization and revision assignments; unrecorded passages are not inferred as failures.';
+comment on function public.get_learning_follow_up_dashboard(uuid,uuid,uuid,uuid,date,date,integer) is
+  'Scoped teacher/staff dashboard for assigned targets, overdue work, weaknesses and attendance.';
+comment on function public.get_my_guardian_learning_follow_up(uuid,uuid,integer) is
+  'Read-only guardian progress limited to the caller active linked child.';
+
+commit;
+
+    or target_title is null
+    or char_length(btrim(target_title)) not between 1 and 160
+    or target_body is null
+    or char_length(btrim(target_body)) not between 1 and 700
+    or (
+      target_path is not null
+      and (
+        char_length(target_path) not between 1 and 300
+        or target_path !~ '^/[^/\\[:cntrl:]](?:[^\\[:cntrl:]]*)?
+  target_school_id uuid,
+  target_branch_id uuid default null,
+  target_class_id uuid default null,
+  target_student_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $qsp$
+declare
+  current_user_id uuid := (select auth.uid());
+  target_row record;
+  absence_row record;
+  guardian_row record;
+  teacher_profile_id uuid;
+  created_count integer := 0;
+  notification_id uuid;
+  student_label text;
+  passage_label text;
+begin
+  if current_user_id is null then
+    raise exception using errcode = '42501', message = 'LEARNING_ALERT_AUTH_REQUIRED';
+  end if;
+
+  if not exists (
+    select 1 from public.classes c
+    where c.school_id = target_school_id and c.status = 'active'
+      and (target_branch_id is null or c.branch_id = target_branch_id)
+      and (target_class_id is null or c.id = target_class_id)
+      and (
+        public.can_access_memorization_class(target_school_id,c.branch_id,c.id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,c.branch_id,c.id,'memorization.manage')
+      )
+  ) then
+    raise exception using errcode = '42501', message = 'LEARNING_ALERT_SCOPE_DENIED';
+  end if;
+
+  for target_row in
+    select t.*, s.first_name, s.last_name
+    from public.learning_follow_up_targets t
+    join public.students s on s.id = t.student_id and s.school_id = t.school_id
+    where t.school_id = target_school_id and t.status = 'active'
+      and t.due_on < current_date
+      and (target_branch_id is null or t.branch_id = target_branch_id)
+      and (target_class_id is null or t.class_id = target_class_id)
+      and (target_student_id is null or t.student_id = target_student_id)
+      and (
+        public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.manage')
+      )
+      and not exists (
+        select 1 from public.memorization_records r
+        where r.school_id = t.school_id and r.student_id = t.student_id
+          and r.surah_number = t.surah_number
+          and r.ayah_start <= t.ayah_start and r.ayah_end >= t.ayah_end
+          and r.record_date >= t.assigned_on
+          and (
+            (t.target_kind = 'new_memorization'
+              and r.session_type in ('new_memorization','new_hifz','assessment')
+              and r.recitation_result = 'memorized')
+            or
+            (t.target_kind = 'revision'
+              and r.session_type in ('near_revision','distant_revision')
+              and r.recitation_result = 'revised')
+          )
+      )
+  loop
+    student_label := btrim(concat_ws(' ',target_row.first_name,target_row.last_name));
+    passage_label := 'السورة رقم ' || target_row.surah_number::text
+      || '، الآيات ' || target_row.ayah_start::text || '-' || target_row.ayah_end::text;
+
+    select t.profile_id into teacher_profile_id
+    from public.teachers t
+    where t.id = target_row.teacher_id
+      and t.school_id = target_row.school_id
+      and t.status = 'active'
+      and t.profile_id is not null;
+
+    if teacher_profile_id is not null then
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, teacher_profile_id, null, target_row.student_id,
+        'teachers', 'learning_target_overdue',
+        case when target_row.target_kind = 'new_memorization'
+          then 'تكليف حفظ متأخر' else 'تكليف مراجعة متأخر' end,
+        'التلميذ ' || student_label || ': لم تُسجل نتيجة إنجاز لـ' || passage_label
+          || ' بعد موعد الاستحقاق.',
+        '/academic-reports?tab=smart',
+        'learning_target_overdue', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end if;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = target_row.school_id
+        and g.student_id = target_row.student_id
+        and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, guardian_row.guardian_profile_id, null, target_row.student_id,
+        'guardians', 'learning_target_overdue',
+        case when target_row.target_kind = 'new_memorization'
+          then 'متابعة الحفظ' else 'متابعة المراجعة' end,
+        'لم يُسجل إنجاز ' || student_label || ' لـ' || passage_label
+          || ' قبل الموعد المحدد. يرجى متابعة التكليف مع المعلم.',
+        '/parent',
+        'learning_target_overdue', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  -- Repeated unresolved observations are elevated once per assigned passage.
+  for target_row in
+    select t.*, s.first_name, s.last_name
+    from public.learning_follow_up_targets t
+    join public.students s on s.id = t.student_id and s.school_id = t.school_id
+    where t.school_id = target_school_id and t.status = 'active'
+      and (target_branch_id is null or t.branch_id = target_branch_id)
+      and (target_class_id is null or t.class_id = target_class_id)
+      and (target_student_id is null or t.student_id = target_student_id)
+      and (
+        public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.view')
+        or public.can_access_memorization_class(target_school_id,t.branch_id,t.class_id,'memorization.manage')
+      )
+      and exists (
+        select 1 from public.memorization_follow_up_notes n
+        where n.school_id = t.school_id and n.branch_id = t.branch_id
+          and n.class_id = t.class_id and n.student_id = t.student_id
+          and n.surah_number = t.surah_number
+          and n.ayah_start <= t.ayah_end and n.ayah_end >= t.ayah_start
+          and n.status = 'open'
+          and n.observed_on >= t.assigned_on
+        having count(*) >= 2
+      )
+  loop
+    student_label := btrim(concat_ws(' ',target_row.first_name,target_row.last_name));
+    select t.profile_id into teacher_profile_id
+    from public.teachers t
+    where t.id = target_row.teacher_id
+      and t.school_id = target_row.school_id
+      and t.status = 'active'
+      and t.profile_id is not null;
+
+    if teacher_profile_id is not null then
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, teacher_profile_id, null, target_row.student_id,
+        'teachers', 'learning_passage_recurring_weakness',
+        'موضع يحتاج متابعة متكررة',
+        'تكررت ملاحظات الضعف لدى ' || student_label || ' في السورة رقم '
+          || target_row.surah_number::text || '، الآيات '
+          || target_row.ayah_start::text || '-' || target_row.ayah_end::text || '.',
+        '/academic-reports?tab=smart',
+        'learning_target_weakness', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end if;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = target_row.school_id
+        and g.student_id = target_row.student_id
+        and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        target_row.school_id, guardian_row.guardian_profile_id, null, target_row.student_id,
+        'guardians', 'learning_passage_recurring_weakness',
+        'متابعة موضع في الحفظ',
+        'لاحظ المعلم تكرار صعوبة في موضع من حفظ ' || student_label
+          || '. ستتم متابعة الموضع مع المعلم.',
+        '/parent',
+        'learning_target_weakness', target_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  -- Absence reminders are created only for classes the caller can access in attendance.
+  for absence_row in
+    select ar.id, ar.school_id, ar.student_id, ar.branch_id, ar.class_id,
+      a.session_date, s.first_name, s.last_name
+    from public.attendance_records ar
+    join public.attendance_sessions a on a.id = ar.session_id
+      and a.school_id = ar.school_id and a.branch_id = ar.branch_id
+      and a.class_id = ar.class_id
+    join public.students s on s.id = ar.student_id and s.school_id = ar.school_id
+    where ar.school_id = target_school_id and ar.status = 'absent'
+      and a.session_date >= current_date - 29
+      and (target_branch_id is null or ar.branch_id = target_branch_id)
+      and (target_class_id is null or ar.class_id = target_class_id)
+      and (target_student_id is null or ar.student_id = target_student_id)
+      and (
+        public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.view')
+        or public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.manage')
+      )
+  loop
+    student_label := btrim(concat_ws(' ',absence_row.first_name,absence_row.last_name));
+
+    for target_row in
+      select distinct t.profile_id
+      from public.class_teachers ct
+      join public.teachers t on t.id = ct.teacher_id
+        and t.school_id = ct.school_id and t.branch_id = ct.branch_id
+      where ct.school_id = absence_row.school_id
+        and ct.branch_id = absence_row.branch_id
+        and ct.class_id = absence_row.class_id
+        and ct.status = 'active' and t.status = 'active'
+        and t.profile_id is not null
+    loop
+      notification_id := public.create_app_notification_internal(
+        absence_row.school_id, target_row.profile_id, null, absence_row.student_id,
+        'teachers', 'attendance_absence_follow_up',
+        'غياب يحتاج متابعة',
+        'سُجل غياب ' || student_label || ' بتاريخ ' || absence_row.session_date::text || '.',
+        '/attendance',
+        'attendance_absence_follow_up', absence_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+
+    for guardian_row in
+      select distinct g.guardian_profile_id
+      from public.student_guardians g
+      join public.profiles p on p.id = g.guardian_profile_id and p.status = 'active'
+      where g.school_id = absence_row.school_id
+        and g.student_id = absence_row.student_id and g.status = 'active'
+    loop
+      notification_id := public.create_app_notification_internal(
+        absence_row.school_id, guardian_row.guardian_profile_id, null, absence_row.student_id,
+        'guardians', 'attendance_absence_follow_up',
+        'تنبيه بخصوص الغياب',
+        'سُجل غياب ' || student_label || ' بتاريخ ' || absence_row.session_date::text
+          || '. يرجى الاطلاع على سجل الحضور والتواصل مع المدرسة عند الحاجة.',
+        '/parent',
+        'attendance_absence_follow_up', absence_row.id
+      );
+      if notification_id is not null then created_count := created_count + 1; end if;
+    end loop;
+  end loop;
+
+  return jsonb_build_object('created_count',created_count,'deduplicated',true);
+end;
+$qsp$;
+
+revoke all on function public.refresh_learning_follow_up_alerts(uuid,uuid,uuid,uuid)
+  from public, anon;
+grant execute on function public.refresh_learning_follow_up_alerts(uuid,uuid,uuid,uuid)
+  to authenticated;
+
+comment on table public.learning_follow_up_targets is
+  'Teacher-defined Quran memorization and revision assignments; unrecorded passages are not inferred as failures.';
+comment on function public.get_learning_follow_up_dashboard(uuid,uuid,uuid,uuid,date,date,integer) is
+  'Scoped teacher/staff dashboard for assigned targets, overdue work, weaknesses and attendance.';
+comment on function public.get_my_guardian_learning_follow_up(uuid,uuid,integer) is
+  'Read-only guardian progress limited to the caller active linked child.';
+
+commit;
+
+        or target_path ~ '://'
+      )
+    )
+  then
+    raise exception using errcode = '22023', message = 'invalid app notification input';
+  end if;
+
+  if not exists (
+    select 1 from public.schools school
+    where school.id = target_school_id and school.status = 'active'
+  ) or not exists (
+    select 1 from public.profiles recipient
+    where recipient.id = target_recipient_profile_id and recipient.status = 'active'
+  ) then
+    raise exception using errcode = '23514', message = 'notification recipient unavailable';
+  end if;
+
+  if target_sender_profile_id is not null and not exists (
+    select 1 from public.profiles sender
+    where sender.id = target_sender_profile_id and sender.status = 'active'
+  ) then
+    raise exception using errcode = '23514', message = 'notification sender unavailable';
+  end if;
+
+  if target_student_id is not null and not exists (
+    select 1 from public.students student
+    where student.id = target_student_id and student.school_id = target_school_id
+  ) then
+    raise exception using errcode = '23514', message = 'notification student scope mismatch';
+  end if;
+
+  insert into public.app_notifications (
+    school_id, recipient_profile_id, sender_profile_id, student_id,
+    category, event_type, title, body, target_path, source_type, source_id
+  ) values (
+    target_school_id, target_recipient_profile_id, target_sender_profile_id,
+    target_student_id, target_category, target_event_type, btrim(target_title),
+    btrim(target_body), target_path, target_source_type, target_source_id
+  )
+  on conflict (recipient_profile_id, source_type, source_id) do nothing
+  returning id into created_notification_id;
+
+  return created_notification_id;
+end;
+$;
+
+revoke all on function public.create_app_notification_internal(
+  uuid,uuid,uuid,uuid,text,text,text,text,text,text,uuid
+) from public, anon, authenticated, service_role;
+
 create or replace function public.refresh_learning_follow_up_alerts(
   target_school_id uuid,
   target_branch_id uuid default null,
