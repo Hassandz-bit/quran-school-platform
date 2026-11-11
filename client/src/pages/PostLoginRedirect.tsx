@@ -200,7 +200,7 @@ export default function PostLoginRedirect() {
                   onClick={() => setLocation(portal.path)}
                   className="h-auto justify-between rounded-xl border-[#0B4738]/20 px-4 py-4 text-base font-bold text-[#0B4738] hover:bg-[#0B4738]/5"
                 >
-                  <span>{portal.label}</span>
+                  <span>{portal.path === "/attendance" ? "بوابة المعلم والحضور" : portal.label}</span>
                   <Icon aria-hidden="true" size={20} />
                 </Button>
               );
