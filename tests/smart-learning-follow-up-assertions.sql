@@ -72,6 +72,52 @@ values ('10000000-0000-4000-8000-000000000001',
   '70000000-0000-4000-8000-000000000001',
   '30000000-0000-4000-8000-000000000006','active');
 
+-- Create one overdue revision target and repeated weakness observations.
+insert into public.learning_follow_up_targets(
+  id,school_id,branch_id,class_id,student_id,teacher_id,target_kind,
+  surah_number,ayah_start,ayah_end,assigned_on,due_on,status,created_by
+) values (
+  '92000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '21000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000001',
+  '50000000-0000-4000-8000-000000000001',
+  'revision',1,1,4,current_date-2,current_date-1,'active',
+  '30000000-0000-4000-8000-000000000003'
+);
+
+insert into public.memorization_follow_up_notes(
+  school_id,student_id,surah_number,ayah_start,ayah_end,status,observed_on
+) values
+  ('10000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001',1,1,4,'open',current_date-2),
+  ('10000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001',1,1,4,'open',current_date-1);
+
+do $
+declare result jsonb;
+begin
+  result := public.refresh_learning_follow_up_alerts(
+    '10000000-0000-4000-8000-000000000001',null,null,null
+  );
+  if (result ->> 'created_count')::int <> 7 then
+    raise exception 'expected teacher and guardian alerts for overdue, recurring weakness and absence: %', result;
+  end if;
+  result := public.refresh_learning_follow_up_alerts(
+    '10000000-0000-4000-8000-000000000001',null,null,null
+  );
+  if (result ->> 'created_count')::int <> 0 then
+    raise exception 'alert refresh must be idempotent: %', result;
+  end if;
+  if exists (
+    select 1 from public.app_notifications n
+    where n.recipient_audiences && array['student']::text[]
+       or n.category not in ('teachers','guardians')
+  ) then
+    raise exception 'student or unsupported audience received a smart alert';
+  end if;
+end;
+$;
+
 select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000006',false);
 
 do $$
