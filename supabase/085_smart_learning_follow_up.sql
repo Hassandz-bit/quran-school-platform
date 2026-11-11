@@ -276,6 +276,81 @@ $$;
 revoke all on function public.list_my_guardian_learning_targets(uuid,uuid) from public, anon;
 grant execute on function public.list_my_guardian_learning_targets(uuid,uuid) to authenticated;
 
+-- Aggregated guardian follow-up payload used by the existing parent portal.
+create or replace function public.get_my_guardian_learning_follow_up(
+  target_school_id uuid,
+  target_student_id uuid,
+  target_limit integer default 50
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $
+declare
+  result jsonb;
+begin
+  if target_limit is null or target_limit not between 1 and 100 then
+    raise exception using errcode = '22023', message = 'GUARDIAN_LEARNING_TARGET_LIMIT_INVALID';
+  end if;
+  if not public.is_active_guardian_of_student(target_school_id,target_student_id) then
+    raise exception using errcode = '42501', message = 'GUARDIAN_STUDENT_ACCESS_DENIED';
+  end if;
+
+  select jsonb_build_object(
+    'targets', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', t.id,
+        'target_kind', t.target_type,
+        'surah_number', t.surah_number,
+        'ayah_start', t.ayah_start,
+        'ayah_end', t.ayah_end,
+        'assigned_on', t.assigned_on,
+        'due_on', t.due_on,
+        'completed', exists (
+          select 1 from public.memorization_records mr
+          where mr.school_id=t.school_id and mr.student_id=t.student_id
+            and mr.surah_number=t.surah_number
+            and mr.ayah_start <= t.ayah_start and mr.ayah_end >= t.ayah_end
+            and mr.record_date >= t.assigned_on
+            and (
+              (t.target_type='new_memorization' and mr.session_type in ('new_memorization','new_hifz') and mr.recitation_result='memorized')
+              or (t.target_type='revision' and mr.session_type in ('near_revision','distant_revision') and mr.recitation_result='revised')
+            )
+        ),
+        'overdue', t.due_on < current_date
+      ) order by t.due_on desc,t.created_at desc)
+      from (
+        select * from public.student_learning_targets
+        where school_id=target_school_id and student_id=target_student_id and status='active'
+        order by due_on desc,created_at desc limit target_limit
+      ) t
+    ), '[]'::jsonb),
+    'attendance', (
+      select jsonb_build_object(
+        'absence_count', count(*) filter (where ar.status='absent'),
+        'late_count', count(*) filter (where ar.status='late')
+      )
+      from public.attendance_records ar
+      join public.attendance_sessions ats
+        on ats.school_id=ar.school_id and ats.branch_id=ar.branch_id
+        and ats.class_id=ar.class_id and ats.id=ar.session_id
+      where ar.school_id=target_school_id and ar.student_id=target_student_id
+        and ats.session_date >= current_date-29
+    )
+  ) into result;
+
+  return coalesce(result, jsonb_build_object(
+    'targets','[]'::jsonb,
+    'attendance',jsonb_build_object('absence_count',0,'late_count',0)
+  ));
+end;
+$;
+
+revoke all on function public.get_my_guardian_learning_follow_up(uuid,uuid,integer) from public, anon;
+grant execute on function public.get_my_guardian_learning_follow_up(uuid,uuid,integer) to authenticated;
+
 -- Role-scoped alert writer. It deliberately never resolves or inserts student recipients.
 create or replace function public.emit_learning_follow_up_alert(
   target_school_id uuid,
