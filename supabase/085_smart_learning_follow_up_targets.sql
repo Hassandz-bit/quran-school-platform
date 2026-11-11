@@ -255,6 +255,7 @@ begin
   if target_date_from is null or target_date_to is null
     or target_date_from > target_date_to
     or target_date_to - target_date_from > 366
+    or target_limit is null
     or target_limit not between 1 and 200
   then
     raise exception using errcode = '22023', message = 'LEARNING_DASHBOARD_FILTER_INVALID';
@@ -404,9 +405,10 @@ as $$
 declare
   result jsonb;
 begin
-  if target_limit not between 1 and 100
-    or not public.is_active_guardian_of_student(target_school_id,target_student_id)
-  then
+  if target_limit is null or target_limit not between 1 and 100 then
+    raise exception using errcode = '22023', message = 'GUARDIAN_LEARNING_LIMIT_INVALID';
+  end if;
+  if not public.is_active_guardian_of_student(target_school_id,target_student_id) then
     raise exception using errcode = '42501', message = 'GUARDIAN_LEARNING_SCOPE_DENIED';
   end if;
 
