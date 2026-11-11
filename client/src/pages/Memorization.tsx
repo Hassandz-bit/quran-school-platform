@@ -292,7 +292,6 @@ export default function Memorization() {
 
   useEffect(() => {
     if (!school?.id || !branchId || !classId) return;
-    let cancelled = false;
     void (async () => {
       try {
         await getSupabaseClient().rpc("refresh_learning_follow_up_alerts", {
@@ -305,7 +304,6 @@ export default function Memorization() {
         // Network failures must never interrupt the teacher's memorization workflow.
       }
     })();
-    return () => { cancelled = true; };
   }, [school?.id, branchId, classId, onlineRevision]);
 
   const availableClasses = useMemo(
