@@ -300,13 +300,14 @@ begin
     from scoped_targets st
   ),
   attendance as (
-    select ar.student_id,
+    select ar.student_id, s.first_name, s.last_name,
       count(*) filter (where ar.status = 'absent')::bigint as absences,
       count(*) filter (where ar.status = 'late')::bigint as late_count
     from public.attendance_records ar
     join public.attendance_sessions a on a.id = ar.session_id
       and a.school_id = ar.school_id and a.branch_id = ar.branch_id
       and a.class_id = ar.class_id
+    join public.students s on s.id = ar.student_id and s.school_id = ar.school_id
     where ar.school_id = target_school_id
       and a.session_date between target_date_from and target_date_to
       and (target_branch_id is null or ar.branch_id = target_branch_id)
@@ -316,7 +317,7 @@ begin
         public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.view')
         or public.can_access_attendance_class(ar.school_id,ar.branch_id,ar.class_id,'attendance.manage')
       )
-    group by ar.student_id
+    group by ar.student_id, s.first_name, s.last_name
   )
   select jsonb_build_object(
     'overview', jsonb_build_object(
@@ -324,6 +325,8 @@ begin
       'completed_count', count(*) filter (where r.completed),
       'overdue_count', count(*) filter (where r.overdue),
       'not_completed_count', count(*) filter (where not r.completed),
+      'not_memorized_count', count(*) filter (where not r.completed and r.target_kind = 'new_memorization'),
+      'not_reviewed_count', count(*) filter (where not r.completed and r.target_kind = 'revision'),
       'weakness_count', count(*) filter (where r.has_open_weakness),
       'absence_count', coalesce((select sum(a.absences) from attendance a),0),
       'late_count', coalesce((select sum(a.late_count) from attendance a),0)
@@ -344,7 +347,7 @@ begin
     ), '[]'::jsonb),
     'attendance_by_student', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'student_id', a.student_id, 'absence_count', a.absences, 'late_count', a.late_count
+        'student_id', a.student_id, 'student_name', btrim(concat_ws(' ',a.first_name,a.last_name)), 'absence_count', a.absences, 'late_count', a.late_count
       ) order by a.absences desc, a.late_count desc)
       from attendance a
     ), '[]'::jsonb)
