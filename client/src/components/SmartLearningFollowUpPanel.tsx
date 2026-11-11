@@ -49,12 +49,14 @@ function surahName(number: number) {
 
 export default function SmartLearningFollowUpPanel({
   schoolId,
+  canManage,
   branchId,
   classId,
   studentId,
   students,
 }: {
   schoolId: string;
+  canManage: boolean;
   branchId: string;
   classId: string;
   studentId: string;
@@ -185,6 +187,7 @@ export default function SmartLearningFollowUpPanel({
         <Metric label="مواضع ضعف" value={dashboard?.overview.weakness_count ?? 0} icon={CalendarClock} />
       </section>
 
+      {canManage ? (
       <Card className="space-y-4 border-[#DCE7DF] p-4 shadow-sm">
         <div>
           <h3 className="font-bold text-[#173B2D]">إسناد حفظ أو مراجعة</h3>
@@ -230,6 +233,10 @@ export default function SmartLearningFollowUpPanel({
           </div>
         </form>
       </Card>
+      ) : (
+        <p className="rounded-xl border border-[#E5EDE7] bg-white p-4 text-sm text-[#718177]">يمكنك الاطلاع على المتابعة، لكن لا تملك صلاحية إسناد التكليفات.</p>
+      )}
+
 
       <Card className="border-[#DCE7DF] p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-2">
