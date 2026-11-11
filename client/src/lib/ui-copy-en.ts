@@ -2,6 +2,11 @@
 // strings. Keeping the catalog separate makes coverage measurable and prevents
 // page components from accumulating one-off language conditionals.
 export const EXACT_UI_ENGLISH: Record<string, string> = {
+  "اختر نوع الدخول أولًا": "Choose your portal first",
+  "هذا اختيار للوجهة فقط؛ سيُتحقق من صلاحيات الحساب بعد تسجيل الدخول.": "This selects the destination only. Account permissions are verified after sign-in.",
+  "هذا الحساب لا يرتبط بوليّ أمر نشط. اختر بوابة أخرى متاحة أو استخدم حساب ولي الأمر الصحيح.": "This account has no active guardian relationship. Choose another available portal or use the correct guardian account.",
+  "هذا الحساب لا يملك دور المعلم النشط. اختر بوابة أخرى متاحة أو تحقق من إسناد دور المعلم للحساب.": "This account has no active teacher role. Choose another available portal or verify the teacher role assignment.",
+  "هذا الحساب لا يملك صلاحية إدارة المدرسة. اختر بوابة أخرى متاحة أو تحقق من صلاحيات الحساب.": "This account has no school administration permission. Choose another available portal or verify the account permissions.",
   "بوابة ولي الأمر": "Guardian portal",
   "بوابة المعلم والحضور": "Teacher and attendance portal",
   "استُعيدت مسودة حضور محفوظة على هذا الجهاز.": "A saved attendance draft was restored on this device.",
