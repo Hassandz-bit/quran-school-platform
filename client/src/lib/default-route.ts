@@ -39,7 +39,7 @@ export function getAvailableAuthenticatedRoutes({
   const roleCodes = new Set(activeRoleCodes ?? []);
   const routes: AuthenticatedRoute[] = [];
 
-  if (isSchoolAdmin || roleCodes.has("school_admin")) routes.push(ROUTES.dashboard);
+  if (isSchoolAdmin) routes.push(ROUTES.dashboard);
   if (hasAnyRole(roleCodes, ATTENDANCE_ROLE_CODES)) routes.push(ROUTES.attendance);
   if (hasAnyRole(roleCodes, FINANCE_ROLE_CODES)) routes.push(ROUTES.finance);
   if (hasAnyRole(roleCodes, MEMBERS_ROLE_CODES)) routes.push(ROUTES.members);
