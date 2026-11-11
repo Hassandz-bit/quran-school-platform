@@ -2220,4 +2220,6 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "الغياب حسب التلميذ": "Absences by student",
   "غياب": "Absences",
   "تأخر": "Late arrivals",
+  "اختر التلميذ": "Select student",
+  "نوع التكليف": "Assignment type",
 };
