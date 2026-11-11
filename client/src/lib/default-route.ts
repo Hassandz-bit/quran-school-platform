@@ -41,9 +41,6 @@ export function getAvailableAuthenticatedRoutes({
 
   if (isSchoolAdmin || roleCodes.has("school_admin")) routes.push(ROUTES.dashboard);
   if (hasAnyRole(roleCodes, ATTENDANCE_ROLE_CODES)) routes.push(ROUTES.attendance);
-  if (roleCodes.has("teacher") || roleCodes.has("academic_supervisor")) {
-    routes.push(ROUTES.memorization);
-  }
   if (hasAnyRole(roleCodes, FINANCE_ROLE_CODES)) routes.push(ROUTES.finance);
   if (hasAnyRole(roleCodes, MEMBERS_ROLE_CODES)) routes.push(ROUTES.members);
 
