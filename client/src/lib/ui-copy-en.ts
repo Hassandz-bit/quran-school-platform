@@ -2194,4 +2194,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "المنجز": "Completed",
   "مواضع ضعف": "Weak passages",
   "إسناد التكليف": "Assign task",
+  "المعلم المسؤول": "Responsible teacher",
+  "المعلم الحالي (للمعلم) / اختر للمدير": "Current teacher (for teachers) / select for administrators",
+  "لا يمكنك إسناد التكليف باسم معلم آخر.": "You cannot assign a task under another teacher's identity.",
 };
