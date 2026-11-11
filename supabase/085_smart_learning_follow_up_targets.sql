@@ -257,7 +257,7 @@ begin
           where r.school_id = t.school_id and r.student_id = t.student_id
             and r.surah_number = t.surah_number
             and r.ayah_start <= t.ayah_start and r.ayah_end >= t.ayah_end
-            and r.session_type in ('new_memorization','assessment')
+            and r.session_type in ('new_memorization','new_hifz','assessment')
             and r.recitation_result = 'memorized'
             and r.record_date >= t.assigned_on
         )
@@ -399,7 +399,7 @@ begin
           where r.school_id = t.school_id and r.student_id = t.student_id
             and r.surah_number = t.surah_number
             and r.ayah_start <= t.ayah_start and r.ayah_end >= t.ayah_end
-            and r.session_type in ('new_memorization','assessment')
+            and r.session_type in ('new_memorization','new_hifz','assessment')
             and r.recitation_result = 'memorized' and r.record_date >= t.assigned_on
         )
         else exists (
@@ -418,7 +418,7 @@ begin
             where r.school_id = t.school_id and r.student_id = t.student_id
               and r.surah_number = t.surah_number
               and r.ayah_start <= t.ayah_start and r.ayah_end >= t.ayah_end
-              and r.session_type in ('new_memorization','assessment')
+              and r.session_type in ('new_memorization','new_hifz','assessment')
               and r.recitation_result = 'memorized' and r.record_date >= t.assigned_on
           )
           else exists (
@@ -520,7 +520,7 @@ begin
           and r.record_date >= t.assigned_on
           and (
             (t.target_kind = 'new_memorization'
-              and r.session_type in ('new_memorization','assessment')
+              and r.session_type in ('new_memorization','new_hifz','assessment')
               and r.recitation_result = 'memorized')
             or
             (t.target_kind = 'revision'
