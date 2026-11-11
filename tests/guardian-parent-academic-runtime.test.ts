@@ -149,6 +149,7 @@ describe("Guardian parent academic RPC client", () => {
         data: {
           targets: [
             {
+              id: "target-1",
               target_kind: "revision",
               surah_number: 57,
               ayah_start: 1,
@@ -168,6 +169,7 @@ describe("Guardian parent academic RPC client", () => {
     const result = await fetchParentStudentLearningFollowUp("school-a", "student-a", client);
     expect(result).toEqual({
       targets: [{
+        id: "target-1",
         targetKind: "revision",
         surahNumber: 57,
         ayahStart: 1,
