@@ -24,6 +24,21 @@ values ('91000000-0000-4000-8000-000000000001',
   '90000000-0000-4000-8000-000000000001',
   '70000000-0000-4000-8000-000000000001','absent');
 
+-- Future-dated sessions must not count as an absence or trigger an alert.
+insert into public.attendance_sessions(id,school_id,branch_id,class_id,session_date)
+values ('90000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '21000000-0000-4000-8000-000000000001', current_date + 1);
+
+insert into public.attendance_records(id,school_id,branch_id,class_id,session_id,student_id,status)
+values ('91000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '21000000-0000-4000-8000-000000000001',
+  '90000000-0000-4000-8000-000000000002',
+  '70000000-0000-4000-8000-000000000001','absent');
+
 do $$
 declare report jsonb;
 begin
@@ -188,6 +203,9 @@ begin
   );
   if jsonb_array_length(report -> 'targets') <> 2 then
     raise exception 'guardian should see exactly the linked child target: %', report;
+  end if;
+  if (report #>> '{attendance,absence_count}')::int <> 1 then
+    raise exception 'guardian absence count must exclude future sessions: %', report;
   end if;
   if public.is_active_guardian_of_student(
     '10000000-0000-4000-8000-000000000002',
