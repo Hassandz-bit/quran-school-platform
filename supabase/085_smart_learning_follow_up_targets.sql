@@ -496,7 +496,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $qsp$
 declare
   current_user_id uuid := (select auth.uid());
   target_row record;
@@ -734,7 +734,7 @@ begin
 
   return jsonb_build_object('created_count',created_count,'deduplicated',true);
 end;
-$;
+$qsp$;
 
 revoke all on function public.refresh_learning_follow_up_alerts(uuid,uuid,uuid,uuid)
   from public, anon;
