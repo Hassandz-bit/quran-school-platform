@@ -2,6 +2,8 @@
 // strings. Keeping the catalog separate makes coverage measurable and prevents
 // page components from accumulating one-off language conditionals.
 export const EXACT_UI_ENGLISH: Record<string, string> = {
+  "بوابة ولي الأمر": "Guardian portal",
+  "بوابة المعلم والحضور": "Teacher and attendance portal",
   "استُعيدت مسودة حضور محفوظة على هذا الجهاز.": "A saved attendance draft was restored on this device.",
   "توجد مسودة محلية قديمة لهذه الحلقة والتاريخ، لكن قائمة الطلاب أو سجلاتهم تغيّرت. احتُفظ بالمسودة ولم تُدمج تلقائيًا منعًا لفقدان البيانات.": "An older local draft exists for this class and date, but the roster or records changed. The draft was retained and was not merged automatically to prevent data loss.",
   "تعذر حفظ نسخة محلية من مسودة الحضور على هذا الجهاز.": "Could not save a local copy of the attendance draft on this device.",
