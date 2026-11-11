@@ -101,7 +101,7 @@ insert into public.memorization_follow_up_notes(
   ('10000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001',1,1,4,'open',current_date-1);
 
 do $
-declare result jsonb;
+declare result jsonb; report jsonb;
 begin
   report := public.get_learning_follow_up_dashboard(
     '10000000-0000-4000-8000-000000000001',
