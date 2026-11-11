@@ -42,6 +42,10 @@ export default function PostLoginRedirect() {
   const [signOutError, setSignOutError] = useState("");
   const [parentCheck, setParentCheck] = useState<"idle" | "checking" | "none" | "error">("idle");
   const [portalChoices, setPortalChoices] = useState<Array<{ path: string; label: string }>>([]);
+  const [portalSelectionError, setPortalSelectionError] = useState("");
+  const requestedPortal = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("portal")
+    : null;
 
   const availableRoutes = useMemo(
     () => getAvailableAuthenticatedRoutes({ isSchoolAdmin, activeRoleCodes }),
@@ -61,6 +65,7 @@ export default function PostLoginRedirect() {
     }
 
     setPortalChoices([]);
+    setPortalSelectionError("");
 
     if (school && !authorizationError && availableRoutes.length > 0) {
       setParentCheck("checking");
@@ -73,7 +78,28 @@ export default function PostLoginRedirect() {
               ? [{ path: "/parent", label: "بوابة ولي الأمر" }]
               : []),
           ];
-          if (choices.length === 1) {
+          const requestedPath = requestedPortal === "admin"
+            ? "/dashboard"
+            : requestedPortal === "teacher"
+              ? "/attendance"
+              : requestedPortal === "guardian"
+                ? "/parent"
+                : null;
+          if (requestedPath) {
+            if (choices.some(choice => choice.path === requestedPath)) {
+              setLocation(requestedPath);
+            } else {
+              setPortalSelectionError(
+                requestedPortal === "guardian"
+                  ? "هذا الحساب لا يرتبط بوليّ أمر نشط. اختر بوابة أخرى متاحة أو استخدم حساب ولي الأمر الصحيح."
+                  : requestedPortal === "teacher"
+                    ? "هذا الحساب لا يملك دور المعلم النشط. اختر بوابة أخرى متاحة أو تحقق من إسناد دور المعلم للحساب."
+                    : "هذا الحساب لا يملك صلاحية إدارة المدرسة. اختر بوابة أخرى متاحة أو تحقق من صلاحيات الحساب."
+              );
+              setPortalChoices(choices);
+              setParentCheck("none");
+            }
+          } else if (choices.length === 1) {
             setLocation(choices[0].path);
           } else {
             setPortalChoices(choices);
@@ -151,7 +177,7 @@ export default function PostLoginRedirect() {
     })();
 
     return () => { cancelled = true; };
-  }, [authorizationError, authorizationLoading, availableRoutes, loading, school, session, setLocation]);
+  }, [authorizationError, authorizationLoading, availableRoutes, loading, requestedPortal, school, session, setLocation]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -176,7 +202,7 @@ export default function PostLoginRedirect() {
 
   if (!session) return <LoadingState message="جارٍ العودة إلى تسجيل الدخول..." />;
 
-  if (school && !authorizationError && portalChoices.length > 1) {
+  if (school && !authorizationError && (portalChoices.length > 1 || portalSelectionError)) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#F8F9FA] p-4" dir="rtl">
         <section className="w-full max-w-xl rounded-2xl border border-[#0B4738]/10 bg-white p-7 shadow-lg">
@@ -190,6 +216,9 @@ export default function PostLoginRedirect() {
             </p>
             <p className="mt-1 text-xs text-gray-500">{school.name}</p>
           </div>
+          {portalSelectionError && (
+            <p role="alert" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">{portalSelectionError}</p>
+          )}
           <div className="mt-6 grid gap-3">
             {portalChoices.map(portal => {
               const Icon = PORTAL_ICONS[portal.path as keyof typeof PORTAL_ICONS] ?? UserRound;
