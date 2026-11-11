@@ -105,7 +105,25 @@ begin
     btrim(target_body),
     target_path,
     target_source_type,
-    target_source_id
+    target_source_id,
+    recipient_audiences
+  ) values (
+    target_school_id,
+    target_recipient_profile_id,
+    target_sender_profile_id,
+    target_student_id,
+    target_category,
+    target_event_type,
+    btrim(target_title),
+    btrim(target_body),
+    target_path,
+    target_source_type,
+    target_source_id,
+    case
+      when target_category = 'teachers' then array['teacher']::text[]
+      when target_category = 'guardians' then array['guardian']::text[]
+      else array['staff']::text[]
+    end
   )
   on conflict (recipient_profile_id, source_type, source_id) do nothing
   returning id into created_notification_id;
