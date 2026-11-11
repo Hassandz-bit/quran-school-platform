@@ -318,6 +318,21 @@ describe("post-authentication route selection", () => {
     expect(mocks.location).toHaveBeenCalledWith("/attendance");
   });
 
+  test("offers the guardian portal alongside a staff portal when both are verified", async () => {
+    mocks.guardianStudents.mockResolvedValue([{ id: "student-1", full_name: "طالب الاختبار" }]);
+    resetAuth({
+      activeRoleCodes: ["teacher"],
+      roles: [{ id: "role-teacher", code: "teacher" }],
+      isSchoolAdmin: false,
+    });
+
+    render(<PostLoginRedirect />);
+
+    expect(await screen.findByRole("heading", { name: "اختر بوابة الدخول" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "بوابة المعلم والحضور" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "بوابة ولي الأمر" })).toBeInTheDocument();
+  });
+
   test("routes a school admin to the dashboard after login", async () => {
     resetAuth({
       activeRoleCodes: ["school_admin"],
