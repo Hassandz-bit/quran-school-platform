@@ -75,7 +75,7 @@ test("demo creation controls are retired from the dashboard", async () => {
 });
 
 test("demo creation and status RPCs are disabled without deleting legacy data", async () => {
-  const sql = await read("supabase/20261114220000_retire_demo_mode.sql");
+  const sql = await read("supabase/20261114220424_retire_demo_mode.sql");
   assert.match(sql, /revoke all on function public\.create_school_demo_data\(uuid\)[\s\S]*from public, anon, authenticated/i);
   assert.match(sql, /revoke all on function public\.get_school_demo_status\(uuid\)[\s\S]*from public, anon, authenticated/i);
   assert.doesNotMatch(sql, /drop table|delete from/i);
