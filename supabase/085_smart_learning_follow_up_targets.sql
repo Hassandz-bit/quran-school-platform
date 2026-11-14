@@ -457,7 +457,7 @@ begin
               and r.recitation_result = 'revised' and r.record_date >= t.assigned_on
           )
         end
-    ) order by t.due_on, t.created_at desc), '[]'::jsonb),
+    ) order by t.due_on, t.created_at desc) filter (where t.id is not null), '[]'::jsonb),
     'attendance', (
       select jsonb_build_object(
         'absence_count', count(*) filter (where ar.status = 'absent'),
@@ -472,11 +472,12 @@ begin
         and a.session_date <= current_date
     )
   ) into result
-  from (
+  from (select 1) seed
+  left join (
     select * from public.learning_follow_up_targets
     where school_id = target_school_id and student_id = target_student_id and status = 'active'
     order by due_on, created_at desc limit target_limit
-  ) t;
+  ) t on true;
 
   return coalesce(result, '{}'::jsonb);
 end;
