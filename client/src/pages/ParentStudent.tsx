@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatCurrency } from "@/lib/currency";
+import { StudentAlertSummary } from "@/components/StudentAlertSummary";
 import {
   AlertTriangle,
   ArrowRight,
@@ -261,6 +262,8 @@ export default function ParentStudent() {
           {student.branchName} · {student.className ?? "غير مسند إلى حلقة حاليًا"}
         </p>
       </header>
+
+      <StudentAlertSummary attendance={data.attendanceRecords} memorization={data.memorizationRecords} />
 
       <section className="space-y-4">
         <div className="flex items-center gap-2">
