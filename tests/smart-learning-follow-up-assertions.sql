@@ -61,6 +61,23 @@ begin
 end;
 $$;
 
+-- Empty target scopes must still return a complete zero-valued dashboard.
+do $
+declare report jsonb;
+begin
+  report := public.get_learning_follow_up_dashboard(
+    '10000000-0000-4000-8000-000000000001',
+    null,null,'70000000-0000-4000-8000-000000000099',current_date,current_date,50
+  );
+  if (report #>> '{overview,assigned_count}')::int <> 0
+    or (report #>> '{overview,completed_count}')::int <> 0
+    or jsonb_array_length(report -> 'targets') <> 0
+    or jsonb_array_length(report -> 'attendance_by_student') <> 0 then
+    raise exception 'empty dashboard scope must return zero metrics and empty arrays: %', report;
+  end if;
+end;
+$;
+
 -- A teacher cannot assign a target to another teacher's identity.
 select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000001',false);
 do $
