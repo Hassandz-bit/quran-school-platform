@@ -93,8 +93,14 @@ test("demo cleanup errors expose actionable SQLSTATEs without logging backend pa
   assert.match(helper, /demo_cleanup_blocked_real_student_in_demo_class/);
 });
 
-test("demo controls are school-admin only in the dashboard", async () => {
+test("demo creation controls are retired from the dashboard", async () => {
   const dashboard = await read("client/src/pages/Dashboard.tsx");
-  assert.match(dashboard, /isSchoolAdmin && school\?\.id/);
-  assert.match(dashboard, /<DemoModeCard schoolId=\{school\.id\}/);
+  assert.doesNotMatch(dashboard, /DemoModeCard|demo-mode/i);
+});
+
+test("demo creation and status RPCs are disabled by the latest retirement migration", async () => {
+  const sql = await read("supabase/090_retire_demo_mode.sql");
+  assert.match(sql, /revoke all on function public\\.create_school_demo_data\\(uuid\\)[\\s\\S]*from public, anon, authenticated/i);
+  assert.match(sql, /revoke all on function public\\.get_school_demo_status\\(uuid\\)[\\s\\S]*from public, anon, authenticated/i);
+  assert.doesNotMatch(sql, /drop table|delete from/i);
 });
