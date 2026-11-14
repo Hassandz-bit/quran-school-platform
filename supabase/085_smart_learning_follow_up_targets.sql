@@ -347,13 +347,13 @@ begin
   )
   select jsonb_build_object(
     'overview', jsonb_build_object(
-      'assigned_count', count(*),
-      'completed_count', count(*) filter (where r.completed),
-      'overdue_count', count(*) filter (where r.overdue),
-      'not_completed_count', count(*) filter (where not r.completed),
-      'not_memorized_count', count(*) filter (where not r.completed and r.target_kind = 'new_memorization'),
-      'not_reviewed_count', count(*) filter (where not r.completed and r.target_kind = 'revision'),
-      'weakness_count', count(*) filter (where r.has_open_weakness),
+      'assigned_count', (select count(*) from rows),
+      'completed_count', (select count(*) from rows r where r.completed),
+      'overdue_count', (select count(*) from rows r where r.overdue),
+      'not_completed_count', (select count(*) from rows r where not r.completed),
+      'not_memorized_count', (select count(*) from rows r where not r.completed and r.target_kind = 'new_memorization'),
+      'not_reviewed_count', (select count(*) from rows r where not r.completed and r.target_kind = 'revision'),
+      'weakness_count', (select count(*) from rows r where r.has_open_weakness),
       'absence_count', coalesce((select sum(a.absences) from attendance a),0),
       'late_count', coalesce((select sum(a.late_count) from attendance a),0)
     ),
@@ -377,8 +377,7 @@ begin
       ) order by a.absences desc, a.late_count desc)
       from attendance a
     ), '[]'::jsonb)
-  ) into result
-  from rows r;
+  ) into result;
 
   return coalesce(result, '{}'::jsonb);
 end;
