@@ -6,8 +6,8 @@ on:
     paths:
       - "client/src/components/SmartLearningFollowUpPanel.tsx"
       - "client/src/pages/AcademicReports.tsx"
-      - "supabase/085_smart_learning_follow_up_targets.sql"
-      - "supabase/086_smart_learning_follow_up_notification_writer.sql"
+      - "supabase/088_smart_learning_follow_up_targets.sql"
+      - "supabase/089_smart_learning_follow_up_notification_writer.sql"
       - "tests/smart-learning-follow-up-*"
       - "tests/run-smart-learning-follow-up-migration-test.sh"
       - "package.json"
@@ -17,8 +17,8 @@ on:
     paths:
       - "client/src/components/SmartLearningFollowUpPanel.tsx"
       - "client/src/pages/AcademicReports.tsx"
-      - "supabase/085_smart_learning_follow_up_targets.sql"
-      - "supabase/086_smart_learning_follow_up_notification_writer.sql"
+      - "supabase/088_smart_learning_follow_up_targets.sql"
+      - "supabase/089_smart_learning_follow_up_notification_writer.sql"
       - "tests/smart-learning-follow-up-*"
       - "tests/run-smart-learning-follow-up-migration-test.sh"
       - "package.json"
