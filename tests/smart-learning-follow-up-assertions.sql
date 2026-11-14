@@ -62,7 +62,7 @@ end;
 $$;
 
 -- Empty target scopes must still return a complete zero-valued dashboard.
-do $
+do $$
 declare report jsonb;
 begin
   report := public.get_learning_follow_up_dashboard(
@@ -76,11 +76,11 @@ begin
     raise exception 'empty dashboard scope must return zero metrics and empty arrays: %', report;
   end if;
 end;
-$;
+$$;
 
 -- A teacher cannot assign a target to another teacher's identity.
 select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000001',false);
-do $
+do $$
 begin
   perform public.create_learning_follow_up_target(
     '10000000-0000-4000-8000-000000000001',
@@ -94,10 +94,10 @@ begin
 exception when sqlstate '42501' then
   null;
 end;
-$;
+$$;
 select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000003',false);
 
-do $
+do $$
 begin
   perform public.get_learning_follow_up_dashboard(
     '10000000-0000-4000-8000-000000000001',
@@ -107,7 +107,7 @@ begin
 exception when sqlstate '22023' then
   null;
 end;
-$;
+$$;
 
 -- A successful, exact-range memorization result completes the assigned target.
 update public.memorization_records
@@ -199,7 +199,7 @@ $qsp$;
 
 select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000006',false);
 
-do $
+do $$
 begin
   perform public.get_my_guardian_learning_follow_up(
     '10000000-0000-4000-8000-000000000001',
@@ -209,9 +209,9 @@ begin
 exception when sqlstate '22023' then
   null;
 end;
-$;
+$$;
 
-do $
+do $$
 declare report jsonb;
 begin
   report := public.get_my_guardian_learning_follow_up(
