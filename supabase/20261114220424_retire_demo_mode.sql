@@ -12,9 +12,9 @@ revoke all on function public.create_school_demo_data(uuid)
   from public, anon, authenticated;
 
 comment on function public.get_school_demo_status(uuid) is
-  'Retired by migration 20261114220000. Demo-mode status is no longer exposed to application users.';
+  'Retired by migration 20261114220424. Demo-mode status is no longer exposed to application users.';
 comment on function public.create_school_demo_data(uuid) is
-  'Retired by migration 20261114220000. Demo-data creation is no longer an application capability.';
+  'Retired by migration 20261114220424. Demo-data creation is no longer an application capability.';
 
 notify pgrst, 'reload schema';
 commit;
