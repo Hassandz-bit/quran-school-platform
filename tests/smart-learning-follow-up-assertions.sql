@@ -3,11 +3,11 @@
 -- The test fixture must match the canonical Quran surah verse counts.
 do $$
 begin
-  if public.quran_surah_ayah_count(3) <> 200
-    or public.quran_surah_ayah_count(4) <> 176
-    or public.quran_surah_ayah_count(27) <> 93
-    or public.quran_surah_ayah_count(114) <> 6
-    or public.quran_surah_ayah_count(115) is not null then
+  if public.quran_surah_ayah_count(3::smallint) <> 200
+    or public.quran_surah_ayah_count(4::smallint) <> 176
+    or public.quran_surah_ayah_count(27::smallint) <> 93
+    or public.quran_surah_ayah_count(114::smallint) <> 6
+    or public.quran_surah_ayah_count(115::smallint) is not null then
     raise exception 'Quran surah ayah-count fixture does not match the canonical mapping';
   end if;
 end;
