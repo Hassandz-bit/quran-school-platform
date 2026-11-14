@@ -1,6 +1,7 @@
 name: Smart Learning Follow-up Validation
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
@@ -12,8 +13,9 @@ on:
       - "tests/run-smart-learning-follow-up-migration-test.sh"
       - "package.json"
       - "pnpm-lock.yaml"
+      - ".github/workflows/smart-learning-follow-up-validation.yml"
   push:
-    branches: [feat/smart-learning-follow-up]
+    branches: [main, feat/smart-learning-follow-up]
     paths:
       - "client/src/components/SmartLearningFollowUpPanel.tsx"
       - "client/src/pages/AcademicReports.tsx"
@@ -23,6 +25,7 @@ on:
       - "tests/run-smart-learning-follow-up-migration-test.sh"
       - "package.json"
       - "pnpm-lock.yaml"
+      - ".github/workflows/smart-learning-follow-up-validation.yml"
 
 permissions:
   contents: read
