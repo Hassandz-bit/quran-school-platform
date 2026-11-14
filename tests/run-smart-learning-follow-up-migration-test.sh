@@ -26,10 +26,10 @@ docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_te
   < tests/smart-learning-follow-up-supplement.sql
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < supabase/085_smart_learning_follow_up_targets.sql
+  < supabase/088_smart_learning_follow_up_targets.sql
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
-  < supabase/086_smart_learning_follow_up_notification_writer.sql
+  < supabase/089_smart_learning_follow_up_notification_writer.sql
 
 docker exec -i "$container_name" psql -v ON_ERROR_STOP=1 -U postgres -d quran_test \
   < tests/smart-learning-follow-up-assertions.sql
