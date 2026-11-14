@@ -46,17 +46,17 @@ The first teacher-focused offline release is merged and deployed to production:
 6. Do not silently discard pending work on sign-out, account switch, app update, or storage errors. Warn and require an explicit user decision before clearing pending records.
 7. Document that browser/device storage is not encrypted by this feature and recommend trusted, access-controlled devices.
 
-### Phase 1 — teacher attendance (first usable offline workflow)
+### Phase 1 — teacher attendance (implemented and deployed)
 
 1. After a successful online login and permission check, cache only the active teacher's authorized branches, classes, active roster, and the selected/current attendance sessions.
 2. When offline, allow attendance edits only for a roster snapshot that was previously downloaded and whose authorization scope was last verified online.
 3. Persist each draft locally immediately; display “saved on this device — waiting to sync”, not “saved to school”.
 4. When the app is open and connectivity returns, attempt synchronization using the persisted operation UUID. The server RPC re-checks the current authenticated caller's `attendance.manage` permission and class/student membership.
-5. Attendance server-side idempotency is implemented in draft migration 084; it remains gated on disposable-database integration tests before production use.
+5. Attendance server-side idempotency is implemented in migration 084 and applied to production. Disposable-database concurrency/lost-response integration tests remain outstanding.
 6. Treat server rejection caused by revoked permission, archived/moved student, or stale roster as a visible conflict requiring user review. Never silently overwrite.
 7. Keep the local operation until the server confirms it was applied or the user explicitly resolves/discards it.
 
-### Phase 2 — memorization and group memorization
+### Phase 2 — memorization and group memorization (implemented and deployed through PR #138)
 
 1. Cache the authorized teacher/class/student scope and only the minimum required display data.
 2. Queue individual and group memorization entries with stable operation IDs.
@@ -117,7 +117,7 @@ Expand to student profiles, حلقات, schedules, and reports only after each d
 
 ## Release gate
 
-No production deployment until the local persistence, server-side idempotency, permission revalidation, conflict handling, and end-to-end offline/online tests pass. The first usable release should be limited to teacher attendance; memorization follows as a separate increment.
+Historical gate for the initial rollout: PR #136/#138 have since been merged and deployed. Do not treat the deployment as proof that the manual end-to-end acceptance cases below have passed; those remain outstanding.
 
 ## Phase 1 code audit (2026-11-09)
 
