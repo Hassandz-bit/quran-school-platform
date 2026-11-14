@@ -251,7 +251,7 @@ set status = 'cancelled'
 where school_id = '10000000-0000-4000-8000-000000000001'
   and student_id = '70000000-0000-4000-8000-000000000001';
 
-do $
+do $$
 declare report jsonb;
 begin
   report := public.get_my_guardian_learning_follow_up(
@@ -265,6 +265,6 @@ begin
     raise exception 'guardian attendance must remain available with no active targets: %', report;
   end if;
 end;
-$;
+$$;
 
 select 'smart learning follow-up migration assertions passed' as result;
