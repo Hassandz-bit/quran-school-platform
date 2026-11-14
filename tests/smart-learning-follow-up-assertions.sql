@@ -1,5 +1,18 @@
 \set ON_ERROR_STOP on
 
+-- The test fixture must match the canonical Quran surah verse counts.
+do $$
+begin
+  if public.quran_surah_ayah_count(3) <> 200
+    or public.quran_surah_ayah_count(4) <> 176
+    or public.quran_surah_ayah_count(27) <> 93
+    or public.quran_surah_ayah_count(114) <> 6
+    or public.quran_surah_ayah_count(115) is not null then
+    raise exception 'Quran surah ayah-count fixture does not match the canonical mapping';
+  end if;
+end;
+$$;
+
 -- A school administrator can create an explicitly assigned target.
 select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000003',false);
 select public.create_learning_follow_up_target(
