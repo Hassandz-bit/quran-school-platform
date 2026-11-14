@@ -164,7 +164,8 @@ The transactional server contract was implemented in migration 084 and applied t
 - [ ] Database migration 084 executed against a disposable test database; transactional concurrency/lost-response integration behavior remains unverified.
 - [x] Vercel preview build for commit `d086652b313c72002bbfaaff91536e24a28cec07` completed successfully: 516 Node tests, 16 memorization database tests, 66 Vitest runtime tests, TypeScript `tsc --noEmit`, Vite build, and `git diff --check` all completed in the successful `pnpm run build` pipeline.
 - [ ] GitHub Actions validation remains blocked: latest PR jobs terminated before runner allocation (`runner_id: 0`, no runner name, no steps). No database integration commands ran; this is not a test pass.
-- [x] PR #136 and PR #138 merged and deployed to production.\n- [ ] Manual browser acceptance for cold offline launch, reload/restart persistence, reconnect, replay, and permission/roster conflict handling.
+- [x] PR #136 and PR #138 merged and deployed to production.
+- [ ] Manual browser acceptance for cold offline launch, reload/restart persistence, reconnect, replay, and permission/roster conflict handling.
 
 ### Transactional RPC implementation notes
 
