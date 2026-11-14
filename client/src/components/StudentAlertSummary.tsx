@@ -8,9 +8,8 @@ import {
   Info,
 } from "lucide-react";
 import type { AttendanceStatus } from "@/lib/attendance";
-import type { MemorizationRecord } from "@/lib/memorization";
-
-type AttendanceItem = { id: string; date: string; status: AttendanceStatus };
+type AttendanceItem = { id: string; date: string; status: AttendanceStatus | string };
+type MemorizationItem = { rating: number; errorsCount: number };
 
 type Level = "critical" | "high" | "medium" | "info" | "positive";
 type AlertItem = {
@@ -69,7 +68,7 @@ function attendanceAlerts(records: AttendanceItem[]): AlertItem[] {
   ];
 }
 
-function memorizationAlert(records: MemorizationRecord[]): AlertItem {
+function memorizationAlert(records: MemorizationItem[]): AlertItem {
   const recent = records.slice(0, 5);
   if (recent.length === 0) {
     return { key: "memorization", title: "الحفظ والمراجعة", level: "info", description: "لا توجد سجلات حفظ كافية لتقييم المستوى.", action: "سجّل متابعة الحفظ والمراجعة لبدء قياس التقدم." };
@@ -112,7 +111,7 @@ export function StudentAlertSummary({
   memorization,
 }: {
   attendance: AttendanceItem[] | null;
-  memorization: MemorizationRecord[] | null;
+  memorization: MemorizationItem[] | null;
 }) {
   const alerts = [
     ...(attendance ? attendanceAlerts(attendance) : []),
