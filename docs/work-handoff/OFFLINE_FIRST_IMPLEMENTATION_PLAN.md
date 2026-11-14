@@ -2,32 +2,37 @@
 
 ## Goal
 
-Allow an already-authenticated teacher to continue essential classroom work during a temporary network outage, persist drafts on that device, and synchronize them safely after connectivity returns. This is a staged implementation plan, not a claim that offline writes are already enabled.
+Allow an already-authenticated teacher to continue essential classroom work during a temporary network outage, persist drafts on that device, and synchronize them safely after connectivity returns. This staged plan tracks the implemented teacher workflows and the remaining offline-safety work.
 
-## Current branch implementation status (not production)
+## Production implementation status (2026-11-14)
 
-The following incremental implementation is present on `feat/offline-first-foundation` and has a successful Vercel preview build, but it is not merged or deployed to production:
+The first teacher-focused offline release is merged and deployed to production:
 
-- Vite emits `asset-manifest.json`; the service worker precaches same-origin lazy JavaScript/CSS chunks plus fonts and SVG icons, while leaving large documents on-demand.
-- Attendance scope and server-returned rosters are stored in IndexedDB, partitioned by user, school, branch, class, and session date.
-- A `/offline` hub can open from a previously persisted local Supabase session after a cold offline launch. It is read-only and displays cached attendance plus a matching pending draft when available.
-- Attendance drafts track `pending`, `syncing`, `conflict`, and `failed`. The operation UUID is persisted before the RPC; if durable local storage is unavailable, the client refuses to send a non-idempotent write.
-- On reconnect, an interrupted operation is replayed with the same UUID before comparing roster versions, so a lost response after a successful server commit is confirmed without duplicating records. New/uncommitted drafts sync only when the cached roster/version matches; the server RPC remains the authority for permission and roster checks.
-- Pending drafts are preserved across sign-out and account switching; data remains partitioned by user ID so another account does not see it. Device-local storage is not encrypted.
-- Auth initialization now settles cleanly when authorization lookup fails offline, without inventing or restoring cached server permissions.
+- PR #136 — attendance offline foundation, merge commit `83d38439dd5ee522317329124e80a25523a3bd5e`. Migration 084 was applied to production before merge.
+- PR #138 — teacher portal offline workflows, merge commit `7039574653ff928e864c5413de94fff2eaf1c726`. Vercel production deployment `dpl_6LVUcw2u1LFQrwRHjkuRxHsNhErJ` reached READY.
+- Attendance supports user-scoped local rosters/drafts, durable operation IDs, server-side transactional idempotency, and foreground reconnect synchronization.
+- Memorization supports preloaded teacher workspaces and recent records, local individual/group drafts, stable IDs, and foreground synchronization with server-side permission checks.
 
-**Not complete:** this is not yet full-platform offline support. Student, class, teacher, memorization, finance, documents, parent, notification, and other modules still depend on live server requests. The offline hub exposes attendance snapshots only. Reconnect synchronization is attempted while the app is open; background sync while the browser is closed is not implemented, and there is no complete offline write queue across modules.
+**This is not full-platform offline support.** Student/class/teacher administration, finance, documents, guardian/parent, notifications, and other modules still require a live connection.
 
-**Release blockers:** migration 084 / `save_attendance_batch` has not been validated against a disposable PostgreSQL/Supabase database or applied to production; browser-level cold-install/restart/reconnect/conflict tests are still required. Do not merge, apply migration 084 to production, or promote the preview until those gates pass.
+**Outstanding verification and limitations:**
+- Manual browser acceptance for offline cold start, browser restart, draft persistence, reconnect, lost-response replay, and permission/roster conflicts has not been completed.
+- First-time preparation requires internet and must be repeated on each device/browser profile.
+- IndexedDB data is not encrypted; use a trusted, access-controlled device.
+- Synchronization is foreground-based; guaranteed background sync after the browser is closed is not implemented.
+- Editing an existing memorization record while offline is not supported.
+- Group memorization entries synchronize per student, not as one atomic batch.
 
-## Current baseline (verified on main)
 
-- The app is installable as a PWA.
-- `client/public/sw.js` caches the app shell and same-origin static assets.
-- Navigation falls back to the cached app shell when offline.
+## Current production baseline (verified on main)
+
+- The app is installable as a PWA and the service worker caches the app shell and same-origin static assets.
+- After a teacher has prepared the device online, the teacher portal can use cached attendance and memorization workspaces while offline.
+- Attendance and new memorization entries can be saved as device-local drafts and synchronized when the relevant module is open after connectivity returns.
+- Server-side permission, active-roster, teacher-assignment, idempotency, and conflict checks remain authoritative at synchronization time.
 - The service worker intentionally ignores non-GET requests and does not intercept Supabase/Auth writes.
-- Attendance and memorization data access currently depends on live Supabase requests. Their save functions validate permissions against Supabase before writing.
-- Therefore the current production app is **not yet offline-capable for attendance or memorization writes**.
+- Offline support is limited to the teacher attendance and memorization workflows; the rest of the platform remains online-only.
+
 
 ## Scope order
 
@@ -41,17 +46,17 @@ The following incremental implementation is present on `feat/offline-first-found
 6. Do not silently discard pending work on sign-out, account switch, app update, or storage errors. Warn and require an explicit user decision before clearing pending records.
 7. Document that browser/device storage is not encrypted by this feature and recommend trusted, access-controlled devices.
 
-### Phase 1 — teacher attendance (first usable offline workflow)
+### Phase 1 — teacher attendance (implemented and deployed)
 
 1. After a successful online login and permission check, cache only the active teacher's authorized branches, classes, active roster, and the selected/current attendance sessions.
 2. When offline, allow attendance edits only for a roster snapshot that was previously downloaded and whose authorization scope was last verified online.
 3. Persist each draft locally immediately; display “saved on this device — waiting to sync”, not “saved to school”.
 4. When the app is open and connectivity returns, attempt synchronization using the persisted operation UUID. The server RPC re-checks the current authenticated caller's `attendance.manage` permission and class/student membership.
-5. Attendance server-side idempotency is implemented in draft migration 084; it remains gated on disposable-database integration tests before production use.
+5. Attendance server-side idempotency is implemented in migration 084 and applied to production. Disposable-database concurrency/lost-response integration tests remain outstanding.
 6. Treat server rejection caused by revoked permission, archived/moved student, or stale roster as a visible conflict requiring user review. Never silently overwrite.
 7. Keep the local operation until the server confirms it was applied or the user explicitly resolves/discards it.
 
-### Phase 2 — memorization and group memorization
+### Phase 2 — memorization and group memorization (implemented and deployed through PR #138)
 
 1. Cache the authorized teacher/class/student scope and only the minimum required display data.
 2. Queue individual and group memorization entries with stable operation IDs.
@@ -112,7 +117,7 @@ Expand to student profiles, حلقات, schedules, and reports only after each d
 
 ## Release gate
 
-No production deployment until the local persistence, server-side idempotency, permission revalidation, conflict handling, and end-to-end offline/online tests pass. The first usable release should be limited to teacher attendance; memorization follows as a separate increment.
+Historical gate for the initial rollout: PR #136/#138 have since been merged and deployed. Do not treat the deployment as proof that the manual end-to-end acceptance cases below have passed; those remain outstanding.
 
 ## Phase 1 code audit (2026-11-09)
 
@@ -138,7 +143,7 @@ Before automatic attendance sync is enabled, add a narrowly scoped, authenticate
 5. Explicit conflict responses for changed roster or changed attendance values; do not silently use last-write-wins.
 6. Least-privilege execute grants and a pinned empty `search_path` if a privileged function is truly required; avoid broad `SECURITY DEFINER` access.
 
-The transactional server contract is present in draft migration 084, but has not yet been integration-tested. IndexedDB stores user-scoped attendance snapshots and drafts; the offline hub supports a cached cold-start, and reconnect attempts synchronization while the app is open. Browser acceptance and disposable-database tests remain mandatory before production. Credentials must never be cached.
+The transactional server contract was implemented in migration 084 and applied to production. Its concurrency/lost-response behavior has not yet been integration-tested against a disposable PostgreSQL database. IndexedDB stores user-scoped attendance snapshots and drafts; the offline hub supports a cached cold-start, and reconnect attempts synchronization while the app is open. Browser acceptance and disposable-database tests remain mandatory before production. Credentials must never be cached.
 
 ### Current implementation status
 
@@ -159,22 +164,23 @@ The transactional server contract is present in draft migration 084, but has not
 - [ ] Database migration 084 executed against a disposable test database; transactional concurrency/lost-response integration behavior remains unverified.
 - [x] Vercel preview build for commit `d086652b313c72002bbfaaff91536e24a28cec07` completed successfully: 516 Node tests, 16 memorization database tests, 66 Vitest runtime tests, TypeScript `tsc --noEmit`, Vite build, and `git diff --check` all completed in the successful `pnpm run build` pipeline.
 - [ ] GitHub Actions validation remains blocked: latest PR jobs terminated before runner allocation (`runner_id: 0`, no runner name, no steps). No database integration commands ran; this is not a test pass.
-- [ ] Production release gate passed.
+- [x] PR #136 and PR #138 merged and deployed to production.
+- [ ] Manual browser acceptance for cold offline launch, reload/restart persistence, reconnect, replay, and permission/roster conflict handling.
 
 ### Transactional RPC implementation notes
 
 The RPC caps each batch at 200 students, validates the payload and active roster, re-checks the authenticated caller's `attendance.manage` access for the exact class, and applies the batch inside one PostgreSQL transaction. It locks matched active student rows in deterministic ID order before validating roster membership, preventing concurrent class/branch/status changes from racing the write. The idempotency result is checked before re-validating the roster on retries, so a committed operation can still be acknowledged if a student's roster membership changed after the original commit. The operation ledger is inaccessible directly to browser roles; the authenticated RPC is the only client entry point.
 
-The browser persists a stable operation UUID and the exact request-payload snapshot alongside the local draft when a save is prepared. An unchanged retry reuses that UUID; if the draft changes, the UUID is rotated before the next server attempt. Existing records carry their fetched `updated_at` snapshot into the RPC; the server compares it while holding the record lock and rejects stale edits. Local drafts are persisted, but automatic offline synchronization is **not yet implemented**.
+The browser persists a stable operation UUID and the exact request-payload snapshot alongside the local draft when a save is prepared. An unchanged retry reuses that UUID; if the draft changes, the UUID is rotated before the next server attempt. Existing records carry their fetched `updated_at` snapshot into the RPC; the server compares it while holding the record lock and rejects stale edits. Foreground reconnect synchronization is implemented for attendance and teacher memorization drafts; guaranteed background synchronization while the browser is closed is not implemented.
 
-This audit is a technical refinement of the plan only; it does not change production data or enable offline attendance yet.
+This audit predates the production rollout. The current production state and remaining acceptance work are summarized at the top of this document.
 
 
 ## Teacher portal offline expansion (2026-11-10)
 
-The dedicated teacher workflow is being expanded on branch `feat/teacher-portal-offline-complete` / PR #138. This scope is intentionally limited to the teacher portal.
+The dedicated teacher workflow was merged through PR #138 and deployed to production in commit `7039574653ff928e864c5413de94fff2eaf1c726`. This scope is intentionally limited to the teacher portal.
 
-### Implemented in this branch
+### Implemented in PR #138 and deployed
 
 - Last successfully verified school context is stored in a separate IndexedDB store partitioned by Supabase user ID. It is restored only when the same authenticated user has a local Supabase session and the authorization request fails due to connectivity. Passwords and access/refresh tokens are not copied into this store.
 - The teacher portal has a `Prepare for offline use` action. While online, it downloads only classes whose last-verified scope has `canManage`, attendance rosters for the current local date, memorization class workspaces, and the latest 20 memorization records for each student.
@@ -198,4 +204,4 @@ The dedicated teacher workflow is being expanded on branch `feat/teacher-portal-
 
 - Vercel preview build and the repository build pipeline must pass.
 - Browser acceptance must verify: online preparation; offline cold start after a prior login; attendance edit/reload; individual memorization draft/reload; reconnect sync; lost-response replay without duplicates; and rejection/preservation when teacher permissions or class membership have changed.
-- Do not merge or deploy this branch to production until the preview/build checks are clean. The production branch remains unchanged by this work.
+- PR #138 is merged and deployed. The remaining acceptance gate is manual browser testing of offline cold start, reload/restart persistence, reconnect replay, and permission/roster conflict handling. Do not describe these manual checks as passed until executed.
