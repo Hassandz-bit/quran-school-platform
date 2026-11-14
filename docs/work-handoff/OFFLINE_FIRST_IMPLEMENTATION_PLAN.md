@@ -2,7 +2,7 @@
 
 ## Goal
 
-Allow an already-authenticated teacher to continue essential classroom work during a temporary network outage, persist drafts on that device, and synchronize them safely after connectivity returns. This is a staged implementation plan, not a claim that offline writes are already enabled.
+Allow an already-authenticated teacher to continue essential classroom work during a temporary network outage, persist drafts on that device, and synchronize them safely after connectivity returns. This staged plan tracks the implemented teacher workflows and the remaining offline-safety work.
 
 ## Production implementation status (2026-11-14)
 
@@ -143,7 +143,7 @@ Before automatic attendance sync is enabled, add a narrowly scoped, authenticate
 5. Explicit conflict responses for changed roster or changed attendance values; do not silently use last-write-wins.
 6. Least-privilege execute grants and a pinned empty `search_path` if a privileged function is truly required; avoid broad `SECURITY DEFINER` access.
 
-The transactional server contract is present in draft migration 084, but has not yet been integration-tested. IndexedDB stores user-scoped attendance snapshots and drafts; the offline hub supports a cached cold-start, and reconnect attempts synchronization while the app is open. Browser acceptance and disposable-database tests remain mandatory before production. Credentials must never be cached.
+The transactional server contract was implemented in migration 084 and applied to production. Its concurrency/lost-response behavior has not yet been integration-tested against a disposable PostgreSQL database. IndexedDB stores user-scoped attendance snapshots and drafts; the offline hub supports a cached cold-start, and reconnect attempts synchronization while the app is open. Browser acceptance and disposable-database tests remain mandatory before production. Credentials must never be cached.
 
 ### Current implementation status
 
@@ -172,14 +172,14 @@ The RPC caps each batch at 200 students, validates the payload and active roster
 
 The browser persists a stable operation UUID and the exact request-payload snapshot alongside the local draft when a save is prepared. An unchanged retry reuses that UUID; if the draft changes, the UUID is rotated before the next server attempt. Existing records carry their fetched `updated_at` snapshot into the RPC; the server compares it while holding the record lock and rejects stale edits. Foreground reconnect synchronization is implemented for attendance and teacher memorization drafts; guaranteed background synchronization while the browser is closed is not implemented.
 
-This audit is a technical refinement of the plan only; it does not change production data or enable offline attendance yet.
+This audit predates the production rollout. The current production state and remaining acceptance work are summarized at the top of this document.
 
 
 ## Teacher portal offline expansion (2026-11-10)
 
 The dedicated teacher workflow was merged through PR #138 and deployed to production in commit `7039574653ff928e864c5413de94fff2eaf1c726`. This scope is intentionally limited to the teacher portal.
 
-### Implemented in this branch
+### Implemented in PR #138 and deployed
 
 - Last successfully verified school context is stored in a separate IndexedDB store partitioned by Supabase user ID. It is restored only when the same authenticated user has a local Supabase session and the authorization request fails due to connectivity. Passwords and access/refresh tokens are not copied into this store.
 - The teacher portal has a `Prepare for offline use` action. While online, it downloads only classes whose last-verified scope has `canManage`, attendance rosters for the current local date, memorization class workspaces, and the latest 20 memorization records for each student.
