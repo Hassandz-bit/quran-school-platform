@@ -245,4 +245,26 @@ begin
 end;
 $$;
 
+-- Guardian reports must return a stable empty array when the linked child has no active targets.
+update public.learning_follow_up_targets
+set status = 'cancelled'
+where school_id = '10000000-0000-4000-8000-000000000001'
+  and student_id = '70000000-0000-4000-8000-000000000001';
+
+do $
+declare report jsonb;
+begin
+  report := public.get_my_guardian_learning_follow_up(
+    '10000000-0000-4000-8000-000000000001',
+    '70000000-0000-4000-8000-000000000001',50
+  );
+  if jsonb_array_length(report -> 'targets') <> 0 then
+    raise exception 'guardian empty target scope must return an empty targets array: %', report;
+  end if;
+  if (report #>> '{attendance,absence_count}')::int <> 1 then
+    raise exception 'guardian attendance must remain available with no active targets: %', report;
+  end if;
+end;
+$;
+
 select 'smart learning follow-up migration assertions passed' as result;
