@@ -28,7 +28,7 @@ The first teacher-focused offline release is merged and deployed to production:
 
 - The app is installable as a PWA and the service worker caches the app shell and same-origin static assets.
 - After a teacher has prepared the device online, the teacher portal can use cached attendance and memorization workspaces while offline.
-- Attendance and new memorization entries can be saved as device-local drafts and synchronized when the relevant module is open after connectivity returns.
+- Attendance and new memorization entries can be saved as device-local drafts and synchronized when the relevant module is open after connectivity returns; pending synchronization is retried on reconnect and when the teacher returns to a visible app tab.
 - Server-side permission, active-roster, teacher-assignment, idempotency, and conflict checks remain authoritative at synchronization time.
 - The service worker intentionally ignores non-GET requests and does not intercept Supabase/Auth writes.
 - Offline support is limited to the teacher attendance and memorization workflows; the rest of the platform remains online-only.
@@ -160,12 +160,12 @@ The transactional server contract was implemented in migration 084 and applied t
 - [x] Attendance edits are persisted locally while the page has an authorized server-loaded roster. If a save fails while offline, the page confirms only local persistence and explicitly says the server has not been updated.
 - [x] A local draft is restored only when the server roster and each record's `recordId`/`updated_at` snapshot still match. A stale draft is retained and is not silently merged.
 - [x] Offline shell cold-start and read-only attendance hub: a previously persisted local session can open `/offline`, showing cached scope/roster and local drafts. Editable attendance cold-start still requires browser acceptance testing.
-- [x] Reconnect sync attempt is wired while the app is open: returning online from the offline hub routes to attendance and attempts the persisted operation. Background sync while the browser is closed is not implemented; server permission and roster checks remain authoritative.
+- [x] Reconnect sync attempt is wired while the app is open: returning online from the offline hub routes to attendance and attempts the persisted operation. Attendance and memorization also retry pending sync when the app becomes visible online. Background sync while the browser is closed is not implemented; server permission and roster checks remain authoritative.
 - [ ] Database migration 084 executed against a disposable test database; transactional concurrency/lost-response integration behavior remains unverified.
 - [x] Vercel preview build for commit `d086652b313c72002bbfaaff91536e24a28cec07` completed successfully: 516 Node tests, 16 memorization database tests, 66 Vitest runtime tests, TypeScript `tsc --noEmit`, Vite build, and `git diff --check` all completed in the successful `pnpm run build` pipeline.
 - [ ] GitHub Actions validation remains blocked: latest PR jobs terminated before runner allocation (`runner_id: 0`, no runner name, no steps). No database integration commands ran; this is not a test pass.
 - [x] PR #136 and PR #138 merged and deployed to production.
-- [ ] Manual browser acceptance for cold offline launch, reload/restart persistence, reconnect, replay, and permission/roster conflict handling.
+- [ ] Manual browser acceptance for cold offline launch, reload/restart persistence, reconnect, replay, and permission/roster conflict handling. Static regression coverage now checks reconnect and visibility-triggered retry wiring, but it is not a substitute for browser acceptance.
 
 ### Transactional RPC implementation notes
 
