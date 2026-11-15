@@ -829,8 +829,17 @@ export default function Memorization() {
 
   useEffect(() => {
     const retryWhenOnline = () => setOnlineRevision(current => current + 1);
+    const retryWhenVisible = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        setOnlineRevision(current => current + 1);
+      }
+    };
     window.addEventListener("online", retryWhenOnline);
-    return () => window.removeEventListener("online", retryWhenOnline);
+    document.addEventListener("visibilitychange", retryWhenVisible);
+    return () => {
+      window.removeEventListener("online", retryWhenOnline);
+      document.removeEventListener("visibilitychange", retryWhenVisible);
+    };
   }, []);
 
   const handleAuditToggle = async (recordId: string) => {
