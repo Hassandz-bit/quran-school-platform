@@ -325,8 +325,8 @@ export function validateSchoolTrackResult(
   const subject = input.subject.trim();
   const title = input.assessmentTitle.trim();
   if (!input.branchId || !input.studentId) return "student_required";
-  if (!subject || subject.length > 100) return "subject_invalid";
-  if (!title || title.length > 120) return "assessment_title_invalid";
+  if (subject !== "المعدل العام") return "subject_invalid";
+  if (title !== "المعدل العام للفصل") return "assessment_title_invalid";
   if (!/^\d{4}[-/]\d{4}$/.test(academicYear)) return "academic_year_invalid";
   if (!["الفصل الأول", "الفصل الثاني", "الفصل الثالث"].includes(term)) return "term_invalid";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.assessmentDate)) return "date_invalid";
@@ -335,7 +335,7 @@ export function validateSchoolTrackResult(
     Number.isNaN(parsedDate.getTime()) ||
     parsedDate.toISOString().slice(0, 10) !== input.assessmentDate
   ) return "date_invalid";
-  if (!SCHOOL_ASSESSMENT_TYPES.includes(input.assessmentType)) return "assessment_type_invalid";
+  if (input.assessmentType !== "exam") return "assessment_type_invalid";
   if (
     !Number.isFinite(input.score) ||
     !Number.isFinite(input.maxScore) ||
