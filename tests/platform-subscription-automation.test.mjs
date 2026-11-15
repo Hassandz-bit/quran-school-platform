@@ -40,5 +40,5 @@ test("platform owner dashboard filters subscriptions by real active student and 
 
 test("extending a trial also extends its grace deadline by the configured grace period", () => {
   assert.match(dashboard, /trialEndDate\.getTime\(\) \+ Number\(settings\.grace_period_days\) \* 86400000/);
-  assert.match(dashboard, /update\(\{ trial_ends_at: trialEnd, grace_ends_at: graceEnd \}\)/);
+  assert.match(dashboard, /rpc\("extend_school_subscription_trial"/);
 });

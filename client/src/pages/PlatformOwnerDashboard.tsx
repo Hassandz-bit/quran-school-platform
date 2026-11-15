@@ -50,7 +50,6 @@ export default function PlatformOwnerDashboard() {
   const [approval, setApproval] = useState<Record<string, { planId: string; trialDays: string; discount: string }>>({});
   const [renewal, setRenewal] = useState<Record<string, { planId: string; amount: string; discount: string; method: string; reference: string }>>({});
   const [trialExtensions, setTrialExtensions] = useState<Record<string, string>>({});
-  const [subscriptionExtensions, setSubscriptionExtensions] = useState<Record<string, string>>({});
   const client = getSupabaseClient();
 
   const reload = useCallback(async () => {
@@ -98,15 +97,6 @@ export default function PlatformOwnerDashboard() {
         setBranchCountFilter({ operator: "all", value: "" });
       }
       setSubscriptionUsage(Object.fromEntries(nextUsage.map(item => [item.school_id, item])));
-      setSubscriptionExtensions(current => {
-        const next = { ...current };
-        for (const subscription of nextSubscriptions) {
-          if (subscription.ends_at && !next[subscription.id]) {
-            next[subscription.id] = new Date(subscription.ends_at).toISOString().slice(0, 10);
-          }
-        }
-        return next;
-      });
       setTrialExtensions(current => {
         const next = { ...current };
         for (const subscription of nextSubscriptions) {
@@ -326,7 +316,6 @@ export default function PlatformOwnerDashboard() {
       });
       if (error) throw error;
       toast.success("تم تسجيل الدفع وتجديد الاشتراك لمدة سنة.");
-      setSubscriptionExtensions(current => ({ ...current, [subscription.id]: "" }));
       setRenewal(current => { const next = { ...current }; delete next[subscription.id]; return next; });
       await reload();
     } catch (error) {
@@ -352,30 +341,6 @@ export default function PlatformOwnerDashboard() {
     } finally { setBusy(""); }
   };
 
-  const extendSubscription = async (subscription: Subscription) => {
-    const date = subscriptionExtensions[subscription.id];
-    if (!date || !["active", "grace", "expired"].includes(subscription.status)) return;
-    const endDate = new Date(`${date}T23:59:59`);
-    if (Number.isNaN(endDate.getTime()) || endDate.getTime() <= Date.now()) {
-      toast.error("اختر تاريخ نهاية مستقبليًا.");
-      return;
-    }
-    const graceEnd = new Date(endDate.getTime() + Number(settings.grace_period_days) * 86400000);
-    setBusy(`extend:${subscription.id}`);
-    try {
-      const { error } = await client.from("school_subscriptions").update({
-        ends_at: endDate.toISOString(),
-        grace_ends_at: graceEnd.toISOString(),
-        status: "active",
-      }).eq("id", subscription.id);
-      if (error) throw error;
-      toast.success("تم تمديد الاشتراك يدويًا.");
-      await reload();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر تمديد الاشتراك.");
-    } finally { setBusy(""); }
-  };
-
   const extendTrial = async (subscription: Subscription) => {
     const date = trialExtensions[subscription.id];
     if (!date || subscription.status !== "trial") return;
@@ -390,10 +355,10 @@ export default function PlatformOwnerDashboard() {
     ).toISOString();
     setBusy(`trial:${subscription.id}`);
     try {
-      const { error } = await client.from("school_subscriptions")
-        .update({ trial_ends_at: trialEnd, grace_ends_at: graceEnd })
-        .eq("id", subscription.id)
-        .eq("status", "trial");
+      const { error } = await client.rpc("extend_school_subscription_trial", {
+        target_school_id: subscription.school_id,
+        target_trial_ends_at: trialEnd,
+      });
       if (error) throw error;
       toast.success("تم تمديد الفترة التجريبية.");
       await reload();
@@ -612,13 +577,7 @@ export default function PlatformOwnerDashboard() {
                           <button className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-bold" disabled={busy === `trial:${subscription.id}`} onClick={() => void extendTrial(subscription)}>تمديد التجربة</button>
                         </>}
                       </div>
-                    : subscription.ends_at ? <div className="flex min-w-[260px] items-center gap-1">
-                        <span>{new Date(subscription.ends_at).toLocaleDateString("ar-DZ-u-nu-latn")}</span>
-                        {["active", "grace", "expired"].includes(subscription.status) && <>
-                          <input className="w-32 rounded-lg border px-2 py-1" type="date" min={new Date().toISOString().slice(0,10)} value={subscriptionExtensions[subscription.id] ?? new Date(subscription.ends_at).toISOString().slice(0,10)} onChange={e => setSubscriptionExtensions(v => ({...v,[subscription.id]:e.target.value}))} aria-label="تاريخ نهاية الاشتراك"/>
-                          <button className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-bold" disabled={busy === `extend:${subscription.id}`} onClick={() => void extendSubscription(subscription)}>تمديد الاشتراك</button>
-                        </>}
-                      </div> : "غير محدد"}
+                    : subscription.ends_at ? <div>{new Date(subscription.ends_at).toLocaleDateString("ar-DZ-u-nu-latn")}</div> : "غير محدد"}
                 </td>
                 <td className="p-2">
                   {subscriptionUsage[subscription.school_id]
