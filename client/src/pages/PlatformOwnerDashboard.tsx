@@ -20,6 +20,8 @@ type Subscription = {
   agreed_annual_price: number | null; discount_amount: number; currency_code: string;
 };
 type PlanDraft = { name_ar: string; min_active_students: string; max_active_students: string; min_active_branches: string; max_active_branches: string; annual_price: string; currency_code: string };
+type SubscriptionUsage = { school_id: string; active_students: number; active_branches: number };
+type CountFilter = { operator: "all" | "lt" | "gt"; value: string };
 type SchoolName = { id: string; name: string };
 type RenewalRequest = { id: string; school_id: string; requested_by: string; message: string | null; created_at: string };
 type AuditRow = { id: number; actor_user_id: string | null; action: string; entity_type: string; created_at: string };
@@ -35,6 +37,10 @@ export default function PlatformOwnerDashboard() {
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [renewalRequests, setRenewalRequests] = useState<RenewalRequest[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [subscriptionUsage, setSubscriptionUsage] = useState<Record<string, SubscriptionUsage>>({});
+  const [usageAvailable, setUsageAvailable] = useState(false);
+  const [studentCountFilter, setStudentCountFilter] = useState<CountFilter>({ operator: "all", value: "" });
+  const [branchCountFilter, setBranchCountFilter] = useState<CountFilter>({ operator: "all", value: "" });
   const [schools, setSchools] = useState<Record<string, string>>({});
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [settings, setSettings] = useState({ trial_default_days: 14, grace_period_days: 7, default_currency_code: "DZD" });
@@ -50,10 +56,11 @@ export default function PlatformOwnerDashboard() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [planResult, requestResult, subscriptionResult, settingsResult, auditResult, renewalRequestResult] = await Promise.all([
+      const [planResult, requestResult, subscriptionResult, usageResult, settingsResult, auditResult, renewalRequestResult] = await Promise.all([
         client.from("subscription_plans").select("id,code,name_ar,min_active_students,max_active_students,min_active_branches,max_active_branches,annual_price,currency_code,is_active").order("annual_price"),
         client.from("school_registration_requests").select("id,applicant_profile_id,school_name,slug,contact_phone,contact_email,address,applicant_note,created_at").eq("status", "pending").order("created_at", { ascending: false }),
         client.from("school_subscriptions").select("id,school_id,plan_id,plan_name_snapshot,status,starts_at,ends_at,trial_ends_at,grace_ends_at,min_active_students,max_active_students,min_active_branches,max_active_branches,agreed_annual_price,discount_amount,currency_code").order("created_at", { ascending: false }),
+        client.rpc("get_platform_subscription_usage"),
         client.from("platform_settings").select("trial_default_days,grace_period_days,default_currency_code").eq("singleton", true).maybeSingle(),
         client.from("platform_audit_log").select("id,actor_user_id,action,entity_type,created_at").order("created_at", { ascending: false }).limit(20),
         client.from("school_subscription_renewal_requests").select("id,school_id,requested_by,message,created_at").eq("status", "pending").order("created_at", { ascending: false }),
@@ -84,6 +91,13 @@ export default function PlatformOwnerDashboard() {
       setRequests(nextRequests);
       setRenewalRequests(nextRenewalRequests);
       setSubscriptions(nextSubscriptions);
+      const nextUsage = (usageResult.data ?? []) as SubscriptionUsage[];
+      setUsageAvailable(!usageResult.error);
+      if (usageResult.error) {
+        setStudentCountFilter({ operator: "all", value: "" });
+        setBranchCountFilter({ operator: "all", value: "" });
+      }
+      setSubscriptionUsage(Object.fromEntries(nextUsage.map(item => [item.school_id, item])));
       setSubscriptionExtensions(current => {
         const next = { ...current };
         for (const subscription of nextSubscriptions) {
@@ -365,15 +379,19 @@ export default function PlatformOwnerDashboard() {
   const extendTrial = async (subscription: Subscription) => {
     const date = trialExtensions[subscription.id];
     if (!date || subscription.status !== "trial") return;
-    const trialEnd = new Date(`${date}T23:59:59`).toISOString();
-    if (new Date(trialEnd).getTime() <= Date.now()) {
+    const trialEndDate = new Date(`${date}T23:59:59`);
+    if (Number.isNaN(trialEndDate.getTime()) || trialEndDate.getTime() <= Date.now()) {
       toast.error("اختر تاريخًا مستقبليًا لتمديد التجربة.");
       return;
     }
+    const trialEnd = trialEndDate.toISOString();
+    const graceEnd = new Date(
+      trialEndDate.getTime() + Number(settings.grace_period_days) * 86400000
+    ).toISOString();
     setBusy(`trial:${subscription.id}`);
     try {
       const { error } = await client.from("school_subscriptions")
-        .update({ trial_ends_at: trialEnd })
+        .update({ trial_ends_at: trialEnd, grace_ends_at: graceEnd })
         .eq("id", subscription.id)
         .eq("status", "trial");
       if (error) throw error;
@@ -424,6 +442,18 @@ export default function PlatformOwnerDashboard() {
     }
     return statusLabels[subscription.status] ?? subscription.status;
   };
+
+  const matchesCountFilter = (actual: number | undefined, filter: CountFilter) => {
+    if (filter.operator === "all" || filter.value.trim() === "") return true;
+    const threshold = Number(filter.value);
+    if (!Number.isFinite(threshold) || actual === undefined) return false;
+    return filter.operator === "lt" ? actual < threshold : actual > threshold;
+  };
+  const filteredSubscriptions = subscriptions.filter(subscription => {
+    const usage = subscriptionUsage[subscription.school_id];
+    return matchesCountFilter(usage?.active_students, studentCountFilter)
+      && matchesCountFilter(usage?.active_branches, branchCountFilter);
+  });
 
   return <main className="min-h-screen bg-[#F5F7F4] p-4 md:p-8" dir="rtl">
     <div className="mx-auto max-w-7xl space-y-6">
@@ -536,10 +566,28 @@ export default function PlatformOwnerDashboard() {
 
       <section className={cardClass}>
         <div className="mb-4 flex items-center gap-2"><CreditCard className="text-[#17663B]" size={19}/><h2 className="font-extrabold text-[#173B2D]">اشتراكات المدارس والتجديد اليدوي</h2></div>
-        {subscriptions.length === 0 ? <p className="text-sm text-slate-500">لا توجد اشتراكات مسجلة.</p> : <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] text-sm">
-            <thead><tr className="border-b text-right text-slate-500"><th className="p-2">المدرسة</th><th className="p-2">الباقة</th><th className="p-2">الحالة</th><th className="p-2">النهاية</th><th className="p-2">حدود الباقة</th><th className="p-2">تسجيل التجديد</th></tr></thead>
-            <tbody>{subscriptions.map(subscription => {
+        {subscriptions.length === 0 ? <p className="text-sm text-slate-500">لا توجد اشتراكات مسجلة.</p> : <>
+          <div className="mb-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs font-semibold text-slate-700">عدد التلاميذ النشطين</label>
+              <select disabled={!usageAvailable} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm disabled:opacity-50" value={studentCountFilter.operator} onChange={e => setStudentCountFilter(v => ({ ...v, operator: e.target.value as CountFilter["operator"] }))}>
+                <option value="all">الكل</option><option value="lt">أقل من</option><option value="gt">أكبر من</option>
+              </select>
+              <input className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" type="number" min="0" placeholder="العدد" value={studentCountFilter.value} disabled={!usageAvailable || studentCountFilter.operator === "all"} onChange={e => setStudentCountFilter(v => ({ ...v, value: e.target.value }))} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs font-semibold text-slate-700">عدد الفروع النشطة</label>
+              <select disabled={!usageAvailable} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm disabled:opacity-50" value={branchCountFilter.operator} onChange={e => setBranchCountFilter(v => ({ ...v, operator: e.target.value as CountFilter["operator"] }))}>
+                <option value="all">الكل</option><option value="lt">أقل من</option><option value="gt">أكبر من</option>
+              </select>
+              <input className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" type="number" min="0" placeholder="العدد" value={branchCountFilter.value} disabled={!usageAvailable || branchCountFilter.operator === "all"} onChange={e => setBranchCountFilter(v => ({ ...v, value: e.target.value }))} />
+            </div>
+            <p className="text-xs text-slate-500 sm:col-span-2">{usageAvailable ? "تُطبّق المقارنة على أعداد التلاميذ والفروع النشطة الفعلية في كل مدرسة." : "أعداد الاستخدام غير متاحة حاليًا؛ ستُفعّل الفلاتر بعد تهيئة خدمة إحصاءات الاشتراك."}</p>
+          </div>
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[930px] text-sm">
+            <thead><tr className="border-b text-right text-slate-500"><th className="p-2">المدرسة</th><th className="p-2">الباقة</th><th className="p-2">الحالة</th><th className="p-2">النهاية</th><th className="p-2">الاستخدام الحالي / حدود الباقة</th><th className="p-2">تسجيل التجديد</th></tr></thead>
+            <tbody>{filteredSubscriptions.map(subscription => {
               const defaultPlanId = plans.find(plan => plan.id === subscription.plan_id && plan.is_active)?.id ?? plans.find(plan => plan.is_active)?.id ?? "";
               const defaultPlan = plans.find(plan => plan.id === defaultPlanId);
               const keepTrialDiscount = ["trial", "pending_payment"].includes(subscription.status) && defaultPlanId === subscription.plan_id;
@@ -572,7 +620,11 @@ export default function PlatformOwnerDashboard() {
                         </>}
                       </div> : "غير محدد"}
                 </td>
-                <td className="p-2">{subscription.min_active_students ?? 0}–{subscription.max_active_students ?? "∞"} طالب · {subscription.min_active_branches ?? 1}–{subscription.max_active_branches ?? "∞"} فرع</td>
+                <td className="p-2">
+                  {subscriptionUsage[subscription.school_id]
+                    ? `${subscriptionUsage[subscription.school_id].active_students} / ${subscription.max_active_students ?? "∞"} طالب · ${subscriptionUsage[subscription.school_id].active_branches} / ${subscription.max_active_branches ?? "∞"} فرع`
+                    : "تعذر تحميل الأعداد"}
+                </td>
                 <td className="p-2"><div className="flex min-w-[520px] gap-1">
                   <select className="w-32 rounded-lg border px-2 py-1" value={form.planId} onChange={e => { const nextPlan = plans.find(plan => plan.id === e.target.value); setRenewal(v => ({...v,[subscription.id]:{...form,planId:e.target.value,amount:String(nextPlan?.annual_price ?? form.amount),discount:"0"}})); }} aria-label="الباقة الجديدة">
                     {plans.filter(plan => plan.is_active).map(plan => <option key={plan.id} value={plan.id}>{plan.name_ar}</option>)}
@@ -588,7 +640,9 @@ export default function PlatformOwnerDashboard() {
               </tr>;
             })}</tbody>
           </table>
-        </div>}
+          </div>
+          {filteredSubscriptions.length === 0 && <p className="mt-3 text-sm text-slate-500">لا توجد اشتراكات تطابق الفلاتر المحددة.</p>}
+        </>}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
