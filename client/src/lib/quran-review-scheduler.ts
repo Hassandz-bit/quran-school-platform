@@ -15,6 +15,7 @@ export type QuranReviewTask = {
 
 export type QuranReviewPlan = {
   dueAyat: number;
+  dueAyahKeys: string[];
   scheduledAyat: number;
   remainingAyat: number;
   tasks: QuranReviewTask[];
@@ -213,6 +214,7 @@ export function buildQuranReviewPlan(
 
   return {
     dueAyat: due.length,
+    dueAyahKeys: due.map(item => `${item.surahNumber}:${item.ayahNumber}`),
     scheduledAyat: selected.length,
     remainingAyat: Math.max(0, due.length - selected.length),
     tasks,
