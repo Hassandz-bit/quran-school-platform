@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpenCheck, Filter, Lightbulb, TrendingDown } from "lucide-react";
+import { BookOpenCheck, CalendarClock, Filter, Lightbulb, Repeat2, TrendingDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,7 @@ import {
   type MemorizationRecord,
 } from "@/lib/memorization";
 import { analyzeStudentQuranRecords } from "@/lib/memorization-analysis";
+import { buildQuranReviewPlan } from "@/lib/quran-review-scheduler";
 import { getQuranDivisionsForRange, type QuranDivisionKind } from "@/lib/quran-divisions";
 
 type Props = {
@@ -37,6 +38,7 @@ export default function StudentQuranCard({ studentName, records, loading = false
   ), [records, surah, session, minimumRating, fromDate, toDate]);
 
   const analysis = useMemo(() => analyzeStudentQuranRecords(records), [records]);
+  const reviewPlan = useMemo(() => buildQuranReviewPlan(records), [records]);
   const alerts = analysis.alerts.map(alert => {
     const name = QURAN_SURAHS[alert.surahNumber - 1]?.name ?? "غير معروفة";
     const juz = getQuranDivisionsForRange("juz", alert.surahNumber, alert.ayahStart, alert.ayahEnd);
@@ -92,6 +94,36 @@ export default function StudentQuranCard({ studentName, records, loading = false
         <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">متوسط التقييم المسجل</p><p className="mt-1 text-xl font-bold text-[#173B2D]">{records.length ? average.toFixed(1) + " / 5" : "—"}</p></div>
         <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">السور المسجلة</p><p className="mt-1 text-xl font-bold text-[#173B2D]">{new Set(records.map(item => item.surahNumber)).size}</p></div>
       </div>
+
+      <section className="space-y-3 rounded-xl border border-[#BFD9C8] bg-[#F5FAF6] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 font-bold text-[#173B2D]"><CalendarClock size={18} /> برنامج المراجعة المتباعدة</h3>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#17663B]">يتجدد حسب نتيجة التسميع</span>
+        </div>
+        <p className="text-xs leading-6 text-[#52675C]">يحدد البرنامج مقدار مراجعة اليوم وتكرار التسميع والفاصل القادم لكل آية محفوظة مسجلة. عند التعثر يقرب المراجعة، وعند الإتقان يوسع الفاصل تدريجيًا.</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-lg bg-white p-3"><p className="text-xs text-gray-500">المستحق اليوم</p><p className="mt-1 text-xl font-bold text-[#173B2D]">{reviewPlan.dueAyat} آية</p></div>
+          <div className="rounded-lg bg-white p-3"><p className="text-xs text-gray-500">مقدار اليوم</p><p className="mt-1 text-xl font-bold text-[#173B2D]">{reviewPlan.scheduledAyat} آية</p></div>
+          <div className="rounded-lg bg-white p-3"><p className="text-xs text-gray-500">المتبقي للترحيل</p><p className="mt-1 text-xl font-bold text-amber-700">{reviewPlan.remainingAyat} آية</p></div>
+          <div className="rounded-lg bg-white p-3"><p className="text-xs text-gray-500">الحد اليومي</p><p className="mt-1 text-xl font-bold text-[#173B2D]">{reviewPlan.dailyCapacity} آية</p></div>
+        </div>
+        {reviewPlan.tasks.length ? <div className="space-y-2">
+          {reviewPlan.tasks.map((task, index) => <article key={`${task.surahNumber}-${task.ayahStart}-${task.ayahEnd}-${index}`} className="rounded-lg border border-white bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-bold text-[#173B2D]">سورة {QURAN_SURAHS[task.surahNumber - 1]?.name ?? task.surahNumber} · الآيات {task.ayahStart}{task.ayahEnd !== task.ayahStart ? `–${task.ayahEnd}` : ""}</p>
+              <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === "urgent" ? "bg-rose-100 text-rose-800" : task.priority === "reinforce" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{task.priority === "urgent" ? "أولوية عاجلة" : task.priority === "reinforce" ? "تثبيت" : "صيانة المحفوظ"}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+              <span>{task.ayahCount} آية</span>
+              <span className="inline-flex items-center gap-1"><Repeat2 size={13} /> {task.repetitions} مرات تسميع</span>
+              {task.overdueDays > 0 && <span className="text-rose-700">متأخرة {task.overdueDays} يومًا</span>}
+            </div>
+            <p className="mt-1 text-xs leading-5 text-gray-500">{task.reason}</p>
+          </article>)}
+        </div> : <p className="rounded-lg bg-white p-3 text-sm text-[#52675C]">لا توجد مراجعات مستحقة اليوم وفق السجلات. {reviewPlan.nextReviewDate ? `المراجعة القادمة: ${reviewPlan.nextReviewDate}` : "تظهر المواعيد بعد تسجيل الحفظ الجديد."}</p>}
+        {reviewPlan.remainingAyat > 0 && <p className="text-xs leading-5 text-amber-800">المقدار المتبقي يتوزع على الأيام التالية حتى لا نرهق الطالب. تُقدّم المواضع الأضعف والمتأخرة أولًا.</p>}
+        <p className="text-xs leading-5 text-[#718279]">بعد تسجيل نتيجة المراجعة يعاد حساب الموعد تلقائيًا: الإتقان يوسع الفواصل (يوم، 3، 7، 14، 30 يومًا ثم أكثر)، والأداء المتوسط يقصرها، وعدم المراجعة أو كثرة الأخطاء يعيد الموضع إلى مراجعة قريبة بثلاث مرات تسميع. هذا اقتراح تنظيمي للمعلم وليس تسجيلًا تلقائيًا لمراجعة لم تحدث.</p>
+      </section>
 
       <section className="space-y-3 rounded-xl border border-[#DCE8E0] p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
