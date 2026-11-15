@@ -3,6 +3,7 @@ import {
   type AnalysisFeatures,
   type SchoolTrackAnalysisDependencies,
 } from "./handler.ts";
+import { getBearerToken, parseAllowedOrigins } from "./logic.ts";
 
 const schoolId = "10000000-0000-4000-8000-000000000001";
 const studentId = "50000000-0000-4000-8000-000000000001";
@@ -214,4 +215,13 @@ Deno.test("returns an English no-data message when requested in English", async 
   if (response.status !== 200 || !String(result.summary).startsWith("There is not enough data")) {
     throw new Error("no-data analysis did not respect the requested locale");
   }
+});
+
+Deno.test("analysis function validates bearer tokens and allowed origins locally", () => {
+  if (getBearerToken("Bearer abc.def") !== "abc.def") throw new Error("bearer token parsing failed");
+  const origins = parseAllowedOrigins("https://school.example,*,https://evil.example/path");
+  if (origins.size !== 1 || !origins.has("https://school.example")) throw new Error("origin parsing failed");
+  let rejected = false;
+  try { getBearerToken("Basic abc"); } catch { rejected = true; }
+  if (!rejected) throw new Error("invalid authorization scheme was accepted");
 });
