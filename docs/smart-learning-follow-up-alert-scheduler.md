@@ -23,3 +23,10 @@ The worker calls the existing refresh_learning_follow_up_alerts function under e
 After applying the migration, inspect cron.job for the job name quranos-smart-learning-follow-up. The expected schedule is 0 * * * *.
 
 Inspect cron.job_run_details for recent runs. Successful runs return a JSON result with processed and skipped membership counts. A skipped membership is logged without stopping other schools.
+
+## Production rollout (2026-11-15)
+
+- Supabase `pg_cron` is enabled in the production project.
+- Migration 090 is applied and the job `quranos-smart-learning-follow-up` is active as database role `postgres`, scheduled at minute 0 of every UTC hour.
+- A transaction-scoped production verification ran the worker successfully: 2 active memberships processed, 0 skipped. The production project currently has 0 explicit follow-up targets, so the verification created 0 notifications; the transaction was rolled back.
+- The first scheduled production execution is pending; inspect `cron.job_run_details` after the next hourly run.
