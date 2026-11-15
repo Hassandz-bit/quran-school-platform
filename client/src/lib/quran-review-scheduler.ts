@@ -130,7 +130,7 @@ function scheduleAyah(
     nextReviewDate,
     streak,
     priority: overdueDays > 0 && priority !== "urgent" ? "reinforce" : priority,
-    repetitions,
+    repetitions: overdueDays > 0 && priority !== "urgent" ? Math.max(2, repetitions) : repetitions,
     reason,
     overdueDays,
   };
