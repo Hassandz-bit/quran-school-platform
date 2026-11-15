@@ -1,4 +1,4 @@
-import type { MemorizationRecord } from "./memorization";
+import type { MemorizationRecord } from "./memorization.ts";
 
 export type QuranReviewPriority = "urgent" | "reinforce" | "maintenance";
 
@@ -80,7 +80,8 @@ function scheduleAyah(
     .sort((a, b) => a.recordDate.localeCompare(b.recordDate) ||
       a.createdAt.localeCompare(b.createdAt));
 
-  const memorization = ordered.filter(isNewMemorization).at(-1);
+  const memorizationRecords = ordered.filter(isNewMemorization);
+  const memorization = memorizationRecords[memorizationRecords.length - 1];
   if (!memorization) return null;
 
   const events = ordered.filter(record =>
