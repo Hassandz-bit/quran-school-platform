@@ -2,6 +2,14 @@
 // strings. Keeping the catalog separate makes coverage measurable and prevents
 // page components from accumulating one-off language conditionals.
 export const EXACT_UI_ENGLISH: Record<string, string> = {
+  "آيات استظهرها حسب السجلات": "Verses explicitly recorded as memorized",
+  "مراجعات ناجحة مسجلة": "Successful reviews recorded",
+  "مواضع تستحق المراجعة": "Passages due for review",
+  "تجميع المسار القرآني": "Group Quran progress by unit",
+  "مواضع مرّ عليها 14 يومًا أو أكثر دون تسجيل مراجعة ناجحة أحدث.": "Passages with no newer successful review recorded for 14 days or more.",
+  "تظهر هنا المواضع التي سجلت تقييمًا منخفضًا (1 أو 2) في يومين مختلفين على الأقل.": "Passages with a low rating (1 or 2) recorded on at least two different days appear here.",
+  "تعتمد المؤشرات على النتائج المسجلة فقط: لا تُحتسب الآية مستظهرة إلا عند وجود نتيجة «استظهر»، ولا يُعد الموضع ضعيفًا بسبب تقييم منفرد.": "Indicators use recorded results only: a verse counts as memorized only with an explicit memorized result, and one low rating alone does not mark a passage as weak.",
+
   "اختر نوع الدخول أولًا": "Choose your portal first",
   "هذا اختيار للوجهة فقط؛ سيُتحقق من صلاحيات الحساب بعد تسجيل الدخول.": "This selects the destination only. Account permissions are verified after sign-in.",
   "هذا الحساب لا يرتبط بوليّ أمر نشط. اختر بوابة أخرى متاحة أو استخدم حساب ولي الأمر الصحيح.": "This account has no active guardian relationship. Choose another available portal or use the correct guardian account.",
