@@ -68,3 +68,9 @@ test("school track stores only one general average out of 20 for each of three t
   assert.match(page, /المعدل العام من 20/);
   assert.doesNotMatch(page, /المادة\s*<input value=\{form\.subject\}/);
 });
+
+test("school track export contains only term general-average fields", () => {
+  const helper = readFileSync(new URL("../client/src/lib/school-track.ts", import.meta.url), "utf8");
+  assert.match(helper, /general_average_out_of_20/);
+  assert.doesNotMatch(helper.slice(helper.indexOf("export function buildSchoolTrackCsv")), /assessment_title|assessment_type|subject/);
+});
