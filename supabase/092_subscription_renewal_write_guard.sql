@@ -27,9 +27,13 @@ begin
     return new;
   end if;
 
-  if tg_table_name = 'school_subscriptions'
-     and tg_op = 'UPDATE'
-     and public.is_platform_owner() then
+  if tg_table_name = 'school_subscriptions' and tg_op = 'UPDATE' then
+    -- Trusted direct database administration remains possible; all API roles must use
+    -- the scoped RPC context, including service_role.
+    if session_user = 'postgres' then
+      return new;
+    end if;
+
     if exists (
       select 1 from private.subscription_write_contexts context_row
       where context_row.transaction_id = txid_current()
@@ -39,12 +43,13 @@ begin
       return new;
     end if;
 
-    if exists (
-      select 1 from private.subscription_write_contexts context_row
-      where context_row.transaction_id = txid_current()
-        and context_row.actor_user_id = auth.uid()
-        and context_row.context = 'trial_extension'
-    )
+    if public.is_platform_owner()
+       and exists (
+         select 1 from private.subscription_write_contexts context_row
+         where context_row.transaction_id = txid_current()
+           and context_row.actor_user_id = auth.uid()
+           and context_row.context = 'trial_extension'
+       )
        and old.status = 'trial'
        and new.status = 'trial'
        and (to_jsonb(new) - array['trial_ends_at', 'grace_ends_at', 'updated_at'])
