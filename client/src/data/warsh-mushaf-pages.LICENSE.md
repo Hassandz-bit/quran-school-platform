@@ -13,20 +13,10 @@ The upstream project credits the Quran text and qiraat data to quran-data-kfgqpc
 
 ## Embedded mushaf source
 
-The temporary in-platform reader uses the following publication:
+The reader embeds the PDF supplied by the platform administrator in Google Drive:
 
-- Title: مصحف التجويد الملون بتوسط البدل (رواية ورش عن نافع)
-- Publisher/source: IslamHouse / IslamContent
-- IslamContent item: https://islamcontent.com/ar/content/2885
-- IslamHouse item: https://islamhouse.com/ar/books/2790112/
-- File format and published size: PDF, 338 MB
-- API item endpoint (returns item metadata and attachments): https://api3.islamhouse.com/v3/paV29H2gm56kvLPy/main/get-item/2790112/ar/json
+- Google Drive file ID: `1KRu-KPo3eRlrywnyf4_06XF-Ypu9kXGW`
+- The PDF remains hosted in the administrator's Drive and is not copied into this Git repository or the Vercel deployment.
+- The platform displays the supplied file without modifying its pages. The administrator must ensure that the file is authorized for use and that its Drive sharing settings permit the intended school users to view it.
 
-IslamHouse-API's published content policy explicitly permits downloading, republishing, storing for offline use, and integrating IslamHouse materials into apps and websites, including commercial and non-commercial projects, without prior written permission, provided the original material and metadata remain unchanged and the source is clearly credited:
-https://github.com/IslamHouse-API/multilingual-quran-hadith-islamic-content-database-api-hub
-
-The PDF is displayed from the publisher's attachment URL and is not committed to this Git repository or copied into the Vercel deployment. The original pages and text must not be modified. The source attribution must remain visible in the reader.
-
-The selected ayah range is mapped to a page using the MIT-licensed Warsh page index. The current reader navigates to the starting page; precise visual highlighting over individual words/ayahs requires page-coordinate annotation data and is not claimed by this implementation.
-
-This temporary source is not the Dar al-Ma'rifah edition. It may be replaced later without changing the page-index interface.
+The selected ayah range is mapped to a page using the MIT-licensed Warsh page index. The reader navigates to the starting page; precise visual highlighting over individual words/ayahs requires page-coordinate annotation data and is not claimed by this implementation.
