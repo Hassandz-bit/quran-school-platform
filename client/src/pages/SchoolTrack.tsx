@@ -43,6 +43,7 @@ import {
 type LoadState = "loading" | "ready" | "forbidden" | "error";
 type Analysis = {
   summary: string;
+  comparison: string;
   strengths: string[];
   focusAreas: string[];
   actions: string[];
@@ -497,7 +498,7 @@ export default function SchoolTrack() {
               {!filters.studentId && <span className="text-xs text-[#718377]">اختر طالبًا في الفلاتر أولًا.</span>}
             </div>
             {analysisError && <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{analysisError}</p>}
-            {analysis && <div className="mt-4 space-y-3 rounded-xl border border-[#DCE8F0] bg-white p-4"><div><h3 className="font-bold">ملخص</h3><p className="mt-1 text-sm leading-7">{analysis.summary}</p></div>{analysis.quranDataIncluded && <p className="text-xs text-[#607368]">شمل التحليل سجلات متابعة قرآنية متاحة ضمن صلاحيتك.</p>}{[["نقاط القوة", analysis.strengths], ["مجالات تحتاج دعمًا", analysis.focusAreas], ["خطوات مقترحة", analysis.actions]].map(([heading, items]) => <div key={String(heading)}><h3 className="font-bold">{heading}</h3><ul className="mt-1 list-inside list-disc space-y-1 text-sm leading-6">{(items as string[]).map((item, index) => <li key={`${heading}-${index}`}>{item}</li>)}</ul></div>)}</div>}
+            {analysis && <div className="mt-4 space-y-3 rounded-xl border border-[#DCE8F0] bg-white p-4"><div><h3 className="font-bold">ملخص المسار</h3><p className="mt-1 text-sm leading-7">{analysis.summary}</p></div><div className="rounded-lg bg-blue-50 p-3"><h3 className="font-bold text-blue-950">المقارنة بين نتائج المدرسة والمدرسة القرآنية</h3><p className="mt-1 text-sm leading-7 text-blue-950">{analysis.comparison}</p></div>{analysis.quranDataIncluded && <p className="text-xs text-[#607368]">شمل التحليل سجلات متابعة قرآنية متاحة ضمن صلاحيتك.</p>}{[["نقاط القوة", analysis.strengths], ["مجالات تحتاج دعمًا", analysis.focusAreas], ["خطوات مقترحة", analysis.actions]].map(([heading, items]) => <div key={String(heading)}><h3 className="font-bold">{heading}</h3><ul className="mt-1 list-inside list-disc space-y-1 text-sm leading-6">{(items as string[]).map((item, index) => <li key={`${heading}-${index}`}>{item}</li>)}</ul></div>)}</div>}
           </section>
         </TabsContent>
       </Tabs>
