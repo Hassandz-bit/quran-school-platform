@@ -17,6 +17,7 @@ import {
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { QURAN_SURAHS } from "@/lib/memorization";
+import { getQuranDivisionsForRange } from "@/lib/quran-divisions";
 import {
   fetchParentStudentAcademic,
   fetchParentStudentFinance,
@@ -26,6 +27,7 @@ import {
   type ParentStudentAcademicData,
   type ParentStudentFinanceData,
   type ParentLearningFollowUp,
+  type ParentMemorizationRecord,
 } from "@/lib/parent-portal";
 
 function formatDate(value: string | null): string {
@@ -67,6 +69,147 @@ function sessionLabel(value: string): string {
       distant_revision: "مراجعة بعيدة",
       assessment: "تقييم",
     }[value] ?? value
+  );
+}
+
+type ParentQuranGroupBy = "surah" | "juz" | "hizb" | "session";
+
+function ParentQuranProgress({ records }: { records: ParentMemorizationRecord[] }) {
+  const [groupBy, setGroupBy] = useState<ParentQuranGroupBy>("surah");
+  const analysis = useMemo(() => {
+    const latestMemorized = new Map<string, string>();
+    const latestReviewed = new Map<string, string>();
+    const weakDates = new Map<string, Set<string>>();
+    for (const record of records) {
+      const isNew = record.sessionType === "new_memorization" || record.sessionType === "new_hifz";
+      if (isNew && record.recitationResult === "memorized") {
+        for (let ayah = record.ayahStart; ayah <= record.ayahEnd; ayah += 1) {
+          const key = `${record.surahNumber}:${ayah}`;
+          const previous = latestMemorized.get(key);
+          if (!previous || record.date > previous) latestMemorized.set(key, record.date);
+        }
+      }
+      if ((record.sessionType === "near_revision" || record.sessionType === "distant_revision") && record.recitationResult === "revised") {
+        for (let ayah = record.ayahStart; ayah <= record.ayahEnd; ayah += 1) {
+          const key = `${record.surahNumber}:${ayah}`;
+          const previous = latestReviewed.get(key);
+          if (!previous || record.date > previous) latestReviewed.set(key, record.date);
+        }
+      }
+      if (record.rating <= 2) {
+        for (let ayah = record.ayahStart; ayah <= record.ayahEnd; ayah += 1) {
+          const key = `${record.surahNumber}:${ayah}`;
+          const dates = weakDates.get(key) ?? new Set<string>();
+          dates.add(record.date);
+          weakDates.set(key, dates);
+        }
+      }
+    }
+    const today = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+    const toDay = (value: string) => {
+      const [year, month, day] = value.split("-").map(Number);
+      return Date.UTC(year, month - 1, day);
+    };
+    const due = new Set<string>();
+    for (const [key, memorizedDate] of latestMemorized) {
+      const reviewedDate = latestReviewed.get(key);
+      const lastEvidence = reviewedDate && reviewedDate > memorizedDate ? reviewedDate : memorizedDate;
+      if (today - toDay(lastEvidence) >= 14 * 24 * 60 * 60 * 1000) due.add(key);
+    }
+    const weak = new Set([...weakDates].filter(([, dates]) => dates.size >= 2).map(([key]) => key));
+    return { memorizedAyat: latestMemorized.size, due, weak };
+  }, [records]);
+
+  const groups = useMemo(() => {
+    const grouped = new Map<string, { label: string; sessions: number; newCount: number; reviewCount: number; errors: number; latest: string }>();
+    for (const record of records) {
+      const keys: Array<{ key: string; label: string }> = groupBy === "session"
+        ? [{ key: record.sessionType, label: sessionLabel(record.sessionType) }]
+        : groupBy === "surah"
+          ? [{ key: String(record.surahNumber), label: `سورة ${surahName(record.surahNumber)}` }]
+          : getQuranDivisionsForRange(groupBy, record.surahNumber, record.ayahStart, record.ayahEnd)
+              .map(number => ({ key: String(number), label: `${groupBy === "juz" ? "الجزء" : "الحزب"} ${number}` }));
+      for (const item of keys) {
+        const group = grouped.get(item.key) ?? { label: item.label, sessions: 0, newCount: 0, reviewCount: 0, errors: 0, latest: "" };
+        group.sessions += 1;
+        if (record.sessionType === "new_memorization" || record.sessionType === "new_hifz") group.newCount += 1;
+        if (record.sessionType === "near_revision" || record.sessionType === "distant_revision") group.reviewCount += 1;
+        group.errors += record.errorsCount;
+        if (record.date > group.latest) group.latest = record.date;
+        grouped.set(item.key, group);
+      }
+    }
+    return [...grouped.values()].sort((a, b) => b.latest.localeCompare(a.latest)).slice(0, 8);
+  }, [records, groupBy]);
+
+  const alertRanges = useMemo(() => {
+    const formatRanges = (keys: Set<string>) => {
+      const bySurah = new Map<number, number[]>();
+      for (const key of keys) {
+        const [surahText, ayahText] = key.split(":");
+        const surahNumber = Number(surahText);
+        const values = bySurah.get(surahNumber) ?? [];
+        values.push(Number(ayahText));
+        bySurah.set(surahNumber, values);
+      }
+      return [...bySurah].map(([surahNumber, ayat]) => {
+        const sorted = [...ayat].sort((a, b) => a - b);
+        const first = sorted[0];
+        const last = sorted[sorted.length - 1];
+        return `سورة ${surahName(surahNumber)} · الآيات ${first === last ? first : `${first}–${last}`}`;
+      });
+    };
+    return { due: formatRanges(analysis.due), weak: formatRanges(analysis.weak) };
+  }, [analysis]);
+
+  const completedReviews = records.filter(record =>
+    (record.sessionType === "near_revision" || record.sessionType === "distant_revision") && record.recitationResult === "revised"
+  ).length;
+  const average = records.length ? records.reduce((sum, record) => sum + record.rating, 0) / records.length : null;
+
+  return (
+    <section className="space-y-4 rounded-2xl border border-[#D8E5DB] bg-[#F8FBF8] p-4 sm:p-5">
+      <div>
+        <h2 className="flex items-center gap-2 text-lg font-bold text-[#173B2D]"><BookOpenCheck size={20} className="text-[#17663B]" /> ملخص ذكي لمسار الحفظ والمراجعة</h2>
+        <p className="mt-1 text-xs leading-6 text-[#607368]">قراءة إرشادية مبنية على آخر {records.length} سجل متابعة متاح، وليست حكمًا نهائيًا على مستوى الحفظ.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="آيات استظهرها حسب السجلات" value={analysis.memorizedAyat} />
+        <Stat label="مراجعات ناجحة مسجلة" value={completedReviews} />
+        <Stat label="مواضع تستحق المراجعة" value={analysis.due.size} />
+        <Stat label="متوسط التقييم" value={average === null ? "—" : `${average.toFixed(1)}/5`} />
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <article className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <h3 className="font-bold text-amber-900">مراجعة يُستحسن تجديدها</h3>
+          <p className="mt-1 text-xs leading-5 text-amber-800">مواضع مرّ عليها 14 يومًا أو أكثر دون تسجيل مراجعة ناجحة أحدث.</p>
+          {alertRanges.due.length ? <ul className="mt-2 space-y-1 text-sm text-amber-950">{alertRanges.due.slice(0, 5).map(item => <li key={item}>• {item}</li>)}</ul> : <p className="mt-2 text-sm text-amber-900">لا توجد مواضع مستحقة وفق السجلات المتاحة.</p>}
+        </article>
+        <article className="rounded-xl border border-red-200 bg-red-50 p-3">
+          <h3 className="font-bold text-red-900">مواضع تكرر فيها ضعف التقييم</h3>
+          <p className="mt-1 text-xs leading-5 text-red-800">تظهر هنا المواضع التي سجلت تقييمًا منخفضًا (1 أو 2) في يومين مختلفين على الأقل.</p>
+          {alertRanges.weak.length ? <ul className="mt-2 space-y-1 text-sm text-red-950">{alertRanges.weak.slice(0, 5).map(item => <li key={item}>• {item}</li>)}</ul> : <p className="mt-2 text-sm text-red-900">لا يوجد ضعف متكرر مثبت في السجلات المتاحة.</p>}
+        </article>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-bold text-[#173B2D]">تفصيل المسار حسب الوحدة</h3>
+        <select aria-label="تجميع المسار القرآني" value={groupBy} onChange={event => setGroupBy(event.target.value as ParentQuranGroupBy)} className="rounded-lg border border-[#C8D8CE] bg-white px-3 py-2 text-sm text-[#244E3B]">
+          <option value="surah">حسب السورة</option>
+          <option value="juz">حسب الجزء</option>
+          <option value="hizb">حسب الحزب</option>
+          <option value="session">حسب نوع الجلسة</option>
+        </select>
+      </div>
+      {groups.length ? (
+        <div className="overflow-x-auto rounded-xl border border-[#DCE7DF] bg-white">
+          <table className="w-full min-w-[520px] text-right text-sm">
+            <thead className="bg-[#EDF4EF] text-xs text-[#52675C]"><tr><th className="p-3">النطاق</th><th className="p-3">الجلسات</th><th className="p-3">حفظ جديد</th><th className="p-3">مراجعة</th><th className="p-3">الأخطاء</th><th className="p-3">آخر نشاط</th></tr></thead>
+            <tbody className="divide-y divide-[#E7EEE9]">{groups.map(group => <tr key={group.label}><td className="p-3 font-semibold text-[#173B2D]">{group.label}</td><td className="p-3">{group.sessions}</td><td className="p-3">{group.newCount}</td><td className="p-3">{group.reviewCount}</td><td className="p-3">{group.errors}</td><td className="p-3 whitespace-nowrap">{formatDate(group.latest)}</td></tr>)}</tbody>
+          </table>
+        </div>
+      ) : <p className="rounded-xl bg-white p-4 text-center text-sm text-[#718279]">لا توجد بيانات كافية لبناء تفصيل المسار بعد.</p>}
+      <p className="text-xs leading-5 text-[#718279]">تعتمد المؤشرات على النتائج المسجلة فقط: لا تُحتسب الآية مستظهرة إلا عند وجود نتيجة «استظهر»، ولا يُعد الموضع ضعيفًا بسبب تقييم منفرد.</p>
+    </section>
   );
 }
 
@@ -264,6 +407,8 @@ export default function ParentStudent() {
       </header>
 
       <StudentAlertSummary attendance={data.attendanceRecords} memorization={data.memorizationRecords} />
+
+      <ParentQuranProgress records={data.memorizationRecords} />
 
       <section className="space-y-4">
         <div className="flex items-center gap-2">
