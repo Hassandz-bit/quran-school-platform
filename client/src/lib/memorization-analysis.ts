@@ -8,8 +8,11 @@ export type QuranFollowUpAlert = {
   message: string;
 };
 
+export type QuranAyahStatus = "memorized" | "review_due" | "repeated_weakness" | "unassessed";
+
 export type StudentQuranAnalysis = {
   memorizedAyat: number;
+  ayahStatuses: Record<string, QuranAyahStatus>;
   alerts: QuranFollowUpAlert[];
 };
 
@@ -121,6 +124,18 @@ export function analyzeStudentQuranRecords(
     weakBySurah.set(surahNumber, ayat);
   }
 
+  const ayahStatuses: Record<string, QuranAyahStatus> = {};
+  for (const [key, memorizedDate] of latestMemorized) {
+    const reviewedDate = latestReviewed.get(key);
+    const lastEvidenceDate =
+      reviewedDate && reviewedDate > memorizedDate ? reviewedDate : memorizedDate;
+    ayahStatuses[key] =
+      daysBetween(lastEvidenceDate, today) >= 14 ? "review_due" : "memorized";
+  }
+  for (const [key, dates] of lowRatingDates) {
+    if (dates.size >= 2) ayahStatuses[key] = "repeated_weakness";
+  }
+
   const alerts: QuranFollowUpAlert[] = [];
   for (const [surahNumber, ayat] of reviewDueBySurah) {
     for (const [ayahStart, ayahEnd] of rangesFromAyat(ayat)) {
@@ -148,6 +163,7 @@ export function analyzeStudentQuranRecords(
 
   return {
     memorizedAyat: latestMemorized.size,
+    ayahStatuses,
     alerts: alerts.slice(0, 12),
   };
 }
