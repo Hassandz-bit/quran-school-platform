@@ -44,7 +44,6 @@ export function analyzeStudentQuranRecords(
   today = new Date().toISOString().slice(0, 10),
 ): StudentQuranAnalysis {
   const latestMemorized = new Map<string, string>();
-  const latestReviewed = new Map<string, string>();
   const lowRatingDates = new Map<string, Set<string>>();
 
   for (const record of records) {
@@ -62,21 +61,6 @@ export function analyzeStudentQuranRecords(
       }
     }
 
-    const isSuccessfulReview =
-      (record.sessionType === "near_revision" ||
-        record.sessionType === "distant_revision") &&
-      record.recitationResult === "revised";
-
-    if (isSuccessfulReview) {
-      for (let ayah = record.ayahStart; ayah <= record.ayahEnd; ayah += 1) {
-        const key = ayahKey(record.surahNumber, ayah);
-        const previous = latestReviewed.get(key);
-        if (!previous || record.recordDate > previous) {
-          latestReviewed.set(key, record.recordDate);
-        }
-      }
-    }
-
     if (record.rating <= 2) {
       for (let ayah = record.ayahStart; ayah <= record.ayahEnd; ayah += 1) {
         const key = ayahKey(record.surahNumber, ayah);
@@ -90,7 +74,7 @@ export function analyzeStudentQuranRecords(
   const reviewPlan = buildQuranReviewPlan(records, today);
   const dueAyahKeys = new Set(reviewPlan.dueAyahKeys);
   const reviewDueBySurah = new Map<number, number[]>();
-  for (const [key, memorizedDate] of latestMemorized) {
+  for (const [key] of latestMemorized) {
     const [surahText, ayahText] = key.split(":");
     const surahNumber = Number(surahText);
     const ayahNumber = Number(ayahText);
@@ -113,7 +97,7 @@ export function analyzeStudentQuranRecords(
   }
 
   const ayahStatuses: Record<string, QuranAyahStatus> = {};
-  for (const [key, memorizedDate] of latestMemorized) {
+  for (const [key] of latestMemorized) {
     ayahStatuses[key] = dueAyahKeys.has(key) ? "review_due" : "memorized";
   }
   for (const [key, dates] of lowRatingDates) {
