@@ -39,7 +39,10 @@ export default function StudentQuranCard({ studentName, records, loading = false
   const analysis = useMemo(() => analyzeStudentQuranRecords(records), [records]);
   const alerts = analysis.alerts.map(alert => {
     const name = QURAN_SURAHS[alert.surahNumber - 1]?.name ?? "غير معروفة";
-    return `سورة ${name} · ${alert.message}`;
+    const juz = getQuranDivisionsForRange("juz", alert.surahNumber, alert.ayahStart, alert.ayahEnd);
+    const hizb = getQuranDivisionsForRange("hizb", alert.surahNumber, alert.ayahStart, alert.ayahEnd);
+    const location = [juz.length ? "الجزء " + juz.join("، ") : "", hizb.length ? "الحزب " + hizb.join("، ") : ""].filter(Boolean).join(" · ");
+    return `سورة ${name} · الآيات ${alert.ayahStart}–${alert.ayahEnd}${location ? " · " + location : ""} · ${alert.message}`;
   });
   const memorizedAyat = analysis.memorizedAyat;
   const selectedMapSurah = QURAN_SURAHS[Number(mapSurah) - 1];
