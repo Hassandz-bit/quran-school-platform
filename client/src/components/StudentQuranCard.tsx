@@ -10,50 +10,13 @@ import {
   getMemorizationResultLabel,
   type MemorizationRecord,
 } from "@/lib/memorization";
+import { analyzeStudentQuranRecords } from "@/lib/memorization-analysis";
 
 type Props = {
   studentName: string;
   records: MemorizationRecord[];
   loading?: boolean;
 };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function daysBetween(older: string, newer: string): number {
-  const a = new Date(older + "T00:00:00").getTime();
-  const b = new Date(newer + "T00:00:00").getTime();
-  return Math.max(0, Math.floor((b - a) / DAY_MS));
-}
-
-function uniqueMemorizedAyat(records: MemorizationRecord[]): number {
-  const ranges = new Map<number, Array<[number, number]>>();
-  for (const record of records) {
-    if ((record.sessionType !== "new_memorization" && record.sessionType !== "new_hifz") || record.recitationResult === "not_memorized") continue;
-    const items = ranges.get(record.surahNumber) ?? [];
-    items.push([record.ayahStart, record.ayahEnd]);
-    ranges.set(record.surahNumber, items);
-  }
-  let total = 0;
-  for (const items of ranges.values()) {
-    items.sort((a, b) => a[0] - b[0]);
-    let start = -1;
-    let end = -1;
-    for (const [nextStart, nextEnd] of items) {
-      if (start === -1) {
-        start = nextStart;
-        end = nextEnd;
-      } else if (nextStart <= end + 1) {
-        end = Math.max(end, nextEnd);
-      } else {
-        total += end - start + 1;
-        start = nextStart;
-        end = nextEnd;
-      }
-    }
-    if (start !== -1) total += end - start + 1;
-  }
-  return total;
-}
 
 export default function StudentQuranCard({ studentName, records, loading = false }: Props) {
   const [surah, setSurah] = useState("all");
@@ -70,38 +33,12 @@ export default function StudentQuranCard({ studentName, records, loading = false
     (!toDate || record.recordDate <= toDate)
   ), [records, surah, session, minimumRating, fromDate, toDate]);
 
-  const alerts = useMemo(() => {
-    const messages: string[] = [];
-    const bySurah = new Map<number, MemorizationRecord[]>();
-    for (const record of records) {
-      const items = bySurah.get(record.surahNumber) ?? [];
-      items.push(record);
-      bySurah.set(record.surahNumber, items);
-    }
-    for (const [number, items] of bySurah) {
-      const memorization = items
-        .filter(item => item.sessionType === "new_memorization" || item.sessionType === "new_hifz")
-        .sort((a, b) => b.recordDate.localeCompare(a.recordDate))[0];
-      if (!memorization) continue;
-      const revision = items
-        .filter(item => item.sessionType === "near_revision" || item.sessionType === "distant_revision")
-        .sort((a, b) => b.recordDate.localeCompare(a.recordDate))[0];
-      const elapsed = daysBetween(memorization.recordDate, new Date().toISOString().slice(0, 10));
-      if ((!revision || revision.recordDate < memorization.recordDate) && elapsed >= 14) {
-        const name = QURAN_SURAHS[number - 1]?.name ?? "غير معروفة";
-        messages.push(`سورة ${name}: آخر تسجيل للحفظ بتاريخ ${memorization.recordDate}، ولم يظهر في السجلات المتاحة تسجيل مراجعة لاحق لها خلال ${elapsed} يومًا.`);
-      }
-    }
-    const weakBySurah = [...bySurah.entries()].flatMap(([number, items]) => {
-      const evaluated = items.filter(item => item.rating <= 2);
-      if (evaluated.length < 2) return [];
-      const name = QURAN_SURAHS[number - 1]?.name ?? "غير معروفة";
-      return [`سورة ${name}: ${evaluated.length} تقييمات من 5 بدرجة 1 أو 2؛ يُستحسن أن يراجع المعلم هذه المواضع.`];
-    });
-    return [...messages, ...weakBySurah].slice(0, 8);
-  }, [records]);
-
-  const memorizedAyat = uniqueMemorizedAyat(records);
+  const analysis = useMemo(() => analyzeStudentQuranRecords(records), [records]);
+  const alerts = analysis.alerts.map(alert => {
+    const name = QURAN_SURAHS[alert.surahNumber - 1]?.name ?? "غير معروفة";
+    return `سورة ${name} · ${alert.message}`;
+  });
+  const memorizedAyat = analysis.memorizedAyat;
   const average = records.length
     ? records.reduce((sum, item) => sum + item.rating, 0) / records.length
     : 0;
