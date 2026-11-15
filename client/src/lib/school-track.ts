@@ -516,18 +516,14 @@ export function summarizeSchoolTrackResults(results: SchoolTrackResult[]) {
 
 export function buildSchoolTrackCsv(results: SchoolTrackResult[]): string {
   const rows = [
-    ["student_id", "subject", "assessment_title", "assessment_type", "academic_year", "term", "assessment_date", "score", "max_score", "percentage", "notes"],
+    ["student_id", "academic_year", "term", "assessment_date", "general_average_out_of_20", "percentage", "notes"],
     ...results.map(item => [
       item.student_id,
-      item.subject,
-      item.assessment_title,
-      item.assessment_type,
       item.academic_year,
       item.term,
       item.assessment_date,
       String(item.score),
-      String(item.max_score),
-      getSchoolTrackPercentage(item.score, item.max_score).toFixed(1),
+      getSchoolTrackPercentage(item.score, 20).toFixed(1),
       item.notes ?? "",
     ]),
   ];
