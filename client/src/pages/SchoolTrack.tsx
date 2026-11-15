@@ -19,7 +19,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
-  SCHOOL_ASSESSMENT_TYPES,
   buildSchoolTrackCsv,
   canManageSchoolTrackStudent,
   canViewSchoolTrackStudent,
@@ -62,14 +61,6 @@ type FormState = {
   notes: string;
 };
 
-const ASSESSMENT_TYPE_LABELS: Record<SchoolAssessmentType, string> = {
-  quiz: "اختبار قصير",
-  test: "فرض",
-  exam: "امتحان",
-  oral: "شفهي",
-  continuous: "تقويم مستمر",
-  other: "أخرى",
-};
 const EVALUATION_LABELS = {
   excellent: "ممتاز",
   very_good: "جيد جدًا",
@@ -124,12 +115,6 @@ function formatPercent(value: number): string {
     maximumFractionDigits: 1,
     minimumFractionDigits: 1,
   }).format(value)}%`;
-}
-function formatDate(value: string): string {
-  const date = new Date(`${value}T12:00:00`);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat("ar-DZ-u-nu-latn", { dateStyle: "medium" }).format(date);
 }
 function downloadCsv(results: SchoolTrackResult[]) {
   const blob = new Blob([buildSchoolTrackCsv(results)], { type: "text/csv;charset=utf-8" });
@@ -242,10 +227,6 @@ export default function SchoolTrack() {
     };
   }, [filters, loadState, school?.id, scope]);
 
-  const visibleStudents = useMemo(
-    () => students.filter(student => !filters.branchId || student.branch_id === filters.branchId),
-    [filters.branchId, students]
-  );
   const studentsById = useMemo(
     () => new Map(students.map(student => [student.id, student])),
     [students]
@@ -259,10 +240,6 @@ export default function SchoolTrack() {
     [scope?.branches]
   );
   const summary = useMemo(() => summarizeSchoolTrackResults(results), [results]);
-  const terms = useMemo(
-    () => [...new Set(results.map(item => item.term))].sort((a, b) => a.localeCompare(b, "ar")),
-    [results]
-  );
   const manageableStudents = useMemo(
     () => students.filter(student => scope && canManageSchoolTrackStudent(scope, student)),
     [scope, students]
