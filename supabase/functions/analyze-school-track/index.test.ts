@@ -45,6 +45,7 @@ function dependencies(
     listQuranProgress: async () => [],
     analyze: async () => ({
       summary: "أداء جيد في المتاح من البيانات.",
+      comparison: "مقارنة أولية بين المسارين.",
       strengths: ["تحسن في الرياضيات"],
       focusAreas: ["مراجعة المسائل"],
       actions: ["متابعة أسبوعية قصيرة"],
@@ -124,6 +125,7 @@ Deno.test("sends only pseudonymous score signals and only authorized Quran progr
       featureCalls.push(input);
       return {
         summary: "ملخص تربوي.",
+        comparison: "يوجد تباين بين الاتجاهين.",
         strengths: [],
         focusAreas: [],
         actions: [],

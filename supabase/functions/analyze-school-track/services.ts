@@ -80,10 +80,12 @@ async function generateAnalysis(
           role: "system",
           content: [
             "أنت مساعد تربوي يدعم المعلم في متابعة الطالب فقط.",
-            "حلل الاتجاهات الواضحة في درجات المواد ومؤشرات متابعة القرآن، وقدم اقتراحات قصيرة قابلة للتحقق.",
+            "حلل العلاقة بين المعدلات المدرسية الفصلية من 20 ومسار الحفظ والمراجعة القرآني. قارن الاتجاهين زمنيًا، ولا تفترض أن ارتفاع أحدهما يسبب الآخر.",
+            "استخرج مؤشرات كمية من السجلات: متوسط المعدلات المدرسية، متوسط تقييم جلسات القرآن، أخطاء التسميع، توازن الحفظ والمراجعة، ومناطق القوة أو التراجع المدعومة بالسجلات.",
+            "اربط الملاحظات بنوع الجلسة والسورة والآيات والتكليف التالي إن وجد. لا تعتبر غياب سجل دليلًا على عدم الحفظ أو عدم المراجعة.",
             "لا تشخّص اضطرابات أو حالات صحية أو نفسية، ولا تستنتج معلومات لا تدعمها البيانات.",
             "لا تصدر حكم نجاح/رسوب رسميًا. وضح محدودية البيانات عند الحاجة.",
-            "أعد JSON صالحًا فقط بالحقول: summary كنص، strengths كمصفوفة نصوص، focusAreas كمصفوفة نصوص، actions كمصفوفة نصوص.",
+            "أعد JSON صالحًا فقط بالحقول: summary كنص، comparison كنص يشرح المقارنة بين المسارين وحدود البيانات، strengths كمصفوفة نصوص، focusAreas كمصفوفة نصوص، actions كمصفوفة نصوص.",
             locale === "en"
               ? "Write in clear English. Do not mention IDs or names because the supplied data is pseudonymous."
               : "اكتب بالعربية الفصحى، ولا تذكر معرفات أو أسماء لأن البيانات المقدمة مجهولة الهوية.",
@@ -105,6 +107,7 @@ async function generateAnalysis(
   const parsed = JSON.parse(content) as Record<string, unknown>;
   return {
     summary: safeText(parsed.summary, "لم يقدم مزود التحليل ملخصًا واضحًا."),
+    comparison: safeText(parsed.comparison, "لا تتوفر بيانات كافية للمقارنة بين المسارين."),
     strengths: safeArray(parsed.strengths),
     focusAreas: safeArray(parsed.focusAreas),
     actions: safeArray(parsed.actions),
@@ -185,8 +188,9 @@ export function createSchoolTrackAnalysisDependencies(): SchoolTrackAnalysisDepe
     listSchoolResults: async (token, studentId) => {
       const { data, error } = await userClient(token)
         .from("school_track_results")
-        .select("subject, assessment_type, academic_year, term, assessment_date, score, max_score")
+                .select("subject, assessment_type, academic_year, term, assessment_date, score, max_score")
         .eq("student_id", studentId)
+        .eq("subject", "المعدل العام")
         .order("assessment_date", { ascending: false })
         .limit(40);
       if (error) throw error;
@@ -222,7 +226,7 @@ export function createSchoolTrackAnalysisDependencies(): SchoolTrackAnalysisDepe
     listQuranProgress: async (token, studentId) => {
       const { data, error } = await userClient(token)
         .from("memorization_records")
-        .select("record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count")
+        .select("record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, recitation_result")
         .eq("student_id", studentId)
         .order("record_date", { ascending: false })
         .limit(40);
@@ -235,6 +239,7 @@ export function createSchoolTrackAnalysisDependencies(): SchoolTrackAnalysisDepe
         ayahEnd: row.ayah_end,
         rating: row.rating,
         errorsCount: row.errors_count,
+        recitationResult: row.recitation_result,
       }));
     },
     analyze: async (features, locale) => {

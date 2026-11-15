@@ -325,23 +325,23 @@ export function validateSchoolTrackResult(
   const subject = input.subject.trim();
   const title = input.assessmentTitle.trim();
   if (!input.branchId || !input.studentId) return "student_required";
-  if (!subject || subject.length > 100) return "subject_invalid";
-  if (!title || title.length > 120) return "assessment_title_invalid";
+  if (subject !== "المعدل العام") return "subject_invalid";
+  if (title !== "المعدل العام للفصل") return "assessment_title_invalid";
   if (!/^\d{4}[-/]\d{4}$/.test(academicYear)) return "academic_year_invalid";
-  if (!term || term.length > 60) return "term_invalid";
+  if (!["الفصل الأول", "الفصل الثاني", "الفصل الثالث"].includes(term)) return "term_invalid";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.assessmentDate)) return "date_invalid";
   const parsedDate = new Date(`${input.assessmentDate}T00:00:00.000Z`);
   if (
     Number.isNaN(parsedDate.getTime()) ||
     parsedDate.toISOString().slice(0, 10) !== input.assessmentDate
   ) return "date_invalid";
-  if (!SCHOOL_ASSESSMENT_TYPES.includes(input.assessmentType)) return "assessment_type_invalid";
+  if (input.assessmentType !== "exam") return "assessment_type_invalid";
   if (
     !Number.isFinite(input.score) ||
     !Number.isFinite(input.maxScore) ||
     input.score < 0 ||
     input.maxScore <= 0 ||
-    input.maxScore > 1000 ||
+    input.maxScore !== 20 ||
     input.score > input.maxScore
   ) {
     return "score_invalid";
@@ -367,6 +367,7 @@ export async function fetchSchoolTrackResults(
     .from("school_track_results")
     .select(RESULT_COLUMNS)
     .eq("school_id", schoolId)
+    .eq("subject", "المعدل العام")
     .order("assessment_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(1000);
@@ -400,6 +401,7 @@ export async function fetchStudentSchoolTrackResults(
     .from("school_track_results")
     .select(RESULT_COLUMNS)
     .eq("school_id", schoolId)
+    .eq("subject", "المعدل العام")
     .eq("branch_id", branchId)
     .eq("student_id", studentId)
     .order("assessment_date", { ascending: false })
@@ -514,18 +516,14 @@ export function summarizeSchoolTrackResults(results: SchoolTrackResult[]) {
 
 export function buildSchoolTrackCsv(results: SchoolTrackResult[]): string {
   const rows = [
-    ["student_id", "subject", "assessment_title", "assessment_type", "academic_year", "term", "assessment_date", "score", "max_score", "percentage", "notes"],
+    ["student_id", "academic_year", "term", "assessment_date", "general_average_out_of_20", "percentage", "notes"],
     ...results.map(item => [
       item.student_id,
-      item.subject,
-      item.assessment_title,
-      item.assessment_type,
       item.academic_year,
       item.term,
       item.assessment_date,
       String(item.score),
-      String(item.max_score),
-      getSchoolTrackPercentage(item.score, item.max_score).toFixed(1),
+      getSchoolTrackPercentage(item.score, 20).toFixed(1),
       item.notes ?? "",
     ]),
   ];
