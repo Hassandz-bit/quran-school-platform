@@ -215,3 +215,10 @@ Deno.test("returns an English no-data message when requested in English", async 
     throw new Error("no-data analysis did not respect the requested locale");
   }
 });
+
+Deno.test("analysis function validates bearer tokens and allowed origins locally", () => {
+  assertEquals(getBearerToken("Bearer abc.def"), "abc.def");
+  assertEquals(parseAllowedOrigins("https://school.example,*,https://evil.example/path").size, 1);
+  assertEquals(parseAllowedOrigins("https://school.example").has("https://school.example"), true);
+  assertThrows(() => getBearerToken("Basic abc"));
+});
