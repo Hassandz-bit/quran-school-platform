@@ -29,7 +29,7 @@ export function corsHeaders(origin: string | null): Headers {
 }
 
 export function getBearerToken(header: string | null): string {
-  const match = header?.match(/^Bearer\\s+([^\\s]+)$/i);
+  const match = header?.match(/^Bearer\s+([^\s]+)$/i);
   if (!match) throw new Error("not_authorized");
   return match[1];
 }
