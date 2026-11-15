@@ -1,4 +1,5 @@
 import type { MemorizationRecord } from "./memorization";
+import { buildQuranReviewPlan } from "./quran-review-scheduler.ts";
 
 export type QuranFollowUpAlert = {
   kind: "review_due" | "repeated_weakness";
@@ -15,17 +16,6 @@ export type StudentQuranAnalysis = {
   ayahStatuses: Record<string, QuranAyahStatus>;
   alerts: QuranFollowUpAlert[];
 };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function dayNumber(value: string): number {
-  const [year, month, day] = value.split("-").map(Number);
-  return Date.UTC(year, month - 1, day);
-}
-
-function daysBetween(older: string, newer: string): number {
-  return Math.max(0, Math.floor((dayNumber(newer) - dayNumber(older)) / DAY_MS));
-}
 
 function ayahKey(surahNumber: number, ayahNumber: number): string {
   return `${surahNumber}:${ayahNumber}`;
@@ -54,7 +44,6 @@ export function analyzeStudentQuranRecords(
   today = new Date().toISOString().slice(0, 10),
 ): StudentQuranAnalysis {
   const latestMemorized = new Map<string, string>();
-  const latestReviewed = new Map<string, string>();
   const lowRatingDates = new Map<string, Set<string>>();
 
   for (const record of records) {
@@ -72,21 +61,6 @@ export function analyzeStudentQuranRecords(
       }
     }
 
-    const isSuccessfulReview =
-      (record.sessionType === "near_revision" ||
-        record.sessionType === "distant_revision") &&
-      record.recitationResult === "revised";
-
-    if (isSuccessfulReview) {
-      for (let ayah = record.ayahStart; ayah <= record.ayahEnd; ayah += 1) {
-        const key = ayahKey(record.surahNumber, ayah);
-        const previous = latestReviewed.get(key);
-        if (!previous || record.recordDate > previous) {
-          latestReviewed.set(key, record.recordDate);
-        }
-      }
-    }
-
     if (record.rating <= 2) {
       for (let ayah = record.ayahStart; ayah <= record.ayahEnd; ayah += 1) {
         const key = ayahKey(record.surahNumber, ayah);
@@ -97,16 +71,14 @@ export function analyzeStudentQuranRecords(
     }
   }
 
+  const reviewPlan = buildQuranReviewPlan(records, today);
+  const dueAyahKeys = new Set(reviewPlan.dueAyahKeys);
   const reviewDueBySurah = new Map<number, number[]>();
-  for (const [key, memorizedDate] of latestMemorized) {
+  for (const [key] of latestMemorized) {
     const [surahText, ayahText] = key.split(":");
     const surahNumber = Number(surahText);
     const ayahNumber = Number(ayahText);
-    const reviewedDate = latestReviewed.get(key);
-    const lastEvidenceDate =
-      reviewedDate && reviewedDate > memorizedDate ? reviewedDate : memorizedDate;
-
-    if (daysBetween(lastEvidenceDate, today) >= 14) {
+    if (dueAyahKeys.has(key)) {
       const ayat = reviewDueBySurah.get(surahNumber) ?? [];
       ayat.push(ayahNumber);
       reviewDueBySurah.set(surahNumber, ayat);
@@ -125,12 +97,8 @@ export function analyzeStudentQuranRecords(
   }
 
   const ayahStatuses: Record<string, QuranAyahStatus> = {};
-  for (const [key, memorizedDate] of latestMemorized) {
-    const reviewedDate = latestReviewed.get(key);
-    const lastEvidenceDate =
-      reviewedDate && reviewedDate > memorizedDate ? reviewedDate : memorizedDate;
-    ayahStatuses[key] =
-      daysBetween(lastEvidenceDate, today) >= 14 ? "review_due" : "memorized";
+  for (const [key] of latestMemorized) {
+    ayahStatuses[key] = dueAyahKeys.has(key) ? "review_due" : "memorized";
   }
   for (const [key, dates] of lowRatingDates) {
     if (dates.size >= 2) ayahStatuses[key] = "repeated_weakness";
@@ -144,7 +112,7 @@ export function analyzeStudentQuranRecords(
         surahNumber,
         ayahStart,
         ayahEnd,
-        message: `موضع ${ayahStart === ayahEnd ? ayahStart : `${ayahStart}–${ayahEnd}`}: لم يظهر له تسجيل مراجعة ناجح خلال آخر 14 يومًا أو أكثر بعد آخر تسجيل استظهار.`,
+        message: `موضع ${ayahStart === ayahEnd ? ayahStart : `${ayahStart}–${ayahEnd}`}: حان موعد مراجعته وفق مستوى الإتقان وفواصل المراجعة المتباعدة.`,
       });
     }
   }

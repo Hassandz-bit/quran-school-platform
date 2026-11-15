@@ -48,7 +48,7 @@ test("review clears only the exact overlapping ayat, not the whole surah", () =>
       ayahStart: 4,
       ayahEnd: 7,
     }),
-  ], "2026-10-20");
+  ], "2026-10-10");
 
   const due = result.alerts.filter(alert => alert.kind === "review_due");
   assert.deepEqual(due.map(alert => [alert.ayahStart, alert.ayahEnd]), [[1, 3]]);
