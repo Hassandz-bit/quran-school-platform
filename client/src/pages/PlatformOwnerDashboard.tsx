@@ -38,6 +38,7 @@ export default function PlatformOwnerDashboard() {
   const [renewalRequests, setRenewalRequests] = useState<RenewalRequest[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subscriptionUsage, setSubscriptionUsage] = useState<Record<string, SubscriptionUsage>>({});
+  const [usageAvailable, setUsageAvailable] = useState(false);
   const [studentCountFilter, setStudentCountFilter] = useState<CountFilter>({ operator: "all", value: "" });
   const [branchCountFilter, setBranchCountFilter] = useState<CountFilter>({ operator: "all", value: "" });
   const [schools, setSchools] = useState<Record<string, string>>({});
@@ -64,7 +65,7 @@ export default function PlatformOwnerDashboard() {
         client.from("platform_audit_log").select("id,actor_user_id,action,entity_type,created_at").order("created_at", { ascending: false }).limit(20),
         client.from("school_subscription_renewal_requests").select("id,school_id,requested_by,message,created_at").eq("status", "pending").order("created_at", { ascending: false }),
       ]);
-      for (const result of [planResult, requestResult, subscriptionResult, usageResult, settingsResult, auditResult, renewalRequestResult]) {
+      for (const result of [planResult, requestResult, subscriptionResult, settingsResult, auditResult, renewalRequestResult]) {
         if (result.error) throw result.error;
       }
       const nextPlans = (planResult.data ?? []) as Plan[];
@@ -91,6 +92,7 @@ export default function PlatformOwnerDashboard() {
       setRenewalRequests(nextRenewalRequests);
       setSubscriptions(nextSubscriptions);
       const nextUsage = (usageResult.data ?? []) as SubscriptionUsage[];
+      setUsageAvailable(!usageResult.error);
       setSubscriptionUsage(Object.fromEntries(nextUsage.map(item => [item.school_id, item])));
       setSubscriptionExtensions(current => {
         const next = { ...current };
@@ -564,19 +566,19 @@ export default function PlatformOwnerDashboard() {
           <div className="mb-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
             <div className="flex flex-wrap items-center gap-2">
               <label className="text-xs font-semibold text-slate-700">عدد التلاميذ النشطين</label>
-              <select className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" value={studentCountFilter.operator} onChange={e => setStudentCountFilter(v => ({ ...v, operator: e.target.value as CountFilter["operator"] }))}>
+              <select disabled={!usageAvailable} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm disabled:opacity-50" value={studentCountFilter.operator} onChange={e => setStudentCountFilter(v => ({ ...v, operator: e.target.value as CountFilter["operator"] }))}>
                 <option value="all">الكل</option><option value="lt">أقل من</option><option value="gt">أكبر من</option>
               </select>
-              <input className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" type="number" min="0" placeholder="العدد" value={studentCountFilter.value} disabled={studentCountFilter.operator === "all"} onChange={e => setStudentCountFilter(v => ({ ...v, value: e.target.value }))} />
+              <input className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" type="number" min="0" placeholder="العدد" value={studentCountFilter.value} disabled={!usageAvailable || studentCountFilter.operator === "all"} onChange={e => setStudentCountFilter(v => ({ ...v, value: e.target.value }))} />
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="text-xs font-semibold text-slate-700">عدد الفروع النشطة</label>
-              <select className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" value={branchCountFilter.operator} onChange={e => setBranchCountFilter(v => ({ ...v, operator: e.target.value as CountFilter["operator"] }))}>
+              <select disabled={!usageAvailable} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm disabled:opacity-50" value={branchCountFilter.operator} onChange={e => setBranchCountFilter(v => ({ ...v, operator: e.target.value as CountFilter["operator"] }))}>
                 <option value="all">الكل</option><option value="lt">أقل من</option><option value="gt">أكبر من</option>
               </select>
-              <input className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" type="number" min="0" placeholder="العدد" value={branchCountFilter.value} disabled={branchCountFilter.operator === "all"} onChange={e => setBranchCountFilter(v => ({ ...v, value: e.target.value }))} />
+              <input className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" type="number" min="0" placeholder="العدد" value={branchCountFilter.value} disabled={!usageAvailable || branchCountFilter.operator === "all"} onChange={e => setBranchCountFilter(v => ({ ...v, value: e.target.value }))} />
             </div>
-            <p className="text-xs text-slate-500 sm:col-span-2">تُطبّق المقارنة على أعداد التلاميذ والفروع النشطة الفعلية في كل مدرسة.</p>
+            <p className="text-xs text-slate-500 sm:col-span-2">{usageAvailable ? "تُطبّق المقارنة على أعداد التلاميذ والفروع النشطة الفعلية في كل مدرسة." : "أعداد الاستخدام غير متاحة حاليًا؛ ستُفعّل الفلاتر بعد تهيئة خدمة إحصاءات الاشتراك."}</p>
           </div>
           <div className="overflow-x-auto">
           <table className="w-full min-w-[930px] text-sm">
