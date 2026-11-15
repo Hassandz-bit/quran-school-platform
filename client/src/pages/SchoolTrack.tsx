@@ -424,12 +424,12 @@ export default function SchoolTrack() {
       <PageHeader
         eyebrow="متابعة تعليمية"
         title="المسار المدرسي"
-        description="سجّل نتائج الامتحانات، تابع المواد والفصول، واعرضها بجانب مسار الطالب القرآني في ملفه الموحد."
+        description="تابع المعدل العام للطالب في الفصول الدراسية الثلاثة، وقارنه بمساره في المدرسة القرآنية."
         action={<Button variant="outline" onClick={() => setLocation("/academic-reports")} className="gap-2"><GraduationCap size={16} />تقارير القرآن والحضور</Button>}
       />
 
       <div className="rounded-2xl border border-[#DDE9E0] bg-[#F0F7F2] p-4 text-sm leading-6 text-[#315B43]">
-        الدرجة تُحفظ مع حدها الأقصى الذي تحدده لكل تقييم؛ الحد الافتراضي 20 قابل للتغيير. التقدير المعروض إرشادي وليس قرار نجاح رسميًا، ويمكن للمدرسة استخدام مواد وفصول دراسية بأسماء مرنة.
+        يُسجّل المعدل العام النهائي من 20 لكل فصل دراسي: الأول والثاني والثالث. لا تُعرض هنا تفاصيل المواد أو الاختبارات؛ وتبقى النتائج التاريخية محفوظة دون حذف.
       </div>
 
       {errorMessage && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>}
@@ -443,7 +443,7 @@ export default function SchoolTrack() {
         {scope.canManage && (
           <TabsContent value="entry" className="space-y-4">
             <section className="rounded-2xl border border-[#E2EAE4] bg-white p-4 sm:p-6">
-              <SectionHeader title={editing ? "تعديل نتيجة امتحان" : "تسجيل نتيجة امتحان جديدة"} description="اختَر الطالب والمادة والفصل ثم أدخل العلامة والحد الأقصى." />
+              <SectionHeader title={editing ? "تعديل المعدل العام" : "تسجيل المعدل العام"} description="سجّل معدل الطالب النهائي من 20 للفصل الدراسي المحدد." />
               <form onSubmit={saveResult} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <label className="text-sm font-semibold">الفرع
                   <select value={formStudentBranch} disabled={Boolean(editing)} onChange={event => { setFormStudentBranch(event.target.value); setForm(current => ({ ...current, studentId: "" })); }} required className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3">
@@ -500,15 +500,15 @@ export default function SchoolTrack() {
           {errorMessage && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>}
 
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="نتائج مسجلة" value={String(summary.count)} icon={GraduationCap} tone="green" />
-            <StatCard label="طلاب لديهم نتائج" value={String(summary.studentCount)} icon={GraduationCap} tone="blue" />
-            <StatCard label="متوسط العلامات المعياري" value={summary.averagePercentage === null ? "—" : formatPercent(summary.averagePercentage)} icon={WandSparkles} tone="green" hint="مقارنة موحدة مهما اختلف الحد الأقصى لكل تقييم" />
+            <StatCard label="معدلات فصلية مسجلة" value={String(summary.count)} icon={GraduationCap} tone="green" />
+            <StatCard label="طلاب لديهم معدلات" value={String(summary.studentCount)} icon={GraduationCap} tone="blue" />
+            <StatCard label="متوسط المعدل العام" value={summary.averagePercentage === null ? "—" : formatPercent(summary.averagePercentage)} icon={WandSparkles} tone="green" hint="متوسط المعدلات الفصلية المسجلة من 20" />
             <StatCard label="معدلات تحتاج متابعة" value={String(summary.needsSupportCount)} icon={BrainCircuit} tone="amber" hint="أقل من 10/20؛ مؤشر تنبيه فقط" />
           </section>
 
 
           <section className="rounded-2xl border border-[#E2EAE4] bg-white p-4">
-            <SectionHeader title="سجل الامتحانات" description="تظهر النتائج التي يسمح نطاق صلاحيتك بعرضها فقط." />
+            <SectionHeader title="المعدل العام حسب الفصل" description="سجل المعدلات النهائية المسجلة من 20 لكل طالب وفصل." />
             {resultsLoading ? <div role="status" className="flex items-center gap-2 py-8 text-sm"><Loader2 className="size-4 animate-spin" />جارٍ تحميل النتائج...</div> : results.length === 0 ? <EmptyState title="لا توجد نتائج دراسية" description="غيّر الفلاتر أو سجّل أول نتيجة للطالب." /> : <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-right text-sm"><thead className="bg-[#F5F8F5] text-xs text-[#607368]"><tr><th className="p-3">الطالب</th><th className="p-3">الفرع / الحلقة</th><th className="p-3">الفصل</th><th className="p-3">النتيجة</th><th className="p-3">التقدير الإرشادي</th><th className="p-3">إجراء</th></tr></thead><tbody className="divide-y divide-[#EDF2EE]">{results.map(row => { const student = studentsById.get(row.student_id); const percentage = getSchoolTrackPercentage(row.score, row.max_score); return <tr key={row.id}><td className="p-3"><button type="button" className="font-bold text-[#17663B] underline-offset-4 hover:underline" onClick={() => setLocation(`/students/${row.student_id}`)}>{student ? `${student.first_name} ${student.last_name}` : "ملف الطالب"}</button></td><td className="p-3">{branchNames.get(row.branch_id) ?? "—"}{row.class_id ? ` · ${classNames.get(row.class_id) ?? "حلقة سابقة"}` : ""}</td><td className="p-3">{row.academic_year} · {row.term}</td><td className="p-3 font-bold">{row.score} / {row.max_score}<span className="block text-xs text-[#718377]">{formatPercent(percentage)}</span></td><td className="p-3">{EVALUATION_LABELS[evaluateSchoolTrackScore(row.score, row.max_score)]}</td><td className="p-3">{resultIsEditable(row) && <Button type="button" size="sm" variant="outline" onClick={() => editResult(row)} className="gap-1"><Pencil size={14} />تعديل</Button>}</td></tr>; })}</tbody></table></div>}
           </section>
 
