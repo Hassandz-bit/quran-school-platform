@@ -7,6 +7,7 @@ const page = readFileSync(new URL("../client/src/pages/OfflineAttendance.tsx", i
 const attendance = readFileSync(new URL("../client/src/pages/Attendance.tsx", import.meta.url), "utf8");
 const auth = readFileSync(new URL("../client/src/contexts/AuthContext.tsx", import.meta.url), "utf8");
 const storage = readFileSync(new URL("../client/src/lib/attendance-offline.ts", import.meta.url), "utf8");
+const memorization = readFileSync(new URL("../client/src/pages/Memorization.tsx", import.meta.url), "utf8");
 
 test("offline attendance route is reachable without the online authorization route guard", () => {
   assert.match(app, /<Route path="\/offline">[\s\S]*?<OfflineAttendance \/>[\s\S]*?<\/Route>/);
