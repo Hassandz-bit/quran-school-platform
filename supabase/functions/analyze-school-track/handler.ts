@@ -33,8 +33,6 @@ export type QuranProgressSignal = {
   rating: number;
   errorsCount: number;
   recitationResult?: string | null;
-  notes?: string;
-  nextAssignment?: string;
 };
 export type AnalysisFeatures = {
   schoolResults: SchoolAssessmentSignal[];
@@ -221,8 +219,6 @@ export function createSchoolTrackAnalysisHandler(
             rating: Number(row.rating),
             errorsCount: Number(row.errorsCount),
             recitationResult: row.recitationResult ? String(row.recitationResult).slice(0, 24) : null,
-            notes: row.notes ? String(row.notes).slice(0, 180) : "",
-            nextAssignment: row.nextAssignment ? String(row.nextAssignment).slice(0, 180) : "",
           }))
           .filter(row => Number.isFinite(row.rating));
       }
