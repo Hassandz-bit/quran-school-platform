@@ -4,7 +4,13 @@
 
 begin;
 
-create extension if not exists pg_cron with schema pg_catalog;
+do $extension_check$
+begin
+  if not exists (select 1 from pg_catalog.pg_extension where extname = 'pg_cron') then
+    raise exception 'Enable the Supabase pg_cron extension in Database > Extensions before applying migration 090.';
+  end if;
+end;
+$extension_check$;
 
 grant usage on schema cron to postgres;
 grant all privileges on all tables in schema cron to postgres;
