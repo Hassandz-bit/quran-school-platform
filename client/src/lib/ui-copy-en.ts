@@ -2269,4 +2269,5 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "الجزء": "Juz",
   "الحزب": "Hizb",
   "تجميع تحليل المسار": "Group journey analysis",
+  "المتابعة والتنبيهات": "Follow-up and alerts",
 };
