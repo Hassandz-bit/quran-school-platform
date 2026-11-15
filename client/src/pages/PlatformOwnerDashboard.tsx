@@ -97,15 +97,6 @@ export default function PlatformOwnerDashboard() {
         setBranchCountFilter({ operator: "all", value: "" });
       }
       setSubscriptionUsage(Object.fromEntries(nextUsage.map(item => [item.school_id, item])));
-      setSubscriptionExtensions(current => {
-        const next = { ...current };
-        for (const subscription of nextSubscriptions) {
-          if (subscription.ends_at && !next[subscription.id]) {
-            next[subscription.id] = new Date(subscription.ends_at).toISOString().slice(0, 10);
-          }
-        }
-        return next;
-      });
       setTrialExtensions(current => {
         const next = { ...current };
         for (const subscription of nextSubscriptions) {
