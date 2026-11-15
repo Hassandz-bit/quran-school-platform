@@ -85,8 +85,8 @@ function localToday(): string {
 function newForm(studentId = ""): FormState {
   return {
     studentId,
-    subject: "",
-    assessmentTitle: "",
+    subject: "المعدل العام",
+    assessmentTitle: "المعدل العام للفصل",
     assessmentType: "exam",
     academicYear: getCurrentAcademicYear(),
     term: getCurrentTerm(),
@@ -108,14 +108,14 @@ function asInput(form: FormState, student: SchoolTrackStudent): SchoolTrackResul
     branchId: student.branch_id,
     classId: student.class_id,
     studentId: student.id,
-    subject: form.subject,
-    assessmentTitle: form.assessmentTitle,
-    assessmentType: form.assessmentType,
+    subject: "المعدل العام",
+    assessmentTitle: "المعدل العام للفصل",
+    assessmentType: "exam",
     academicYear: form.academicYear,
     term: form.term,
     assessmentDate: form.assessmentDate,
     score: Number(form.score),
-    maxScore: Number(form.maxScore),
+    maxScore: 20,
     notes: form.notes,
   };
 }
@@ -456,34 +456,20 @@ export default function SchoolTrack() {
                     {formStudents.map(item => <option key={item.id} value={item.id}>{item.first_name} {item.last_name}{item.education_level ? ` · السنة ${item.education_year ?? ""}` : ""}</option>)}
                   </select>
                 </label>
-                <label className="text-sm font-semibold">المادة
-                  <input value={form.subject} onChange={event => setForm(current => ({ ...current, subject: event.target.value }))} required maxLength={100} placeholder="مثال: الرياضيات" className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3" />
-                </label>
-                <label className="text-sm font-semibold">اسم التقييم
-                  <input value={form.assessmentTitle} onChange={event => setForm(current => ({ ...current, assessmentTitle: event.target.value }))} required maxLength={120} placeholder="مثال: الفرض الأول" className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3" />
-                </label>
-                <label className="text-sm font-semibold">نوع التقييم
-                  <select value={form.assessmentType} onChange={event => setForm(current => ({ ...current, assessmentType: event.target.value as SchoolAssessmentType }))} className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3">
-                    {SCHOOL_ASSESSMENT_TYPES.map(type => <option key={type} value={type}>{ASSESSMENT_TYPE_LABELS[type]}</option>)}
-                  </select>
-                </label>
                 <label className="text-sm font-semibold">السنة الدراسية
                   <input value={form.academicYear} onChange={event => setForm(current => ({ ...current, academicYear: event.target.value }))} required placeholder="2026/2027" dir="ltr" className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3 text-right" />
                 </label>
                 <label className="text-sm font-semibold">الفصل الدراسي
-                  <input value={form.term} onChange={event => setForm(current => ({ ...current, term: event.target.value }))} required maxLength={60} placeholder="الفصل الأول" className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3" />
+                  <select value={form.term} onChange={event => setForm(current => ({ ...current, term: event.target.value }))} required className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3">
+                    <option value="الفصل الأول">الفصل الأول</option>
+                    <option value="الفصل الثاني">الفصل الثاني</option>
+                    <option value="الفصل الثالث">الفصل الثالث</option>
+                  </select>
                 </label>
-                <label className="text-sm font-semibold">تاريخ التقييم
-                  <input type="date" value={form.assessmentDate} onChange={event => setForm(current => ({ ...current, assessmentDate: event.target.value }))} required className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3" />
+                <label className="text-sm font-semibold">المعدل العام من 20
+                  <input type="number" min="0" max="20" step="0.01" value={form.score} onChange={event => setForm(current => ({ ...current, score: event.target.value, maxScore: "20" }))} required className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3" />
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="text-sm font-semibold">العلامة
-                    <input type="number" min="0" step="0.01" value={form.score} onChange={event => setForm(current => ({ ...current, score: event.target.value }))} required className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3" />
-                  </label>
-                  <label className="text-sm font-semibold">من
-                    <input type="number" min="0.01" max="1000" step="0.01" value={form.maxScore} onChange={event => setForm(current => ({ ...current, maxScore: event.target.value }))} required className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3" />
-                  </label>
-                </div>
+                <input type="hidden" value={form.assessmentDate} />
                 <label className="text-sm font-semibold sm:col-span-2">ملاحظة تربوية اختيارية
                   <textarea value={form.notes} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} maxLength={2000} rows={3} className="mt-1 w-full rounded-xl border border-[#D6E2D9] p-3" />
                 </label>
@@ -500,11 +486,10 @@ export default function SchoolTrack() {
         <TabsContent value="reports" className="space-y-4">
           <form onSubmit={applyFilters} className="grid gap-3 rounded-2xl border border-[#E2EAE4] bg-white p-4 sm:grid-cols-2 lg:grid-cols-6">
             <label className="text-xs font-bold text-[#53675B]">السنة الدراسية<input value={draftFilters.academicYear} onChange={event => setDraftFilters(current => ({ ...current, academicYear: event.target.value }))} placeholder="2026/2027" dir="ltr" className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3 text-right text-sm" /></label>
-            <label className="text-xs font-bold text-[#53675B]">الفصل<input list="school-track-terms" value={draftFilters.term} onChange={event => setDraftFilters(current => ({ ...current, term: event.target.value }))} placeholder="كل الفصول" className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3 text-sm" /><datalist id="school-track-terms">{terms.map(term => <option key={term} value={term} />)}</datalist></label>
+            <label className="text-xs font-bold text-[#53675B]">الفصل<select value={draftFilters.term} onChange={event => setDraftFilters(current => ({ ...current, term: event.target.value }))} className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3 text-sm"><option value="">كل الفصول</option><option value="الفصل الأول">الفصل الأول</option><option value="الفصل الثاني">الفصل الثاني</option><option value="الفصل الثالث">الفصل الثالث</option></select></label>
             <label className="text-xs font-bold text-[#53675B]">الفرع<select value={draftFilters.branchId} onChange={event => setDraftFilters(current => ({ ...current, branchId: event.target.value, classId: "", studentId: "" }))} className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3 text-sm"><option value="">كل الفروع المصرح بها</option>{scope.branches.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
             <label className="text-xs font-bold text-[#53675B]">الحلقة<select value={draftFilters.classId} onChange={event => setDraftFilters(current => ({ ...current, classId: event.target.value, studentId: "" }))} className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3 text-sm"><option value="">كل الحلقات</option>{scope.classes.filter(item => !draftFilters.branchId || item.branchId === draftFilters.branchId).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
             <label className="text-xs font-bold text-[#53675B]">الطالب<select value={draftFilters.studentId} onChange={event => setDraftFilters(current => ({ ...current, studentId: event.target.value }))} className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] bg-white px-3 text-sm"><option value="">كل الطلاب</option>{reportStudents.map(item => <option key={item.id} value={item.id}>{item.first_name} {item.last_name}</option>)}</select></label>
-            <label className="text-xs font-bold text-[#53675B]">المادة<input value={draftFilters.subject} onChange={event => setDraftFilters(current => ({ ...current, subject: event.target.value }))} placeholder="كل المواد" className="mt-1 min-h-11 w-full rounded-xl border border-[#D6E2D9] px-3 text-sm" /></label>
             <div className="flex flex-wrap items-end gap-2 lg:col-span-6">
               <Button type="submit" disabled={resultsLoading} className="min-h-11">{resultsLoading ? "جارٍ التحديث..." : "تطبيق الفلاتر"}</Button>
               <Button type="button" variant="outline" disabled={resultsLoading || results.length === 0} onClick={() => downloadCsv(results)} className="min-h-11 gap-2"><Download size={16} />تنزيل CSV</Button>
@@ -518,17 +503,13 @@ export default function SchoolTrack() {
             <StatCard label="نتائج مسجلة" value={String(summary.count)} icon={GraduationCap} tone="green" />
             <StatCard label="طلاب لديهم نتائج" value={String(summary.studentCount)} icon={GraduationCap} tone="blue" />
             <StatCard label="متوسط العلامات المعياري" value={summary.averagePercentage === null ? "—" : formatPercent(summary.averagePercentage)} icon={WandSparkles} tone="green" hint="مقارنة موحدة مهما اختلف الحد الأقصى لكل تقييم" />
-            <StatCard label="نتائج تحتاج متابعة" value={String(summary.needsSupportCount)} icon={BrainCircuit} tone="amber" hint="أقل من 50%؛ مؤشر تنبيه فقط" />
+            <StatCard label="معدلات تحتاج متابعة" value={String(summary.needsSupportCount)} icon={BrainCircuit} tone="amber" hint="أقل من 10/20؛ مؤشر تنبيه فقط" />
           </section>
 
-          <section className="rounded-2xl border border-[#E2EAE4] bg-white p-4">
-            <SectionHeader title="متوسط المواد" description="متوسط نسبة الطالب في كل مادة ضمن الفلاتر الحالية." />
-            {summary.subjects.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{summary.subjects.map(item => <article key={item.subject} className="rounded-xl border border-[#E6EEE8] bg-[#FAFCFA] p-4"><div className="flex items-center justify-between gap-3"><h3 className="font-bold">{item.subject}</h3><strong className="text-[#17663B]">{formatPercent(item.averagePercentage)}</strong></div><p className="mt-2 text-xs text-[#718377]">عدد التقييمات: {item.count}</p></article>)}</div> : <p className="mt-3 text-sm text-[#718377]">لا توجد نتائج ضمن الفلاتر الحالية.</p>}
-          </section>
 
           <section className="rounded-2xl border border-[#E2EAE4] bg-white p-4">
             <SectionHeader title="سجل الامتحانات" description="تظهر النتائج التي يسمح نطاق صلاحيتك بعرضها فقط." />
-            {resultsLoading ? <div role="status" className="flex items-center gap-2 py-8 text-sm"><Loader2 className="size-4 animate-spin" />جارٍ تحميل النتائج...</div> : results.length === 0 ? <EmptyState title="لا توجد نتائج دراسية" description="غيّر الفلاتر أو سجّل أول نتيجة للطالب." /> : <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-right text-sm"><thead className="bg-[#F5F8F5] text-xs text-[#607368]"><tr><th className="p-3">الطالب</th><th className="p-3">الفرع / الحلقة</th><th className="p-3">المادة</th><th className="p-3">التقييم</th><th className="p-3">الفصل</th><th className="p-3">النتيجة</th><th className="p-3">التقدير الإرشادي</th><th className="p-3">التاريخ</th><th className="p-3">إجراء</th></tr></thead><tbody className="divide-y divide-[#EDF2EE]">{results.map(row => { const student = studentsById.get(row.student_id); const percentage = getSchoolTrackPercentage(row.score, row.max_score); return <tr key={row.id}><td className="p-3"><button type="button" className="font-bold text-[#17663B] underline-offset-4 hover:underline" onClick={() => setLocation(`/students/${row.student_id}`)}>{student ? `${student.first_name} ${student.last_name}` : "ملف الطالب"}</button></td><td className="p-3">{branchNames.get(row.branch_id) ?? "—"}{row.class_id ? ` · ${classNames.get(row.class_id) ?? "حلقة سابقة"}` : ""}</td><td className="p-3">{row.subject}</td><td className="p-3">{row.assessment_title}<span className="block text-xs text-[#718377]">{ASSESSMENT_TYPE_LABELS[row.assessment_type]}</span></td><td className="p-3">{row.academic_year} · {row.term}</td><td className="p-3 font-bold">{row.score} / {row.max_score}<span className="block text-xs text-[#718377]">{formatPercent(percentage)}</span></td><td className="p-3">{EVALUATION_LABELS[evaluateSchoolTrackScore(row.score, row.max_score)]}</td><td className="p-3">{formatDate(row.assessment_date)}</td><td className="p-3">{resultIsEditable(row) && <Button type="button" size="sm" variant="outline" onClick={() => editResult(row)} className="gap-1"><Pencil size={14} />تعديل</Button>}</td></tr>; })}</tbody></table></div>}
+            {resultsLoading ? <div role="status" className="flex items-center gap-2 py-8 text-sm"><Loader2 className="size-4 animate-spin" />جارٍ تحميل النتائج...</div> : results.length === 0 ? <EmptyState title="لا توجد نتائج دراسية" description="غيّر الفلاتر أو سجّل أول نتيجة للطالب." /> : <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-right text-sm"><thead className="bg-[#F5F8F5] text-xs text-[#607368]"><tr><th className="p-3">الطالب</th><th className="p-3">الفرع / الحلقة</th><th className="p-3">الفصل</th><th className="p-3">النتيجة</th><th className="p-3">التقدير الإرشادي</th><th className="p-3">إجراء</th></tr></thead><tbody className="divide-y divide-[#EDF2EE]">{results.map(row => { const student = studentsById.get(row.student_id); const percentage = getSchoolTrackPercentage(row.score, row.max_score); return <tr key={row.id}><td className="p-3"><button type="button" className="font-bold text-[#17663B] underline-offset-4 hover:underline" onClick={() => setLocation(`/students/${row.student_id}`)}>{student ? `${student.first_name} ${student.last_name}` : "ملف الطالب"}</button></td><td className="p-3">{branchNames.get(row.branch_id) ?? "—"}{row.class_id ? ` · ${classNames.get(row.class_id) ?? "حلقة سابقة"}` : ""}</td><td className="p-3">{row.academic_year} · {row.term}</td><td className="p-3 font-bold">{row.score} / {row.max_score}<span className="block text-xs text-[#718377]">{formatPercent(percentage)}</span></td><td className="p-3">{EVALUATION_LABELS[evaluateSchoolTrackScore(row.score, row.max_score)]}</td><td className="p-3">{resultIsEditable(row) && <Button type="button" size="sm" variant="outline" onClick={() => editResult(row)} className="gap-1"><Pencil size={14} />تعديل</Button>}</td></tr>; })}</tbody></table></div>}
           </section>
 
           <section className="rounded-2xl border border-[#DCE8F0] bg-[#F8FBFD] p-4 sm:p-5">
