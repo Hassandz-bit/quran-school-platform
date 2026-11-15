@@ -2222,4 +2222,9 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "ضعف متكرر": "Repeated weakness",
   "غير مقيّم": "Not assessed",
   "الخريطة تعرض أدلة السجلات فقط. اللون الرمادي يعني عدم توفر تسجيل كافٍ، ولا يعني أن الآية غير محفوظة. اللون الأخضر لا يثبت الإتقان النهائي.": "The map displays recorded evidence only. Gray means there is not enough recorded evidence; it does not mean the ayah is unmemorized. Green does not prove lasting mastery.",
+  // Platform subscription usage filters
+  "العدد": "Count",
+  "تُطبّق المقارنة على أعداد التلاميذ والفروع النشطة الفعلية في كل مدرسة.": "The comparison uses each school's actual active student and branch counts.",
+  "أعداد الاستخدام غير متاحة حاليًا؛ ستُفعّل الفلاتر بعد تهيئة خدمة إحصاءات الاشتراك.": "Usage counts are currently unavailable; filters will be enabled once subscription usage statistics are configured.",
+  "تعذر تحميل الأعداد": "Unable to load usage counts",
 };
