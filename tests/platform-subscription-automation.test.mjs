@@ -35,7 +35,7 @@ test("platform owner dashboard filters subscriptions by real active student and 
   assert.match(dashboard, /value="gt">أكبر من/);
   assert.match(dashboard, /filteredSubscriptions\.map/);
   assert.match(dashboard, /setUsageAvailable\(!usageResult\.error\)/);
-  assert.match(dashboard, /disabled=!usageAvailable/);
+  assert.match(dashboard, /disabled=\\{!usageAvailable/);
 });
 
 test("extending a trial also extends its grace deadline by the configured grace period", () => {
