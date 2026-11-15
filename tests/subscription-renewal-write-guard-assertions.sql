@@ -10,6 +10,10 @@ begin
     raise exception 'Direct platform-owner subscription updates are not guarded';
   end if;
 
+  if position('tg_table_name = ''school_subscriptions'' and tg_op = ''UPDATE'' then' in trigger_definition) = 0 then
+    raise exception 'The subscription update guard does not cover every API role';
+  end if;
+
   select pg_get_functiondef('private.record_subscription_payment_and_renew(uuid,numeric,text,timestamptz,text,text,text,uuid,numeric)'::regprocedure)
     into renewal_definition;
   if position('private.subscription_write_contexts' in renewal_definition) = 0 then
