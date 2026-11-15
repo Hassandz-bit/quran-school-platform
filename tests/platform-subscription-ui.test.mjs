@@ -43,7 +43,8 @@ test("platform owner can create plans, approve schools, extend trials and record
   assert.match(owner, /const createPlan/);
   assert.match(owner, /const approveRequest/);
   assert.match(owner, /const extendTrial/);
-  assert.match(owner, /const extendSubscription/);
+  assert.doesNotMatch(owner, /const extendSubscription/);
+  assert.match(owner, /extend_school_subscription_trial/);
   assert.match(owner, /record_subscription_payment_and_renew/);
   assert.match(owner, /rejectRenewalRequest/);
 });
