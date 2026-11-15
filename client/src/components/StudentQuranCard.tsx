@@ -72,8 +72,9 @@ export default function StudentQuranCard({ studentName, records, loading = false
       memorization: group.records.filter(item => item.sessionType === "new_memorization" || item.sessionType === "new_hifz").length,
       latestDate: group.records.reduce((latest, item) => item.recordDate > latest ? item.recordDate : latest, group.records[0].recordDate),
       notes: [...new Set(group.records.flatMap(item => [item.notes, item.focusWords, item.nextAssignment].filter(Boolean)))].slice(0, 4),
+      alerts: analysis.alerts.filter(alert => group.records.some(record => record.surahNumber === alert.surahNumber && record.ayahStart <= alert.ayahEnd && record.ayahEnd >= alert.ayahStart)),
     })).sort((a, b) => b.latestDate.localeCompare(a.latestDate));
-  }, [filtered, groupBy]);
+  }, [filtered, groupBy, analysis.alerts]);
 
   return (
     <Card className="space-y-4 border border-[#DCE8E0] p-4 shadow-sm">
@@ -171,8 +172,8 @@ export default function StudentQuranCard({ studentName, records, loading = false
             <option value="surah">حسب السورة</option><option value="juz">حسب الجزء</option><option value="hizb">حسب الحزب</option><option value="session">حسب نوع الجلسة</option>
           </select>
         </div>
-        {groupedPath.length ? <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm"><thead><tr className="border-b text-right text-xs text-gray-500"><th className="p-2">النطاق</th><th className="p-2">الجلسات</th><th className="p-2">الحفظ الجديد</th><th className="p-2">المراجعة</th><th className="p-2">متوسط التقييم</th><th className="p-2">الأخطاء</th><th className="p-2">آخر نشاط</th></tr></thead><tbody>{groupedPath.map(group => <tr key={group.label} className="border-b border-gray-100 align-top"><td className="p-2 font-semibold">{group.label}</td><td className="p-2">{group.records.length}</td><td className="p-2">{group.memorization}</td><td className="p-2">{group.revisions}</td><td className="p-2">{group.averageRating.toFixed(1)} / 5</td><td className="p-2">{group.errors}</td><td className="p-2" dir="ltr">{group.latestDate}</td></tr>)}</tbody></table>
-          <div className="mt-3 space-y-2">{groupedPath.map(group => group.notes.length ? <article key={group.label} className="rounded-lg bg-slate-50 p-3"><h4 className="text-sm font-bold">{group.label} · ملاحظات المعلم</h4><ul className="mt-1 list-inside list-disc text-sm leading-6 text-slate-700">{group.notes.map((note, index) => <li key={index}>{note}</li>)}</ul></article> : null)}</div>
+        {groupedPath.length ? <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm"><thead><tr className="border-b text-right text-xs text-gray-500"><th className="p-2">النطاق</th><th className="p-2">الجلسات</th><th className="p-2">الحفظ الجديد</th><th className="p-2">المراجعة</th><th className="p-2">متوسط التقييم</th><th className="p-2">الأخطاء</th><th className="p-2">التنبيهات</th><th className="p-2">آخر نشاط</th></tr></thead><tbody>{groupedPath.map(group => <tr key={group.label} className="border-b border-gray-100 align-top"><td className="p-2 font-semibold">{group.label}</td><td className="p-2">{group.records.length}</td><td className="p-2">{group.memorization}</td><td className="p-2">{group.revisions}</td><td className="p-2">{group.averageRating.toFixed(1)} / 5</td><td className="p-2">{group.errors}</td><td className="p-2">{group.alerts.length}</td><td className="p-2" dir="ltr">{group.latestDate}</td></tr>)}</tbody></table>
+          <div className="mt-3 space-y-2">{groupedPath.map(group => group.notes.length || group.alerts.length ? <article key={group.label} className="rounded-lg bg-slate-50 p-3"><h4 className="text-sm font-bold">{group.label} · المتابعة والتنبيهات</h4>{group.alerts.length > 0 && <ul className="mt-1 list-inside list-disc text-sm leading-6 text-amber-800">{group.alerts.map((alert, index) => <li key={"alert-" + index}>{alert.message}</li>)}</ul>}{group.notes.length > 0 && <ul className="mt-1 list-inside list-disc text-sm leading-6 text-slate-700">{group.notes.map((note, index) => <li key={"note-" + index}>{note}</li>)}</ul>}</article> : null)}</div>
         </div> : <p className="text-sm text-gray-500">لا توجد سجلات في هذا النطاق بعد تطبيق الفلاتر.</p>}
       </section>
       <section className="space-y-2">
