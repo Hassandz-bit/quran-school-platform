@@ -2,7 +2,7 @@
 do $$
 declare
   trigger_definition text;
-  renewal_config text;
+  renewal_definition text;
 begin
   select pg_get_functiondef('private.enforce_school_subscription_write()'::regprocedure)
     into trigger_definition;
@@ -10,11 +10,15 @@ begin
     raise exception 'Direct platform-owner subscription updates are not guarded';
   end if;
 
-  select coalesce(proconfig::text, '') into renewal_config
-  from pg_proc
-  where oid = 'private.record_subscription_payment_and_renew(uuid,numeric,text,timestamptz,text,text,text,uuid,numeric)'::regprocedure;
-  if position('quranos.subscription_write_context=payment_renewal' in renewal_config) = 0 then
-    raise exception 'Payment renewal function is missing its protected write context';
+  select pg_get_functiondef('private.record_subscription_payment_and_renew(uuid,numeric,text,timestamptz,text,text,text,uuid,numeric)'::regprocedure)
+    into renewal_definition;
+  if position('private.subscription_write_contexts' in renewal_definition) = 0 then
+    raise exception 'Payment renewal function is missing its transaction-scoped write context';
+  end if;
+
+  if has_table_privilege('authenticated', 'private.subscription_write_contexts', 'INSERT')
+    or has_table_privilege('authenticated', 'private.subscription_write_contexts', 'SELECT') then
+    raise exception 'Authenticated role can access private subscription write contexts';
   end if;
 
   if has_function_privilege('anon', 'public.extend_school_subscription_trial(uuid,timestamptz)', 'EXECUTE')
