@@ -107,6 +107,7 @@ export default function StudentQuranCard({ studentName, records, loading = false
           <div className="rounded-lg bg-white p-3"><p className="text-xs text-gray-500">المتبقي للترحيل</p><p className="mt-1 text-xl font-bold text-amber-700">{reviewPlan.remainingAyat} آية</p></div>
           <div className="rounded-lg bg-white p-3"><p className="text-xs text-gray-500">الحد اليومي</p><p className="mt-1 text-xl font-bold text-[#173B2D]">{reviewPlan.dailyCapacity} آية</p></div>
         </div>
+        {reviewPlan.nextReviewDate && <p className="text-xs text-[#52675C]">أقرب موعد مراجعة تالٍ: <span className="font-semibold" dir="ltr">{reviewPlan.nextReviewDate}</span></p>}
         {reviewPlan.tasks.length ? <div className="space-y-2">
           {reviewPlan.tasks.map((task, index) => <article key={`${task.surahNumber}-${task.ayahStart}-${task.ayahEnd}-${index}`} className="rounded-lg border border-white bg-white p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
