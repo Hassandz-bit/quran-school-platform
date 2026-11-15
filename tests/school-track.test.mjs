@@ -62,6 +62,7 @@ test("school track stores only one general average out of 20 for each of three t
   assert.match(termAverageMigration, /school_track_general_average_unique_idx/);
   assert.match(termAverageMigration, /subject = 'المعدل العام'/);
   assert.match(termAverageMigration, /new\.max_score <> 20/);
+  assert.match(termAverageMigration, /new\.subject/);
   assert.match(termAverageMigration, /الفصل الأول/);
   assert.match(termAverageMigration, /الفصل الثاني/);
   assert.match(termAverageMigration, /الفصل الثالث/);
@@ -73,4 +74,11 @@ test("school track export contains only term general-average fields", () => {
   const helper = readFileSync(new URL("../client/src/lib/school-track.ts", import.meta.url), "utf8");
   assert.match(helper, /general_average_out_of_20/);
   assert.doesNotMatch(helper.slice(helper.indexOf("export function buildSchoolTrackCsv")), /assessment_title|assessment_type|subject/);
+});
+
+test("AI comparison uses structured pseudonymous Quran signals and excludes free-text notes", () => {
+  assert.match(handler, /comparison: string/);
+  assert.match(services, /comparison كنص/);
+  assert.doesNotMatch(services, /notes, next_assignment/);
+  assert.doesNotMatch(services, /row\.notes|row\.next_assignment/);
 });
