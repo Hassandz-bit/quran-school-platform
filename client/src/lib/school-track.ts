@@ -328,7 +328,7 @@ export function validateSchoolTrackResult(
   if (!subject || subject.length > 100) return "subject_invalid";
   if (!title || title.length > 120) return "assessment_title_invalid";
   if (!/^\d{4}[-/]\d{4}$/.test(academicYear)) return "academic_year_invalid";
-  if (!term || term.length > 60) return "term_invalid";
+  if (!["الفصل الأول", "الفصل الثاني", "الفصل الثالث"].includes(term)) return "term_invalid";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.assessmentDate)) return "date_invalid";
   const parsedDate = new Date(`${input.assessmentDate}T00:00:00.000Z`);
   if (
@@ -341,7 +341,7 @@ export function validateSchoolTrackResult(
     !Number.isFinite(input.maxScore) ||
     input.score < 0 ||
     input.maxScore <= 0 ||
-    input.maxScore > 1000 ||
+    input.maxScore !== 20 ||
     input.score > input.maxScore
   ) {
     return "score_invalid";
@@ -367,6 +367,7 @@ export async function fetchSchoolTrackResults(
     .from("school_track_results")
     .select(RESULT_COLUMNS)
     .eq("school_id", schoolId)
+    .eq("subject", "المعدل العام")
     .order("assessment_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(1000);
@@ -400,6 +401,7 @@ export async function fetchStudentSchoolTrackResults(
     .from("school_track_results")
     .select(RESULT_COLUMNS)
     .eq("school_id", schoolId)
+    .eq("subject", "المعدل العام")
     .eq("branch_id", branchId)
     .eq("student_id", studentId)
     .order("assessment_date", { ascending: false })
