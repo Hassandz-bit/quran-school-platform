@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Highlighter, Loader2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BookOpen, Highlighter, X } from "lucide-react";
 import warshPages from "@/data/warsh-mushaf-pages.json";
 
 type Props = {
@@ -16,20 +16,15 @@ const pages = (warshPages as {
   pages: Record<string, Record<string, number>>;
 }).pages;
 
-const ISLAMHOUSE_ITEM_API =
-  "https://api3.islamhouse.com/v3/paV29H2gm56kvLPy/main/get-item/2790112/ar/json";
-const ISLAMCONTENT_ITEM_PAGE = "https://islamcontent.com/ar/content/2885";
-
-type Attachment = { url?: string; extension_type?: string };
-type IslamHouseItem = { attachments?: Attachment[] };
+// User-provided Google Drive file. The file itself remains in the user's Drive.
+const MUSHAF_DRIVE_FILE_ID = "1KRu-KPo3eRlrywnyf4_06XF-Ypu9kXGW";
+const MUSHAF_DRIVE_PREVIEW = `https://drive.google.com/file/d/${MUSHAF_DRIVE_FILE_ID}/preview`;
+const MUSHAF_DRIVE_FILE = `https://drive.google.com/file/d/${MUSHAF_DRIVE_FILE_ID}/view`;
 
 export default function MushafPreviewButton({
   surahNumber, surahName, ayahStart, ayahEnd, disabled = false,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [loadingPdf, setLoadingPdf] = useState(false);
-  const [pdfError, setPdfError] = useState(false);
 
   const pageRange = useMemo(() => {
     const surahPages = pages[String(surahNumber)];
@@ -44,38 +39,9 @@ export default function MushafPreviewButton({
     Number.isInteger(ayahStart) && Number.isInteger(ayahEnd) &&
     ayahStart >= 1 && ayahEnd >= ayahStart && Boolean(pageRange);
 
-  useEffect(() => {
-    if (!open || pdfUrl || pdfError) return;
-    const controller = new AbortController();
-    setLoadingPdf(true);
-    fetch(ISLAMHOUSE_ITEM_API, { signal: controller.signal })
-      .then(response => {
-        if (!response.ok) throw new Error("Unable to load IslamHouse item");
-        return response.json() as Promise<IslamHouseItem>;
-      })
-      .then(item => {
-        const attachments = Array.isArray(item?.attachments) ? item.attachments : [];
-        const attachment = attachments.find(file =>
-          (file.extension_type || "").toLowerCase() === "pdf" ||
-          (file.url || "").toLowerCase().split(/[?#]/, 1)[0].endsWith(".pdf"),
-        );
-        const rawUrl = attachment?.url;
-        const url = rawUrl?.replace(/^http:\/\//i, "https://");
-        if (!url || !/^https:\/\//i.test(url) || !/\.pdf(?:$|[?#])/i.test(url)) {
-          throw new Error("PDF attachment URL is unavailable");
-        }
-        setPdfUrl(url);
-      })
-      .catch(error => {
-        if (error.name !== "AbortError") setPdfError(true);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoadingPdf(false);
-      });
-    return () => controller.abort();
-  }, [open, pdfUrl, pdfError]);
-
-  const pdfPageUrl = pdfUrl && pageRange ? `${pdfUrl}#page=${pageRange.first}` : pdfUrl;
+  const pdfPageUrl = pageRange
+    ? `${MUSHAF_DRIVE_PREVIEW}#page=${pageRange.first}`
+    : MUSHAF_DRIVE_PREVIEW;
 
   return (
     <>
@@ -94,7 +60,7 @@ export default function MushafPreviewButton({
                 <h2 id="warsh-mushaf-preview-title" className="flex items-center gap-2 text-lg font-bold text-[#0B4738]">
                   <BookOpen size={20} />مصحف التجويد الملون — ورش بتوسط البدل
                 </h2>
-                <p className="mt-1 text-xs text-gray-500">رواية ورش عن نافع · مصحف منشور عبر IslamHouse · ملف PDF بحجم 338 ميغابايت</p>
+                <p className="mt-1 text-xs text-gray-500">رواية ورش عن نافع · النسخة التي رفعها مسؤول المنصة إلى Google Drive</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100" aria-label="إغلاق"><X size={20} /></button>
             </header>
@@ -107,21 +73,12 @@ export default function MushafPreviewButton({
               </span>}
             </div>
             <div className="relative min-h-0 flex-1 bg-gray-100">
-              {loadingPdf && <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white text-sm text-gray-600">
-                <Loader2 className="animate-spin" size={28} />جارٍ تحميل بيانات المصحف وتجهيز الصفحة...
-              </div>}
-              {pdfPageUrl ? <iframe title="مصحف التجويد الملون برواية ورش بتوسط البدل" src={pdfPageUrl}
-                className="h-full w-full border-0" allow="fullscreen" /> : pdfError ? (
-                <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                  <BookOpen size={36} className="text-[#0B4738]" />
-                  <p className="max-w-lg text-sm leading-6 text-gray-700">تعذر تحميل بيانات المصحف حاليًا. حاول مرة أخرى لاحقًا، أو افتح بيانات النسخة المنشورة لدى المصدر.</p>
-                  <a href={ISLAMCONTENT_ITEM_PAGE} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0B4738] underline">فتح صفحة المصحف لدى المصدر</a>
-                </div>
-              ) : null}
+              <iframe title="مصحف التجويد الملون برواية ورش بتوسط البدل" src={pdfPageUrl}
+                className="h-full w-full border-0" allow="fullscreen" />
             </div>
             <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-500 sm:px-4">
-              <span>المصدر: IslamHouse / IslamContent — يُعرض المصحف دون تعديل على نصه أو صفحاته.</span>
-              <a href={ISLAMCONTENT_ITEM_PAGE} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0B4738] underline">بيانات المصدر والترخيص</a>
+              <span>المصدر: ملف المصحف الذي وفره مسؤول المنصة عبر Google Drive، ويُعرض دون تعديل على صفحاته.</span>
+              <a href={MUSHAF_DRIVE_FILE} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0B4738] underline">فتح الملف في Google Drive</a>
             </footer>
           </section>
         </div>
