@@ -3,8 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
-const [migration, handler, services, app, config, page, profile] = await Promise.all([
+const [migration, termAverageMigration, handler, services, app, config, page, profile] = await Promise.all([
   read("supabase/067_school_track_results.sql"),
+  read("supabase/093_school_track_term_general_averages.sql"),
   read("supabase/functions/analyze-school-track/handler.ts"),
   read("supabase/functions/analyze-school-track/services.ts"),
   read("client/src/App.tsx"),
@@ -55,4 +56,15 @@ test("registers a separately guarded route and combines results in student profi
   assert.match(profile, /fetchStudentSchoolTrackResults/);
   assert.match(page, /مساعد المتابعة الذكي/);
   assert.match(page, /getSupabaseClient\(\)\.functions\.invoke\(\s*"analyze-school-track"/);
+});
+
+test("school track stores only one general average out of 20 for each of three terms", () => {
+  assert.match(termAverageMigration, /school_track_general_average_unique_idx/);
+  assert.match(termAverageMigration, /subject = 'المعدل العام'/);
+  assert.match(termAverageMigration, /new\.max_score <> 20/);
+  assert.match(termAverageMigration, /الفصل الأول/);
+  assert.match(termAverageMigration, /الفصل الثاني/);
+  assert.match(termAverageMigration, /الفصل الثالث/);
+  assert.match(page, /المعدل العام من 20/);
+  assert.doesNotMatch(page, /المادة\s*<input value=\{form\.subject\}/);
 });
