@@ -1,5 +1,5 @@
 import type { MemorizationRecord } from "./memorization";
-import { buildQuranReviewPlan } from "./quran-review-scheduler";
+import { buildQuranReviewPlan } from "./quran-review-scheduler.ts";
 
 export type QuranFollowUpAlert = {
   kind: "review_due" | "repeated_weakness";
