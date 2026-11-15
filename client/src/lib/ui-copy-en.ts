@@ -2259,4 +2259,14 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "نتائج الفلاتر:": "Filtered results:",
   "سورة": "Surah",
   "الآيات": "Ayahs",
+  // Additional school and Quran analysis labels
+  "سجّل معدل الطالب النهائي من 20 للفصل الدراسي المحدد.": "Enter the student's final average out of 20 for the selected term.",
+  "الفصل الثاني": "Term 2",
+  "الفصل الثالث": "Term 3",
+  "أقل من 10/20؛ مؤشر تنبيه فقط": "Below 10/20; an indicator for follow-up only",
+  "سجل المعدلات النهائية المسجلة من 20 لكل طالب وفصل.": "Record of final averages out of 20 for each student and term.",
+  "يُسجّل المعدل العام النهائي من 20 لكل فصل دراسي: الأول والثاني والثالث. لا تُعرض هنا تفاصيل المواد أو الاختبارات؛ وتبقى النتائج التاريخية محفوظة دون حذف.": "Record one final general average out of 20 for each of the three school terms. Subject and assessment details are not shown here; historical results remain preserved.",
+  "الجزء": "Juz",
+  "الحزب": "Hizb",
+  "تجميع تحليل المسار": "Group journey analysis",
 };
