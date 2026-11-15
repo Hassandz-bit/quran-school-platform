@@ -8,6 +8,7 @@ const dashboard = readFileSync(new URL("client/src/pages/PlatformOwnerDashboard.
 
 test("annual subscription date changes require the payment-backed renewal context", () => {
   assert.match(migration, /SUBSCRIPTION_UPDATE_REQUIRES_PAYMENT_OR_TRIAL_EXTENSION/);
+  assert.match(migration, /tg_table_name = 'school_subscriptions' and tg_op = 'UPDATE' then/);
   assert.match(migration, /create table if not exists private\.subscription_write_contexts/);
   assert.match(migration, /insert into private\.subscription_write_contexts[\s\S]*?'payment_renewal'/);
 });
