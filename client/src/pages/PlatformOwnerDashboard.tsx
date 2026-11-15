@@ -93,6 +93,10 @@ export default function PlatformOwnerDashboard() {
       setSubscriptions(nextSubscriptions);
       const nextUsage = (usageResult.data ?? []) as SubscriptionUsage[];
       setUsageAvailable(!usageResult.error);
+      if (usageResult.error) {
+        setStudentCountFilter({ operator: "all", value: "" });
+        setBranchCountFilter({ operator: "all", value: "" });
+      }
       setSubscriptionUsage(Object.fromEntries(nextUsage.map(item => [item.school_id, item])));
       setSubscriptionExtensions(current => {
         const next = { ...current };
