@@ -41,6 +41,13 @@ test("cached attendance stays user-scoped and pending drafts survive sign-out", 
   assert.doesNotMatch(attendance, /clearOfflineAttendanceForUser/);
 });
 
+test("attendance and memorization retry pending synchronization when the app becomes visible online", () => {
+  assert.match(attendance, /document\.addEventListener\("visibilitychange", retryWhenVisible\)/);
+  assert.match(attendance, /document\.visibilityState !== "visible" \|\| !navigator\.onLine/);
+  assert.match(memorization, /document\.addEventListener\("visibilitychange", retryWhenVisible\)/);
+  assert.match(memorization, /document\.visibilityState === "visible" && navigator\.onLine/);
+});
+
 test("offline authorization restores only the same user's last verified local school context", () => {
   assert.match(auth, /getCachedAuthorization\(userId\)/);
   assert.match(auth, /setProfile\(cached\.profile\)/);
