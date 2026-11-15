@@ -22,5 +22,6 @@ test("splits a memorization range across the actual juz and hizb boundaries", ()
 
 test("rejects invalid surah and ayah ranges without inventing a division", () => {
   assert.equal(getQuranDivisionForAyah("juz", 115, 1), null);
+  assert.equal(getQuranDivisionForAyah("juz", 2, 287), null);
   assert.deepEqual(getQuranDivisionsForRange("hizb", 2, 0, 4), []);
 });
