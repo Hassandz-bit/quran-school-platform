@@ -1,6 +1,6 @@
 # Smart learning follow-up alert scheduler
 
-Migration 090 installs Supabase Cron (pg_cron) and schedules the existing smart-learning alert generator hourly.
+Enable the already-available Supabase `pg_cron` extension in Dashboard → Database → Extensions before applying migration 090. The migration verifies that the extension is enabled, then schedules the existing smart-learning alert generator hourly; it does not attempt to install or modify the extension.
 
 ## What runs
 
