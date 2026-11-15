@@ -188,7 +188,7 @@ export function createSchoolTrackAnalysisDependencies(): SchoolTrackAnalysisDepe
     listSchoolResults: async (token, studentId) => {
       const { data, error } = await userClient(token)
         .from("school_track_results")
-         .select("subject, assessment_type, academic_year, term, assessment_date, score, max_score")
+                .select("subject, assessment_type, academic_year, term, assessment_date, score, max_score")
         .eq("student_id", studentId)
         .eq("subject", "المعدل العام")
         .order("assessment_date", { ascending: false })
@@ -226,7 +226,7 @@ export function createSchoolTrackAnalysisDependencies(): SchoolTrackAnalysisDepe
     listQuranProgress: async (token, studentId) => {
       const { data, error } = await userClient(token)
         .from("memorization_records")
-        .select("record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, recitation_result, notes, next_assignment")
+        .select("record_date, session_type, surah_number, ayah_start, ayah_end, rating, errors_count, recitation_result")
         .eq("student_id", studentId)
         .order("record_date", { ascending: false })
         .limit(40);
@@ -240,8 +240,6 @@ export function createSchoolTrackAnalysisDependencies(): SchoolTrackAnalysisDepe
         rating: row.rating,
         errorsCount: row.errors_count,
         recitationResult: row.recitation_result,
-        notes: row.notes ?? "",
-        nextAssignment: row.next_assignment ?? "",
       }));
     },
     analyze: async (features, locale) => {
