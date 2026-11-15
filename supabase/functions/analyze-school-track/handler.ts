@@ -32,6 +32,9 @@ export type QuranProgressSignal = {
   ayahEnd: number;
   rating: number;
   errorsCount: number;
+  recitationResult?: string | null;
+  notes?: string;
+  nextAssignment?: string;
 };
 export type AnalysisFeatures = {
   schoolResults: SchoolAssessmentSignal[];
@@ -39,6 +42,7 @@ export type AnalysisFeatures = {
 };
 export type SafeAnalysis = {
   summary: string;
+  comparison: string;
   strengths: string[];
   focusAreas: string[];
   actions: string[];
@@ -102,6 +106,7 @@ function noDataAnalysis(quranDataIncluded: boolean, locale: AnalysisLocale): Saf
     summary: locale === "en"
       ? "There is not enough data for a reliable analysis yet. Record school results or Quran progress, then try again."
       : "لا تتوفر نتائج كافية لإعداد تحليل موثوق بعد. سجّل نتائج مدرسية أو متابعة قرآنية ثم أعد المحاولة.",
+    comparison: locale === "en" ? "A school-versus-Quran comparison will appear when both tracks contain records." : "تظهر المقارنة بين المسارين عند توفر سجلات في المسارين معًا.",
     strengths: [],
     focusAreas: [],
     actions: [],
@@ -215,6 +220,9 @@ export function createSchoolTrackAnalysisHandler(
             ayahEnd: Number(row.ayahEnd),
             rating: Number(row.rating),
             errorsCount: Number(row.errorsCount),
+            recitationResult: row.recitationResult ? String(row.recitationResult).slice(0, 24) : null,
+            notes: row.notes ? String(row.notes).slice(0, 180) : "",
+            nextAssignment: row.nextAssignment ? String(row.nextAssignment).slice(0, 180) : "",
           }))
           .filter(row => Number.isFinite(row.rating));
       }
