@@ -3,7 +3,13 @@
 
 begin;
 
-create extension if not exists pg_cron with schema pg_catalog;
+do $extension_check$
+begin
+  if not exists (select 1 from pg_catalog.pg_extension where extname = 'pg_cron') then
+    raise exception 'Enable the Supabase pg_cron extension in Database > Extensions before applying migration 091.';
+  end if;
+end;
+$extension_check$;
 
 create or replace function private.get_platform_subscription_usage()
 returns table (
