@@ -37,4 +37,12 @@ order by start_time desc
 limit 10;
 ```
 
-The generator is safe to run more than once. If a trial or subscription end date changes, the UI displays reminders matching the current end date only. Do not apply migration 091 to production until the migration has been reviewed and its isolated-database validation has passed.
+The generator is safe to run more than once. If a trial or subscription end date changes, the UI displays reminders matching the current end date only.
+
+## Production rollout (2026-11-15)
+
+- Supabase `pg_cron` is enabled in the production project.
+- Migration 091 is applied and the job `quranos-school-subscription-reminders` is active as database role `postgres`.
+- The production database timezone is UTC; `0 7 * * *` is 08:00 in Algeria.
+- Isolated-database integration verification produced the 30-day and 7-day reminder notifications, confirmed the second identical run inserted zero duplicates, and rolled back all test changes.
+- The first scheduled production run is pending; inspect `cron.job_run_details` after the next scheduled 08:00 Algeria run.
