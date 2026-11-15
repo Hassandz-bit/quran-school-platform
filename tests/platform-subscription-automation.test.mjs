@@ -8,7 +8,8 @@ const migration = read("supabase/091_platform_subscription_usage_and_reminders_c
 const dashboard = read("client/src/pages/PlatformOwnerDashboard.tsx");
 
 test("subscription expiry reminders are installed as one idempotent daily cron job", () => {
-  assert.match(migration, /create extension if not exists pg_cron with schema pg_catalog/i);
+  assert.match(migration, /if not exists \(select 1 from pg_catalog\.pg_extension where extname = 'pg_cron'\)/);
+  assert.match(migration, /Enable the Supabase pg_cron extension/);
   assert.match(migration, /where jobname = 'quranos-school-subscription-reminders'/);
   assert.match(migration, /cron\.unschedule\(existing_job\.jobid\)/);
   assert.match(migration, /cron\.schedule\(\s*'quranos-school-subscription-reminders',\s*'0 7 \* \* \*',\s*'select private\.generate_school_subscription_reminders\(\);'/s);
@@ -33,6 +34,8 @@ test("platform owner dashboard filters subscriptions by real active student and 
   assert.match(dashboard, /value="lt">أقل من/);
   assert.match(dashboard, /value="gt">أكبر من/);
   assert.match(dashboard, /filteredSubscriptions\.map/);
+  assert.match(dashboard, /setUsageAvailable\(!usageResult\.error\)/);
+  assert.match(dashboard, /disabled=!usageAvailable/);
 });
 
 test("extending a trial also extends its grace deadline by the configured grace period", () => {
