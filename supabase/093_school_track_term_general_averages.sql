@@ -11,15 +11,14 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  if new.subject = 'المعدل العام' then
-    if new.assessment_title <> 'المعدل العام للفصل'
-      or new.assessment_type <> 'exam'
-      or new.max_score <> 20
-      or new.term not in ('الفصل الأول', 'الفصل الثاني', 'الفصل الثالث') then
-      raise exception 'school_track_general_average_invalid' using errcode = '23514';
-    end if;
-  elsif tg_op = 'INSERT' then
+  if new.subject <> 'المعدل العام' then
     raise exception 'school_track_general_average_only' using errcode = '23514';
+  end if;
+  if new.assessment_title <> 'المعدل العام للفصل'
+    or new.assessment_type <> 'exam'
+    or new.max_score <> 20
+    or new.term not in ('الفصل الأول', 'الفصل الثاني', 'الفصل الثالث') then
+    raise exception 'school_track_general_average_invalid' using errcode = '23514';
   end if;
   return new;
 end;
