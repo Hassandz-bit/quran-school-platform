@@ -1,6 +1,6 @@
 # School subscription expiry reminders
 
-Migration 082 creates the idempotent 30-day and 7-day reminder generator and its private reminder table. Migration 091 enables the already-available Supabase `pg_cron` extension and installs the daily job automatically after the migration has been reviewed and applied.
+Migration 082 creates the idempotent 30-day and 7-day reminder generator and its private reminder table. Before applying migration 091, enable the already-available Supabase `pg_cron` extension in Supabase Dashboard → Database → Extensions. Migration 091 verifies that the extension is enabled and then installs the daily job automatically. It does not attempt to install or modify the extension itself.
 
 ## Scheduled job
 
