@@ -602,8 +602,17 @@ export default function Attendance() {
       autoSyncAttemptedRef.current = false;
       setOnlineRevision(current => current + 1);
     };
+    const retryWhenVisible = () => {
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
+      autoSyncAttemptedRef.current = false;
+      setOnlineRevision(current => current + 1);
+    };
     window.addEventListener("online", retryWhenOnline);
-    return () => window.removeEventListener("online", retryWhenOnline);
+    document.addEventListener("visibilitychange", retryWhenVisible);
+    return () => {
+      window.removeEventListener("online", retryWhenOnline);
+      document.removeEventListener("visibilitychange", retryWhenVisible);
+    };
   }, []);
 
   const handleSignOut = async () => {
