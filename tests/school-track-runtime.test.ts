@@ -16,9 +16,9 @@ const input: SchoolTrackResultInput = {
   branchId: "branch-1",
   classId: null,
   studentId: "student-1",
-  subject: "الرياضيات",
-  assessmentTitle: "الفرض الأول",
-  assessmentType: "test",
+  subject: "المعدل العام",
+  assessmentTitle: "المعدل العام للفصل",
+  assessmentType: "exam",
   academicYear: "2026/2027",
   term: "الفصل الأول",
   assessmentDate: "2026-10-03",
@@ -34,9 +34,9 @@ function result(overrides: Partial<SchoolTrackResult> = {}): SchoolTrackResult {
     branch_id: "branch-1",
     class_id: null,
     student_id: "student-1",
-    subject: "الرياضيات",
-    assessment_title: "الفرض الأول",
-    assessment_type: "test",
+    subject: "المعدل العام",
+    assessment_title: "المعدل العام للفصل",
+    assessment_type: "exam",
     academic_year: "2026/2027",
     term: "الفصل الأول",
     assessment_date: "2026-10-03",
@@ -81,13 +81,14 @@ describe("School track scoring and reports", () => {
     const summary = summarizeSchoolTrackResults([
       result(),
       result({ id: "result-2", student_id: "student-2", score: 80, max_score: 100 }),
-      result({ id: "result-3", subject: "اللغة العربية", score: 8, max_score: 20 }),
+      result({ id: "result-3", term: "الفصل الثاني", score: 8, max_score: 20 }),
     ]);
     expect(summary.count).toBe(3);
     expect(summary.studentCount).toBe(2);
     expect(summary.averagePercentage).toBeCloseTo(66.6667, 3);
     expect(summary.needsSupportCount).toBe(1);
-    expect(summary.subjects.find(item => item.subject === "الرياضيات")?.averagePercentage).toBe(80);
+    expect(summary.subjects).toHaveLength(1);
+    expect(summary.subjects[0].averagePercentage).toBeCloseTo(66.6667, 3);
   });
 
   test("exports safe CSV with formula escaping and UTF-8 BOM", () => {
@@ -96,6 +97,8 @@ describe("School track scoring and reports", () => {
     ]);
     expect(csv.startsWith("\uFEFF"));
     expect(csv).toContain("'=HYPERLINK(");
-    expect(csv).toContain("\"الرياضيات\"");
+    expect(csv).toContain("general_average_out_of_20");
+    expect(csv).not.toContain("الرياضيات");
+    expect(csv).not.toContain("assessment_title");
   });
 });
