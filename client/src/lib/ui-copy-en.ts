@@ -2,6 +2,23 @@
 // strings. Keeping the catalog separate makes coverage measurable and prevents
 // page components from accumulating one-off language conditionals.
 export const EXACT_UI_ENGLISH: Record<string, string> = {
+  "بعد تسجيل نتيجة المراجعة يعاد حساب الموعد تلقائيًا: الإتقان يوسع الفواصل (يوم، 3، 7، 14، 30 يومًا ثم أكثر)، والأداء المتوسط يقصرها، وعدم المراجعة أو كثرة الأخطاء يعيد الموضع إلى مراجعة قريبة بثلاث مرات تسميع. هذا اقتراح تنظيمي للمعلم وليس تسجيلًا تلقائيًا لمراجعة لم تحدث.": "After a review result is recorded, the next date is recalculated automatically: mastery widens intervals (1, 3, 7, 14, 30 days, then longer), average performance shortens them, and missed reviews or repeated errors return the passage to near-term review with three repetitions. This is a teacher-facing recommendation, not an automatic record of a review that did not happen.",
+  "المقدار المتبقي يتوزع على الأيام التالية حتى لا نرهق الطالب. تُقدّم المواضع الأضعف والمتأخرة أولًا.": "The remaining amount is spread across following days to avoid overloading the student. Weaker and overdue passages are prioritized.",
+  "تظهر المواعيد بعد تسجيل الحفظ الجديد.": "Dates appear after new memorization is recorded.",
+  "المراجعة القادمة:": "Next review:",
+  "لا توجد مراجعات مستحقة اليوم وفق السجلات.": "No reviews are due today based on the available records.",
+  "متأخرة": "Overdue",
+  "مرات تسميع": "Recitation repetitions",
+  "صيانة المحفوظ": "Maintenance",
+  "تثبيت": "Reinforcement",
+  "أولوية عاجلة": "Urgent priority",
+  "الحد اليومي": "Daily limit",
+  "المتبقي للترحيل": "Remaining to carry forward",
+  "مقدار اليوم": "Today's amount",
+  "المستحق اليوم": "Due today",
+  "يحدد البرنامج مقدار مراجعة اليوم وتكرار التسميع والفاصل القادم لكل آية محفوظة مسجلة. عند التعثر يقرب المراجعة، وعند الإتقان يوسع الفاصل تدريجيًا.": "The plan sets today's review amount, repetitions, and next interval for each recorded memorized verse. It shortens intervals after difficulty and gradually widens them after mastery.",
+  "يتجدد حسب نتيجة التسميع": "Adapts to each recitation result",
+  "برنامج المراجعة المتباعدة": "Spaced review plan",
   "آيات استظهرها حسب السجلات": "Verses explicitly recorded as memorized",
   "مراجعات ناجحة مسجلة": "Successful reviews recorded",
   "مواضع تستحق المراجعة": "Passages due for review",
