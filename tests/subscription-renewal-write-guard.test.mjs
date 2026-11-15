@@ -8,8 +8,8 @@ const dashboard = readFileSync(new URL("client/src/pages/PlatformOwnerDashboard.
 
 test("annual subscription date changes require the payment-backed renewal context", () => {
   assert.match(migration, /SUBSCRIPTION_UPDATE_REQUIRES_PAYMENT_OR_TRIAL_EXTENSION/);
-  assert.match(migration, /current_setting\('quranos\.subscription_write_context', true\)/);
-  assert.match(migration, /alter function private\.record_subscription_payment_and_renew\([\s\S]*?\) set quranos\.subscription_write_context = 'payment_renewal'/);
+  assert.match(migration, /create table if not exists private\.subscription_write_contexts/);
+  assert.match(migration, /insert into private\.subscription_write_contexts[\s\S]*?'payment_renewal'/);
 });
 
 test("trial extension is owner-only, trial-only, and advances the grace deadline", () => {
