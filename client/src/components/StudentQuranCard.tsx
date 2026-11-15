@@ -10,6 +10,7 @@ import {
   getMemorizationResultLabel,
   type MemorizationRecord,
 } from "@/lib/memorization";
+import { analyzeStudentQuranRecords } from "@/lib/memorization-analysis";
 
 type Props = {
   studentName: string;
@@ -17,46 +18,9 @@ type Props = {
   loading?: boolean;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function daysBetween(older: string, newer: string): number {
-  const a = new Date(older + "T00:00:00").getTime();
-  const b = new Date(newer + "T00:00:00").getTime();
-  return Math.max(0, Math.floor((b - a) / DAY_MS));
-}
-
-function uniqueMemorizedAyat(records: MemorizationRecord[]): number {
-  const ranges = new Map<number, Array<[number, number]>>();
-  for (const record of records) {
-    if ((record.sessionType !== "new_memorization" && record.sessionType !== "new_hifz") || record.recitationResult === "not_memorized") continue;
-    const items = ranges.get(record.surahNumber) ?? [];
-    items.push([record.ayahStart, record.ayahEnd]);
-    ranges.set(record.surahNumber, items);
-  }
-  let total = 0;
-  for (const items of ranges.values()) {
-    items.sort((a, b) => a[0] - b[0]);
-    let start = -1;
-    let end = -1;
-    for (const [nextStart, nextEnd] of items) {
-      if (start === -1) {
-        start = nextStart;
-        end = nextEnd;
-      } else if (nextStart <= end + 1) {
-        end = Math.max(end, nextEnd);
-      } else {
-        total += end - start + 1;
-        start = nextStart;
-        end = nextEnd;
-      }
-    }
-    if (start !== -1) total += end - start + 1;
-  }
-  return total;
-}
-
 export default function StudentQuranCard({ studentName, records, loading = false }: Props) {
   const [surah, setSurah] = useState("all");
+  const [mapSurah, setMapSurah] = useState("1");
   const [session, setSession] = useState("all");
   const [minimumRating, setMinimumRating] = useState("all");
   const [fromDate, setFromDate] = useState("");
@@ -70,38 +34,13 @@ export default function StudentQuranCard({ studentName, records, loading = false
     (!toDate || record.recordDate <= toDate)
   ), [records, surah, session, minimumRating, fromDate, toDate]);
 
-  const alerts = useMemo(() => {
-    const messages: string[] = [];
-    const bySurah = new Map<number, MemorizationRecord[]>();
-    for (const record of records) {
-      const items = bySurah.get(record.surahNumber) ?? [];
-      items.push(record);
-      bySurah.set(record.surahNumber, items);
-    }
-    for (const [number, items] of bySurah) {
-      const memorization = items
-        .filter(item => item.sessionType === "new_memorization" || item.sessionType === "new_hifz")
-        .sort((a, b) => b.recordDate.localeCompare(a.recordDate))[0];
-      if (!memorization) continue;
-      const revision = items
-        .filter(item => item.sessionType === "near_revision" || item.sessionType === "distant_revision")
-        .sort((a, b) => b.recordDate.localeCompare(a.recordDate))[0];
-      const elapsed = daysBetween(memorization.recordDate, new Date().toISOString().slice(0, 10));
-      if ((!revision || revision.recordDate < memorization.recordDate) && elapsed >= 14) {
-        const name = QURAN_SURAHS[number - 1]?.name ?? "غير معروفة";
-        messages.push(`سورة ${name}: آخر تسجيل للحفظ بتاريخ ${memorization.recordDate}، ولم يظهر في السجلات المتاحة تسجيل مراجعة لاحق لها خلال ${elapsed} يومًا.`);
-      }
-    }
-    const weakBySurah = [...bySurah.entries()].flatMap(([number, items]) => {
-      const evaluated = items.filter(item => item.rating <= 2);
-      if (evaluated.length < 2) return [];
-      const name = QURAN_SURAHS[number - 1]?.name ?? "غير معروفة";
-      return [`سورة ${name}: ${evaluated.length} تقييمات من 5 بدرجة 1 أو 2؛ يُستحسن أن يراجع المعلم هذه المواضع.`];
-    });
-    return [...messages, ...weakBySurah].slice(0, 8);
-  }, [records]);
-
-  const memorizedAyat = uniqueMemorizedAyat(records);
+  const analysis = useMemo(() => analyzeStudentQuranRecords(records), [records]);
+  const alerts = analysis.alerts.map(alert => {
+    const name = QURAN_SURAHS[alert.surahNumber - 1]?.name ?? "غير معروفة";
+    return `سورة ${name} · ${alert.message}`;
+  });
+  const memorizedAyat = analysis.memorizedAyat;
+  const selectedMapSurah = QURAN_SURAHS[Number(mapSurah) - 1];
   const average = records.length
     ? records.reduce((sum, item) => sum + item.rating, 0) / records.length
     : 0;
@@ -123,6 +62,52 @@ export default function StudentQuranCard({ studentName, records, loading = false
         <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">متوسط التقييم المسجل</p><p className="mt-1 text-xl font-bold text-[#173B2D]">{records.length ? average.toFixed(1) + " / 5" : "—"}</p></div>
         <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">السور المسجلة</p><p className="mt-1 text-xl font-bold text-[#173B2D]">{new Set(records.map(item => item.surahNumber)).size}</p></div>
       </div>
+
+      <section className="space-y-3 rounded-xl border border-[#DCE8E0] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-[#173B2D]">خريطة الحفظ والمراجعة حسب الآية</h3>
+          <select
+            aria-label="سورة خريطة الحفظ"
+            value={mapSurah}
+            onChange={event => setMapSurah(event.target.value)}
+            className="h-10 min-w-40 rounded-md border border-gray-200 bg-white px-2 text-sm"
+          >
+            {QURAN_SURAHS.map(item => <option key={item.number} value={item.number}>{item.number}. {item.name}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+          <span className="inline-flex items-center gap-1"><i className="h-3 w-3 rounded-sm bg-emerald-600" /> استظهر وفق السجل</span>
+          <span className="inline-flex items-center gap-1"><i className="h-3 w-3 rounded-sm bg-amber-500" /> موعد المراجعة</span>
+          <span className="inline-flex items-center gap-1"><i className="h-3 w-3 rounded-sm bg-rose-600" /> ضعف متكرر</span>
+          <span className="inline-flex items-center gap-1"><i className="h-3 w-3 rounded-sm border border-gray-300 bg-gray-100" /> غير مقيّم</span>
+        </div>
+        <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10">
+          {Array.from({ length: selectedMapSurah?.ayahCount ?? 0 }, (_, index) => index + 1).map(ayah => {
+            const status = analysis.ayahStatuses[`${mapSurah}:${ayah}`] ?? "unassessed";
+            const style = status === "memorized"
+              ? "border-emerald-700 bg-emerald-600 text-white"
+              : status === "review_due"
+                ? "border-amber-500 bg-amber-100 text-amber-950"
+                : status === "repeated_weakness"
+                  ? "border-rose-700 bg-rose-600 text-white"
+                  : "border-gray-200 bg-gray-50 text-gray-500";
+            const label = status === "memorized"
+              ? "استظهر وفق السجل"
+              : status === "review_due"
+                ? "يحتاج مراجعة"
+                : status === "repeated_weakness"
+                  ? "ضعف متكرر"
+                  : "غير مقيّم";
+            return <span
+              key={ayah}
+              title={`الآية ${ayah}: ${label}`}
+              aria-label={`الآية ${ayah}: ${label}`}
+              className={`flex h-9 items-center justify-center rounded-md border text-sm font-semibold ${style}`}
+            >{ayah}</span>;
+          })}
+        </div>
+        <p className="text-xs leading-5 text-gray-500">الخريطة تعرض أدلة السجلات فقط. اللون الرمادي يعني عدم توفر تسجيل كافٍ، ولا يعني أن الآية غير محفوظة. اللون الأخضر لا يثبت الإتقان النهائي.</p>
+      </section>
 
       <section className="space-y-3">
         <h3 className="flex items-center gap-2 text-sm font-bold text-[#2C3E50]"><Filter size={16} /> فلاتر البطاقة</h3>

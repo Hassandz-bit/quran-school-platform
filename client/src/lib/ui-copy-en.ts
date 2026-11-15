@@ -2214,4 +2214,12 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "المتابعة الذكية للحفظ والمراجعة": "Smart memorization and revision follow-up",
   "حفظ لم يكتمل": "Memorization not completed",
   "مراجعة لم تكتمل": "Revision not completed",
+  // Student Quran progress map
+  "خريطة الحفظ والمراجعة حسب الآية": "Memorization and revision map by ayah",
+  "سورة خريطة الحفظ": "Surah for the memorization map",
+  "استظهر وفق السجل": "Recited successfully according to the record",
+  "يحتاج مراجعة": "Needs revision",
+  "ضعف متكرر": "Repeated weakness",
+  "غير مقيّم": "Not assessed",
+  "الخريطة تعرض أدلة السجلات فقط. اللون الرمادي يعني عدم توفر تسجيل كافٍ، ولا يعني أن الآية غير محفوظة. اللون الأخضر لا يثبت الإتقان النهائي.": "The map displays recorded evidence only. Gray means there is not enough recorded evidence; it does not mean the ayah is unmemorized. Green does not prove lasting mastery.",
 };
