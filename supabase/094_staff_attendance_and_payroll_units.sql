@@ -75,6 +75,12 @@ create index staff_attendance_teacher_date_idx
 create index staff_attendance_employee_date_idx
   on public.staff_attendance_records (school_id, employee_id, attendance_date desc)
   where employee_id is not null;
+create unique index staff_attendance_one_employee_day_idx
+  on public.staff_attendance_records (school_id, employee_id, attendance_date)
+  where employee_id is not null and unit_kind = 'day';
+create unique index staff_attendance_teacher_session_label_idx
+  on public.staff_attendance_records (school_id, teacher_id, attendance_date, session_label)
+  where teacher_id is not null and unit_kind = 'session';
 
 create trigger staff_attendance_set_updated_at
 before update on public.staff_attendance_records
@@ -246,6 +252,8 @@ begin
     or target_units is null or target_units < 0 or target_units > 100
     or (target_status in ('absent', 'leave') and target_units <> 0)
     or (target_status in ('present', 'late', 'partial') and target_units <= 0)
+    or (target_payee_kind = 'teacher' and target_unit_kind = 'session'
+      and nullif(btrim(target_session_label), '') is null)
     or (target_payee_kind = 'teacher' and (
       target_teacher_id is null or target_employee_id is not null or target_branch_id is null
       or not exists (
