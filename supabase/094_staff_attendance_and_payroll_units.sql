@@ -111,6 +111,8 @@ create table public.staff_attendance_history (
 
 create index staff_attendance_history_record_idx
   on public.staff_attendance_history (attendance_record_id, changed_at desc);
+alter table public.staff_attendance_history enable row level security;
+revoke all on public.staff_attendance_history from public, anon, authenticated;
 
 create or replace function public.audit_staff_attendance_record()
 returns trigger
