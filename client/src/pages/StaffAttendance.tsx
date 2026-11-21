@@ -186,7 +186,7 @@ export default function StaffAttendance() {
               <Input type="number" min="0" max="100" step="0.25" value={status === "absent" || status === "leave" ? "0" : units} disabled={status === "absent" || status === "leave"} onChange={event => setUnits(event.target.value)} className="mt-1" />
             </label>
             <label className="text-xs font-bold">الحصة / المهمة (اختياري)
-              <Input value={sessionLabel} onChange={event => setSessionLabel(event.target.value)} maxLength={120} className="mt-1" placeholder="مثال: الحلقة الأولى" />
+              <Input value={sessionLabel} onChange={event => setSessionLabel(event.target.value)} maxLength={120} required={selectedCandidate?.payeeKind === "teacher" && unitKind === "session"} className="mt-1" placeholder="مثال: الحلقة الأولى أو الحصة الصباحية" />
             </label>
             <label className="text-xs font-bold">ملاحظة
               <Input value={note} onChange={event => setNote(event.target.value)} maxLength={500} className="mt-1" placeholder="سبب الغياب أو تفاصيل إضافية" />
