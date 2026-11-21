@@ -466,11 +466,12 @@ export default function Payroll() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1050px] text-right text-sm">
+                <table className="w-full min-w-[1180px] text-right text-sm">
                   <thead className="bg-[#F5F8F5] text-xs text-[#607368]">
                     <tr>
                       <th className="p-3">المستفيد</th>
-                      <th className="p-3">الأساسي</th>
+                      <th className="p-3">الوحدات وسعرها</th>
+                      <th className="p-3">المستحق الأساسي</th>
                       <th className="p-3">زيادات</th>
                       <th className="p-3">خصومات</th>
                       <th className="p-3">سلف</th>
@@ -794,6 +795,10 @@ function PayrollEntryRow({
           {entry.roleLabel ??
             (entry.payeeKind === "teacher" ? "معلم" : "إداري/موظف")}
         </p>
+      </td>
+      <td className="p-3">
+        <b>{entry.unitsCount} {({ session: "حصة", day: "يوم", hour: "ساعة", month: "شهر", task: "مهمة", manual: "مبلغ ثابت" })[entry.payUnit]}</b>
+        <p className="text-xs text-[#718377]">سعر الوحدة: {formatDzd(entry.unitRate)}</p>
       </td>
       <td className="p-3 font-semibold">{formatDzd(entry.baseAmount)}</td>
       {(["additions", "deductions", "advances"] as const).map(field => (
