@@ -12,6 +12,7 @@ import {
   fetchStaffAttendanceCandidates,
   fetchStaffAttendanceRecords,
   saveStaffAttendance,
+  updateStaffAttendance,
   type StaffAttendanceCandidate,
   type StaffAttendanceRecord,
 } from "@/lib/staff-attendance";
@@ -46,6 +47,7 @@ export default function StaffAttendance() {
   const [candidates, setCandidates] = useState<StaffAttendanceCandidate[]>([]);
   const [records, setRecords] = useState<StaffAttendanceRecord[]>([]);
   const [candidateKey, setCandidateKey] = useState("");
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [date, setDate] = useState(today);
   const [unitKind, setUnitKind] = useState<UnitKind>("day");
   const [units, setUnits] = useState("1");
@@ -117,18 +119,31 @@ export default function StaffAttendance() {
     }
     setSaving(true);
     try {
-      await saveStaffAttendance({
-        schoolId: school.id,
-        branchId: selectedScope.branchId,
-        candidate: selectedCandidate,
-        date,
-        unitKind,
-        units: count,
-        status,
-        sessionLabel,
-        note,
-      });
-      toast.success("تم تسجيل الحضور الوظيفي.");
+      if (editingRecordId) {
+        await updateStaffAttendance({
+          schoolId: school.id,
+          recordId: editingRecordId,
+          units: count,
+          status,
+          sessionLabel,
+          note,
+        });
+        toast.success("تم تصحيح سجل الحضور.");
+      } else {
+        await saveStaffAttendance({
+          schoolId: school.id,
+          branchId: selectedScope.branchId,
+          candidate: selectedCandidate,
+          date,
+          unitKind,
+          units: count,
+          status,
+          sessionLabel,
+          note,
+        });
+        toast.success("تم تسجيل الحضور الوظيفي.");
+      }
+      setEditingRecordId(null);
       setSessionLabel("");
       setNote("");
       setUnits("1");
@@ -139,6 +154,25 @@ export default function StaffAttendance() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const beginEdit = (record: StaffAttendanceRecord) => {
+    setEditingRecordId(record.id);
+    setCandidateKey(`${record.payeeKind}:${record.teacherId ?? record.employeeId}`);
+    setDate(record.date);
+    setUnitKind(record.unitKind);
+    setUnits(String(record.units));
+    setStatus(record.status);
+    setSessionLabel(record.sessionLabel ?? "");
+    setNote(record.note ?? "");
+  };
+
+  const cancelEdit = () => {
+    setEditingRecordId(null);
+    setSessionLabel("");
+    setNote("");
+    setUnits("1");
+    setStatus("present");
   };
 
   return (
@@ -157,7 +191,7 @@ export default function StaffAttendance() {
           </select>
         </label>
         <label className="text-xs font-bold">تاريخ التسجيل
-          <Input type="date" value={date} onChange={event => setDate(event.target.value)} className="mt-1" />
+          <Input type="date" value={date} onChange={event => setDate(event.target.value)} disabled={Boolean(editingRecordId)} className="mt-1" />
         </label>
       </Card>
 
@@ -166,7 +200,7 @@ export default function StaffAttendance() {
           <h2 className="mb-3 flex items-center gap-2 font-bold text-[#173B2D]"><CalendarCheck className="size-5" />تسجيل حضور أو غياب</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="text-xs font-bold">المعلم أو الموظف
-              <select value={candidateKey} onChange={event => setCandidateKey(event.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm">
+              <select value={candidateKey} onChange={event => setCandidateKey(event.target.value)} disabled={Boolean(editingRecordId)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm">
                 <option value="">اختر الشخص...</option>
                 {candidates.map(candidate => {
                   const key = `${candidate.payeeKind}:${candidate.teacherId ?? candidate.employeeId}`;
@@ -180,7 +214,7 @@ export default function StaffAttendance() {
               </select>
             </label>
             <label className="text-xs font-bold">وحدة الاحتساب
-              <select value={unitKind} onChange={event => setUnitKind(event.target.value as UnitKind)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm">
+              <select value={unitKind} onChange={event => setUnitKind(event.target.value as UnitKind)} disabled={Boolean(editingRecordId)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm">
                 {Object.entries(unitLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
             </label>
@@ -193,7 +227,7 @@ export default function StaffAttendance() {
             <label className="text-xs font-bold">ملاحظة
               <Input value={note} onChange={event => setNote(event.target.value)} maxLength={500} className="mt-1" placeholder="سبب الغياب أو تفاصيل إضافية" />
             </label>
-            <Button type="button" onClick={() => void submit()} disabled={saving || !selectedCandidate} className="gap-2 self-end"><Save className="size-4" />حفظ السجل</Button>
+            <div className="flex items-end gap-2"><Button type="button" onClick={() => void submit()} disabled={saving || !selectedCandidate} className="gap-2"><Save className="size-4" />{editingRecordId ? "حفظ التصحيح" : "حفظ السجل"}</Button>{editingRecordId ? <Button type="button" variant="outline" onClick={cancelEdit}>إلغاء التعديل</Button> : null}</div>
           </div>
           <p className="mt-3 text-xs text-[#718377]">يُسجل الغياب والإجازة بصفر وحدة مستحقة. أما الغياب المبرر فيمكن للإدارة تحديد الوحدات المستحقة له يدويًا.</p>
         </Card>
@@ -209,14 +243,14 @@ export default function StaffAttendance() {
         {loading ? <div className="p-8 text-center text-sm text-gray-500">جارٍ تحميل السجل...</div>
           : records.length === 0 ? <div className="p-8 text-center text-sm text-gray-500">لا توجد سجلات حضور لهذا الشهر.</div>
           : <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-right text-sm">
-            <thead className="bg-[#F5F8F5] text-xs text-[#607368]"><tr><th className="p-3">التاريخ</th><th className="p-3">الاسم</th><th className="p-3">النوع</th><th className="p-3">الحالة</th><th className="p-3">الوحدات</th><th className="p-3">التفاصيل</th></tr></thead>
+            <thead className="bg-[#F5F8F5] text-xs text-[#607368]"><tr><th className="p-3">التاريخ</th><th className="p-3">الاسم</th><th className="p-3">النوع</th><th className="p-3">الحالة</th><th className="p-3">الوحدات</th><th className="p-3">التفاصيل</th><th className="p-3">إجراء</th></tr></thead>
             <tbody className="divide-y">{records.map(record => <tr key={record.id}>
               <td className="p-3 tabular-nums">{record.date}</td>
               <td className="p-3 font-medium">{record.fullName}</td>
               <td className="p-3">{unitLabels[record.unitKind]}</td>
               <td className="p-3">{statusLabels[record.status]}</td>
               <td className="p-3 tabular-nums">{record.units}</td>
-              <td className="p-3 text-xs text-gray-500">{[record.sessionLabel, record.note].filter(Boolean).join(" · ") || "—"}</td>
+              <td className="p-3 text-xs text-gray-500">{[record.sessionLabel, record.note].filter(Boolean).join(" · ") || "—"}</td><td className="p-3"><Button type="button" size="sm" variant="outline" onClick={() => beginEdit(record)}>تصحيح</Button></td>
             </tr>)}</tbody>
           </table></div>}
       </Card>
