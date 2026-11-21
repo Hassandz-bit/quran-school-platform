@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
+import { getSupabaseClient } from "@/lib/supabase";
 import { fetchPayrollScopes, type PayrollScope } from "@/lib/payroll";
 import {
   fetchStaffAttendanceCandidates,
@@ -17,6 +18,7 @@ import {
   type StaffAttendanceRecord,
 } from "@/lib/staff-attendance";
 
+type TeacherSchedule = { teacher_id: string | null; schedule_label: string; weekday: number; start_time: string; end_time: string; payee_kind: string; source_kind: string };
 type UnitKind = StaffAttendanceRecord["unitKind"];
 type AttendanceStatus = StaffAttendanceRecord["status"];
 const today = () => {
@@ -46,6 +48,7 @@ export default function StaffAttendance() {
   const [scopeKey, setScopeKey] = useState("");
   const [candidates, setCandidates] = useState<StaffAttendanceCandidate[]>([]);
   const [records, setRecords] = useState<StaffAttendanceRecord[]>([]);
+  const [teacherSchedules, setTeacherSchedules] = useState<TeacherSchedule[]>([]);
   const [candidateKey, setCandidateKey] = useState("");
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [date, setDate] = useState(today);
@@ -66,17 +69,26 @@ export default function StaffAttendance() {
       `${candidate.payeeKind}:${candidate.teacherId ?? candidate.employeeId}` === candidateKey
     ) ?? null;
   }, [candidateKey, candidates]);
+  const selectedTeacherSessions = useMemo(() => {
+    if (selectedCandidate?.payeeKind !== "teacher" || !date) return [];
+    const weekday = new Date(`${date}T12:00:00`).getDay();
+    return teacherSchedules.filter(schedule => schedule.payee_kind === "teacher"
+      && schedule.teacher_id === selectedCandidate.teacherId && Number(schedule.weekday) === weekday);
+  }, [date, selectedCandidate, teacherSchedules]);
 
   const load = useCallback(async () => {
     if (!school?.id || !selectedScope) return;
     setLoading(true);
     try {
-      const [nextCandidates, nextRecords] = await Promise.all([
+      const [nextCandidates, nextRecords, scheduleResult] = await Promise.all([
         fetchStaffAttendanceCandidates(school.id, selectedScope.branchId),
         fetchStaffAttendanceRecords(school.id, selectedScope.branchId, monthStart(), today()),
+        getSupabaseClient().rpc("list_staff_work_schedules", { target_school_id: school.id, target_branch_id: selectedScope.branchId }),
       ]);
+      if (scheduleResult.error) throw scheduleResult.error;
       setCandidates(nextCandidates);
       setRecords(nextRecords);
+      setTeacherSchedules((scheduleResult.data ?? []) as TeacherSchedule[]);
       setCandidateKey(current => nextCandidates.some(candidate =>
         `${candidate.payeeKind}:${candidate.teacherId ?? candidate.employeeId}` === current
       ) ? current : (nextCandidates[0]
@@ -108,6 +120,13 @@ export default function StaffAttendance() {
       : selectedCandidate.payeeKind === "teacher" ? "session" : "day");
     setUnits("1");
   }, [selectedCandidate]);
+
+  useEffect(() => {
+    if (editingRecordId || selectedCandidate?.payeeKind !== "teacher" || unitKind !== "session" || selectedTeacherSessions.length === 0) return;
+    if (!selectedTeacherSessions.some(session => session.schedule_label === sessionLabel)) {
+      setSessionLabel(selectedTeacherSessions[0].schedule_label);
+    }
+  }, [date, editingRecordId, selectedCandidate, selectedTeacherSessions, sessionLabel, unitKind]);
 
   const submit = async () => {
     if (!school?.id || !selectedScope || !selectedScope.canManage || !selectedCandidate) return;
@@ -221,8 +240,16 @@ export default function StaffAttendance() {
             <label className="text-xs font-bold">عدد الوحدات المنجزة
               <Input type="number" min="0" max="100" step="0.25" value={status === "absent" || status === "leave" ? "0" : units} disabled={status === "absent" || status === "leave"} onChange={event => setUnits(event.target.value)} className="mt-1" />
             </label>
-            <label className="text-xs font-bold">الحصة / المهمة (اختياري)
-              <Input value={sessionLabel} onChange={event => setSessionLabel(event.target.value)} maxLength={120} required={selectedCandidate?.payeeKind === "teacher" && unitKind === "session"} className="mt-1" placeholder="مثال: الحلقة الأولى أو الحصة الصباحية" />
+            <label className="text-xs font-bold">الحلقة / الحصة
+              {selectedCandidate?.payeeKind === "teacher" && unitKind === "session" && selectedTeacherSessions.length > 0 ? (
+                <select value={sessionLabel} onChange={event => setSessionLabel(event.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm" required>
+                  <option value="">اختر الحلقة المجدولة...</option>
+                  {editingRecordId && sessionLabel && !selectedTeacherSessions.some(session => session.schedule_label === sessionLabel) ? <option value={sessionLabel}>{`سجل سابق: ${sessionLabel}`}</option> : null}
+                  {selectedTeacherSessions.map((session, index) => <option key={`${session.schedule_label}-${index}`} value={session.schedule_label}>{session.schedule_label} · {String(session.start_time).slice(0,5)}–{String(session.end_time).slice(0,5)}</option>)}
+                </select>
+              ) : (
+                <Input value={sessionLabel} onChange={event => setSessionLabel(event.target.value)} maxLength={120} required={selectedCandidate?.payeeKind === "teacher" && unitKind === "session"} className="mt-1" placeholder="اكتب اسم الحلقة كما يظهر في جدول الدوام" />
+              )}
             </label>
             <label className="text-xs font-bold">ملاحظة
               <Input value={note} onChange={event => setNote(event.target.value)} maxLength={500} className="mt-1" placeholder="سبب الغياب أو تفاصيل إضافية" />
