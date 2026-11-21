@@ -15,6 +15,7 @@ export type PayrollCandidate = {
   branchId: string | null;
   name: string;
   roleLabel: string;
+  payUnit?: "session" | "day" | "hour" | "month" | "task" | "manual";
 };
 
 export type PayrollCompensationProfile = {
@@ -314,6 +315,7 @@ export async function fetchPayrollWorkspace(
     branchId: nullableStr(row.branch_id),
     name: str(row.full_name),
     roleLabel: str(row.job_label) || "موظف",
+    payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit)) ? str(row.pay_unit) : row.payee_kind === "teacher" ? "session" : "day") as PayrollCandidate["payUnit"],
   }));
   return workspace;
 }
