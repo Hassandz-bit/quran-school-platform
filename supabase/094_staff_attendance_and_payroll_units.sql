@@ -209,7 +209,7 @@ begin
   where record.school_id = target_school_id
     and record.branch_id is not distinct from target_branch_id
     and record.attendance_date between target_from and target_to
-  order by record.attendance_date desc, full_name, record.created_at desc;
+  order by record.attendance_date desc, record.created_at desc;
 end;
 $$;
 
