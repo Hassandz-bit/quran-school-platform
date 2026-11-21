@@ -297,7 +297,7 @@ begin
       and v_local::date between l.start_date and l.end_date) then continue; end if;
     if exists(select 1 from public.staff_attendance_records a where a.school_id=r.school_id
       and a.employee_id=r.employee_id and a.attendance_date=v_local::date
-      and (r.unit_kind<>'day' or a.unit_kind='day')) then continue; end if;
+      and (r.unit_kind='day' or a.session_label=r.schedule_label)) then continue; end if;
     insert into public.staff_attendance_records(school_id,branch_id,payee_kind,employee_id,attendance_date,
       unit_kind,units,status,session_label,note,recorded_by)
     values(r.school_id,r.branch_id,'employee',r.employee_id,v_local::date,r.unit_kind,0,'absent',
