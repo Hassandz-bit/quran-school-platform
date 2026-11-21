@@ -12,7 +12,8 @@ test("staff compensation supports per-person unit rates", () => {
   assert.match(migration, /pay_unit text not null default 'month'/);
   assert.match(migration, /'session', 'day', 'hour', 'month', 'task', 'manual'/);
   assert.match(migration, /expected_units_per_week/);
-  assert.match(payroll, /set_payroll_compensation_unit/);
+  assert.match(payroll, /create_employee_compensation_with_unit/);
+  assert.match(payroll, /create_payroll_compensation_with_unit/);
 });
 
 test("staff attendance is tenant and branch scoped with controlled RPC access", () => {
