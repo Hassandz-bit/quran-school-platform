@@ -8,6 +8,7 @@ export default function StaffPayrollNavigation({ currentPath }: { currentPath: s
   const en = locale === "en";
   const links = [
     { path: "/staff", label: en ? "Employee directory" : "دليل الموظفين" },
+    { path: "/staff/attendance", label: en ? "Staff attendance" : "حضور الموظفين" },
     { path: "/staff/payroll", label: en ? "Payroll" : "الرواتب" },
     { path: "/staff/payroll/history", label: en ? "Payroll history" : "سجل الأجور" },
     { path: "/finance", label: en ? "Finance" : "المالية" },

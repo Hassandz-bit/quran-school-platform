@@ -15,6 +15,8 @@ export type PayrollCandidate = {
   branchId: string | null;
   name: string;
   roleLabel: string;
+  payUnit?: "session" | "day" | "hour" | "month" | "task" | "manual";
+  expectedUnitsPerWeek?: number;
 };
 
 export type PayrollCompensationProfile = {
@@ -26,6 +28,8 @@ export type PayrollCompensationProfile = {
   employeeId: string | null;
   payeeName: string;
   baseAmount: number;
+  payUnit: "session" | "day" | "hour" | "month" | "task" | "manual";
+  expectedUnitsPerWeek: number;
   effectiveFrom: string;
   effectiveTo: string | null;
   status: "active" | "inactive" | "archived";
@@ -64,6 +68,9 @@ export type PayrollEntry = {
   payeeName: string;
   roleLabel: string | null;
   baseAmount: number;
+  payUnit: "session" | "day" | "hour" | "month" | "task" | "manual";
+  unitRate: number;
+  unitsCount: number;
   additions: number;
   deductions: number;
   advances: number;
@@ -208,6 +215,8 @@ function normalizeWorkspace(data: unknown): PayrollWorkspace {
         employeeId: nullableStr(row.employee_id),
         payeeName: str(row.payee_name),
         baseAmount: num(row.base_amount),
+        payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit)) ? str(row.pay_unit) : "month") as PayrollCompensationProfile["payUnit"],
+        expectedUnitsPerWeek: num(row.expected_units_per_week),
         effectiveFrom: str(row.effective_from),
         effectiveTo: nullableStr(row.effective_to),
         status: ["inactive", "archived"].includes(str(row.status))
@@ -264,6 +273,9 @@ function normalizeWorkspace(data: unknown): PayrollWorkspace {
         payeeName: str(row.payee_name),
         roleLabel: nullableStr(row.role_label),
         baseAmount: num(row.base_amount),
+        payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit)) ? str(row.pay_unit) : "month") as PayrollEntry["payUnit"],
+        unitRate: num(row.unit_rate),
+        unitsCount: num(row.units_count),
         additions: num(row.additions),
         deductions: num(row.deductions),
         advances: num(row.advances),
@@ -298,7 +310,24 @@ export async function fetchPayrollWorkspace(
     target_period_month: periodMonth,
   });
   if (error) throw error;
-  return normalizeWorkspace(data);
+  const workspace = normalizeWorkspace(data);
+  const { data: staffRows, error: staffError } = await client.rpc("list_staff_attendance_candidates", {
+    target_school_id: schoolId,
+    target_branch_id: branchId,
+  });
+  if (staffError) throw staffError;
+  workspace.candidates = ((staffRows ?? []) as JsonRow[]).map(row => ({
+    kind: row.payee_kind === "teacher" ? "teacher" : "employee",
+    teacherId: nullableStr(row.teacher_id),
+    membershipId: null,
+    employeeId: nullableStr(row.employee_id),
+    branchId: nullableStr(row.branch_id),
+    name: str(row.full_name),
+    roleLabel: str(row.job_label) || "موظف",
+    payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit)) ? str(row.pay_unit) : row.payee_kind === "teacher" ? "session" : "day") as PayrollCandidate["payUnit"],
+    expectedUnitsPerWeek: num(row.expected_units_per_week),
+  }));
+  return workspace;
 }
 
 async function rpc<T>(
@@ -317,6 +346,8 @@ export const createPayrollCompensation = (
     branchId: string | null;
     candidate: PayrollCandidate;
     baseAmount: number;
+    payUnit: PayrollCompensationProfile["payUnit"];
+    expectedUnitsPerWeek: number;
     effectiveFrom: string;
     effectiveTo?: string | null;
     notes?: string | null;
@@ -324,7 +355,7 @@ export const createPayrollCompensation = (
   client?: SupabaseClient
 ) => input.candidate.kind === "employee"
   ? rpc<string>(
-      "create_employee_compensation",
+      "create_employee_compensation_with_unit",
       {
         target_school_id: input.schoolId,
         target_branch_id: input.branchId,
@@ -333,11 +364,13 @@ export const createPayrollCompensation = (
         target_effective_from: input.effectiveFrom,
         target_effective_to: input.effectiveTo ?? null,
         target_notes: input.notes ?? null,
+        target_pay_unit: input.payUnit,
+        target_expected_units_per_week: input.expectedUnitsPerWeek,
       },
       client
     )
   : rpc<string>(
-      "create_payroll_compensation",
+      "create_payroll_compensation_with_unit",
       {
         target_school_id: input.schoolId,
         target_branch_id: input.branchId,
@@ -348,6 +381,8 @@ export const createPayrollCompensation = (
         target_effective_from: input.effectiveFrom,
         target_effective_to: input.effectiveTo ?? null,
         target_notes: input.notes ?? null,
+        target_pay_unit: input.payUnit,
+        target_expected_units_per_week: input.expectedUnitsPerWeek,
       },
       client
     );
