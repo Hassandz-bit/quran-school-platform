@@ -66,6 +66,9 @@ export type PayrollEntry = {
   payeeName: string;
   roleLabel: string | null;
   baseAmount: number;
+  payUnit: "session" | "day" | "hour" | "month" | "task" | "manual";
+  unitRate: number;
+  unitsCount: number;
   additions: number;
   deductions: number;
   advances: number;
@@ -267,6 +270,9 @@ function normalizeWorkspace(data: unknown): PayrollWorkspace {
         payeeName: str(row.payee_name),
         roleLabel: nullableStr(row.role_label),
         baseAmount: num(row.base_amount),
+        payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit)) ? str(row.pay_unit) : "month") as PayrollEntry["payUnit"],
+        unitRate: num(row.unit_rate),
+        unitsCount: num(row.units_count),
         additions: num(row.additions),
         deductions: num(row.deductions),
         advances: num(row.advances),
