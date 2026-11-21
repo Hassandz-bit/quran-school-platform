@@ -2358,4 +2358,7 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "لا توجد أيام عطلة مسجلة.": "No closure days.",
   "تعمل آلية الغياب الآلي كل 15 دقيقة، ولا تسجل الغياب قبل مرور 30 دقيقة على نهاية الموعد، وتتجاوز الإجازات المعتمدة وأيام العطل. ويُستمد دوام المعلم من الحلقات والدوامات المسندة إليه.": "Automatic absence runs every 15 minutes, only after a 30-minute grace period. Approved leave and closure days are excluded. Teacher schedules are derived from assigned classes and duwam.",
   "الجداول والإجازات": "Schedules & leave",
+  "الحلقة / الحصة": "Class / session",
+  "اختر الحلقة المجدولة...": "Choose the scheduled class...",
+  "اكتب اسم الحلقة كما يظهر في جدول الدوام": "Enter the class name exactly as shown in the timetable",
 };
