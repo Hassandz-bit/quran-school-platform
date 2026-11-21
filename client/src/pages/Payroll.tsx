@@ -63,6 +63,7 @@ export default function Payroll() {
   const [busy, setBusy] = useState(false);
   const [candidateKey, setCandidateKey] = useState("");
   const [baseAmount, setBaseAmount] = useState("");
+  const [payUnit, setPayUnit] = useState<"session" | "day" | "hour" | "month" | "task" | "manual">("session");
   const [effectiveFrom, setEffectiveFrom] = useState(today);
   const [adjustments, setAdjustments] = useState<
     Record<string, AdjustmentDraft>
@@ -182,6 +183,7 @@ export default function Payroll() {
           branchId: selectedScope.branchId,
           candidate,
           baseAmount: toNumber(baseAmount),
+          payUnit,
           effectiveFrom,
         }),
       "تم حفظ إعداد الراتب مع تاريخ سريانه."
@@ -385,7 +387,18 @@ export default function Payroll() {
                   </select>
                 </label>
                 <label className="text-xs font-bold">
-                  الراتب الأساسي
+                  طريقة الاحتساب
+                  <select value={payUnit} onChange={event => setPayUnit(event.target.value as typeof payUnit)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm">
+                    <option value="session">بالحصة</option>
+                    <option value="day">باليوم</option>
+                    <option value="hour">بالساعة</option>
+                    <option value="month">راتب شهري ثابت</option>
+                    <option value="task">حسب المهمة</option>
+                    <option value="manual">مبلغ يدوي ثابت</option>
+                  </select>
+                </label>
+                <label className="text-xs font-bold">
+                  قيمة الوحدة (دج)
                   <Input
                     inputMode="decimal"
                     value={baseAmount}
