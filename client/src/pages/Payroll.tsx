@@ -593,6 +593,9 @@ function CompensationHistory({
               <p className="mt-3 text-lg font-bold text-[#17663B]">
                 {formatDzd(profile.baseAmount)}
               </p>
+              <p className="text-xs text-[#718377]">
+                {profile.payUnit === "session" ? "لكل حصة" : profile.payUnit === "day" ? "لكل يوم" : profile.payUnit === "hour" ? "لكل ساعة" : profile.payUnit === "task" ? "لكل مهمة" : profile.payUnit === "manual" ? "مبلغ ثابت" : "راتب شهري"}
+              </p>
               {workspace.canManage &&
                 profile.status === "active" &&
                 schoolId && (
