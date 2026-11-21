@@ -1,11 +1,16 @@
 -- QuranOS: staff attendance and unit-based payroll
 -- Migration 094: teachers are paid per completed session by default; employees per attended day.
+-- V2 review migration only. Do not apply to Production until the release gate is approved.
 -- Monthly, hourly, task-based and manual compensation remain configurable per person.
 
 begin;
 
 alter table public.payroll_compensation_profiles
-  add column if not exists pay_unit text not null default 'month';
+  add column if not exists pay_unit text not null default 'month',
+  add column if not exists expected_units_per_week numeric(6,2) not null default 0;
+alter table public.payroll_compensation_profiles
+  add constraint payroll_compensation_expected_units_per_week_check
+  check (expected_units_per_week between 0 and 100);
 
 update public.payroll_compensation_profiles
 set pay_unit = case payee_kind
@@ -151,7 +156,8 @@ returns table (
   branch_id uuid,
   full_name text,
   job_label text,
-  pay_unit text
+  pay_unit text,
+  expected_units_per_week numeric
 )
 language plpgsql stable security definer set search_path = ''
 as $$
@@ -167,10 +173,11 @@ begin
   select 'teacher'::text, teacher.id, null::uuid, teacher.branch_id,
     btrim(concat_ws(' ', teacher.first_name, teacher.last_name)),
     'المعلم'::text,
-    coalesce(profile.pay_unit, 'session')
+    coalesce(profile.pay_unit, 'session'),
+    coalesce(profile.expected_units_per_week, 0)
   from public.teachers as teacher
   left join lateral (
-    select compensation.pay_unit
+    select compensation.pay_unit, compensation.expected_units_per_week
     from public.payroll_compensation_profiles as compensation
     where compensation.school_id = teacher.school_id
       and compensation.payee_kind = 'teacher'
@@ -197,7 +204,8 @@ begin
       when 'driver' then 'السائق'
       else coalesce(employee.custom_job_title, 'موظف')
     end,
-    coalesce(profile.pay_unit, case when employee.job_code = 'teacher' then 'session' else 'day' end)
+    coalesce(profile.pay_unit, case when employee.job_code = 'teacher' then 'session' else 'day' end),
+    coalesce(profile.expected_units_per_week, 0)
   from public.employees as employee
   left join lateral (
     select compensation.pay_unit
@@ -349,7 +357,8 @@ create or replace function public.create_employee_compensation_with_unit(
   target_effective_from date,
   target_effective_to date,
   target_notes text,
-  target_pay_unit text
+  target_pay_unit text,
+  target_expected_units_per_week numeric
 )
 returns uuid
 language plpgsql security definer set search_path = ''
@@ -358,7 +367,9 @@ declare
   created_id uuid;
   old_values jsonb;
 begin
-  if target_pay_unit not in ('session', 'day', 'hour', 'month', 'task', 'manual') then
+  if target_pay_unit not in ('session', 'day', 'hour', 'month', 'task', 'manual')
+    or target_expected_units_per_week is null
+    or target_expected_units_per_week not between 0 and 100 then
     raise exception using errcode = '22023', message = 'PAYROLL_UNIT_INVALID';
   end if;
   created_id := public.create_employee_compensation(
@@ -369,13 +380,14 @@ begin
   from public.payroll_compensation_profiles as profile
   where profile.school_id = target_school_id and profile.id = created_id;
   update public.payroll_compensation_profiles
-  set pay_unit = target_pay_unit
+  set pay_unit = target_pay_unit,
+      expected_units_per_week = target_expected_units_per_week
   where school_id = target_school_id and id = created_id;
   insert into public.payroll_audit_events (
     school_id, entity_type, entity_id, operation, old_values, new_values, actor_profile_id
   ) values (
     target_school_id, 'compensation', created_id, 'status_update', old_values,
-    jsonb_build_object('pay_unit', target_pay_unit), (select auth.uid())
+    jsonb_build_object('pay_unit', target_pay_unit, 'expected_units_per_week', target_expected_units_per_week), (select auth.uid())
   );
   return created_id;
 end;
@@ -672,7 +684,7 @@ begin
         'membership_id', profile.membership_id, 'employee_id', profile.employee_id,
         'payee_name', coalesce(employee.full_name,
           btrim(concat_ws(' ', teacher.first_name, teacher.last_name)), member_profile.full_name),
-        'base_amount', profile.base_amount, 'pay_unit', profile.pay_unit, 'effective_from', profile.effective_from,
+        'base_amount', profile.base_amount, 'pay_unit', profile.pay_unit, 'expected_units_per_week', profile.expected_units_per_week, 'effective_from', profile.effective_from,
         'effective_to', profile.effective_to, 'status', profile.status, 'notes', profile.notes
       ) order by profile.effective_from desc)
       from public.payroll_compensation_profiles as profile
@@ -748,15 +760,15 @@ revoke all on function public.list_staff_attendance_candidates(uuid, uuid) from 
 revoke all on function public.list_staff_attendance_records(uuid, uuid, date, date) from public, anon;
 revoke all on function public.record_staff_attendance(uuid, uuid, text, uuid, uuid, date, text, numeric, text, text, text) from public, anon;
 revoke all on function public.update_staff_attendance(uuid, uuid, numeric, text, text, text) from public, anon;
-revoke all on function public.create_employee_compensation_with_unit(uuid, uuid, uuid, numeric, date, date, text, text) from public, anon;
-revoke all on function public.create_payroll_compensation_with_unit(uuid, uuid, text, uuid, uuid, numeric, date, date, text, text) from public, anon;
+revoke all on function public.create_employee_compensation_with_unit(uuid, uuid, uuid, numeric, date, date, text, text, numeric) from public, anon;
+revoke all on function public.create_payroll_compensation_with_unit(uuid, uuid, text, uuid, uuid, numeric, date, date, text, text, numeric) from public, anon;
 revoke all on function public.set_payroll_compensation_unit(uuid, uuid, text) from public, anon;
 grant execute on function public.list_staff_attendance_candidates(uuid, uuid) to authenticated;
 grant execute on function public.list_staff_attendance_records(uuid, uuid, date, date) to authenticated;
 grant execute on function public.record_staff_attendance(uuid, uuid, text, uuid, uuid, date, text, numeric, text, text, text) to authenticated;
 grant execute on function public.update_staff_attendance(uuid, uuid, numeric, text, text, text) to authenticated;
-grant execute on function public.create_employee_compensation_with_unit(uuid, uuid, uuid, numeric, date, date, text, text) to authenticated;
-grant execute on function public.create_payroll_compensation_with_unit(uuid, uuid, text, uuid, uuid, numeric, date, date, text, text) to authenticated;
+grant execute on function public.create_employee_compensation_with_unit(uuid, uuid, uuid, numeric, date, date, text, text, numeric) to authenticated;
+grant execute on function public.create_payroll_compensation_with_unit(uuid, uuid, text, uuid, uuid, numeric, date, date, text, text, numeric) to authenticated;
 grant execute on function public.set_payroll_compensation_unit(uuid, uuid, text) to authenticated;
 grant execute on function public.generate_payroll_period(uuid, uuid, date, text) to authenticated;
 
