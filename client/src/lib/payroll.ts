@@ -328,7 +328,7 @@ async function rpc<T>(
   return data as T;
 }
 
-export const createPayrollCompensation = async (
+export const createPayrollCompensation = (
   input: {
     schoolId: string;
     branchId: string | null;
@@ -340,9 +340,10 @@ export const createPayrollCompensation = async (
     notes?: string | null;
   },
   client?: SupabaseClient
-) => {
-  const compensationId = input.candidate.kind === "employee"
-    ? await rpc<string>("create_employee_compensation", {
+) => input.candidate.kind === "employee"
+  ? rpc<string>(
+      "create_employee_compensation_with_unit",
+      {
         target_school_id: input.schoolId,
         target_branch_id: input.branchId,
         target_employee_id: input.candidate.employeeId,
@@ -350,8 +351,13 @@ export const createPayrollCompensation = async (
         target_effective_from: input.effectiveFrom,
         target_effective_to: input.effectiveTo ?? null,
         target_notes: input.notes ?? null,
-      }, client)
-    : await rpc<string>("create_payroll_compensation", {
+        target_pay_unit: input.payUnit,
+      },
+      client
+    )
+  : rpc<string>(
+      "create_payroll_compensation_with_unit",
+      {
         target_school_id: input.schoolId,
         target_branch_id: input.branchId,
         target_payee_kind: input.candidate.kind,
@@ -361,15 +367,10 @@ export const createPayrollCompensation = async (
         target_effective_from: input.effectiveFrom,
         target_effective_to: input.effectiveTo ?? null,
         target_notes: input.notes ?? null,
-      }, client);
-
-  await rpc<boolean>("set_payroll_compensation_unit", {
-    target_school_id: input.schoolId,
-    target_compensation_id: compensationId,
-    target_pay_unit: input.payUnit,
-  }, client);
-  return compensationId;
-};
+        target_pay_unit: input.payUnit,
+      },
+      client
+    );
 
 export const setPayrollCompensationStatus = (
   schoolId: string,
