@@ -95,6 +95,46 @@ create trigger staff_attendance_set_updated_at
 before update on public.staff_attendance_records
 for each row execute function public.set_updated_at();
 
+create table public.staff_attendance_history (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid not null references public.schools(id) on delete cascade,
+  branch_id uuid,
+  attendance_record_id uuid not null references public.staff_attendance_records(id),
+  operation text not null check (operation in ('insert', 'update')),
+  old_values jsonb,
+  new_values jsonb not null,
+  changed_by uuid not null default auth.uid() references public.profiles(id),
+  changed_at timestamptz not null default now(),
+  constraint staff_attendance_history_branch_fk
+    foreign key (school_id, branch_id) references public.branches(school_id, id)
+);
+
+create index staff_attendance_history_record_idx
+  on public.staff_attendance_history (attendance_record_id, changed_at desc);
+
+create or replace function public.audit_staff_attendance_record()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $
+begin
+  insert into public.staff_attendance_history (
+    school_id, branch_id, attendance_record_id, operation,
+    old_values, new_values, changed_by
+  ) values (
+    new.school_id, new.branch_id, new.id,
+    case when tg_op = 'INSERT' then 'insert' else 'update' end,
+    case when tg_op = 'INSERT' then null else to_jsonb(old) end,
+    to_jsonb(new), (select auth.uid())
+  );
+  return new;
+end;
+$;
+
+revoke all on function public.audit_staff_attendance_record() from public, anon, authenticated;
+create trigger staff_attendance_audit
+after insert or update on public.staff_attendance_records
+for each row execute function public.audit_staff_attendance_record();
+
 alter table public.staff_attendance_records enable row level security;
 revoke all on public.staff_attendance_records from public, anon, authenticated;
 
@@ -383,6 +423,61 @@ begin
 end;
 $;
 
+create or replace function public.update_staff_attendance(
+  target_school_id uuid,
+  target_record_id uuid,
+  target_units numeric,
+  target_status text,
+  target_session_label text default null,
+  target_note text default null
+)
+returns boolean
+language plpgsql security definer set search_path = ''
+as $
+declare
+  target_branch_id uuid;
+  target_unit_kind text;
+begin
+  select record.branch_id, record.unit_kind
+    into target_branch_id, target_unit_kind
+  from public.staff_attendance_records as record
+  where record.school_id = target_school_id
+    and record.id = target_record_id;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'STAFF_ATTENDANCE_RECORD_NOT_FOUND';
+  end if;
+
+  if (select auth.uid()) is null
+    or not public.current_profile_is_active()
+    or not public.payroll_can_manage_scope(target_school_id, target_branch_id)
+  then
+    raise exception using errcode = '42501', message = 'STAFF_ATTENDANCE_MANAGE_REQUIRED';
+  end if;
+
+  if target_status not in ('present', 'late', 'partial', 'absent', 'excused', 'leave')
+    or target_units is null or target_units < 0 or target_units > 100
+    or (target_status in ('absent', 'leave') and target_units <> 0)
+    or (target_status in ('present', 'late', 'partial') and target_units <= 0)
+    or (target_unit_kind = 'session' and nullif(btrim(target_session_label), '') is null
+      and exists (
+        select 1 from public.staff_attendance_records as record
+        where record.school_id = target_school_id and record.id = target_record_id
+          and record.payee_kind = 'teacher'
+      ))
+  then
+    raise exception using errcode = '22023', message = 'STAFF_ATTENDANCE_INPUT_INVALID';
+  end if;
+
+  update public.staff_attendance_records
+  set units = target_units,
+      status = target_status,
+      session_label = nullif(btrim(target_session_label), ''),
+      note = nullif(btrim(target_note), '')
+  where school_id = target_school_id and id = target_record_id;
+  return found;
+end;
+$;
+
 create or replace function public.set_payroll_compensation_unit(
   target_school_id uuid,
   target_compensation_id uuid,
@@ -544,12 +639,14 @@ $$;
 revoke all on function public.list_staff_attendance_candidates(uuid, uuid) from public, anon;
 revoke all on function public.list_staff_attendance_records(uuid, uuid, date, date) from public, anon;
 revoke all on function public.record_staff_attendance(uuid, uuid, text, uuid, uuid, date, text, numeric, text, text, text) from public, anon;
+revoke all on function public.update_staff_attendance(uuid, uuid, numeric, text, text, text) from public, anon;
 revoke all on function public.create_employee_compensation_with_unit(uuid, uuid, uuid, numeric, date, date, text, text) from public, anon;
 revoke all on function public.create_payroll_compensation_with_unit(uuid, uuid, text, uuid, uuid, numeric, date, date, text, text) from public, anon;
 revoke all on function public.set_payroll_compensation_unit(uuid, uuid, text) from public, anon;
 grant execute on function public.list_staff_attendance_candidates(uuid, uuid) to authenticated;
 grant execute on function public.list_staff_attendance_records(uuid, uuid, date, date) to authenticated;
 grant execute on function public.record_staff_attendance(uuid, uuid, text, uuid, uuid, date, text, numeric, text, text, text) to authenticated;
+grant execute on function public.update_staff_attendance(uuid, uuid, numeric, text, text, text) to authenticated;
 grant execute on function public.create_employee_compensation_with_unit(uuid, uuid, uuid, numeric, date, date, text, text) to authenticated;
 grant execute on function public.create_payroll_compensation_with_unit(uuid, uuid, text, uuid, uuid, numeric, date, date, text, text) to authenticated;
 grant execute on function public.set_payroll_compensation_unit(uuid, uuid, text) to authenticated;
