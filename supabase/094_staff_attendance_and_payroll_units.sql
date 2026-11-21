@@ -290,6 +290,90 @@ begin
 end;
 $$;
 
+create or replace function public.create_employee_compensation_with_unit(
+  target_school_id uuid,
+  target_branch_id uuid,
+  target_employee_id uuid,
+  target_base_amount numeric,
+  target_effective_from date,
+  target_effective_to date,
+  target_notes text,
+  target_pay_unit text
+)
+returns uuid
+language plpgsql security definer set search_path = ''
+as $
+declare
+  created_id uuid;
+  old_values jsonb;
+begin
+  if target_pay_unit not in ('session', 'day', 'hour', 'month', 'task', 'manual') then
+    raise exception using errcode = '22023', message = 'PAYROLL_UNIT_INVALID';
+  end if;
+  created_id := public.create_employee_compensation(
+    target_school_id, target_branch_id, target_employee_id,
+    target_base_amount, target_effective_from, target_effective_to, target_notes
+  );
+  select to_jsonb(profile) into old_values
+  from public.payroll_compensation_profiles as profile
+  where profile.school_id = target_school_id and profile.id = created_id;
+  update public.payroll_compensation_profiles
+  set pay_unit = target_pay_unit
+  where school_id = target_school_id and id = created_id;
+  insert into public.payroll_audit_events (
+    school_id, entity_type, entity_id, operation, old_values, new_values, actor_profile_id
+  ) values (
+    target_school_id, 'compensation', created_id, 'status_update', old_values,
+    jsonb_build_object('pay_unit', target_pay_unit), (select auth.uid())
+  );
+  return created_id;
+end;
+$;
+
+create or replace function public.create_payroll_compensation_with_unit(
+  target_school_id uuid,
+  target_branch_id uuid,
+  target_payee_kind text,
+  target_teacher_id uuid,
+  target_membership_id uuid,
+  target_base_amount numeric,
+  target_effective_from date,
+  target_effective_to date,
+  target_notes text,
+  target_pay_unit text
+)
+returns uuid
+language plpgsql security definer set search_path = ''
+as $
+declare
+  created_id uuid;
+  old_values jsonb;
+begin
+  if target_payee_kind <> 'teacher'
+    or target_pay_unit not in ('session', 'day', 'hour', 'month', 'task', 'manual') then
+    raise exception using errcode = '22023', message = 'PAYROLL_UNIT_INVALID';
+  end if;
+  created_id := public.create_payroll_compensation(
+    target_school_id, target_branch_id, target_payee_kind,
+    target_teacher_id, target_membership_id, target_base_amount,
+    target_effective_from, target_effective_to, target_notes
+  );
+  select to_jsonb(profile) into old_values
+  from public.payroll_compensation_profiles as profile
+  where profile.school_id = target_school_id and profile.id = created_id;
+  update public.payroll_compensation_profiles
+  set pay_unit = target_pay_unit
+  where school_id = target_school_id and id = created_id;
+  insert into public.payroll_audit_events (
+    school_id, entity_type, entity_id, operation, old_values, new_values, actor_profile_id
+  ) values (
+    target_school_id, 'compensation', created_id, 'status_update', old_values,
+    jsonb_build_object('pay_unit', target_pay_unit), (select auth.uid())
+  );
+  return created_id;
+end;
+$;
+
 create or replace function public.set_payroll_compensation_unit(
   target_school_id uuid,
   target_compensation_id uuid,
@@ -451,10 +535,14 @@ $$;
 revoke all on function public.list_staff_attendance_candidates(uuid, uuid) from public, anon;
 revoke all on function public.list_staff_attendance_records(uuid, uuid, date, date) from public, anon;
 revoke all on function public.record_staff_attendance(uuid, uuid, text, uuid, uuid, date, text, numeric, text, text, text) from public, anon;
+revoke all on function public.create_employee_compensation_with_unit(uuid, uuid, uuid, numeric, date, date, text, text) from public, anon;
+revoke all on function public.create_payroll_compensation_with_unit(uuid, uuid, text, uuid, uuid, numeric, date, date, text, text) from public, anon;
 revoke all on function public.set_payroll_compensation_unit(uuid, uuid, text) from public, anon;
 grant execute on function public.list_staff_attendance_candidates(uuid, uuid) to authenticated;
 grant execute on function public.list_staff_attendance_records(uuid, uuid, date, date) to authenticated;
 grant execute on function public.record_staff_attendance(uuid, uuid, text, uuid, uuid, date, text, numeric, text, text, text) to authenticated;
+grant execute on function public.create_employee_compensation_with_unit(uuid, uuid, uuid, numeric, date, date, text, text) to authenticated;
+grant execute on function public.create_payroll_compensation_with_unit(uuid, uuid, text, uuid, uuid, numeric, date, date, text, text) to authenticated;
 grant execute on function public.set_payroll_compensation_unit(uuid, uuid, text) to authenticated;
 grant execute on function public.generate_payroll_period(uuid, uuid, date, text) to authenticated;
 
