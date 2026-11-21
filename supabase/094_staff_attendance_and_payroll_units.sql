@@ -15,6 +15,15 @@ set pay_unit = case payee_kind
 end
 where pay_unit = 'month';
 
+update public.payroll_compensation_profiles as profile
+set pay_unit = 'session'
+from public.employees as employee
+where profile.school_id = employee.school_id
+  and profile.employee_id = employee.id
+  and profile.payee_kind = 'employee'
+  and employee.job_code = 'teacher'
+  and profile.pay_unit = 'day';
+
 alter table public.payroll_compensation_profiles
   add constraint payroll_compensation_pay_unit_check
   check (pay_unit in ('session', 'day', 'hour', 'month', 'task', 'manual'));
