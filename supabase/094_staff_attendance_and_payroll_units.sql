@@ -146,7 +146,7 @@ begin
       when 'driver' then 'السائق'
       else coalesce(employee.custom_job_title, 'موظف')
     end,
-    coalesce(profile.pay_unit, 'day')
+    coalesce(profile.pay_unit, case when employee.job_code = 'teacher' then 'session' else 'day' end)
   from public.employees as employee
   left join lateral (
     select compensation.pay_unit
