@@ -365,12 +365,17 @@ export default function Payroll() {
                 عند تغيير الراتب، أنهِ سريان الإعداد القديم وأنشئ إعدادًا جديدًا
                 بتاريخ سريان جديد. لا تُعدّل التاريخ الماضي.
               </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <label className="text-xs font-bold">
                   المعلم / الإداري
                   <select
                     value={candidateKey}
-                    onChange={event => setCandidateKey(event.target.value)}
+                    onChange={event => {
+                      const nextKey = event.target.value;
+                      setCandidateKey(nextKey);
+                      const nextCandidate = workspace.candidates.find(candidate => `${candidate.kind}:${candidate.employeeId ?? candidate.teacherId ?? candidate.membershipId}` === nextKey);
+                      setPayUnit(nextCandidate?.kind === "teacher" ? "session" : nextCandidate?.kind === "employee" ? "day" : "month");
+                    }}
                     className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm"
                   >
                     <option value="">اختر...</option>
