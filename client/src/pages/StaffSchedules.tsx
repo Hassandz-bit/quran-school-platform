@@ -98,7 +98,7 @@ export default function StaffSchedules() {
       setSchedules((scheduleResult.data ?? []) as ScheduleRow[]);
       setLeaves((leaveResult.data ?? []) as LeaveRow[]);
       setClosures((closureResult.data ?? []) as ClosureRow[]);
-      setEmployeeId(current => employees.some(item => item.employeeId === current)
+      setEmployeeId(current => nextCandidates.some(item => item.payeeKind === "employee" && item.employeeId === current)
         ? current : (nextCandidates.find(item => item.payeeKind === "employee")?.employeeId ?? ""));
       setLeaveCandidateKey(current => nextCandidates.some(item =>
         `${item.payeeKind}:${item.teacherId ?? item.employeeId}` === current
