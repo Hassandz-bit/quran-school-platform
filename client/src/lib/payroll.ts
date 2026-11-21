@@ -16,6 +16,7 @@ export type PayrollCandidate = {
   name: string;
   roleLabel: string;
   payUnit?: "session" | "day" | "hour" | "month" | "task" | "manual";
+  expectedUnitsPerWeek?: number;
 };
 
 export type PayrollCompensationProfile = {
@@ -28,6 +29,7 @@ export type PayrollCompensationProfile = {
   payeeName: string;
   baseAmount: number;
   payUnit: "session" | "day" | "hour" | "month" | "task" | "manual";
+  expectedUnitsPerWeek: number;
   effectiveFrom: string;
   effectiveTo: string | null;
   status: "active" | "inactive" | "archived";
@@ -214,6 +216,7 @@ function normalizeWorkspace(data: unknown): PayrollWorkspace {
         payeeName: str(row.payee_name),
         baseAmount: num(row.base_amount),
         payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit)) ? str(row.pay_unit) : "month") as PayrollCompensationProfile["payUnit"],
+        expectedUnitsPerWeek: num(row.expected_units_per_week),
         effectiveFrom: str(row.effective_from),
         effectiveTo: nullableStr(row.effective_to),
         status: ["inactive", "archived"].includes(str(row.status))
@@ -322,6 +325,7 @@ export async function fetchPayrollWorkspace(
     name: str(row.full_name),
     roleLabel: str(row.job_label) || "موظف",
     payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit)) ? str(row.pay_unit) : row.payee_kind === "teacher" ? "session" : "day") as PayrollCandidate["payUnit"],
+    expectedUnitsPerWeek: num(row.expected_units_per_week),
   }));
   return workspace;
 }
@@ -343,6 +347,7 @@ export const createPayrollCompensation = (
     candidate: PayrollCandidate;
     baseAmount: number;
     payUnit: PayrollCompensationProfile["payUnit"];
+    expectedUnitsPerWeek: number;
     effectiveFrom: string;
     effectiveTo?: string | null;
     notes?: string | null;
@@ -360,6 +365,7 @@ export const createPayrollCompensation = (
         target_effective_to: input.effectiveTo ?? null,
         target_notes: input.notes ?? null,
         target_pay_unit: input.payUnit,
+        target_expected_units_per_week: input.expectedUnitsPerWeek,
       },
       client
     )
@@ -376,6 +382,7 @@ export const createPayrollCompensation = (
         target_effective_to: input.effectiveTo ?? null,
         target_notes: input.notes ?? null,
         target_pay_unit: input.payUnit,
+        target_expected_units_per_week: input.expectedUnitsPerWeek,
       },
       client
     );
