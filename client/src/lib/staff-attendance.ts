@@ -112,3 +112,26 @@ export async function saveStaffAttendance(
   if (error) throw error;
   return String(data);
 }
+
+export async function updateStaffAttendance(
+  input: {
+    schoolId: string;
+    recordId: string;
+    units: number;
+    status: StaffAttendanceRecord["status"];
+    sessionLabel?: string;
+    note?: string;
+  },
+  client: SupabaseClient = getSupabaseClient()
+) {
+  const { data, error } = await client.rpc("update_staff_attendance", {
+    target_school_id: input.schoolId,
+    target_record_id: input.recordId,
+    target_units: input.units,
+    target_status: input.status,
+    target_session_label: input.sessionLabel?.trim() || null,
+    target_note: input.note?.trim() || null,
+  });
+  if (error) throw error;
+  return data === true;
+}
