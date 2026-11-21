@@ -19,6 +19,10 @@ test("staff attendance is tenant and branch scoped with controlled RPC access", 
   assert.match(migration, /foreign key \(school_id, branch_id, teacher_id\)/);
   assert.match(migration, /public\.payroll_can_manage_scope\(target_school_id, target_branch_id\)/);
   assert.match(migration, /record_staff_attendance/);
+  assert.match(migration, /update_staff_attendance/);
+  assert.match(migration, /staff_attendance_history/);
+  assert.match(migration, /create_employee_compensation_with_unit/);
+  assert.match(migration, /create_payroll_compensation_with_unit/);
   assert.match(migration, /list_staff_attendance_records/);
   assert.match(migration, /revoke all on public\.staff_attendance_records from public, anon, authenticated/);
 });
