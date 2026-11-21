@@ -64,6 +64,7 @@ export default function Payroll() {
   const [candidateKey, setCandidateKey] = useState("");
   const [baseAmount, setBaseAmount] = useState("");
   const [payUnit, setPayUnit] = useState<"session" | "day" | "hour" | "month" | "task" | "manual">("session");
+  const [expectedUnitsPerWeek, setExpectedUnitsPerWeek] = useState("0");
   const [effectiveFrom, setEffectiveFrom] = useState(today);
   const [adjustments, setAdjustments] = useState<
     Record<string, AdjustmentDraft>
@@ -184,6 +185,7 @@ export default function Payroll() {
           candidate,
           baseAmount: toNumber(baseAmount),
           payUnit,
+          expectedUnitsPerWeek: toNumber(expectedUnitsPerWeek),
           effectiveFrom,
         }),
       "تم حفظ إعداد الراتب مع تاريخ سريانه."
@@ -365,7 +367,7 @@ export default function Payroll() {
                 عند تغيير الراتب، أنهِ سريان الإعداد القديم وأنشئ إعدادًا جديدًا
                 بتاريخ سريان جديد. لا تُعدّل التاريخ الماضي.
               </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
                 <label className="text-xs font-bold">
                   المعلم / الإداري
                   <select
@@ -375,6 +377,7 @@ export default function Payroll() {
                       setCandidateKey(nextKey);
                       const nextCandidate = workspace.candidates.find(candidate => `${candidate.kind}:${candidate.employeeId ?? candidate.teacherId ?? candidate.membershipId}` === nextKey);
                       setPayUnit(nextCandidate?.payUnit ?? (nextCandidate?.kind === "teacher" ? "session" : nextCandidate?.kind === "employee" ? "day" : "month"));
+                      setExpectedUnitsPerWeek(String(nextCandidate?.expectedUnitsPerWeek ?? 0));
                     }}
                     className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm"
                   >
@@ -401,6 +404,10 @@ export default function Payroll() {
                     <option value="task">حسب المهمة</option>
                     <option value="manual">مبلغ يدوي ثابت</option>
                   </select>
+                </label>
+                <label className="text-xs font-bold">
+                  الدوام الأسبوعي المتوقع (عدد الوحدات)
+                  <Input type="number" min="0" max="100" step="0.5" value={expectedUnitsPerWeek} onChange={event => setExpectedUnitsPerWeek(event.target.value)} className="mt-1" />
                 </label>
                 <label className="text-xs font-bold">
                   قيمة الوحدة (دج)
@@ -596,6 +603,7 @@ function CompensationHistory({
               <p className="text-xs text-[#718377]">
                 {profile.payUnit === "session" ? "لكل حصة" : profile.payUnit === "day" ? "لكل يوم" : profile.payUnit === "hour" ? "لكل ساعة" : profile.payUnit === "task" ? "لكل مهمة" : profile.payUnit === "manual" ? "مبلغ ثابت" : "راتب شهري"}
               </p>
+              <p className="text-xs text-[#718377]">الدوام المتوقع أسبوعيًا: {profile.expectedUnitsPerWeek || "غير محدد"} {profile.payUnit === "session" ? "حصة" : profile.payUnit === "hour" ? "ساعة" : profile.payUnit === "task" ? "مهمة" : "يوم/وحدة"}</p>
               {workspace.canManage &&
                 profile.status === "active" &&
                 schoolId && (
