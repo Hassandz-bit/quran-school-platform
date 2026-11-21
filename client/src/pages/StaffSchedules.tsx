@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, CalendarOff, Plus, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarOff, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import StaffPayrollNavigation from "@/components/StaffPayrollNavigation";
 import { Button } from "@/components/ui/button";
@@ -270,7 +270,7 @@ export default function StaffSchedules() {
             </label>
             <label className="text-xs font-bold">{en ? "Leave type" : "نوع الإجازة"}<select value={leaveType} onChange={event => setLeaveType(event.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm">{Object.entries(leaveLabels).map(([key,value]) => <option key={key} value={key}>{en ? key : value}</option>)}</select></label>
             <label className="text-xs font-bold">{en ? "From" : "من"}<Input className="mt-1" type="date" value={leaveStart} onChange={event => setLeaveStart(event.target.value)} /></label>
-            <label className="text-xs font-bold">{en ? "To" : "إلى"}<Input className="mt-1" type="date" value={leaveEnd} onChange={event => setLeaveEnd(event.target.value} /></label>
+            <label className="text-xs font-bold">{en ? "To" : "إلى"}<Input className="mt-1" type="date" value={leaveEnd} onChange={event => setLeaveEnd(event.target.value)} /></label>
             <label className="text-xs font-bold sm:col-span-3">{en ? "Notes" : "ملاحظة"}<Input className="mt-1" maxLength={500} value={leaveNote} onChange={event => setLeaveNote(event.target.value)} /></label>
             <Button type="button" onClick={() => void saveLeave()} disabled={saving || !selectedLeaveCandidate || !leaveStart || !leaveEnd} className="self-end gap-2"><Plus className="size-4" />{en ? "Save leave" : "حفظ الإجازة"}</Button>
           </div>
