@@ -229,7 +229,8 @@ export default function StaffAttendance() {
             </label>
             <div className="flex items-end gap-2"><Button type="button" onClick={() => void submit()} disabled={saving || !selectedCandidate} className="gap-2"><Save className="size-4" />{editingRecordId ? "حفظ التصحيح" : "حفظ السجل"}</Button>{editingRecordId ? <Button type="button" variant="outline" onClick={cancelEdit}>إلغاء التعديل</Button> : null}</div>
           </div>
-          <p className="mt-3 text-xs text-[#718377]">يُسجل الغياب والإجازة بصفر وحدة مستحقة. أما الغياب المبرر فيمكن للإدارة تحديد الوحدات المستحقة له يدويًا.</p>
+          {selectedCandidate ? <p className="mt-3 text-xs text-[#718377]">الدوام المتوقع أسبوعيًا: {selectedCandidate.expectedUnitsPerWeek || "غير محدد"} {unitLabels[unitKind]}</p> : null}
+          <p className="mt-2 text-xs text-[#718377]">يُسجل الغياب والإجازة بصفر وحدة مستحقة. أما الغياب المبرر فيمكن للإدارة تحديد الوحدات المستحقة له يدويًا.</p>
         </Card>
       ) : (
         <Card className="p-4 text-sm text-amber-800">تحتاج إلى صلاحية إدارة الرواتب في هذا النطاق لتسجيل الحضور والغياب.</Card>
