@@ -402,7 +402,7 @@ function Router() {
         <Route path="/staff/attendance">
           <FinanceRoute><Shell><StaffAttendance /></Shell></FinanceRoute>
         </Route>
-        <Route path="/staff/payroll/history">
+        <Route path="/staff/schedules">\n          <FinanceRoute><Shell><StaffSchedules /></Shell></FinanceRoute>\n        </Route>\n        <Route path="/staff/payroll/history">
           <FinanceRoute><Shell><PayrollHistory /></Shell></FinanceRoute>
         </Route>
         <Route path="/staff/payroll">
