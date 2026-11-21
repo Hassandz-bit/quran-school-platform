@@ -300,7 +300,22 @@ export async function fetchPayrollWorkspace(
     target_period_month: periodMonth,
   });
   if (error) throw error;
-  return normalizeWorkspace(data);
+  const workspace = normalizeWorkspace(data);
+  const { data: staffRows, error: staffError } = await client.rpc("list_staff_attendance_candidates", {
+    target_school_id: schoolId,
+    target_branch_id: branchId,
+  });
+  if (staffError) throw staffError;
+  workspace.candidates = ((staffRows ?? []) as JsonRow[]).map(row => ({
+    kind: row.payee_kind === "teacher" ? "teacher" : "employee",
+    teacherId: nullableStr(row.teacher_id),
+    membershipId: null,
+    employeeId: nullableStr(row.employee_id),
+    branchId: nullableStr(row.branch_id),
+    name: str(row.full_name),
+    roleLabel: str(row.job_label) || "موظف",
+  }));
+  return workspace;
 }
 
 async function rpc<T>(
