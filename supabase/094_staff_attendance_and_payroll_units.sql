@@ -1,6 +1,6 @@
 -- QuranOS: staff attendance and unit-based payroll
 -- Migration 094: teachers are paid per completed session by default; employees per attended day.
--- V2 review migration only. Do not apply to Production until the release gate is approved.
+-- Existing compensation records are preserved; unit conversion is explicit per new profile.
 -- Monthly, hourly, task-based and manual compensation remain configurable per person.
 
 begin;
@@ -12,23 +12,8 @@ alter table public.payroll_compensation_profiles
   add constraint payroll_compensation_expected_units_per_week_check
   check (expected_units_per_week between 0 and 100);
 
-update public.payroll_compensation_profiles
-set pay_unit = case payee_kind
-  when 'teacher' then 'session'
-  when 'employee' then 'day'
-  else 'month'
-end
-where pay_unit = 'month';
-
-update public.payroll_compensation_profiles as profile
-set pay_unit = 'session'
-from public.employees as employee
-where profile.school_id = employee.school_id
-  and profile.employee_id = employee.id
-  and profile.payee_kind = 'employee'
-  and employee.job_code = 'teacher'
-  and profile.pay_unit = 'day';
-
+-- Preserve all existing compensation profiles as monthly until an administrator
+-- explicitly changes their unit. New profiles default from the selected staff member.
 alter table public.payroll_compensation_profiles
   add constraint payroll_compensation_pay_unit_check
   check (pay_unit in ('session', 'day', 'hour', 'month', 'task', 'manual'));
