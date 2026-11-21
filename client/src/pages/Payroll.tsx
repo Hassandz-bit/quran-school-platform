@@ -374,7 +374,7 @@ export default function Payroll() {
                       const nextKey = event.target.value;
                       setCandidateKey(nextKey);
                       const nextCandidate = workspace.candidates.find(candidate => `${candidate.kind}:${candidate.employeeId ?? candidate.teacherId ?? candidate.membershipId}` === nextKey);
-                      setPayUnit(nextCandidate?.kind === "teacher" ? "session" : nextCandidate?.kind === "employee" ? "day" : "month");
+                      setPayUnit(nextCandidate?.payUnit ?? (nextCandidate?.kind === "teacher" ? "session" : nextCandidate?.kind === "employee" ? "day" : "month"));
                     }}
                     className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm"
                   >
