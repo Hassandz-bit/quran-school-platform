@@ -9,6 +9,7 @@ export type StaffAttendanceCandidate = {
   fullName: string;
   jobLabel: string;
   payUnit: "session" | "day" | "hour" | "month" | "task" | "manual";
+  expectedUnitsPerWeek: number;
 };
 
 export type StaffAttendanceRecord = {
@@ -50,6 +51,7 @@ export async function fetchStaffAttendanceCandidates(
     payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit))
       ? str(row.pay_unit)
       : row.payee_kind === "teacher" ? "session" : "day") as StaffAttendanceCandidate["payUnit"],
+    expectedUnitsPerWeek: num(row.expected_units_per_week),
   }));
 }
 
