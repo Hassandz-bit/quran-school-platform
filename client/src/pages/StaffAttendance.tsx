@@ -75,7 +75,9 @@ export default function StaffAttendance() {
       ]);
       setCandidates(nextCandidates);
       setRecords(nextRecords);
-      setCandidateKey(current => current || (nextCandidates[0]
+      setCandidateKey(current => nextCandidates.some(candidate =>
+        `${candidate.payeeKind}:${candidate.teacherId ?? candidate.employeeId}` === current
+      ) ? current : (nextCandidates[0]
         ? `${nextCandidates[0].payeeKind}:${nextCandidates[0].teacherId ?? nextCandidates[0].employeeId}`
         : ""));
     } catch (error) {
