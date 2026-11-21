@@ -638,6 +638,112 @@ begin
 end;
 $$;
 
+create or replace function public.get_staff_payroll_workspace(
+  target_school_id uuid,
+  target_branch_id uuid default null,
+  target_period_month date default date_trunc('month', current_date)::date
+)
+returns jsonb
+language plpgsql stable security definer set search_path = ''
+as $
+declare
+  can_manage boolean;
+  result jsonb;
+begin
+  if (select auth.uid()) is null
+    or not public.current_profile_is_active()
+    or not public.payroll_can_view_scope(target_school_id, target_branch_id)
+  then
+    raise exception using errcode = '42501', message = 'PAYROLL_VIEW_REQUIRED';
+  end if;
+  if target_period_month is null
+    or target_period_month <> date_trunc('month', target_period_month)::date
+  then
+    raise exception using errcode = '22023', message = 'PAYROLL_PERIOD_MONTH_INVALID';
+  end if;
+  can_manage := public.payroll_can_manage_scope(target_school_id, target_branch_id);
+
+  select jsonb_build_object(
+    'can_manage', can_manage,
+    'profiles', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', profile.id, 'branch_id', profile.branch_id,
+        'payee_kind', profile.payee_kind, 'teacher_id', profile.teacher_id,
+        'membership_id', profile.membership_id, 'employee_id', profile.employee_id,
+        'payee_name', coalesce(employee.full_name,
+          btrim(concat_ws(' ', teacher.first_name, teacher.last_name)), member_profile.full_name),
+        'base_amount', profile.base_amount, 'pay_unit', profile.pay_unit, 'effective_from', profile.effective_from,
+        'effective_to', profile.effective_to, 'status', profile.status, 'notes', profile.notes
+      ) order by profile.effective_from desc)
+      from public.payroll_compensation_profiles as profile
+      left join public.employees as employee
+        on profile.payee_kind = 'employee' and employee.school_id = profile.school_id and employee.id = profile.employee_id
+      left join public.teachers as teacher
+        on profile.payee_kind = 'teacher' and teacher.school_id = profile.school_id and teacher.id = profile.teacher_id
+      left join public.school_memberships as membership
+        on profile.payee_kind = 'member' and membership.school_id = profile.school_id and membership.id = profile.membership_id
+      left join public.profiles as member_profile on member_profile.id = membership.profile_id
+      where profile.school_id = target_school_id
+        and profile.branch_id is not distinct from target_branch_id
+    ), '[]'::jsonb),
+    'candidates', case when can_manage then coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'kind', 'employee', 'employee_id', employee.id,
+        'teacher_id', null, 'membership_id', null,
+        'branch_id', employee.branch_id, 'name', employee.full_name,
+        'role_label', case employee.job_code
+          when 'manager' then 'المدير' when 'deputy_manager' then 'نائب المدير'
+          when 'bursar' then 'المقتصد' when 'teacher' then 'المعلم'
+          when 'guard' then 'الحارس' when 'cleaner' then 'عامل النظافة'
+          when 'driver' then 'السائق' else employee.custom_job_title end
+      ) order by employee.full_name)
+      from public.employees as employee
+      where employee.school_id = target_school_id
+        and employee.branch_id is not distinct from target_branch_id
+        and employee.status = 'active'
+    ), '[]'::jsonb) else '[]'::jsonb end,
+    'periods', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', period.id, 'branch_id', period.branch_id,
+        'period_month', period.period_month, 'status', period.status,
+        'approved_at', period.approved_at, 'closed_at', period.closed_at,
+        'cancelled_at', period.cancelled_at,
+        'entry_count', (select count(*) from public.payroll_entries as entry where entry.period_id = period.id),
+        'net_total', (select coalesce(sum(entry.net_amount), 0) from public.payroll_entries as entry where entry.period_id = period.id and entry.status <> 'cancelled'),
+        'paid_total', (select coalesce(sum(payment.amount), 0) from public.payroll_payments as payment join public.payroll_entries as entry on entry.id = payment.payroll_entry_id where entry.period_id = period.id and payment.status = 'completed')
+      ) order by period.period_month desc)
+      from public.payroll_periods as period
+      where period.school_id = target_school_id
+        and period.branch_id is not distinct from target_branch_id
+        and period.period_month >= (target_period_month - interval '11 months')::date
+    ), '[]'::jsonb),
+    'entries', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', entry.id, 'period_id', entry.period_id,
+        'payee_kind', entry.payee_kind, 'teacher_id', entry.teacher_id,
+        'membership_id', entry.membership_id, 'employee_id', entry.employee_id,
+        'payee_name', entry.payee_name_snapshot, 'role_label', entry.payee_role_snapshot,
+        'base_amount', entry.base_amount, 'pay_unit', entry.pay_unit_snapshot, 'unit_rate', entry.unit_rate_snapshot, 'units_count', entry.units_count_snapshot, 'additions', entry.additions,
+        'deductions', entry.deductions, 'advances', entry.advances,
+        'net_amount', entry.net_amount, 'status', entry.status,
+        'payment', (select jsonb_build_object(
+          'id', payment.id, 'amount', payment.amount,
+          'payment_method', payment.payment_method, 'payment_date', payment.payment_date,
+          'reference_number', payment.reference_number, 'status', payment.status
+        ) from public.payroll_payments as payment
+          where payment.payroll_entry_id = entry.id and payment.status = 'completed' limit 1)
+      ) order by entry.payee_name_snapshot)
+      from public.payroll_entries as entry
+      join public.payroll_periods as period on period.id = entry.period_id
+      where entry.school_id = target_school_id
+        and entry.branch_id is not distinct from target_branch_id
+        and period.period_month = target_period_month
+    ), '[]'::jsonb)
+  ) into result;
+  return result;
+end;
+$;
+
 revoke all on function public.list_staff_attendance_candidates(uuid, uuid) from public, anon;
 revoke all on function public.list_staff_attendance_records(uuid, uuid, date, date) from public, anon;
 revoke all on function public.record_staff_attendance(uuid, uuid, text, uuid, uuid, date, text, numeric, text, text, text) from public, anon;
