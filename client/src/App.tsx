@@ -57,7 +57,7 @@ const Payments = lazy(() => import("./pages/Payments"));
 const Employees = lazy(() => import("./pages/Employees"));
 const Payroll = lazy(() => import("./pages/Payroll"));
 const PayrollHistory = lazy(() => import("./pages/PayrollHistory"));
-const StaffAttendance = lazy(() => import("./pages/StaffAttendance"));
+const StaffAttendance = lazy(() => import("./pages/StaffAttendance"));\nconst StaffSchedules = lazy(() => import("./pages/StaffSchedules"));
 const Treasury = lazy(() => import("./pages/Treasury"));
 const TreasuryReconciliation = lazy(() => import("./pages/TreasuryReconciliation"));
 const Expenses = lazy(() => import("./pages/Expenses"));
