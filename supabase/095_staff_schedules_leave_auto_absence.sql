@@ -1,7 +1,7 @@
 -- QuranOS: staff weekly schedules, leave and school closures, and safe automatic absence marking.
 begin;
 
-create table if not exists public.employee_work_schedules (
+-- Automated records are system-generated and therefore have no interactive user actor.\nalter table public.staff_attendance_records alter column recorded_by drop not null;\nalter table public.staff_attendance_history alter column changed_by drop not null;\n\ncreate table if not exists public.employee_work_schedules (
   id uuid primary key default gen_random_uuid(),
   school_id uuid not null references public.schools(id) on delete cascade,
   branch_id uuid,
