@@ -122,7 +122,7 @@ revoke all on public.staff_attendance_history from public, anon, authenticated;
 create or replace function public.audit_staff_attendance_record()
 returns trigger
 language plpgsql security definer set search_path = ''
-as $
+as $$
 begin
   insert into public.staff_attendance_history (
     school_id, branch_id, attendance_record_id, operation,
@@ -135,7 +135,7 @@ begin
   );
   return new;
 end;
-$;
+$$;
 
 revoke all on function public.audit_staff_attendance_record() from public, anon, authenticated;
 create trigger staff_attendance_audit
@@ -208,7 +208,7 @@ begin
     coalesce(profile.expected_units_per_week, 0)
   from public.employees as employee
   left join lateral (
-    select compensation.pay_unit
+    select compensation.pay_unit, compensation.expected_units_per_week
     from public.payroll_compensation_profiles as compensation
     where compensation.school_id = employee.school_id
       and compensation.payee_kind = 'employee'
@@ -362,7 +362,7 @@ create or replace function public.create_employee_compensation_with_unit(
 )
 returns uuid
 language plpgsql security definer set search_path = ''
-as $
+as $$
 declare
   created_id uuid;
   old_values jsonb;
@@ -391,7 +391,7 @@ begin
   );
   return created_id;
 end;
-$;
+$$;
 
 create or replace function public.create_payroll_compensation_with_unit(
   target_school_id uuid,
@@ -403,17 +403,20 @@ create or replace function public.create_payroll_compensation_with_unit(
   target_effective_from date,
   target_effective_to date,
   target_notes text,
-  target_pay_unit text
+  target_pay_unit text,
+  target_expected_units_per_week numeric
 )
 returns uuid
 language plpgsql security definer set search_path = ''
-as $
+as $$
 declare
   created_id uuid;
   old_values jsonb;
 begin
   if target_payee_kind <> 'teacher'
-    or target_pay_unit not in ('session', 'day', 'hour', 'month', 'task', 'manual') then
+    or target_pay_unit not in ('session', 'day', 'hour', 'month', 'task', 'manual')
+    or target_expected_units_per_week is null
+    or target_expected_units_per_week not between 0 and 100 then
     raise exception using errcode = '22023', message = 'PAYROLL_UNIT_INVALID';
   end if;
   created_id := public.create_payroll_compensation(
@@ -425,17 +428,18 @@ begin
   from public.payroll_compensation_profiles as profile
   where profile.school_id = target_school_id and profile.id = created_id;
   update public.payroll_compensation_profiles
-  set pay_unit = target_pay_unit
+  set pay_unit = target_pay_unit,
+      expected_units_per_week = target_expected_units_per_week
   where school_id = target_school_id and id = created_id;
   insert into public.payroll_audit_events (
     school_id, entity_type, entity_id, operation, old_values, new_values, actor_profile_id
   ) values (
     target_school_id, 'compensation', created_id, 'status_update', old_values,
-    jsonb_build_object('pay_unit', target_pay_unit), (select auth.uid())
+    jsonb_build_object('pay_unit', target_pay_unit, 'expected_units_per_week', target_expected_units_per_week), (select auth.uid())
   );
   return created_id;
 end;
-$;
+$$;
 
 create or replace function public.update_staff_attendance(
   target_school_id uuid,
@@ -447,7 +451,7 @@ create or replace function public.update_staff_attendance(
 )
 returns boolean
 language plpgsql security definer set search_path = ''
-as $
+as $$
 declare
   target_branch_id uuid;
   target_unit_kind text;
@@ -490,7 +494,7 @@ begin
   where school_id = target_school_id and id = target_record_id;
   return found;
 end;
-$;
+$$;
 
 create or replace function public.set_payroll_compensation_unit(
   target_school_id uuid,
@@ -657,7 +661,7 @@ create or replace function public.get_staff_payroll_workspace(
 )
 returns jsonb
 language plpgsql stable security definer set search_path = ''
-as $
+as $$
 declare
   can_manage boolean;
   result jsonb;
@@ -754,7 +758,7 @@ begin
   ) into result;
   return result;
 end;
-$;
+$$;
 
 revoke all on function public.list_staff_attendance_candidates(uuid, uuid) from public, anon;
 revoke all on function public.list_staff_attendance_records(uuid, uuid, date, date) from public, anon;
