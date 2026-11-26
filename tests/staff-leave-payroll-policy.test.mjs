@@ -58,6 +58,10 @@ test("snapshots leave units and deductions and exposes them on the payslip", () 
   assert.match(calculationMigration, /paid_leave_units_snapshot/);
   assert.match(calculationMigration, /unpaid_leave_units_snapshot/);
   assert.match(calculationMigration, /leave_deduction_amount_snapshot/);
+  assert.match(calculationMigration, /'scheduled_units_snapshot', entry\.scheduled_units_snapshot/);
+  assert.match(calculationMigration, /'paid_leave_units_snapshot', entry\.paid_leave_units_snapshot/);
+  assert.match(calculationMigration, /'unpaid_leave_units_snapshot', entry\.unpaid_leave_units_snapshot/);
+  assert.match(calculationMigration, /'leave_deduction_amount_snapshot', entry\.leave_deduction_amount_snapshot/);
   assert.match(payrollClient, /paidLeaveUnitsSnapshot: num\(row\.paid_leave_units_snapshot\)/);
   assert.match(payrollClient, /leaveDeductionAmountSnapshot: num\(row\.leave_deduction_amount_snapshot\)/);
   assert.match(payrollPage, /الإجازة:/);
