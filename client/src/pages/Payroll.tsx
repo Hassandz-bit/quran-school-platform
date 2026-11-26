@@ -810,6 +810,16 @@ function PayrollEntryRow({
       <td className="p-3">
         <b>{entry.unitsCount} {({ session: "حصة", day: "يوم", hour: "ساعة", month: "شهر", task: "مهمة", manual: "مبلغ ثابت" })[entry.payUnit]}</b>
         <p className="text-xs text-[#718377]">سعر الوحدة: {formatDzd(entry.unitRate)}</p>
+        {entry.scheduledUnitsSnapshot > 0 && (entry.paidLeaveUnitsSnapshot > 0 || entry.unpaidLeaveUnitsSnapshot > 0) ? (
+          <p className="mt-1 text-xs text-[#607368]">
+            الإجازة: {entry.paidLeaveUnitsSnapshot} مدفوعة · {entry.unpaidLeaveUnitsSnapshot} غير مدفوعة من {entry.scheduledUnitsSnapshot} وحدة مجدولة
+          </p>
+        ) : null}
+        {entry.leaveDeductionAmountSnapshot > 0 ? (
+          <p className="mt-1 text-xs font-semibold text-[#A33B32]">
+            خصم الإجازة: {formatDzd(entry.leaveDeductionAmountSnapshot)}
+          </p>
+        ) : null}
       </td>
       <td className="p-3 font-semibold">{formatDzd(entry.baseAmount)}</td>
       {(["additions", "deductions", "advances"] as const).map(field => (
