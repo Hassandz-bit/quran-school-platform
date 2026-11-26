@@ -71,6 +71,10 @@ export type PayrollEntry = {
   payUnit: "session" | "day" | "hour" | "month" | "task" | "manual";
   unitRate: number;
   unitsCount: number;
+  scheduledUnitsSnapshot: number;
+  paidLeaveUnitsSnapshot: number;
+  unpaidLeaveUnitsSnapshot: number;
+  leaveDeductionAmountSnapshot: number;
   additions: number;
   deductions: number;
   advances: number;
@@ -276,6 +280,10 @@ function normalizeWorkspace(data: unknown): PayrollWorkspace {
         payUnit: (["session", "day", "hour", "month", "task", "manual"].includes(str(row.pay_unit)) ? str(row.pay_unit) : "month") as PayrollEntry["payUnit"],
         unitRate: num(row.unit_rate),
         unitsCount: num(row.units_count),
+        scheduledUnitsSnapshot: num(row.scheduled_units_snapshot),
+        paidLeaveUnitsSnapshot: num(row.paid_leave_units_snapshot),
+        unpaidLeaveUnitsSnapshot: num(row.unpaid_leave_units_snapshot),
+        leaveDeductionAmountSnapshot: num(row.leave_deduction_amount_snapshot),
         additions: num(row.additions),
         deductions: num(row.deductions),
         advances: num(row.advances),
