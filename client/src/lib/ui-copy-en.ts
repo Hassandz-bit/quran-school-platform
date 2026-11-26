@@ -2361,4 +2361,13 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "الحلقة / الحصة": "Class / session",
   "اختر الحلقة المجدولة...": "Choose the scheduled class...",
   "اكتب اسم الحلقة كما يظهر في جدول الدوام": "Enter the class name exactly as shown in the timetable",
+
+  // Staff leave payroll policies
+  "مدفوعة الأجر": "Paid leave",
+  "غير مدفوعة": "Unpaid leave",
+  "مدفوعة جزئيًا": "Partially paid",
+  "لم تحدد بعد": "Not selected yet",
+  "طريقة احتساب الأجر": "Pay treatment",
+  "اختر السياسة المالية": "Choose pay policy",
+  "نسبة الأجر المستحق %": "Payable percentage %",
 };
