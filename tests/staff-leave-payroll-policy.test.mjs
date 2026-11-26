@@ -51,7 +51,7 @@ test("prorates monthly compensation only and leaves manual amounts unchanged", (
   assert.match(calculationMigration, /STAFF_LEAVE_PAY_POLICY_REQUIRED/);
   assert.match(calculationMigration, /STAFF_LEAVE_SCHEDULE_REQUIRED/);
   assert.match(calculationMigration, /profile\.pay_unit = 'month' and leave_adjustment\.unpaid_leave_units>0/);
-  assert.match(calculationMigration, /profile\.pay_unit = 'manual' then 1::numeric/);
+  assert.match(calculationMigration, /else 1::numeric\s+end as amount_factor/);
   assert.match(calculationMigration, /profile\.pay_unit <> 'manual'/);
   assert.match(calculationMigration, /profile\.pay_unit = 'month' then greatest\(0::numeric,1-/);
   assert.match(calculationMigration, /not exists \([\s\S]*from public\.staff_leave_periods leave/);
