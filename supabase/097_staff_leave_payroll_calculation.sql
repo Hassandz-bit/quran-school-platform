@@ -1,6 +1,12 @@
 -- QuranOS: apply admin-selected leave pay treatment to generated payroll snapshots.
 begin;
 
+alter table public.payroll_entries
+  add column if not exists scheduled_units_snapshot numeric not null default 0,
+  add column if not exists paid_leave_units_snapshot numeric not null default 0,
+  add column if not exists unpaid_leave_units_snapshot numeric not null default 0,
+  add column if not exists leave_deduction_amount_snapshot numeric not null default 0;
+
 create or replace function public.staff_leave_payroll_adjustment(
   target_school_id uuid,
   target_branch_id uuid,
@@ -182,7 +188,9 @@ begin
     school_id, branch_id, period_id, compensation_profile_id,
     payee_kind, teacher_id, membership_id, employee_id,
     payee_name_snapshot, payee_role_snapshot, base_amount,
-    pay_unit_snapshot, unit_rate_snapshot, units_count_snapshot, created_by
+    pay_unit_snapshot, unit_rate_snapshot, units_count_snapshot,
+    scheduled_units_snapshot, paid_leave_units_snapshot, unpaid_leave_units_snapshot,
+    leave_deduction_amount_snapshot, created_by
   )
   select profile.school_id, profile.branch_id, generated_period_id, profile.id,
     profile.payee_kind, profile.teacher_id, profile.membership_id, profile.employee_id,
@@ -205,7 +213,13 @@ begin
       else 'إداري/موظف'
     end,
     profile.base_amount * calculated.units_count * calculated.amount_factor,
-    profile.pay_unit, profile.base_amount, calculated.units_count, (select auth.uid())
+    profile.pay_unit, profile.base_amount, calculated.units_count,
+    leave_adjustment.scheduled_units, leave_adjustment.paid_leave_units,
+    leave_adjustment.unpaid_leave_units,
+    case when profile.pay_unit in ('month','manual') and leave_adjustment.unpaid_leave_units>0
+      then profile.base_amount * (leave_adjustment.unpaid_leave_units/nullif(leave_adjustment.scheduled_units,0))
+      else 0::numeric end,
+    (select auth.uid())
   from public.payroll_compensation_profiles as profile
   left join public.teachers as teacher
     on profile.payee_kind = 'teacher'
