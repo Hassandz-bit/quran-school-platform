@@ -40,6 +40,8 @@ test("joins duwam before reading its schedule fields in the teacher schedule que
 test("calculates variable-unit leave pay from the assigned schedule", () => {
   assert.match(calculationMigration, /staff_leave_payroll_adjustment/);
   assert.match(calculationMigration, /schedule\.unit_kind=target_pay_unit/);
+  assert.match(calculationMigration, /when target_pay_unit='day' then 1::numeric/);
+  assert.match(calculationMigration, /when target_pay_unit='hour' then sum/);
   assert.match(calculationMigration, /when pay_treatment='paid' then units/);
   assert.match(calculationMigration, /when pay_treatment='partial' then units\*paid_percentage\/100/);
   assert.match(calculationMigration, /leave_adjustment\.paid_leave_units/);
