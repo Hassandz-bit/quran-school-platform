@@ -3,10 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [policyMigration, calculationMigration, schedulesPage] = await Promise.all([
+const [policyMigration, calculationMigration, schedulesPage, payrollPage, payrollClient] = await Promise.all([
   read("supabase/096_staff_leave_payroll_policy.sql"),
   read("supabase/097_staff_leave_payroll_calculation.sql"),
   read("client/src/pages/StaffSchedules.tsx"),
+  read("client/src/pages/Payroll.tsx"),
+  read("client/src/lib/payroll.ts"),
 ]);
 
 test("requires administrators to choose a payroll treatment for each new leave", () => {
@@ -49,4 +51,15 @@ test("prorates monthly and manual compensation and prevents silent policy gaps",
   assert.match(calculationMigration, /leave_adjustment\.unpaid_leave_units\/nullif\(leave_adjustment\.scheduled_units,0\)/);
   assert.match(calculationMigration, /not exists \([\s\S]*from public\.staff_leave_periods leave/);
   assert.match(calculationMigration, /grant execute on function public\.generate_payroll_period/);
+});
+
+test("snapshots leave units and deductions and exposes them on the payslip", () => {
+  assert.match(calculationMigration, /scheduled_units_snapshot/);
+  assert.match(calculationMigration, /paid_leave_units_snapshot/);
+  assert.match(calculationMigration, /unpaid_leave_units_snapshot/);
+  assert.match(calculationMigration, /leave_deduction_amount_snapshot/);
+  assert.match(payrollClient, /paidLeaveUnitsSnapshot: num\(row\.paid_leave_units_snapshot\)/);
+  assert.match(payrollClient, /leaveDeductionAmountSnapshot: num\(row\.leave_deduction_amount_snapshot\)/);
+  assert.match(payrollPage, /الإجازة:/);
+  assert.match(payrollPage, /خصم الإجازة:/);
 });
