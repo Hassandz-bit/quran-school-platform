@@ -3,9 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = path => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [policyMigration, calculationMigration, schedulesPage, payrollPage, payrollClient] = await Promise.all([
+const [policyMigration, calculationMigration, manualMigration, schedulesPage, payrollPage, payrollClient] = await Promise.all([
   read("supabase/096_staff_leave_payroll_policy.sql"),
   read("supabase/097_staff_leave_payroll_calculation.sql"),
+  read("supabase/098_manual_pay_unit_leave_handling.sql"),
   read("client/src/pages/StaffSchedules.tsx"),
   read("client/src/pages/Payroll.tsx"),
   read("client/src/lib/payroll.ts"),
@@ -47,10 +48,14 @@ test("calculates variable-unit leave pay from the assigned schedule", () => {
   assert.match(calculationMigration, /leave_adjustment\.paid_leave_units/);
 });
 
-test("prorates monthly and manual compensation and prevents silent policy gaps", () => {
+test("prorates monthly compensation only and leaves manual amounts unchanged", () => {
   assert.match(calculationMigration, /STAFF_LEAVE_PAY_POLICY_REQUIRED/);
   assert.match(calculationMigration, /STAFF_LEAVE_SCHEDULE_REQUIRED/);
-  assert.match(calculationMigration, /leave_adjustment\.unpaid_leave_units\/nullif\(leave_adjustment\.scheduled_units,0\)/);
+  assert.match(manualMigration, /profile\.pay_unit = 'month' and leave_adjustment\.unpaid_leave_units>0/);
+  assert.match(manualMigration, /else 1::numeric\s+end as amount_factor/);
+  assert.match(manualMigration, /profile\.pay_unit <> 'manual'/);
+  assert.match(manualMigration, /profile\.pay_unit = 'month' and leave_adjustment\.unpaid_leave_units>0\s+then greatest\(0::numeric,1-/);
+  assert.match(manualMigration, /manual compensation is an administrator-entered amount/);
   assert.match(calculationMigration, /not exists \([\s\S]*from public\.staff_leave_periods leave/);
   assert.match(calculationMigration, /grant execute on function public\.generate_payroll_period/);
 });
