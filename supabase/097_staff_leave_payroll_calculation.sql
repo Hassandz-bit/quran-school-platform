@@ -38,8 +38,6 @@ as $$
       on class.school_id=target_school_id
      and class.branch_id is not distinct from target_branch_id
      and class.status='active'
-     and coalesce(class.start_time,duwam.start_time) is not null
-     and coalesce(class.end_time,duwam.end_time) is not null
     join public.class_teachers assignment
       on assignment.school_id=class.school_id
      and assignment.branch_id=class.branch_id
@@ -56,6 +54,8 @@ as $$
         else coalesce(duwam.study_days,'{}'::text[]) end
     ) as study_day(day_name)
     where target_payee_kind='teacher'
+      and coalesce(class.start_time,duwam.start_time) is not null
+      and coalesce(class.end_time,duwam.end_time) is not null
       and (target_pay_unit in ('month','manual') or target_pay_unit='session')
       and study_day.day_name=case extract(dow from d.work_date)::integer
         when 0 then 'sunday' when 1 then 'monday' when 2 then 'tuesday'
