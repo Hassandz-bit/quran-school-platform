@@ -28,6 +28,13 @@ test("surfaces the selected payroll treatment and percentage in the leave list",
   assert.match(schedulesPage, /row\.paid_percentage/);
 });
 
+test("joins duwam before reading its schedule fields in the teacher schedule query", () => {
+  const classJoin = calculationMigration.indexOf("join public.classes class");
+  const duwamJoin = calculationMigration.indexOf("left join public.duwams duwam");
+  const timeUse = calculationMigration.indexOf("coalesce(class.start_time,duwam.start_time)");
+  assert.ok(classJoin >= 0 && duwamJoin > classJoin && timeUse > duwamJoin);
+});
+
 test("calculates variable-unit leave pay from the assigned schedule", () => {
   assert.match(calculationMigration, /staff_leave_payroll_adjustment/);
   assert.match(calculationMigration, /schedule\.unit_kind=target_pay_unit/);
