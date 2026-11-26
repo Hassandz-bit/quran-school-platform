@@ -38,7 +38,14 @@ as $$
 
     union all
 
-    select d.work_date, 1::numeric as units
+    select d.work_date,
+      case
+        when target_pay_unit='day' then 1::numeric
+        when target_pay_unit='hour' then sum(
+          extract(epoch from (coalesce(class.end_time,duwam.end_time)-coalesce(class.start_time,duwam.start_time)))/3600
+        )::numeric
+        else count(*)::numeric
+      end as units
     from days d
     join public.classes class
       on class.school_id=target_school_id
@@ -62,11 +69,12 @@ as $$
     where target_payee_kind='teacher'
       and coalesce(class.start_time,duwam.start_time) is not null
       and coalesce(class.end_time,duwam.end_time) is not null
-      and (target_pay_unit in ('month','manual') or target_pay_unit='session')
+      and target_pay_unit in ('month','manual','session','day','hour')
       and study_day.day_name=case extract(dow from d.work_date)::integer
         when 0 then 'sunday' when 1 then 'monday' when 2 then 'tuesday'
         when 3 then 'wednesday' when 4 then 'thursday' when 5 then 'friday'
         else 'saturday' end
+    group by d.work_date
   ),
   with_policy as (
     select scheduled.work_date,scheduled.units,
