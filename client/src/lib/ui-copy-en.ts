@@ -2370,4 +2370,11 @@ export const EXACT_UI_ENGLISH: Record<string, string> = {
   "طريقة احتساب الأجر": "Pay treatment",
   "اختر السياسة المالية": "Choose pay policy",
   "نسبة الأجر المستحق %": "Payable percentage %",
+
+  // Payroll leave breakdown
+  "الإجازة:": "Leave:",
+  "مدفوعة ·": "Paid ·",
+  "غير مدفوعة من": "Unpaid out of",
+  "وحدة مجدولة": "scheduled units",
+  "خصم الإجازة:": "Leave deduction:",
 };
