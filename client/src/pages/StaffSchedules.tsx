@@ -33,6 +33,8 @@ type LeaveRow = {
   start_date: string;
   end_date: string;
   leave_type: string;
+  pay_treatment: "paid" | "unpaid" | "partial" | "unconfigured";
+  paid_percentage: number;
   status: string;
   note: string | null;
 };
@@ -40,6 +42,9 @@ type ClosureRow = { closure_id: string; closure_date: string; reason: string };
 const weekdays = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const leaveLabels: Record<string, string> = {
   annual: "سنوية", sick: "مرضية", personal: "شخصية", unpaid: "دون أجر", other: "أخرى",
+};
+const leavePayLabels: Record<string, string> = {
+  paid: "مدفوعة الأجر", unpaid: "غير مدفوعة", partial: "مدفوعة جزئيًا", unconfigured: "لم تحدد بعد",
 };
 const dayLabel = (value: number, en: boolean) => en
   ? ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][value] ?? "—"
@@ -66,6 +71,8 @@ export default function StaffSchedules() {
   const [leaveStart, setLeaveStart] = useState("");
   const [leaveEnd, setLeaveEnd] = useState("");
   const [leaveType, setLeaveType] = useState("annual");
+  const [leavePayTreatment, setLeavePayTreatment] = useState("");
+  const [leavePaidPercentage, setLeavePaidPercentage] = useState("50");
   const [leaveNote, setLeaveNote] = useState("");
   const [closureDate, setClosureDate] = useState("");
   const [closureReason, setClosureReason] = useState("");
@@ -163,7 +170,7 @@ export default function StaffSchedules() {
   };
 
   const saveLeave = async () => {
-    if (!school?.id || !selectedScope?.canManage || !selectedLeaveCandidate || !leaveStart || !leaveEnd) return;
+    if (!school?.id || !selectedScope?.canManage || !selectedLeaveCandidate || !leaveStart || !leaveEnd || !leavePayTreatment) return;
     setSaving(true);
     try {
       const { error } = await getSupabaseClient().rpc("save_staff_leave_period", {
@@ -175,11 +182,15 @@ export default function StaffSchedules() {
         target_start_date: leaveStart,
         target_end_date: leaveEnd,
         target_leave_type: leaveType,
+        target_pay_treatment: leavePayTreatment,
+        target_paid_percentage: leavePayTreatment === "partial" ? Number(leavePaidPercentage) : 100,
         target_note: leaveNote.trim() || null,
       });
       if (error) throw error;
       toast.success(en ? "Approved leave recorded." : "تم تسجيل الإجازة المعتمدة.");
       setLeaveNote("");
+      setLeavePayTreatment("");
+      setLeavePaidPercentage("50");
       await load();
     } catch (error) {
       console.error(error);
@@ -269,12 +280,14 @@ export default function StaffSchedules() {
               </select>
             </label>
             <label className="text-xs font-bold">{en ? "Leave type" : "نوع الإجازة"}<select value={leaveType} onChange={event => setLeaveType(event.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm">{Object.entries(leaveLabels).map(([key,value]) => <option key={key} value={key}>{en ? key : value}</option>)}</select></label>
+            <label className="text-xs font-bold">{en ? "Pay treatment" : "طريقة احتساب الأجر"}<select value={leavePayTreatment} onChange={event => setLeavePayTreatment(event.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-white px-3 text-sm"><option value="">{en ? "Choose policy" : "اختر السياسة المالية"}</option><option value="paid">{en ? "Paid" : "مدفوعة الأجر"}</option><option value="unpaid">{en ? "Unpaid" : "غير مدفوعة"}</option><option value="partial">{en ? "Partially paid" : "مدفوعة جزئيًا"}</option></select></label>
+            {leavePayTreatment === "partial" ? <label className="text-xs font-bold">{en ? "Paid percentage" : "نسبة الأجر المستحق %"}<Input className="mt-1" type="number" min="0" max="100" step="1" value={leavePaidPercentage} onChange={event => setLeavePaidPercentage(event.target.value)} /></label> : null}
             <label className="text-xs font-bold">{en ? "From" : "من"}<Input className="mt-1" type="date" value={leaveStart} onChange={event => setLeaveStart(event.target.value)} /></label>
             <label className="text-xs font-bold">{en ? "To" : "إلى"}<Input className="mt-1" type="date" value={leaveEnd} onChange={event => setLeaveEnd(event.target.value)} /></label>
             <label className="text-xs font-bold sm:col-span-3">{en ? "Notes" : "ملاحظة"}<Input className="mt-1" maxLength={500} value={leaveNote} onChange={event => setLeaveNote(event.target.value)} /></label>
-            <Button type="button" onClick={() => void saveLeave()} disabled={saving || !selectedLeaveCandidate || !leaveStart || !leaveEnd} className="self-end gap-2"><Plus className="size-4" />{en ? "Save leave" : "حفظ الإجازة"}</Button>
+            <Button type="button" onClick={() => void saveLeave()} disabled={saving || !selectedLeaveCandidate || !leaveStart || !leaveEnd || !leavePayTreatment || (leavePayTreatment === "partial" && (Number(leavePaidPercentage) < 0 || Number(leavePaidPercentage) > 100 || leavePaidPercentage === ""))} className="self-end gap-2"><Plus className="size-4" />{en ? "Save leave" : "حفظ الإجازة"}</Button>
           </div>
-          <div className="mt-4 divide-y">{leaves.map(row => <div key={row.leave_id} className="flex flex-wrap justify-between gap-2 py-2 text-sm"><span className="font-medium">{row.full_name} · {leaveLabels[row.leave_type] ?? row.leave_type}</span><span className="text-gray-500 tabular-nums">{row.start_date} — {row.end_date}</span></div>)}{leaves.length===0 ? <p className="py-3 text-sm text-gray-500">{en ? "No leave periods." : "لا توجد إجازات مسجلة."}</p> : null}</div>
+          <div className="mt-4 divide-y">{leaves.map(row => <div key={row.leave_id} className="flex flex-wrap justify-between gap-2 py-2 text-sm"><span className="font-medium">{row.full_name} · {leaveLabels[row.leave_type] ?? row.leave_type} · {leavePayLabels[row.pay_treatment] ?? row.pay_treatment}{row.pay_treatment === "partial" ? ` (${row.paid_percentage}%)` : ""}</span><span className="text-gray-500 tabular-nums">{row.start_date} — {row.end_date}</span></div>)}{leaves.length===0 ? <p className="py-3 text-sm text-gray-500">{en ? "No leave periods." : "لا توجد إجازات مسجلة."}</p> : null}</div>
         </Card>
       ) : null}
 
